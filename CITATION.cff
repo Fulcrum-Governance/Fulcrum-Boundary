@@ -15,10 +15,3 @@ abstract: >-
   for the Fulcrum governance kernel. It provides transport adapters, a
   fail-aware policy pipeline, and portable pre-execution control for AI agent
   tool calls.
-preferred-citation:
-  type: article
-  title: "Formal Trust and Safety Guarantees for Autonomous Multi-Agent Systems"
-  authors:
-    - family-names: Diefenbach
-      given-names: Anthony
-  notes: "Companion paper for the Fulcrum governance kernel."
