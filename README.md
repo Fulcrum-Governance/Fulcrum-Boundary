@@ -256,10 +256,10 @@ reputation; and the formal core publishes machine-checkable proof artifacts.
 
 Project docs: [Contributing](./CONTRIBUTING.md) · [Security](./SECURITY.md) · [Changelog](./CHANGELOG.md) · [Code of Conduct](./CODE_OF_CONDUCT.md) · [Citation](./CITATION.cff)
 
-GIL is the open-source enforcement layer. The full kernel adds Lean 4 formal verification for policy invariants, Bayesian trust scoring with Beta distributions, per-tenant cost modelling, multi-agent workflow orchestration, and managed multi-tenant infrastructure.
+GIL is the open-source enforcement layer. The full kernel pairs it with upstream Lean 4 proofs of bounded policy invariants in `Fulcrum-Proofs`; GIL consumes those proof-backed contracts through documented correspondence and decision-mode boundaries rather than emitting `proved` decisions itself. The full kernel also adds Bayesian trust scoring with Beta distributions, per-tenant cost modelling, multi-agent workflow orchestration, and managed multi-tenant infrastructure.
 
 - Website: [fulcrumlayer.io](https://fulcrumlayer.io)
-- Companion paper: *Formal Trust and Safety Guarantees for Autonomous Multi-Agent Systems* (preprint forthcoming)
+- Companion paper: tracked separately from this repository; cite GIL as software until a public paper citation is issued
 
 ## License
 

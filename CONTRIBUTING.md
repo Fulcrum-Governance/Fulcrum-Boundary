@@ -91,8 +91,10 @@ The following does **not** belong in GIL and will be declined:
   (Fulcrum's trust subsystem — `fulcrum-trust` on PyPI).
 - Cost modelling, budget enforcement, billing.
 - Multi-tenant infrastructure concerns (migrations, RLS, dashboards).
-- Formal verification of policy invariants (lives in the commercial
-  Fulcrum repo alongside the Lean 4 proofs).
+- Formal verification of policy invariants as a standalone GIL concern.
+  First-party Lean 4 proofs live upstream in `Fulcrum-Proofs`, and GIL
+  consumes those results through correspondence and decision-mode contracts;
+  GIL itself does not emit `proved` decisions.
 
 A new transport adapter, a new interceptor helper, a performance fix, a
 bug report with a failing test — these are in scope.
