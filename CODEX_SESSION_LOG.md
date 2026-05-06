@@ -1,5 +1,32 @@
 # CODEX Session Log
 
+## 2026-05-06 — Phase 2 Proof And Citation Cleanup
+
+### Context
+
+- Phase: `Phase 2 — governance-interception-layer proof/citation cleanup`
+- Branch: `fix/gil-phase2-proof-citation-cleanup-2026-05-06`
+- Upstream sequencing: `Fulcrum-Proofs` PR #20 and PR #21 merged; `fulcrum-trust` Phase 2 framing lane merged; this GIL lane is next in the approved order.
+
+### Preflight
+
+- Confirmed branch: `fix/gil-phase2-proof-citation-cleanup-2026-05-06`
+- Verified working tree was clean before edits.
+- Re-read the bounded drift surfaces:
+  - `README.md`
+  - `CONTRIBUTING.md`
+  - `CITATION.cff`
+
+### Plan
+
+- Tighten proof-language wording in `README.md` so it stays within the approved correspondence boundary.
+- Update `CONTRIBUTING.md` so formal-verification scope points upstream without implying GIL emits `proved` decisions itself.
+- Reduce `CITATION.cff` to a software-only citation surface until the companion paper is publicly citation-ready.
+
+### Notes
+
+- Use `env -u GOROOT go ...` for verification in this repo to avoid the inherited toolchain mismatch recorded on 2026-05-03.
+
 ## 2026-05-03 — Four-Repo Style Mirror
 
 ### Context
