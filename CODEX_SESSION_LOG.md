@@ -23,6 +23,23 @@
 - Update `CONTRIBUTING.md` so formal-verification scope points upstream without implying GIL emits `proved` decisions itself.
 - Reduce `CITATION.cff` to a software-only citation surface until the companion paper is publicly citation-ready.
 
+### Built
+
+- Updated `README.md` to describe upstream proof integration through correspondence and decision-mode boundaries rather than implying GIL emits `proved` decisions.
+- Updated `CONTRIBUTING.md` to keep formal-verification scope upstream in `Fulcrum-Proofs` and outside GIL's direct decision semantics.
+- Removed the paper-style `preferred-citation` block from `CITATION.cff` so the repo remains software-citation-only until a public paper citation exists.
+
+### Verification
+
+- `python3` YAML parse for `CITATION.cff`: pass
+- `env -u GOROOT go test ./... -short -count=1 -timeout 5m`: pass
+- `git diff --check`: pass
+- Edited-surface scan verified no remaining `preprint forthcoming` or `preferred-citation` strings in `README.md`, `CONTRIBUTING.md`, or `CITATION.cff`
+
+### Notes For Next Step
+
+- If this PR lands cleanly, the Fulcrum conductor record should advance the Phase 2 queue from GIL cleanup to the next architect-approved docs-reconstruction gate.
+
 ### Notes
 
 - Use `env -u GOROOT go ...` for verification in this repo to avoid the inherited toolchain mismatch recorded on 2026-05-03.
