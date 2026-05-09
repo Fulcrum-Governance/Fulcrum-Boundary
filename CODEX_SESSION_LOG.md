@@ -102,3 +102,20 @@
 
 - Refresh `google.golang.org/grpc` in `adapters/grpc` on a codex-owned branch while preserving the existing module/toolchain framing unless verification proves a change is required.
 - Re-run the adapter module tests and the repo short regression gate with `env -u GOROOT`.
+
+### Built
+
+- Updated `adapters/grpc` from `google.golang.org/grpc v1.80.0` to `v1.81.0`.
+- Accepted the generated indirect dependency refresh in the adapter module for `x/net`, `x/sys`, `x/text`, and `genproto/googleapis/rpc`.
+
+### Verification
+
+- `env -u GOROOT go mod tidy` in `adapters/grpc`: pass
+- `env -u GOROOT go test ./... -count=1` in `adapters/grpc`: pass
+- `env -u GOROOT go test ./... -short -count=1 -timeout 5m`: pass
+- `git diff --check`: pass
+
+### Decision
+
+- The attempted preservation of `go 1.24.0` failed because the upgraded dependency chain now requires `go 1.25.0`.
+- This branch therefore keeps the module directive change as a verified requirement of the `grpc@1.81.0` refresh rather than an incidental tool rewrite.
