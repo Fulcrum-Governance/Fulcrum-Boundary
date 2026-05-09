@@ -142,3 +142,22 @@
 
 - This is an environment/toolchain fix, not a product-code behavior change in the adapters themselves.
 - Dependabot PR `#14` remains the narrower fallback, but `#16` should clear once GitHub reruns on the patched workflow.
+
+## 2026-05-09 — gRPC Adapter CI Version Alignment
+
+### Context
+
+- After the security scan fix landed, PR `#16` still failed one remaining lane: `test grpc adapter`.
+
+### Findings
+
+- The failure was a plain CI/version mismatch: `adapters/grpc/go.mod` now requires `go 1.25.0`, but the dedicated `grpc-adapter` job in `.github/workflows/ci.yml` was still pinned to `go-version: 1.24`.
+- GitHub Actions failed before test execution with: `go.mod requires go >= 1.25.0 (running go 1.24.13; GOTOOLCHAIN=local)`.
+
+### Built
+
+- Updated the `grpc-adapter` workflow job to use `go-version: 1.25.0`.
+
+### Notes
+
+- Root repo test coverage remains intentionally broader on `1.23` and `1.24`; only the adapter-specific job needed the higher Go version because that module has its own `go.mod`.
