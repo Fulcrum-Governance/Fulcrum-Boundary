@@ -85,3 +85,79 @@
 
 - The blocking failure from the earlier attempt was environmental, not repo-code: this shell inherited `GOROOT=/Users/td/.local/share/mise/installs/go/1.24.1` while `go` resolved to Homebrew `1.26.1`.
 - For GIL verification in this session, run Go commands as `env -u GOROOT go ...` so the compiler and stdlib come from the same toolchain.
+
+## 2026-05-09 — gRPC Dependency Refresh Triage
+
+### Context
+
+- Repo is back on `main` after landing the docs cleanup (`#15`) and the safe Redis dependabot bump (`#6`).
+- Remaining open maintenance item is dependabot PR `#14`, which upgrades `google.golang.org/grpc` in `adapters/grpc`.
+
+### Findings
+
+- The dependabot patch is not just a library bump; it also rewrites `adapters/grpc/go.mod` from `go 1.24.0` plus `toolchain go1.24.1` to `go 1.25.0`.
+- CI on the PR is green, but that toolchain drift is broader than the repo-owned change we actually want to make.
+
+### Plan
+
+- Refresh `google.golang.org/grpc` in `adapters/grpc` on a codex-owned branch while preserving the existing module/toolchain framing unless verification proves a change is required.
+- Re-run the adapter module tests and the repo short regression gate with `env -u GOROOT`.
+
+### Built
+
+- Updated `adapters/grpc` from `google.golang.org/grpc v1.80.0` to `v1.81.0`.
+- Accepted the generated indirect dependency refresh in the adapter module for `x/net`, `x/sys`, `x/text`, and `genproto/googleapis/rpc`.
+
+### Verification
+
+- `env -u GOROOT go mod tidy` in `adapters/grpc`: pass
+- `env -u GOROOT go test ./... -count=1` in `adapters/grpc`: pass
+- `env -u GOROOT go test ./... -short -count=1 -timeout 5m`: pass
+- `git diff --check`: pass
+
+### Decision
+
+- The attempted preservation of `go 1.24.0` failed because the upgraded dependency chain now requires `go 1.25.0`.
+- This branch therefore keeps the module directive change as a verified requirement of the `grpc@1.81.0` refresh rather than an incidental tool rewrite.
+
+## 2026-05-09 — CI Security Scan Patch-Level Follow-Up
+
+### Context
+
+- PR `#16` came back blocked even though the adapter/module tests and CodeQL lanes were green.
+- The failing job was `security scan`, specifically the `govulncheck` step.
+
+### Findings
+
+- The workflow pinned `GOTOOLCHAIN=go1.26.2`, and GitHub Actions reported two standard-library vulnerabilities fixed in `go1.26.3`: `GO-2026-4971` and `GO-2026-4918`.
+- The runner also emitted the separate Node 20 deprecation warning for `actions/checkout@v4` and `actions/setup-go@v5`.
+
+### Built
+
+- Updated `.github/workflows/ci.yml` to use `actions/checkout@v6` and `actions/setup-go@v6` for Node 24 runner readiness.
+- Bumped the security job `go-version` to `1.26.3`.
+- Bumped `GOTOOLCHAIN` for `govulncheck` to `go1.26.3`.
+
+### Notes
+
+- This is an environment/toolchain fix, not a product-code behavior change in the adapters themselves.
+- Dependabot PR `#14` remains the narrower fallback, but `#16` should clear once GitHub reruns on the patched workflow.
+
+## 2026-05-09 — gRPC Adapter CI Version Alignment
+
+### Context
+
+- After the security scan fix landed, PR `#16` still failed one remaining lane: `test grpc adapter`.
+
+### Findings
+
+- The failure was a plain CI/version mismatch: `adapters/grpc/go.mod` now requires `go 1.25.0`, but the dedicated `grpc-adapter` job in `.github/workflows/ci.yml` was still pinned to `go-version: 1.24`.
+- GitHub Actions failed before test execution with: `go.mod requires go >= 1.25.0 (running go 1.24.13; GOTOOLCHAIN=local)`.
+
+### Built
+
+- Updated the `grpc-adapter` workflow job to use `go-version: 1.25.0`.
+
+### Notes
+
+- Root repo test coverage remains intentionally broader on `1.23` and `1.24`; only the adapter-specific job needed the higher Go version because that module has its own `go.mod`.
