@@ -119,3 +119,26 @@
 
 - The attempted preservation of `go 1.24.0` failed because the upgraded dependency chain now requires `go 1.25.0`.
 - This branch therefore keeps the module directive change as a verified requirement of the `grpc@1.81.0` refresh rather than an incidental tool rewrite.
+
+## 2026-05-09 — CI Security Scan Patch-Level Follow-Up
+
+### Context
+
+- PR `#16` came back blocked even though the adapter/module tests and CodeQL lanes were green.
+- The failing job was `security scan`, specifically the `govulncheck` step.
+
+### Findings
+
+- The workflow pinned `GOTOOLCHAIN=go1.26.2`, and GitHub Actions reported two standard-library vulnerabilities fixed in `go1.26.3`: `GO-2026-4971` and `GO-2026-4918`.
+- The runner also emitted the separate Node 20 deprecation warning for `actions/checkout@v4` and `actions/setup-go@v5`.
+
+### Built
+
+- Updated `.github/workflows/ci.yml` to use `actions/checkout@v6` and `actions/setup-go@v6` for Node 24 runner readiness.
+- Bumped the security job `go-version` to `1.26.3`.
+- Bumped `GOTOOLCHAIN` for `govulncheck` to `go1.26.3`.
+
+### Notes
+
+- This is an environment/toolchain fix, not a product-code behavior change in the adapters themselves.
+- Dependabot PR `#14` remains the narrower fallback, but `#16` should clear once GitHub reruns on the patched workflow.
