@@ -85,3 +85,20 @@
 
 - The blocking failure from the earlier attempt was environmental, not repo-code: this shell inherited `GOROOT=/Users/td/.local/share/mise/installs/go/1.24.1` while `go` resolved to Homebrew `1.26.1`.
 - For GIL verification in this session, run Go commands as `env -u GOROOT go ...` so the compiler and stdlib come from the same toolchain.
+
+## 2026-05-09 — gRPC Dependency Refresh Triage
+
+### Context
+
+- Repo is back on `main` after landing the docs cleanup (`#15`) and the safe Redis dependabot bump (`#6`).
+- Remaining open maintenance item is dependabot PR `#14`, which upgrades `google.golang.org/grpc` in `adapters/grpc`.
+
+### Findings
+
+- The dependabot patch is not just a library bump; it also rewrites `adapters/grpc/go.mod` from `go 1.24.0` plus `toolchain go1.24.1` to `go 1.25.0`.
+- CI on the PR is green, but that toolchain drift is broader than the repo-owned change we actually want to make.
+
+### Plan
+
+- Refresh `google.golang.org/grpc` in `adapters/grpc` on a codex-owned branch while preserving the existing module/toolchain framing unless verification proves a change is required.
+- Re-run the adapter module tests and the repo short regression gate with `env -u GOROOT`.
