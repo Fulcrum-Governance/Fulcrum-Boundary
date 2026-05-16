@@ -1,6 +1,6 @@
 # Governance Interception Layer (GIL)
 
-> The out-of-process enforcement boundary of the Fulcrum governance kernel. Protocol-agnostic pre-execution control for AI agent tool calls.
+> The governance interception layer for the agent control plane. Harness-agnostic, protocol-agnostic, out-of-process pre-execution control for AI agent tool calls.
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/fulcrum-governance/gil.svg)](https://pkg.go.dev/github.com/fulcrum-governance/gil)
 [![Go Report Card](https://goreportcard.com/badge/github.com/fulcrum-governance/gil)](https://goreportcard.com/report/github.com/fulcrum-governance/gil)
