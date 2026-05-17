@@ -9,9 +9,9 @@
 // Run with: go run main.go
 // Then in another terminal:
 //
-//	curl -i -H "X-Tool-Name: read_file" -H "X-Agent-ID: a1" -H "X-Tenant-ID: t1" http://localhost:8080/
-//	curl -i -H "X-Tool-Name: rm"        -H "X-Agent-ID: a1" -H "X-Tenant-ID: t1" http://localhost:8080/
-//	curl -i -H "X-Tool-Name: drop_table" -H "X-Agent-ID: a1" -H "X-Tenant-ID: t1" http://localhost:8080/
+//	curl -i -H "X-Tool-Name: read_file" -H "X-Governance-Agent-ID: a1" -H "X-Governance-Tenant-ID: t1" http://localhost:8080/
+//	curl -i -H "X-Tool-Name: rm"        -H "X-Governance-Agent-ID: a1" -H "X-Governance-Tenant-ID: t1" http://localhost:8080/
+//	curl -i -H "X-Tool-Name: drop_table" -H "X-Governance-Agent-ID: a1" -H "X-Governance-Tenant-ID: t1" http://localhost:8080/
 package main
 
 import (
@@ -43,7 +43,13 @@ func main() {
 	// proxy to the tool backend. For the demo it just echoes what was allowed.
 	downstream := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		fmt.Fprintf(w, "downstream handler invoked for tool=%q\n", r.Header.Get("X-Tool-Name"))
+		fmt.Fprintf(
+			w,
+			"downstream handler invoked for tool=%q agent=%q tenant=%q\n",
+			r.Header.Get(governance.HeaderToolName),
+			r.Header.Get(governance.HeaderGovernanceAgentID),
+			r.Header.Get(governance.HeaderGovernanceTenantID),
+		)
 	})
 
 	middleware := governance.NewMiddleware(pipeline, downstream, governance.MiddlewareConfig{
@@ -52,9 +58,9 @@ func main() {
 
 	fmt.Fprintln(os.Stderr, "GIL HTTP middleware listening on :8080")
 	fmt.Fprintln(os.Stderr, "Try:")
-	fmt.Fprintln(os.Stderr, `  curl -i -H "X-Tool-Name: read_file"  -H "X-Agent-ID: a1" -H "X-Tenant-ID: t1" http://localhost:8080/`)
-	fmt.Fprintln(os.Stderr, `  curl -i -H "X-Tool-Name: rm"         -H "X-Agent-ID: a1" -H "X-Tenant-ID: t1" http://localhost:8080/`)
-	fmt.Fprintln(os.Stderr, `  curl -i -H "X-Tool-Name: drop_table" -H "X-Agent-ID: a1" -H "X-Tenant-ID: t1" http://localhost:8080/`)
+	fmt.Fprintln(os.Stderr, `  curl -i -H "X-Tool-Name: read_file"  -H "X-Governance-Agent-ID: a1" -H "X-Governance-Tenant-ID: t1" http://localhost:8080/`)
+	fmt.Fprintln(os.Stderr, `  curl -i -H "X-Tool-Name: rm"         -H "X-Governance-Agent-ID: a1" -H "X-Governance-Tenant-ID: t1" http://localhost:8080/`)
+	fmt.Fprintln(os.Stderr, `  curl -i -H "X-Tool-Name: drop_table" -H "X-Governance-Agent-ID: a1" -H "X-Governance-Tenant-ID: t1" http://localhost:8080/`)
 
 	srv := &http.Server{
 		Addr:              ":8080",
