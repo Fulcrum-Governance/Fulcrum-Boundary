@@ -153,6 +153,71 @@ func TestMiddleware_CustomHeaders(t *testing.T) {
 	}
 }
 
+func TestMiddleware_DefaultHeadersAcceptCanonicalIdentityHeaders(t *testing.T) {
+	var gotAgentID string
+	var gotTenantID string
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAgentID = r.Header.Get(HeaderGovernanceAgentID)
+		gotTenantID = r.Header.Get(HeaderGovernanceTenantID)
+		w.WriteHeader(http.StatusOK)
+	})
+
+	p := NewPipeline(PipelineConfig{}, nil, nil, nil)
+	mw := NewMiddleware(p, next, MiddlewareConfig{})
+
+	req := httptest.NewRequest(http.MethodPost, "/", nil)
+	req.Header.Set(HeaderToolName, "noop")
+	req.Header.Set(HeaderGovernanceAgentID, "agent-9")
+	req.Header.Set(HeaderGovernanceTenantID, "tenant-9")
+	rec := httptest.NewRecorder()
+	mw.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+	if gotAgentID != "agent-9" {
+		t.Fatalf("expected canonical agent header to reach downstream, got %q", gotAgentID)
+	}
+	if gotTenantID != "tenant-9" {
+		t.Fatalf("expected canonical tenant header to reach downstream, got %q", gotTenantID)
+	}
+}
+
+func TestMiddleware_DefaultHeadersNormalizeLegacyIdentityHeaders(t *testing.T) {
+	var gotAgentID string
+	var gotTenantID string
+	var legacyAgentID string
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAgentID = r.Header.Get(HeaderGovernanceAgentID)
+		gotTenantID = r.Header.Get(HeaderGovernanceTenantID)
+		legacyAgentID = r.Header.Get(HeaderLegacyAgentID)
+		w.WriteHeader(http.StatusOK)
+	})
+
+	p := NewPipeline(PipelineConfig{}, nil, nil, nil)
+	mw := NewMiddleware(p, next, MiddlewareConfig{})
+
+	req := httptest.NewRequest(http.MethodPost, "/", nil)
+	req.Header.Set(HeaderToolName, "noop")
+	req.Header.Set(HeaderLegacyAgentID, "agent-legacy")
+	req.Header.Set(HeaderLegacyTenantID, "tenant-legacy")
+	rec := httptest.NewRecorder()
+	mw.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+	if gotAgentID != "agent-legacy" {
+		t.Fatalf("expected legacy agent header to normalize to canonical header, got %q", gotAgentID)
+	}
+	if gotTenantID != "tenant-legacy" {
+		t.Fatalf("expected legacy tenant header to normalize to canonical header, got %q", gotTenantID)
+	}
+	if legacyAgentID != "agent-legacy" {
+		t.Fatalf("expected legacy header to remain available during compatibility window, got %q", legacyAgentID)
+	}
+}
+
 func TestMiddleware_DryRunHeader(t *testing.T) {
 	cfg := PipelineConfig{
 		DryRun: true,

@@ -119,6 +119,11 @@ request_id}`. Every response — allow or deny — carries `X-Governance-Action`
 read the verdict without parsing the body. See
 [`examples/http-middleware`](./examples/http-middleware).
 
+By default, the middleware reads identity from `X-Governance-Agent-ID` and
+`X-Governance-Tenant-ID`. For compatibility it also accepts legacy
+`X-Agent-ID` / `X-Tenant-ID` inputs and normalizes forwarded requests so the
+downstream handler sees the governance-prefixed headers.
+
 ## Logging
 
 GIL ships a `SlogAuditPublisher` that writes every governance decision as a

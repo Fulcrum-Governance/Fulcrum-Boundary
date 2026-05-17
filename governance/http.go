@@ -14,11 +14,11 @@ type MiddlewareConfig struct {
 	ToolNameHeader string
 
 	// AgentIDHeader is read to populate GovernanceRequest.AgentID.
-	// Default: "X-Agent-ID".
+	// Default: "X-Governance-Agent-ID".
 	AgentIDHeader string
 
 	// TenantIDHeader is read to populate GovernanceRequest.TenantID.
-	// Default: "X-Tenant-ID".
+	// Default: "X-Governance-Tenant-ID".
 	TenantIDHeader string
 
 	// TransportType is the transport recorded on GovernanceRequest.
@@ -33,6 +33,11 @@ type MiddlewareConfig struct {
 // Response header names. These are also written on deny responses so that
 // clients always see the governance verdict in the same fields.
 const (
+	HeaderToolName             = "X-Tool-Name"
+	HeaderGovernanceAgentID    = "X-Governance-Agent-ID"
+	HeaderGovernanceTenantID   = "X-Governance-Tenant-ID"
+	HeaderLegacyAgentID        = "X-Agent-ID"
+	HeaderLegacyTenantID       = "X-Tenant-ID"
 	HeaderGovernanceAction     = "X-Governance-Action"
 	HeaderGovernanceReason     = "X-Governance-Reason"
 	HeaderGovernanceEnvelopeID = "X-Governance-Envelope-ID"
@@ -54,13 +59,13 @@ type GovernanceMiddleware struct {
 // http.Handler.
 func NewMiddleware(pipeline *Pipeline, next http.Handler, cfg MiddlewareConfig) *GovernanceMiddleware {
 	if cfg.ToolNameHeader == "" {
-		cfg.ToolNameHeader = "X-Tool-Name"
+		cfg.ToolNameHeader = HeaderToolName
 	}
 	if cfg.AgentIDHeader == "" {
-		cfg.AgentIDHeader = "X-Agent-ID"
+		cfg.AgentIDHeader = HeaderGovernanceAgentID
 	}
 	if cfg.TenantIDHeader == "" {
-		cfg.TenantIDHeader = "X-Tenant-ID"
+		cfg.TenantIDHeader = HeaderGovernanceTenantID
 	}
 	if cfg.TransportType == "" {
 		cfg.TransportType = TransportMCP
@@ -78,11 +83,14 @@ func (m *GovernanceMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		toolName = strings.TrimPrefix(r.URL.Path, "/")
 	}
 
+	agentID, agentHeader := readConfiguredIdentityHeader(r.Header, m.Config.AgentIDHeader, HeaderLegacyAgentID)
+	tenantID, tenantHeader := readConfiguredIdentityHeader(r.Header, m.Config.TenantIDHeader, HeaderLegacyTenantID)
+
 	gReq := &GovernanceRequest{
 		Transport: m.Config.TransportType,
 		ToolName:  toolName,
-		AgentID:   r.Header.Get(m.Config.AgentIDHeader),
-		TenantID:  r.Header.Get(m.Config.TenantIDHeader),
+		AgentID:   agentID,
+		TenantID:  tenantID,
 	}
 
 	decision, err := m.Pipeline.Evaluate(r.Context(), gReq)
@@ -116,7 +124,30 @@ func (m *GovernanceMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	normalizeForwardedIdentityHeader(r.Header, m.Config.AgentIDHeader, agentHeader, agentID)
+	normalizeForwardedIdentityHeader(r.Header, m.Config.TenantIDHeader, tenantHeader, tenantID)
 	m.Next.ServeHTTP(w, r)
+}
+
+func readConfiguredIdentityHeader(headers http.Header, primaryHeader, legacyHeader string) (value string, source string) {
+	value = headers.Get(primaryHeader)
+	if value != "" {
+		return value, primaryHeader
+	}
+	if primaryHeader != legacyHeader {
+		value = headers.Get(legacyHeader)
+		if value != "" {
+			return value, legacyHeader
+		}
+	}
+	return "", ""
+}
+
+func normalizeForwardedIdentityHeader(headers http.Header, primaryHeader, sourceHeader, value string) {
+	if value == "" || primaryHeader == "" || sourceHeader == "" || sourceHeader == primaryHeader {
+		return
+	}
+	headers.Set(primaryHeader, value)
 }
 
 func writeGovernanceHeaders(w http.ResponseWriter, d *GovernanceDecision) {
