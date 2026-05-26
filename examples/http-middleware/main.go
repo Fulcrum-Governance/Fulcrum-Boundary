@@ -56,7 +56,7 @@ func main() {
 		TransportType: governance.TransportMCP,
 	})
 
-	fmt.Fprintln(os.Stderr, "GIL HTTP middleware listening on :8080")
+	fmt.Fprintln(os.Stderr, "Boundary HTTP middleware listening on :8080")
 	fmt.Fprintln(os.Stderr, "Try:")
 	fmt.Fprintln(os.Stderr, `  curl -i -H "X-Tool-Name: read_file"  -H "X-Governance-Agent-ID: a1" -H "X-Governance-Tenant-ID: t1" http://localhost:8080/`)
 	fmt.Fprintln(os.Stderr, `  curl -i -H "X-Tool-Name: rm"         -H "X-Governance-Agent-ID: a1" -H "X-Governance-Tenant-ID: t1" http://localhost:8080/`)

@@ -73,15 +73,18 @@ func HighestRisk(segments []PipeSegment) string {
 
 // GovernanceDecision is the canonical output of the governance pipeline.
 type GovernanceDecision struct {
-	RequestID    string        `json:"request_id"`
-	Action       string        `json:"action"` // allow, deny, warn, escalate, require_approval
-	Reason       string        `json:"reason"`
-	PolicyID     string        `json:"policy_id,omitempty"`
-	TrustScore   float64       `json:"trust_score"`
-	EnvelopeID   string        `json:"envelope_id"`
-	DryRun       bool          `json:"dry_run"`
-	CostEstimate float64       `json:"cost_estimate,omitempty"`
-	Duration     time.Duration `json:"duration"`
+	RequestID      string        `json:"request_id"`
+	Action         string        `json:"action"` // allow, deny, warn, escalate, require_approval
+	Reason         string        `json:"reason"`
+	PolicyID       string        `json:"policy_id,omitempty"`
+	MatchedRule    string        `json:"matched_rule,omitempty"`
+	PolicyFile     string        `json:"policy_file,omitempty"`
+	GatewayVersion string        `json:"gateway_version,omitempty"`
+	TrustScore     float64       `json:"trust_score"`
+	EnvelopeID     string        `json:"envelope_id"`
+	DryRun         bool          `json:"dry_run"`
+	CostEstimate   float64       `json:"cost_estimate,omitempty"`
+	Duration       time.Duration `json:"duration"`
 	// DecisionMode labels the epistemic confidence level of this decision:
 	// deterministic, classified, proved, or human_approved. Empty string
 	// means the producer did not label the mode (backwards compat).

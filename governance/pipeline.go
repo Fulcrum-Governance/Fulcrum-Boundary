@@ -33,6 +33,10 @@ type PipelineConfig struct {
 	// StaticPolicies are simple allow/deny rules evaluated before the full engine.
 	StaticPolicies []StaticPolicyRule
 
+	// GatewayVersion is copied into decisions and audit records so operators
+	// can tie runtime verdicts to the released boundary build.
+	GatewayVersion string
+
 	// FailClosedTransports are transports that deny on pipeline errors.
 	// All other transports fail-open on pipeline errors.
 	//
@@ -66,13 +70,14 @@ type PolicyEvaluator interface {
 // Pipeline evaluates governance requests against trust state, static policies,
 // domain interceptors, and the portable policy evaluator.
 //
-// This is the shared core of the GIL — all transport adapters call Pipeline.Evaluate().
+// This is the shared core of Boundary: all transport adapters call Pipeline.Evaluate().
 type Pipeline struct {
 	trustChecker   TrustChecker
 	interceptors   *InterceptorRegistry
 	evaluator      PolicyEvaluator
 	auditor        AuditPublisher
 	staticPolicies []StaticPolicyRule
+	gatewayVersion string
 	failClosed     map[TransportType]bool
 	dryRun         bool
 }
@@ -104,6 +109,7 @@ func NewPipeline(cfg PipelineConfig, trust TrustChecker, evaluator PolicyEvaluat
 		evaluator:      evaluator,
 		auditor:        auditor,
 		staticPolicies: cfg.StaticPolicies,
+		gatewayVersion: cfg.GatewayVersion,
 		failClosed:     fc,
 		dryRun:         cfg.DryRun,
 	}
@@ -150,11 +156,12 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 	}
 
 	decision := &GovernanceDecision{
-		RequestID:  req.RequestID,
-		Action:     "allow",
-		TrustScore: 1.0,
-		EnvelopeID: req.EnvelopeID,
-		// Deterministic is the correct label for every GIL pipeline outcome
+		RequestID:      req.RequestID,
+		Action:         "allow",
+		TrustScore:     1.0,
+		EnvelopeID:     req.EnvelopeID,
+		GatewayVersion: p.gatewayVersion,
+		// Deterministic is the correct label for every Boundary pipeline outcome
 		// except PolicyEval ActionEscalate (which flips to classified below).
 		// The PRD-002 taxonomy reserves "proved" and "human_approved" for
 		// upstream Foundry decisions that never originate here.
@@ -195,17 +202,25 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 		}
 	}
 
-	// Stage 2: Static Policy Rules (glob-aware tool match)
+	// Stage 2: Static Policy Rules (glob-aware tool and launch-grade field matches)
 	for _, rule := range p.staticPolicies {
-		if !toolMatches(rule.Tool, req.ToolName) {
+		if !rule.matchesRequest(req) {
 			continue
 		}
+		decision.PolicyID = rule.Name
+		decision.MatchedRule = rule.Name
+		decision.PolicyFile = rule.PolicyFile
 		if rule.Action == "deny" {
 			decision.Action = "deny"
 			decision.Reason = rule.Reason
 			if decision.Reason == "" {
 				decision.Reason = fmt.Sprintf("denied by policy %q", rule.Name)
 			}
+			return decision, nil
+		}
+		if rule.Action == "warn" || rule.Action == "audit" {
+			decision.Action = "warn"
+			decision.Reason = rule.Reason
 			return decision, nil
 		}
 	}
@@ -270,16 +285,20 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 
 func (p *Pipeline) emitAudit(ctx context.Context, req *GovernanceRequest, decision *GovernanceDecision) {
 	p.auditor.Publish(ctx, AuditEvent{
-		RequestID:    req.RequestID,
-		Transport:    req.Transport,
-		ToolName:     req.ToolName,
-		Action:       decision.Action,
-		Reason:       decision.Reason,
-		TrustScore:   decision.TrustScore,
-		EnvelopeID:   decision.EnvelopeID,
-		AgentID:      req.AgentID,
-		TenantID:     req.TenantID,
-		Timestamp:    time.Now(),
-		DecisionMode: decision.DecisionMode,
+		RequestID:      req.RequestID,
+		Transport:      req.Transport,
+		ToolName:       req.ToolName,
+		Action:         decision.Action,
+		Reason:         decision.Reason,
+		TrustScore:     decision.TrustScore,
+		EnvelopeID:     decision.EnvelopeID,
+		AgentID:        req.AgentID,
+		TenantID:       req.TenantID,
+		Timestamp:      time.Now(),
+		DecisionMode:   decision.DecisionMode,
+		MatchedRule:    decision.MatchedRule,
+		PolicyFile:     decision.PolicyFile,
+		GatewayVersion: decision.GatewayVersion,
+		TraceID:        req.TraceID,
 	})
 }

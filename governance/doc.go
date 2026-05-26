@@ -1,6 +1,6 @@
-// Package governance provides the protocol-agnostic Governance Interception Layer (GIL).
+// Package governance provides Fulcrum Boundary's protocol-agnostic action boundary.
 //
-// The GIL evaluates tool calls, CLI commands, and code execution requests
+// Boundary evaluates tool calls, CLI commands, and code execution requests
 // against trust state, static policies, domain interceptors, and the portable
 // policy evaluator. Transport adapters convert protocol-specific inputs into
 // a canonical GovernanceRequest, invoke the shared Pipeline, and return

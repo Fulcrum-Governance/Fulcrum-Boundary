@@ -89,7 +89,7 @@ adapter does decide whether the pipeline runs at all. The implications:
 - A `ParseRequest` error means the request never reaches `Pipeline.Evaluate`.
   The caller is responsible for converting that error into a 400-class
   protocol-level failure (HTTP 400, gRPC `InvalidArgument`, etc.). The webhook
-  `Handler` and gRPC `UnaryInterceptor` shipped with GIL do this.
+  `Handler` and gRPC `UnaryInterceptor` shipped with Boundary do this.
 - `ForwardGoverned` runs only after the pipeline returns `Allowed()`. An error
   from forwarding does not retroactively allow a denied call.
 - `InspectResponse` runs after the tool produced a response. It is an audit
@@ -106,12 +106,12 @@ process and language:
 Repo: [`fulcrum-io`](https://fulcrumlayer.io) (`/internal/adapters/mcp`,
 `/internal/adapters/cli`, `/internal/adapters/codeexec`).
 
-The runtime control plane wraps the GIL adapters in production-grade
+The runtime control plane wraps the Boundary adapters in production-grade
 forwarding code: the MCP adapter feeds the `mcpproxy` JSON-RPC interceptor,
 the CLI adapter is invoked from the agent runtime command bridge, and the
 code-exec adapter is invoked from the Python/JavaScript sandbox gateway. In
-every case, GIL is the parsing and decision layer; the surrounding fulcrum-io
-service owns the actual transport I/O. That is why the shipped GIL adapters
+every case, Boundary is the parsing and decision layer; the surrounding fulcrum-io
+service owns the actual transport I/O. That is why the shipped Boundary adapters
 return a fixed error from `ForwardGoverned` rather than attempting to forward
 themselves — the consumer must override or wrap.
 
@@ -124,8 +124,8 @@ LangGraph runs in-process with the agent. The Python adapter does not
 implement `TransportAdapter` directly (it is a different interface in a
 different language) — instead it converts each LangGraph tool invocation into
 a JSON payload that goes to a fulcrum-io endpoint, which in turn runs the
-appropriate Go adapter. The GIL contract therefore reaches LangGraph through
-two hops: LangGraph -> fulcrum-trust IPC bridge -> fulcrum-io -> GIL adapter
+appropriate Go adapter. The Boundary contract therefore reaches LangGraph through
+two hops: LangGraph -> fulcrum-trust IPC bridge -> fulcrum-io -> Boundary adapter
 -> pipeline. The trust circuit-breaker layer in fulcrum-trust feeds the
 pipeline's `TrustChecker` slot.
 
@@ -183,7 +183,7 @@ root module stays slim.
 
 ## Versioning the contract
 
-The contract is versioned with GIL itself. Breaking changes to the interface
+The contract is versioned with Boundary itself. Breaking changes to the interface
 go through a CHANGELOG entry and follow the same major/minor discipline as
 the rest of the public API. Adding a new `TransportType` constant is a
 backwards-compatible change. Removing methods, adding required methods, or

@@ -4,7 +4,7 @@
 **Source:** PRD-004. Pipeline at `governance/pipeline.go`.
 **Audience:** security reviewers, acquirers, on-call engineers.
 
-This document specifies the exact fail-open / fail-closed behavior of the GIL
+This document specifies the exact fail-open / fail-closed behavior of the Boundary
 governance pipeline for each supported transport and each fault class. It
 records what the code **does today**, with source citations. Recommendations
 for production defaults are in §3; known gaps are in §6.
@@ -32,10 +32,10 @@ four modes are mutually exclusive:
 
 | Mode | Who sets it | When |
 |---|---|---|
-| `deterministic` | GIL pipeline | Default for every stage below; static-rule matches, trust outcomes, interceptor outcomes, `ActionDeny`/`ActionWarn`/`ActionRequireApproval`, evaluator errors (fail-closed or fail-open), and the no-match default allow. |
-| `classified` | GIL pipeline | Only PolicyEval `ActionEscalate`, because escalation implies a semantic condition the evaluator could not resolve deterministically. |
-| `proved` | Upstream Foundry (fulcrum-io) | Set when a Lean 4 invariant has discharged the decision. GIL itself never emits this mode. |
-| `human_approved` | Upstream Foundry (fulcrum-io) | Set when a human reviewer has approved the action. GIL itself never emits this mode. |
+| `deterministic` | Boundary pipeline | Default for every stage below; static-rule matches, trust outcomes, interceptor outcomes, `ActionDeny`/`ActionWarn`/`ActionRequireApproval`, evaluator errors (fail-closed or fail-open), and the no-match default allow. |
+| `classified` | Boundary pipeline | Only PolicyEval `ActionEscalate`, because escalation implies a semantic condition the evaluator could not resolve deterministically. |
+| `proved` | Upstream Foundry (fulcrum-io) | Set when a Lean 4 invariant has discharged the decision. Boundary itself never emits this mode. |
+| `human_approved` | Upstream Foundry (fulcrum-io) | Set when a human reviewer has approved the action. Boundary itself never emits this mode. |
 
 Per-stage citations: the default value is initialized where `decision` is
 constructed (`governance/pipeline.go:161`); the single `classified` override
@@ -67,7 +67,7 @@ Seven fault classes × six transports. Each cell is one of:
 - **ERR→caller** — adapter `ParseRequest` returns a Go error; the embedding
   runtime (mcpproxy, agent runtime, sandbox runtime) decides what the caller
   sees. Functionally the tool call does not proceed, which is equivalent to
-  deny — but the decision and audit event are **not** produced by the GIL
+  deny — but the decision and audit event are **not** produced by the Boundary
   pipeline.
 - **HTTP 400 / codes.Internal** — adapter surfaces a protocol-specific
   fail-closed error before pipeline entry.
@@ -95,7 +95,7 @@ Seven fault classes × six transports. Each cell is one of:
   is responsible for translating a parse error into a protocol response.
 
 - **PolicyEval error (fail-open row)** is the only cell in the entire matrix
-  where the GIL default behavior is ALLOW on error. This is why
+  where the Boundary default behavior is ALLOW on error. This is why
   `FailClosedTransports` exists — it lets operators flip this row to DENY
   per security-critical transport.
 
@@ -116,7 +116,7 @@ empty default.
 
 | Transport | Recommended | Rationale |
 |---|---|---|
-| `TransportMCP` | **fail-closed** | Model-facing tool surface; silently allowing on evaluator outage means the governance layer degrades to the pre-GIL state for agent tool calls. This is the single most security-critical row in the matrix. |
+| `TransportMCP` | **fail-closed** | Model-facing tool surface; silently allowing on evaluator outage means the governance layer degrades to the pre-Boundary state for agent tool calls. This is the single most security-critical row in the matrix. |
 | `TransportCodeExec` | **fail-closed** | Arbitrary code execution. A PolicyEval outage that allows-by-default here sidesteps the 21 Python + 9 JavaScript obfuscation detection categories — currently 57 + 36 compiled regex patterns (`adapters/codeexec/analyzer_python.go`, `analyzer_javascript.go`). |
 | `TransportCLI` | **fail-closed** | Command execution with parsed pipe-chain risk classification (`adapters/cli/classifier.go`). Silently allowing on evaluator outage drops the high-risk classification results. |
 | `TransportGRPC` | fail-closed | Unary RPC interceptor (`adapters/grpc/adapter.go:131-157`). Internal service surface; defaulting to fail-closed matches the rest of the control plane's default posture. |
@@ -264,6 +264,6 @@ Status is annotated inline. The A2A gap remains open.
 ---
 
 *Authored April 17, 2026 per PRD-004 "Transport Fail-Mode Matrix".
-Document is an audit of existing behavior in the `main` branch of the GIL
+Document is an audit of existing behavior in the `main` branch of the Boundary
 repo at the time of writing. Line citations refer to the present snapshot;
 future refactors must update this document alongside the code change.*

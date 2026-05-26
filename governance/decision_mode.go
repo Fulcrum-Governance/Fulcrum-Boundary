@@ -12,7 +12,7 @@ package governance
 //   - proved        → machine-checkable formal proof
 //   - human_approved → human reviewer approved the action
 //
-// The GIL pipeline produces only deterministic and classified decisions.
+// The Boundary pipeline produces only deterministic and classified decisions.
 // The proved and human_approved modes are set by the upstream Foundry layer
 // (fulcrum-io) when Lean 4 verification or human review occurs.
 type DecisionMode string

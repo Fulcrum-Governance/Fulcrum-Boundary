@@ -161,3 +161,74 @@
 ### Notes
 
 - Root repo test coverage remains intentionally broader on `1.23` and `1.24`; only the adapter-specific job needed the higher Go version because that module has its own `go.mod`.
+
+## 2026-05-26 — Gate 1 MCP Safety Gateway
+
+### Context
+
+- Branch: `gate1/mcp-safety-gateway` from clean `main` at `6e9a330`.
+- Project identity: Fulcrum Boundary, module `github.com/fulcrum-governance/boundary`.
+- Scope: Gate 1 proof of control only. No trust integration, receipt verification, benchmarks, or compliance docs.
+
+### Built
+
+- Added `cmd/boundary` and `internal/boundarycli` with `serve`, `demo postgres`, `verify`, `doctor`, and `audit`.
+- Added YAML static-policy loading via `governance/yaml_policy.go`.
+- Extended static policies with launch-grade field matching on request arguments, including case-insensitive `contains`.
+- Extended decision records with `decision_mode`, `matched_rule`, `policy_file`, `gateway_version`, and `trace_id`.
+- Added `examples/mcp-postgres-gateway/` with Docker Compose topology, demo policy, and seed Postgres data.
+- Added root `Dockerfile`, `Makefile`, `LIMITATIONS.md`, and `docs/DECISION_RECORDS.md`.
+- Updated `README.md` to use Fulcrum Boundary naming and show the MCP Safety Gateway quickstart.
+
+### Verification
+
+- `env -u GOROOT go test ./...`: pass.
+- `go build ./cmd/boundary`: pass.
+- `go run ./cmd/boundary --help`: pass.
+- `go run ./cmd/boundary serve --help`: pass.
+- `go run ./cmd/boundary verify --policies examples/mcp-postgres-gateway/policies`: pass.
+- `git ls-files '*.go' | xargs gofmt -l`: pass.
+- `docker compose -f examples/mcp-postgres-gateway/docker-compose.yml config`: pass.
+- `make demo`: pass. Safe `SELECT` returned rows, `DROP TABLE` returned HTTP 403 with `matched_rule=block-drop-table`, direct Postgres bypass failed from the frontend-only demo agent, and gateway logs emitted structured decision records.
+
+### Notes
+
+- `make demo` exports `BOUNDARY_DEMO_PORT=18080` by default to avoid local collisions while raw compose defaults to host `8080`.
+- The bypass failure observed in the verified run was DNS isolation from the frontend network: `lookup postgres ... no such host`.
+
+## 2026-05-26 — Gate 2 Release Surface
+
+### Context
+
+- Branch: `gate1/mcp-safety-gateway`, continuing PR #21.
+- Scope: additive Gate 2 release-surface artifacts and repo cleanliness only. No tag, GitHub Release, Gate 3 content, trust integration, receipt verification, or benchmarks.
+
+### Built
+
+- Added `docs/BOUNDARY_CONDITIONS.md` to define when Boundary protects a tool, when it does not, fail-closed behavior, production topology requirements, and demo-grade SQL policy scope.
+- Added `docs/THREAT_MODEL.md` for the MCP Safety Gateway topology, covering bypass, policy circumvention, audit tampering, what the demo proves, and what it does not prove.
+- Promoted `CHANGELOG.md` to a v0.2.0 release section while keeping an empty Unreleased section.
+- Updated release-surface naming away from old GIL language in public docs, issue templates, package comments, and visible examples.
+- Moved the README quickstart above architecture and added the real CI badge.
+- Refreshed `docs/LAUNCH_TRUTH_FREEZE.md` so it reflects current v0.2.0 release truth rather than stale Gate 0 branch state.
+- Hardened YAML policy loading against symlinked policy files and annotated the directory-scoped read for gosec.
+- Tidied the nested gRPC adapter module so CI does not require a `go mod tidy` update.
+- Updated GitHub topics to: `ai-agents`, `agent-governance`, `mcp`, `policy-enforcement`, `security`, `golang`.
+- Tightened the demo Postgres downstream so it executes only the canned safe SELECT after governance allows it; this keeps the release demo from treating arbitrary agent-provided SQL as an executable downstream query.
+
+### Verification
+
+- `env -u GOROOT go test ./...`: pass.
+- `env -u GOROOT go vet ./...`: pass.
+- `env -u GOROOT go test ./... -count=1 -race -cover` in `adapters/grpc`: pass.
+- `go run ./cmd/boundary verify --policies examples/mcp-postgres-gateway/policies`: pass.
+- `docker compose -f examples/mcp-postgres-gateway/docker-compose.yml config`: pass.
+- `make demo`: pass. Safe `SELECT` allowed, destructive `DROP TABLE` denied, bypass blocked, decision records emitted.
+- `git diff --check`: pass.
+- `git ls-files '*.go' | xargs gofmt -l`: pass.
+- Release-surface stale-name scan: pass for README, CHANGELOG, docs, issue templates, module files, command code, adapters, examples, and governance package.
+
+### Notes
+
+- GitHub license detection via `gh repo view --json licenseInfo` returned `null`, but `gh api repos/Fulcrum-Governance/Boundary/license` detects Apache-2.0 correctly and the repository has a visible Apache 2.0 `LICENSE` file.
+- Local `gosec` reported zero issues after the YAML loader hardening but emitted SSA/toolchain errors against local Go 1.26/nested-module dependencies; GitHub Actions remains the authoritative security-scan check after push.
