@@ -161,3 +161,37 @@
 ### Notes
 
 - Root repo test coverage remains intentionally broader on `1.23` and `1.24`; only the adapter-specific job needed the higher Go version because that module has its own `go.mod`.
+
+## 2026-05-26 — Gate 1 MCP Safety Gateway
+
+### Context
+
+- Branch: `gate1/mcp-safety-gateway` from clean `main` at `6e9a330`.
+- Project identity: Fulcrum Boundary, module `github.com/fulcrum-governance/boundary`.
+- Scope: Gate 1 proof of control only. No trust integration, receipt verification, benchmarks, or compliance docs.
+
+### Built
+
+- Added `cmd/boundary` and `internal/boundarycli` with `serve`, `demo postgres`, `verify`, `doctor`, and `audit`.
+- Added YAML static-policy loading via `governance/yaml_policy.go`.
+- Extended static policies with launch-grade field matching on request arguments, including case-insensitive `contains`.
+- Extended decision records with `decision_mode`, `matched_rule`, `policy_file`, `gateway_version`, and `trace_id`.
+- Added `examples/mcp-postgres-gateway/` with Docker Compose topology, demo policy, and seed Postgres data.
+- Added root `Dockerfile`, `Makefile`, `LIMITATIONS.md`, and `docs/DECISION_RECORDS.md`.
+- Updated `README.md` to use Fulcrum Boundary naming and show the MCP Safety Gateway quickstart.
+
+### Verification
+
+- `env -u GOROOT go test ./...`: pass.
+- `go build ./cmd/boundary`: pass.
+- `go run ./cmd/boundary --help`: pass.
+- `go run ./cmd/boundary serve --help`: pass.
+- `go run ./cmd/boundary verify --policies examples/mcp-postgres-gateway/policies`: pass.
+- `git ls-files '*.go' | xargs gofmt -l`: pass.
+- `docker compose -f examples/mcp-postgres-gateway/docker-compose.yml config`: pass.
+- `make demo`: pass. Safe `SELECT` returned rows, `DROP TABLE` returned HTTP 403 with `matched_rule=block-drop-table`, direct Postgres bypass failed from the frontend-only demo agent, and gateway logs emitted structured decision records.
+
+### Notes
+
+- `make demo` exports `BOUNDARY_DEMO_PORT=18080` by default to avoid local collisions while raw compose defaults to host `8080`.
+- The bypass failure observed in the verified run was DNS isolation from the frontend network: `lookup postgres ... no such host`.

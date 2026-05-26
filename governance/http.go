@@ -1,7 +1,9 @@
 package governance
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"strings"
 )
@@ -28,21 +30,27 @@ type MiddlewareConfig struct {
 	// ToolNameFromPath, if true, uses the URL path as the tool name when the
 	// tool-name header is absent.
 	ToolNameFromPath bool
+
+	// RequestBuilder lets gateways parse transport-specific request bodies into
+	// canonical governance requests before the downstream handler runs. If set,
+	// the middleware uses it instead of the default header/path mapping.
+	RequestBuilder func(*http.Request) (*GovernanceRequest, error)
 }
 
 // Response header names. These are also written on deny responses so that
 // clients always see the governance verdict in the same fields.
 const (
-	HeaderToolName             = "X-Tool-Name"
-	HeaderGovernanceAgentID    = "X-Governance-Agent-ID"
-	HeaderGovernanceTenantID   = "X-Governance-Tenant-ID"
-	HeaderLegacyAgentID        = "X-Agent-ID"
-	HeaderLegacyTenantID       = "X-Tenant-ID"
-	HeaderGovernanceAction     = "X-Governance-Action"
-	HeaderGovernanceReason     = "X-Governance-Reason"
-	HeaderGovernanceEnvelopeID = "X-Governance-Envelope-ID"
-	HeaderGovernanceRequestID  = "X-Governance-Request-ID"
-	HeaderGovernanceDryRun     = "X-Governance-Dry-Run"
+	HeaderToolName              = "X-Tool-Name"
+	HeaderGovernanceAgentID     = "X-Governance-Agent-ID"
+	HeaderGovernanceTenantID    = "X-Governance-Tenant-ID"
+	HeaderLegacyAgentID         = "X-Agent-ID"
+	HeaderLegacyTenantID        = "X-Tenant-ID"
+	HeaderGovernanceAction      = "X-Governance-Action"
+	HeaderGovernanceReason      = "X-Governance-Reason"
+	HeaderGovernanceEnvelopeID  = "X-Governance-Envelope-ID"
+	HeaderGovernanceRequestID   = "X-Governance-Request-ID"
+	HeaderGovernanceDryRun      = "X-Governance-Dry-Run"
+	HeaderGovernanceMatchedRule = "X-Governance-Matched-Rule"
 )
 
 // GovernanceMiddleware wraps an http.Handler with pre-execution governance.
@@ -78,19 +86,13 @@ func NewMiddleware(pipeline *Pipeline, next http.Handler, cfg MiddlewareConfig) 
 // response headers and either forwards to Next or returns the decision as
 // JSON when Next is nil.
 func (m *GovernanceMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	toolName := r.Header.Get(m.Config.ToolNameHeader)
-	if toolName == "" && m.Config.ToolNameFromPath {
-		toolName = strings.TrimPrefix(r.URL.Path, "/")
-	}
-
 	agentID, agentHeader := readConfiguredIdentityHeader(r.Header, m.Config.AgentIDHeader, HeaderLegacyAgentID)
 	tenantID, tenantHeader := readConfiguredIdentityHeader(r.Header, m.Config.TenantIDHeader, HeaderLegacyTenantID)
 
-	gReq := &GovernanceRequest{
-		Transport: m.Config.TransportType,
-		ToolName:  toolName,
-		AgentID:   agentID,
-		TenantID:  tenantID,
+	gReq, err := m.buildGovernanceRequest(r, agentID, tenantID)
+	if err != nil {
+		http.Error(w, "governance request parse error: "+err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	decision, err := m.Pipeline.Evaluate(r.Context(), gReq)
@@ -105,9 +107,13 @@ func (m *GovernanceMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusForbidden)
 		_ = json.NewEncoder(w).Encode(map[string]string{
-			"action":     decision.Action,
-			"reason":     decision.Reason,
-			"request_id": decision.RequestID,
+			"action":          decision.Action,
+			"reason":          decision.Reason,
+			"request_id":      decision.RequestID,
+			"decision_mode":   string(decision.DecisionMode),
+			"matched_rule":    decision.MatchedRule,
+			"policy_file":     decision.PolicyFile,
+			"gateway_version": decision.GatewayVersion,
 		})
 		return
 	}
@@ -127,6 +133,43 @@ func (m *GovernanceMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	normalizeForwardedIdentityHeader(r.Header, m.Config.AgentIDHeader, agentHeader, agentID)
 	normalizeForwardedIdentityHeader(r.Header, m.Config.TenantIDHeader, tenantHeader, tenantID)
 	m.Next.ServeHTTP(w, r)
+}
+
+func (m *GovernanceMiddleware) buildGovernanceRequest(r *http.Request, agentID, tenantID string) (*GovernanceRequest, error) {
+	if m.Config.RequestBuilder != nil {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			return nil, err
+		}
+		r.Body = io.NopCloser(bytes.NewReader(body))
+		req, err := m.Config.RequestBuilder(r)
+		r.Body = io.NopCloser(bytes.NewReader(body))
+		if err != nil {
+			return nil, err
+		}
+		if req.AgentID == "" {
+			req.AgentID = agentID
+		}
+		if req.TenantID == "" {
+			req.TenantID = tenantID
+		}
+		if req.Transport == "" {
+			req.Transport = m.Config.TransportType
+		}
+		return req, nil
+	}
+
+	toolName := r.Header.Get(m.Config.ToolNameHeader)
+	if toolName == "" && m.Config.ToolNameFromPath {
+		toolName = strings.TrimPrefix(r.URL.Path, "/")
+	}
+
+	return &GovernanceRequest{
+		Transport: m.Config.TransportType,
+		ToolName:  toolName,
+		AgentID:   agentID,
+		TenantID:  tenantID,
+	}, nil
 }
 
 func readConfiguredIdentityHeader(headers http.Header, primaryHeader, legacyHeader string) (value string, source string) {
@@ -163,5 +206,8 @@ func writeGovernanceHeaders(w http.ResponseWriter, d *GovernanceDecision) {
 	}
 	if d.DryRun {
 		w.Header().Set(HeaderGovernanceDryRun, "true")
+	}
+	if d.MatchedRule != "" {
+		w.Header().Set(HeaderGovernanceMatchedRule, d.MatchedRule)
 	}
 }

@@ -1,14 +1,18 @@
-# Governance Interception Layer (GIL)
+# Fulcrum Boundary
 
-> The governance interception layer for the agent control plane. Harness-agnostic, protocol-agnostic, out-of-process pre-execution control for AI agent tool calls.
+> Pre-execution control for agent actions across transports. Fulcrum Boundary sits between agent intent and privileged tools, decides before execution, and emits an inspectable decision record.
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/fulcrum-governance/boundary.svg)](https://pkg.go.dev/github.com/fulcrum-governance/boundary)
 [![Go Report Card](https://goreportcard.com/badge/github.com/fulcrum-governance/boundary)](https://goreportcard.com/report/github.com/fulcrum-governance/boundary)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 
-## What is GIL?
+## What is Fulcrum Boundary?
 
-GIL is the out-of-process enforcement boundary of the Fulcrum governance kernel — a portable, typed, pre-execution control plane that sits between intent and action. As a Go library, GIL evaluates agent tool calls against trust state, static policies, domain interceptors, and a portable policy engine — before those calls are forwarded to the underlying tool. It runs out-of-process as part of an MCP proxy, CLI wrapper, or code-execution gateway, so the governed agent cannot bypass or disable it — provided GIL is the sole route to the tool (i.e., the agent's network and process boundary cannot reach the tool directly). GIL is the open-source enforcement core of [Fulcrum](https://fulcrumlayer.io); it handles the decision path and leaves intelligence (semantic analysis, Bayesian trust scoring, cost modelling) to the commercial kernel surface.
+Fulcrum Boundary is the out-of-process action boundary for production AI agents. As a Go library and gateway binary, it evaluates tool calls against trust state, static policies, domain interceptors, and a portable policy engine before those calls reach the underlying tool.
+
+The first packaged release is the **MCP Safety Gateway**: route a Postgres tool call through Boundary, allow a safe `SELECT`, block a destructive `DROP TABLE`, prove the demo agent cannot bypass the gateway network path, and inspect the structured decision record.
+
+Boundary runs as part of an MCP proxy, CLI wrapper, code-execution gateway, gRPC interceptor, webhook adapter, or A2A adapter. Direct tool calls are governed only when routed through Boundary and when the deployment topology prevents the agent from reaching the privileged tool directly.
 
 ## Architecture
 
@@ -45,7 +49,42 @@ Agent Request
 Every stage returns early on a terminal decision. Audit events fire regardless
 of outcome.
 
-## Quick Start
+## MCP Safety Gateway Quick Start
+
+Run the launch demo from a clean clone:
+
+```bash
+make demo
+```
+
+The demo starts three containers:
+
+- `demo-agent`: frontend network only
+- `gateway`: frontend + backend networks
+- `postgres`: backend-only internal network
+
+Expected spine:
+
+```text
+1. Safe SELECT through Boundary
+ALLOW status=200 ...
+
+2. Destructive DROP TABLE through Boundary
+DENY status=403 ... "matched_rule":"block-drop-table"
+
+3. Direct bypass attempt to Postgres
+BYPASS BLOCKED ...
+```
+
+For a local binary:
+
+```bash
+go install github.com/fulcrum-governance/boundary/cmd/boundary@latest
+boundary --help
+boundary verify --policies examples/mcp-postgres-gateway/policies
+```
+
+## Library Quick Start
 
 ```go
 package main
@@ -104,7 +143,7 @@ The other adapters use only stdlib and sibling packages.
 
 ## HTTP Middleware
 
-GIL ships an HTTP middleware for reverse-proxy deployments. Wrap any
+Boundary ships an HTTP middleware for reverse-proxy deployments. Wrap any
 downstream handler and every request is evaluated through the pipeline
 before it is forwarded.
 
@@ -113,10 +152,11 @@ middleware := governance.NewMiddleware(pipeline, downstream, governance.Middlewa
 http.ListenAndServe(":8080", middleware)
 ```
 
-Denied requests return HTTP 403 with a JSON body of `{action, reason,
-request_id}`. Every response — allow or deny — carries `X-Governance-Action`,
-`X-Governance-Reason`, and `X-Governance-Envelope-ID` headers so clients can
-read the verdict without parsing the body. See
+Denied requests return HTTP 403 with a JSON body containing `action`, `reason`,
+`decision_mode`, `matched_rule`, `policy_file`, `gateway_version`, and
+`request_id`. Every response — allow or deny — carries `X-Governance-Action`,
+`X-Governance-Reason`, `X-Governance-Matched-Rule`, and
+`X-Governance-Envelope-ID` headers so clients can read the verdict without parsing the body. See
 [`examples/http-middleware`](./examples/http-middleware).
 
 By default, the middleware reads identity from `X-Governance-Agent-ID` and
@@ -126,7 +166,7 @@ downstream handler sees the governance-prefixed headers.
 
 ## Logging
 
-GIL ships a `SlogAuditPublisher` that writes every governance decision as a
+Boundary ships a `SlogAuditPublisher` that writes every governance decision as a
 structured record. Allow and warn decisions log at `INFO`; deny, escalate,
 and require-approval log at `WARN`.
 
@@ -136,9 +176,11 @@ auditor := governance.NewSlogAuditPublisher(logger)
 pipeline := governance.NewPipeline(cfg, nil, nil, auditor)
 ```
 
-All standard fields are attached as `slog.Attr` values (request_id,
-transport, tool_name, action, reason, agent_id, tenant_id, trust_score,
-envelope_id, timestamp) so they index cleanly in any structured sink.
+All standard fields are attached as `slog.Attr` values (`request_id`,
+`transport`, `tool_name`, `action`, `reason`, `decision_mode`, `matched_rule`,
+`policy_file`, `gateway_version`, `trace_id`, `agent_id`, `tenant_id`,
+`trust_score`, `envelope_id`, `timestamp`) so they index cleanly in any
+structured sink. See [docs/DECISION_RECORDS.md](./docs/DECISION_RECORDS.md).
 
 ## Dry-Run Mode
 
@@ -193,6 +235,7 @@ pipeline.
 |---|---|
 | [`examples/simple`](./examples/simple) | Minimal pipeline with two static rules |
 | [`examples/mcp-proxy`](./examples/mcp-proxy) | MCP adapter parsing a JSON-RPC payload |
+| [`examples/mcp-postgres-gateway`](./examples/mcp-postgres-gateway) | Dockerized MCP Safety Gateway demo with Postgres network isolation |
 | [`examples/custom-interceptor`](./examples/custom-interceptor) | Domain interceptor composed with a static policy |
 | [`examples/redis-trust`](./examples/redis-trust) | Redis-backed `TrustChecker` implementation |
 | [`examples/http-middleware`](./examples/http-middleware) | HTTP reverse-proxy middleware with structured audit logging |
@@ -201,24 +244,14 @@ pipeline.
 Each example is a standalone Go module with its own `go.mod`. Run any of them
 with `go run main.go` from its directory.
 
-## How GIL differs from Microsoft AGT
+## Why Out-of-Process?
 
-Microsoft's [Agent Governance Toolkit](https://github.com/microsoft/agent-governance-toolkit)
-addresses a related problem. The two projects choose different trade-offs.
+Boundary is narrower on purpose: it is the part of the Fulcrum stack that must
+run outside the agent to be trustworthy. When the agent's route to a dangerous
+tool passes through Boundary, the decision happens before mutation, outside the
+agent process, and leaves behind a structured record of the verdict.
 
-| | GIL | Microsoft AGT |
-|---|---|---|
-| Enforcement topology | Out-of-process proxy or wrapper | In-process library call |
-| Bypassable by the agent | No, in the out-of-process proxy topology (agent talks to a different address); applies only when GIL is the sole route to the tool | Possible if the agent controls the process |
-| Language | Go | Python |
-| Primary surface | MCP / CLI / code-exec | Python SDK calls |
-| Scope | Pre-execution enforcement of tool calls | End-to-end agent governance framework |
-| Intelligence | Decision engine only (allow/deny/warn/escalate) | Includes safety classifiers and guardrails |
-
-GIL is narrower on purpose: it is the part of the governance stack that must
-run outside the agent to be trustworthy. If you are writing a pure-Python
-single-process agent and trust it not to disable its own guardrails, AGT may
-be a better fit.
+The router is a deployment pattern. The boundary is the product.
 
 ## Interfaces
 
@@ -226,7 +259,7 @@ The governance package exports four interfaces that define every extension
 point:
 
 - **`TrustChecker`** — returns the current trust state for an agent. Implement
-  this to wire GIL to your circuit-breaker or reputation system. `nil` is
+  this to wire Boundary to your circuit-breaker or reputation system. `nil` is
   accepted; Stage 1 is skipped.
 - **`TransportAdapter`** — the contract each transport satisfies. `ParseRequest`
   converts a protocol-specific payload into a `GovernanceRequest`,
@@ -239,7 +272,7 @@ point:
 - **`Interceptor`** — `func(ctx, *GovernanceRequest) (*InterceptorResult, error)`.
   Register one per tool name via `Pipeline.RegisterInterceptor`. Return `nil`
   to decline and continue the pipeline.
-- **`AuditPublisher`** — `Publish(ctx, AuditEvent)`. GIL calls this after every
+- **`AuditPublisher`** — `Publish(ctx, AuditEvent)`. Boundary calls this after every
   evaluation. The default is a no-op; a production deployment typically wires
   this to NATS, Kafka, or a log sink.
 
@@ -255,16 +288,16 @@ reputation; and the formal core publishes machine-checkable proof artifacts.
 | Repo | Role | License |
 |------|------|---------|
 | [`fulcrum-io`](https://github.com/Fulcrum-Governance/fulcrum-io) | Runtime control plane: policy engine, envelope, Foundry, MCP proxy, dashboard | BSL 1.1 |
-| **`governance-interception-layer`** (this repo) | Out-of-process enforcement boundary: transport adapters, 4-stage pipeline | Apache 2.0 |
+| **`Boundary`** (this repo) | Out-of-process action boundary: transport adapters, 4-stage pipeline, MCP Safety Gateway | Apache 2.0 |
 | [`fulcrum-trust`](https://github.com/Fulcrum-Governance/fulcrum-trust) | Trust engine: Beta(α,β) evaluator, circuit breaker, LangGraph adapter | Apache 2.0 |
 | [`Fulcrum-Proofs`](https://github.com/Fulcrum-Governance/Fulcrum-Proofs) | Formal core: Lean 4 proofs, claim ledger, theorem inventory | MIT |
 
 Project docs: [Contributing](./CONTRIBUTING.md) · [Security](./SECURITY.md) · [Changelog](./CHANGELOG.md) · [Code of Conduct](./CODE_OF_CONDUCT.md) · [Citation](./CITATION.cff)
 
-GIL is the open-source enforcement layer. The full kernel pairs it with upstream Lean 4 proofs of bounded policy invariants in `Fulcrum-Proofs`; GIL consumes those proof-backed contracts through documented correspondence and decision-mode boundaries rather than emitting `proved` decisions itself. The full kernel also adds Bayesian trust scoring with Beta distributions, per-tenant cost modelling, multi-agent workflow orchestration, and managed multi-tenant infrastructure.
+Boundary is the open-source enforcement layer. The full kernel pairs it with upstream Lean 4 proofs of bounded policy invariants in `Fulcrum-Proofs`; Boundary consumes those proof-backed contracts through documented correspondence and decision-mode boundaries rather than emitting `proved` decisions itself. The full kernel also adds Bayesian trust scoring with Beta distributions, per-tenant cost modelling, multi-agent workflow orchestration, and managed multi-tenant infrastructure.
 
 - Website: [fulcrumlayer.io](https://fulcrumlayer.io)
-- Companion paper: tracked separately from this repository; cite GIL as software until a public paper citation is issued
+- Companion paper: tracked separately from this repository; cite Boundary as software until a public paper citation is issued
 
 ## License
 

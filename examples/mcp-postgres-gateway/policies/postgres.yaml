@@ -1,0 +1,43 @@
+name: postgres-production
+version: "1.0"
+rules:
+  - name: block-drop-table
+    tool: "query"
+    action: deny
+    reason: "Destructive SQL blocked by Boundary policy"
+    match:
+      field: arguments.sql
+      contains: "DROP TABLE"
+      case_insensitive: true
+
+  - name: block-delete-from
+    tool: "query"
+    action: deny
+    reason: "Destructive SQL blocked by Boundary policy"
+    match:
+      field: arguments.sql
+      contains: "DELETE FROM"
+      case_insensitive: true
+
+  - name: block-truncate
+    tool: "query"
+    action: deny
+    reason: "Destructive SQL blocked by Boundary policy"
+    match:
+      field: arguments.sql
+      contains: "TRUNCATE"
+      case_insensitive: true
+
+  - name: block-alter-table
+    tool: "query"
+    action: deny
+    reason: "Destructive SQL blocked by Boundary policy"
+    match:
+      field: arguments.sql
+      contains: "ALTER TABLE"
+      case_insensitive: true
+
+  - name: allow-non-destructive-query
+    tool: "query"
+    action: allow
+    reason: "No destructive SQL pattern matched"
