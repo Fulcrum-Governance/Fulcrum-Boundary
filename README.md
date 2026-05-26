@@ -3,6 +3,7 @@
 > Pre-execution control for agent actions across transports. Fulcrum Boundary sits between agent intent and privileged tools, decides before execution, and emits an inspectable decision record.
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/fulcrum-governance/boundary.svg)](https://pkg.go.dev/github.com/fulcrum-governance/boundary)
+[![CI](https://github.com/Fulcrum-Governance/Boundary/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Fulcrum-Governance/Boundary/actions/workflows/ci.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/fulcrum-governance/boundary)](https://goreportcard.com/report/github.com/fulcrum-governance/boundary)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 
@@ -13,41 +14,6 @@ Fulcrum Boundary is the out-of-process action boundary for production AI agents.
 The first packaged release is the **MCP Safety Gateway**: route a Postgres tool call through Boundary, allow a safe `SELECT`, block a destructive `DROP TABLE`, prove the demo agent cannot bypass the gateway network path, and inspect the structured decision record.
 
 Boundary runs as part of an MCP proxy, CLI wrapper, code-execution gateway, gRPC interceptor, webhook adapter, or A2A adapter. Direct tool calls are governed only when routed through Boundary and when the deployment topology prevents the agent from reaching the privileged tool directly.
-
-## Architecture
-
-```
-Agent Request
-     │
-     ▼
-┌─────────────────┐   Stage 1:  Trust / circuit-breaker check (optional)
-│ TrustChecker    │            Isolated or Terminated → deny
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐   Stage 2:  Static allow/deny rules on tool name
-│ Static Policies │            Fastest path; no I/O
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐   Stage 3:  Domain-specific interceptors by tool name
-│  Interceptors   │            (e.g. SQL guard, filesystem whitelist)
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐   Stage 4:  Portable PolicyEval engine
-│   PolicyEval    │            Declarative rules with conditions
-└────────┬────────┘
-         │
-         ▼
-  GovernanceDecision  (allow | deny | warn | escalate | require_approval)
-         │
-         ▼
-  AuditPublisher     Emitted on every evaluation, allow or deny
-```
-
-Every stage returns early on a terminal decision. Audit events fire regardless
-of outcome.
 
 ## MCP Safety Gateway Quick Start
 
@@ -121,6 +87,41 @@ func main() {
 $ go run main.go
 deny — destructive
 ```
+
+## Architecture
+
+```
+Agent Request
+     │
+     ▼
+┌─────────────────┐   Stage 1:  Trust / circuit-breaker check (optional)
+│ TrustChecker    │            Isolated or Terminated → deny
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐   Stage 2:  Static allow/deny rules on tool name
+│ Static Policies │            Fastest path; no I/O
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐   Stage 3:  Domain-specific interceptors by tool name
+│  Interceptors   │            (e.g. SQL guard, filesystem whitelist)
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐   Stage 4:  Portable PolicyEval engine
+│   PolicyEval    │            Declarative rules with conditions
+└────────┬────────┘
+         │
+         ▼
+  GovernanceDecision  (allow | deny | warn | escalate | require_approval)
+         │
+         ▼
+  AuditPublisher     Emitted on every evaluation, allow or deny
+```
+
+Every stage returns early on a terminal decision. Audit events fire regardless
+of outcome.
 
 ## Transport Adapters
 

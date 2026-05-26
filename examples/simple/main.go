@@ -1,4 +1,4 @@
-// Example: minimal GIL pipeline with two static policy rules.
+// Example: minimal Boundary pipeline with two static policy rules.
 //
 // Run with: go run main.go
 package main

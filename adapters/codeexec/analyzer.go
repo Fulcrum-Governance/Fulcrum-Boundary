@@ -1,5 +1,5 @@
 // Package codeexec provides the code-execution transport adapter for the
-// Governance Interception Layer. It governs agents that generate and execute
+// Fulcrum Boundary. It governs agents that generate and execute
 // code in sandboxed environments by analysing source text for risky operations
 // and mapping them to governance actions.
 package codeexec

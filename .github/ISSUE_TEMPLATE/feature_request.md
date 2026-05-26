@@ -25,6 +25,6 @@ get close? Did you try a different transport?
 
 ### Out-of-scope check
 
-Does this request belong in GIL, or in the commercial Fulcrum platform?
+Does this request belong in Fulcrum Boundary, or in the commercial Fulcrum platform?
 See [CONTRIBUTING.md](../../CONTRIBUTING.md#scope-what-belongs-here-vs-elsewhere).
 If you think it belongs here but overlaps the commercial scope, explain why.

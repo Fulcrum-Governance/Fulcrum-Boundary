@@ -70,7 +70,7 @@ type PolicyEvaluator interface {
 // Pipeline evaluates governance requests against trust state, static policies,
 // domain interceptors, and the portable policy evaluator.
 //
-// This is the shared core of the GIL — all transport adapters call Pipeline.Evaluate().
+// This is the shared core of Boundary: all transport adapters call Pipeline.Evaluate().
 type Pipeline struct {
 	trustChecker   TrustChecker
 	interceptors   *InterceptorRegistry
@@ -161,7 +161,7 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 		TrustScore:     1.0,
 		EnvelopeID:     req.EnvelopeID,
 		GatewayVersion: p.gatewayVersion,
-		// Deterministic is the correct label for every GIL pipeline outcome
+		// Deterministic is the correct label for every Boundary pipeline outcome
 		// except PolicyEval ActionEscalate (which flips to classified below).
 		// The PRD-002 taxonomy reserves "proved" and "human_approved" for
 		// upstream Foundry decisions that never originate here.

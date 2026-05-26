@@ -1,6 +1,6 @@
 // Example: Redis-backed TrustChecker implementation.
 //
-// The GIL pipeline's Stage 1 is a trust / circuit-breaker check. Any type
+// The Boundary pipeline's Stage 1 is a trust / circuit-breaker check. Any type
 // that satisfies governance.TrustChecker can be plugged in. This example
 // implements one against Redis using github.com/redis/go-redis/v9.
 //

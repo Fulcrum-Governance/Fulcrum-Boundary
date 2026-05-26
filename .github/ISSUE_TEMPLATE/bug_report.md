@@ -1,13 +1,13 @@
 ---
 name: Bug report
-about: Report a defect in GIL
+about: Report a defect in Fulcrum Boundary
 title: "[bug] "
 labels: bug
 ---
 
 ### Environment
 
-- GIL version or commit:
+- Boundary version or commit:
 - Go version (`go version`):
 - OS and architecture:
 
@@ -26,7 +26,7 @@ If you can, paste the code inline in a Go fenced block.
 
 ### Expected behaviour
 
-What you expected GIL to do.
+What you expected Boundary to do.
 
 ### Actual behaviour
 

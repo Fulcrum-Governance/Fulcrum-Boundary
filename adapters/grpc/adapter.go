@@ -1,7 +1,7 @@
 // Package grpc provides a gRPC unary server interceptor that routes
 // every RPC through the governance pipeline before the handler runs.
 //
-// The adapter lives in its own go.mod so the root GIL module stays free
+// The adapter lives in its own go.mod so the root Boundary module stays free
 // of the google.golang.org/grpc dependency tree. Import this adapter only
 // in services that already speak gRPC.
 package grpc

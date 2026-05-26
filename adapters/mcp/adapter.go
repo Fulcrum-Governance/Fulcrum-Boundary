@@ -1,5 +1,5 @@
 // Package mcp provides the MCP (Model Context Protocol) transport adapter
-// for the Governance Interception Layer.
+// for Fulcrum Boundary.
 //
 // It converts JSON-RPC tools/call requests into canonical GovernanceRequests
 // and delegates governance evaluation to the shared pipeline.

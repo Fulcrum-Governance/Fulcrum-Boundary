@@ -54,8 +54,13 @@ func LoadStaticPolicyFiles(dir string) (*StaticPolicyLoadResult, error) {
 		if ext != ".yaml" && ext != ".yml" {
 			continue
 		}
+		if entry.Type()&os.ModeSymlink != 0 {
+			result.Warnings = append(result.Warnings, fmt.Sprintf("%s: skipping symlinked policy file", filepath.Join(dir, name)))
+			continue
+		}
 
 		path := filepath.Join(dir, name)
+		// #nosec G304 -- path is assembled from os.ReadDir entries in the operator-selected policy directory; symlinks are skipped above.
 		body, err := os.ReadFile(path)
 		if err != nil {
 			return nil, fmt.Errorf("read policy file %s: %w", path, err)
