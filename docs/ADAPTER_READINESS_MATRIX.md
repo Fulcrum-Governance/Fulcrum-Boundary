@@ -43,8 +43,10 @@ Step states are `implemented`, `delegated`, `not_applicable`, or `stub`.
 | cli | preview | preview | implemented | implemented | delegated | delegated | delegated | implemented | implemented | delegated | stub | delegated | BND-CLI-001: owned shell execution wrapper and bypass proof. |
 | codeexec | preview | production | implemented | implemented | delegated | delegated | delegated | implemented | implemented | delegated | stub | delegated | BND-CODE-001: sandbox lifecycle integration tests and bypass proof. |
 | grpc | preview | production | implemented | implemented | implemented | implemented | delegated | stub | delegated | delegated | stub | delegated | BND-GRPC-001: metadata/trailer conformance, response policy, and bypass proof. |
+| managedagents | preview | production | implemented | implemented | implemented | implemented | implemented | implemented | implemented | delegated | delegated | implemented | BND-MAPROD-001: live upstream Managed Agents conformance run with operator-owned credentials. |
 | webhook | preview | preview | implemented | implemented | implemented | implemented | delegated | implemented | delegated | delegated | stub | delegated | BND-WEB-001: explicit mode split between informational and execution forwarding. |
 | a2a | experimental | preview | implemented | implemented | delegated | stub | stub | stub | stub | delegated | stub | stub | BND-A2A-001: real A2A protocol control instead of no-op lifecycle methods. |
 
-MCP is the first production adapter. Other adapters remain below production
+MCP is the first production adapter. Managed Agents now has a preview proxy
+path. Other adapters remain below production
 until an adapter-specific spec proves their full lifecycle.

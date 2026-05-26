@@ -35,7 +35,7 @@ type TransportAdapter interface {
 |---|---|---|
 | `Type()` | **required** | Return one of the `TransportType` constants in [`governance/request.go`](../governance/request.go). Must be stable across calls. |
 | `ParseRequest` | **required (real work)** | Convert protocol-specific input into a `GovernanceRequest`. Failure must return a `governance.ParseError` (use `governance.NewParseError`). See "ParseRequest contract" below. |
-| `ForwardGoverned` | **optional / often a stub** | Forward the governed call to the downstream tool *only* if your adapter owns the transport. MCP owns this in proxy mode through `adapters/mcp.Gateway`; adapters whose forwarding is handled elsewhere return `nil, nil` (webhook, gRPC, A2A) or a fixed error explaining who owns forwarding (CLI, codeexec). Do not perform side effects that the caller did not ask for. |
+| `ForwardGoverned` | **optional / often a stub** | Forward the governed call to the downstream tool *only* if your adapter owns the transport. MCP owns this in proxy mode through `adapters/mcp.Gateway`; Managed Agents owns upstream tool confirmations through `adapters/managedagents.SessionProxy`; adapters whose forwarding is handled elsewhere return `nil, nil` (webhook, gRPC, A2A) or a fixed error explaining who owns forwarding (CLI, codeexec). Do not perform side effects that the caller did not ask for. |
 | `InspectResponse` | **optional** | Examine `ToolResponse.Content` for governance concerns (size limits, sensitive-data patterns, exit codes). Adapters with no opinion return `&ResponseInspection{Safe: true}, nil`. |
 | `EmitGovernanceMetadata` | **optional** | Attach the governance decision's `Action`, `EnvelopeID`, and `RequestID` to the response so callers can read the verdict without parsing the body. Adapters whose host (e.g. an HTTP handler) writes governance headers directly may return `nil`. |
 
@@ -142,6 +142,9 @@ gateway. MCP is the exception in Boundary itself: `adapters/mcp.Gateway` is an
 out-of-process JSON-RPC proxy that evaluates, denies, forwards, inspects, and
 adds metadata before returning to the MCP client. Kernel-connected fulcrum-io
 deployments can still place Secure MCP Servers behind that Boundary proxy.
+Managed Agents follows the same out-of-process pattern for hosted-agent session
+streams: Boundary receives the stream, evaluates each tool-use event, and sends
+the upstream `user.tool_confirmation` event with `allow` or `deny`.
 
 ### `fulcrum-trust` LangGraph adapter
 

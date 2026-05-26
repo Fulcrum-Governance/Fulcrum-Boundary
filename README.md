@@ -142,6 +142,7 @@ per-adapter `readiness.yaml` files for the ten-step lifecycle behind each row.
 | CLI | `adapters/cli` | Shell commands including pipe chains, with a risk classifier; execution control is delegated to the host command wrapper |
 | Code exec | `adapters/codeexec` | Python and JavaScript source submitted to a sandbox, with obfuscation analysis; execution is delegated to the sandbox runtime |
 | gRPC | `adapters/grpc` | gRPC unary calls via a server interceptor in a separate module |
+| Managed Agents | `adapters/managedagents` | Managed Agents session streams in proxy mode, with policy-driven tool confirmations, thread budget tracking, and credential-bound bypass controls |
 | Webhook | `adapters/webhook` | HTTP webhook tool-call payloads, with handler-owned allow/deny response shaping |
 
 ### Experimental

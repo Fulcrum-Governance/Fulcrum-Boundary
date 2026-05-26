@@ -16,6 +16,7 @@ import (
 // allowing an ungoverned action has real security consequences:
 //
 //   - TransportMCP — model-facing tool surface; the primary governance wedge.
+//   - TransportManagedAgents — hosted agent tool confirmations.
 //   - TransportCodeExec — arbitrary code execution.
 //   - TransportGRPC — internal service surface for control-plane calls.
 //
@@ -24,6 +25,7 @@ import (
 // slice opts out of every transport being fail-closed.
 var DefaultFailClosedTransports = []TransportType{
 	TransportMCP,
+	TransportManagedAgents,
 	TransportCodeExec,
 	TransportGRPC,
 }

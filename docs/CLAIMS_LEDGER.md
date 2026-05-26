@@ -23,10 +23,11 @@ that file and validates the evidence rules.
 |---|---|---|---|---|
 | BND-CLAIM-001 | delivered | Boundary governs MCP Safety Gateway requests before execution when the tool route passes through Boundary. | `internal/boundarycli/cli_test.go`, `docs/BOUNDARY_CONDITIONS.md`, `docs/LAUNCH_TRUTH_FREEZE.md` | Scoped to routed deployments and the Docker demo topology. |
 | BND-CLAIM-002 | delivered | Boundary emits structured decision records for every governed verdict. | `governance/slog_audit_test.go`, `docs/DECISION_RECORDS.md` | Decision records are logs, not receipt-grade cryptographic artifacts. |
-| BND-CLAIM-003 | partial | Boundary ships one production MCP adapter and five lower-maturity transport adapter packages. | Adapter package tests, `docs/ADAPTER_READINESS_MATRIX.md` | Use the maturity matrix. Do not call every adapter production-grade. |
+| BND-CLAIM-003 | partial | Boundary ships one production MCP adapter and six lower-maturity transport adapter packages. | Adapter package tests, `docs/ADAPTER_READINESS_MATRIX.md` | Use the maturity matrix. Do not call every adapter production-grade. |
 | BND-CLAIM-004 | false | Boundary is a SQL firewall. | `docs/LAUNCH_TRUTH_FREEZE.md` | The launch policy is demo-grade destructive-action blocking via string matching. |
 | BND-CLAIM-005 | false | Boundary produces receipt-grade decision records. | `docs/LAUNCH_TRUTH_FREEZE.md` | Receipt-grade records are a future spec, not v0.2.0 behavior. |
 | BND-CLAIM-006 | delivered | Boundary provides a production MCP JSON-RPC proxy adapter. | `tests/integration/mcp_gateway_lifecycle_test.go`, `docs/adapters/MCP.md`, `docs/ADAPTER_READINESS_MATRIX.md` | Production MCP protection still requires deployment isolation around the upstream tool server. |
+| BND-CLAIM-007 | partial | Boundary provides a preview Managed Agents proxy adapter. | `tests/integration/managed_agents_lifecycle_test.go`, `tests/integration/managed_agents_multiagent_test.go`, `docs/adapters/MANAGED_AGENTS.md` | Preview only until a live upstream conformance run is recorded. |
 
 ## Release Rule
 

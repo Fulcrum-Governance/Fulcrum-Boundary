@@ -58,7 +58,7 @@ would have blocked, even when dry-run flips the caller-visible action.
 
 ## 2. Fail-Mode Matrix
 
-Seven fault classes × six transports. Each cell is one of:
+Seven fault classes × seven transports. Each cell is one of:
 
 - **DENY** — pipeline sets `decision.Action = "deny"`.
 - **ALLOW** — pipeline leaves the default `decision.Action = "allow"`.
@@ -72,15 +72,15 @@ Seven fault classes × six transports. Each cell is one of:
 - **HTTP 400 / codes.Internal** — adapter surfaces a protocol-specific
   fail-closed error before pipeline entry.
 
-| Fault Class | MCP | CLI | Code Exec | gRPC | A2A | Webhook |
-|---|---|---|---|---|---|---|
-| Trust store unreachable | DENY `pipeline.go:136-140` | DENY `pipeline.go:136-140` | DENY `pipeline.go:136-140` | DENY `pipeline.go:136-140` | DENY `pipeline.go:136-140` | DENY `pipeline.go:136-140` |
-| Agent ISOLATED or TERMINATED | DENY `pipeline.go:141-146` | DENY `pipeline.go:141-146` | DENY `pipeline.go:141-146` | DENY `pipeline.go:141-146` | DENY `pipeline.go:141-146` | DENY `pipeline.go:141-146` |
-| Adapter parse failure | JSON-RPC error `adapters/mcp/gateway.go` or ERR→caller from raw adapter use | ERR→caller `adapters/cli/adapter.go:52-82` | ERR→caller `adapters/codeexec/adapter.go:52-79` | `codes.Internal` `adapters/grpc/adapter.go:141-143` | ERR→caller `adapters/a2a/adapter.go:51-73` | HTTP 400 `adapters/webhook/adapter.go:139-143` |
-| Interceptor error | DENY `pipeline.go:169-173` | DENY `pipeline.go:169-173` | DENY `pipeline.go:169-173` | DENY `pipeline.go:169-173` | DENY `pipeline.go:169-173` | DENY `pipeline.go:169-173` |
-| PolicyEval error (transport in `FailClosedTransports`) | DENY `pipeline.go:189-193` | DENY `pipeline.go:189-193` | DENY `pipeline.go:189-193` | DENY `pipeline.go:189-193` | DENY `pipeline.go:189-193` | DENY `pipeline.go:189-193` |
-| PolicyEval error (transport NOT in `FailClosedTransports`) | ALLOW `pipeline.go:194-195` | ALLOW `pipeline.go:194-195` | ALLOW `pipeline.go:194-195` | ALLOW `pipeline.go:194-195` | ALLOW `pipeline.go:194-195` | ALLOW `pipeline.go:194-195` |
-| Downstream tool error (5xx / non-zero exit) | PASS through governed proxy response inspection `adapters/mcp/forwarder.go` | PASS `adapters/cli/adapter.go:120-122` | PASS `adapters/codeexec/adapter.go:112-114` | PASS `adapters/grpc/adapter.go:97-99` | PASS `adapters/a2a/adapter.go:89-92` | PASS `adapters/webhook/adapter.go:100-102` |
+| Fault Class | MCP | CLI | Code Exec | gRPC | Managed Agents | A2A | Webhook |
+|---|---|---|---|---|---|---|---|
+| Trust store unreachable | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` |
+| Agent ISOLATED or TERMINATED | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` |
+| Adapter parse failure | JSON-RPC error `adapters/mcp/gateway.go` or ERR→caller from raw adapter use | ERR→caller `adapters/cli/adapter.go` | ERR→caller `adapters/codeexec/adapter.go` | `codes.Internal` `adapters/grpc/adapter.go` | ERR→caller or deny confirmation from proxy resolver `adapters/managedagents` | ERR→caller `adapters/a2a/adapter.go` | HTTP 400 `adapters/webhook/adapter.go` |
+| Interceptor error | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` |
+| PolicyEval error (transport in `FailClosedTransports`) | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` |
+| PolicyEval error (transport NOT in `FailClosedTransports`) | ALLOW `pipeline.go` | ALLOW `pipeline.go` | ALLOW `pipeline.go` | ALLOW `pipeline.go` | ALLOW `pipeline.go` | ALLOW `pipeline.go` | ALLOW `pipeline.go` |
+| Downstream tool error (5xx / non-zero exit) | PASS through governed proxy response inspection `adapters/mcp/forwarder.go` | PASS `adapters/cli/adapter.go` | PASS `adapters/codeexec/adapter.go` | PASS `adapters/grpc/adapter.go` | PASS through proxied session stream with response inspection `adapters/managedagents/response_inspector.go` | PASS `adapters/a2a/adapter.go` | PASS `adapters/webhook/adapter.go` |
 
 **Notes on the matrix:**
 
@@ -110,13 +110,14 @@ Seven fault classes × six transports. Each cell is one of:
 ## 3. Recommended `FailClosedTransports` Defaults
 
 `PipelineConfig.FailClosedTransports` is `nil` by default, which means Boundary
-applies `DefaultFailClosedTransports` (`mcp`, `code_exec`, and `grpc`). Operators
-can pass an explicit empty slice to opt out, or a populated slice to override the
-secure-by-default set.
+applies `DefaultFailClosedTransports` (`mcp`, `managed_agents`, `code_exec`,
+and `grpc`). Operators can pass an explicit empty slice to opt out, or a
+populated slice to override the secure-by-default set.
 
 | Transport | Recommended | Rationale |
 |---|---|---|
 | `TransportMCP` | **fail-closed** | Model-facing tool surface; silently allowing on evaluator outage means the governance layer degrades to the pre-Boundary state for agent tool calls. This is the single most security-critical row in the matrix. |
+| `TransportManagedAgents` | **fail-closed** | Hosted-agent tool confirmations are execution gates. Evaluator outage must deny by withholding or denying confirmation rather than letting a tool proceed. |
 | `TransportCodeExec` | **fail-closed** | Arbitrary code execution. A PolicyEval outage that allows-by-default here sidesteps the 21 Python + 9 JavaScript obfuscation detection categories — currently 57 + 36 compiled regex patterns (`adapters/codeexec/analyzer_python.go`, `analyzer_javascript.go`). |
 | `TransportCLI` | **fail-closed** | Command execution with parsed pipe-chain risk classification (`adapters/cli/classifier.go`). Silently allowing on evaluator outage drops the high-risk classification results. |
 | `TransportGRPC` | fail-closed | Unary RPC interceptor (`adapters/grpc/adapter.go:131-157`). Internal service surface; defaulting to fail-closed matches the rest of the control plane's default posture. |

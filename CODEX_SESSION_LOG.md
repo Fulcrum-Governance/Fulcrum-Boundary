@@ -318,3 +318,32 @@
 
 - SSE and stdio MCP transport variants remain future transport work; this phase establishes the production HTTP JSON-RPC proxy path.
 - The Postgres safety demo path remains available through `boundary serve` when `--upstream` is a Postgres DSN.
+
+## 2026-05-26 — Spec 4 Managed Agents Adapter
+
+### Context
+
+- Branch: `codex/2026-05-26-boundary-phase1-foundation`, continuing after Spec 3 was committed as `c19e53b`.
+- Scope: Spec 4 only. Add a Managed Agents proxy adapter and keep its public status at preview until live upstream Anthropic conformance is recorded.
+- Current API check: the Managed Agents session-events contract supports `user.tool_confirmation` with `result: "allow"` or `result: "deny"` plus optional `deny_message`, so Boundary can deny directly rather than relying on timeout behavior.
+
+### Built
+
+- Added `adapters/managedagents/` with protocol types, event parsing, `TransportAdapter` implementation, session proxy, policy-driven tool resolver, confirmation forwarder, metadata attachment, response inspection, and per-thread budget/trust tracking.
+- Added `governance.TransportManagedAgents` and included it in the default fail-closed transport set.
+- Added integration coverage for end-to-end session proxying, per-tool policy resolution, allow/deny confirmations, decision-record emission, thread budget denial, trust isolation denial, and bypass-config verification.
+- Added `docs/adapters/MANAGED_AGENTS.md`, `docs/deployment/managed-agents-bypass-proofing.md`, and `examples/managed-agents-governed-session/`.
+- Updated README, adapter readiness, fail-mode matrix, adapter contract, claims ledger, and changelog to include Managed Agents as a preview adapter.
+
+### Verification
+
+- `env -u GOROOT go test ./adapters/managedagents ./tests/integration ./claims ./tests/adapter_conformance`: pass.
+- `env -u GOROOT go test ./... -short`: pass.
+- `env -u GOROOT go vet ./...`: pass.
+- `git ls-files '*.go' | xargs gofmt -l`: pass.
+- `git diff --check`: pass.
+
+### Notes
+
+- Bypass proof is credential/topology based: Boundary must be the only component with the upstream Managed Agents API key, and customer apps must not be able to send confirmations directly.
+- Standalone budget and trust tracking are in-process; kernel-connected deployments should sync to fulcrum-io budget enforcement and fulcrum-trust state.

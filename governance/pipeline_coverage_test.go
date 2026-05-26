@@ -225,7 +225,7 @@ func TestPipeline_FailClosedTransports_ExplicitEmptySliceIsFailOpen(t *testing.T
 	p := NewPipeline(cfg, nil, nil, nil)
 
 	for _, tr := range []TransportType{
-		TransportMCP, TransportCodeExec, TransportGRPC,
+		TransportMCP, TransportManagedAgents, TransportCodeExec, TransportGRPC,
 		TransportCLI, TransportA2A, TransportWebhook,
 	} {
 		if p.failClosed[tr] {
@@ -239,9 +239,10 @@ func TestPipeline_FailClosedTransports_ExplicitEmptySliceIsFailOpen(t *testing.T
 // with. If this test ever changes, update FAIL_MODE_MATRIX.md §3.
 func TestPipeline_DefaultFailClosedTransports_ExportedValue(t *testing.T) {
 	want := map[TransportType]bool{
-		TransportMCP:      true,
-		TransportCodeExec: true,
-		TransportGRPC:     true,
+		TransportMCP:           true,
+		TransportManagedAgents: true,
+		TransportCodeExec:      true,
+		TransportGRPC:          true,
 	}
 	if len(DefaultFailClosedTransports) != len(want) {
 		t.Fatalf("expected %d defaults, got %d: %v", len(want), len(DefaultFailClosedTransports), DefaultFailClosedTransports)

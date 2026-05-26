@@ -42,7 +42,7 @@ claims:
     depends_on: []
 
   - id: BND-CLAIM-003
-    claim: "Boundary ships one production MCP adapter and five lower-maturity transport adapter packages"
+    claim: "Boundary ships one production MCP adapter and six lower-maturity transport adapter packages"
     status: partial
     evidence:
       tests:
@@ -54,6 +54,8 @@ claims:
           assertion: "Code execution adapter parsing is covered"
         - path: adapters/grpc/adapter_test.go
           assertion: "gRPC interceptor behavior is covered in its module"
+        - path: tests/integration/managed_agents_lifecycle_test.go
+          assertion: "Managed Agents proxy auto-resolves tool confirmations by policy"
         - path: adapters/webhook/adapter_test.go
           assertion: "Webhook handler allow/deny behavior is covered"
         - path: adapters/a2a/adapter_test.go
@@ -63,7 +65,7 @@ claims:
           section: "Readiness Matrix"
     public_language:
       allowed:
-        - "Boundary includes a production MCP adapter plus CLI, CodeExec, gRPC, Webhook, and A2A adapters with maturity tracked per adapter."
+        - "Boundary includes a production MCP adapter plus CLI, CodeExec, gRPC, Managed Agents, Webhook, and A2A adapters with maturity tracked per adapter."
       forbidden:
         - "six production adapters"
         - "supports all major agent transports"
@@ -71,8 +73,12 @@ claims:
       - id: BND-A2A-001
         description: "A2A remains stub-level until real protocol forwarding, metadata, and fail-closed behavior are implemented."
         spec: "SPEC 4"
+      - id: BND-MAPROD-001
+        description: "Managed Agents remains preview until a live upstream conformance run is recorded with operator-owned credentials."
+        spec: "SPEC 4"
     depends_on:
       - BND-A2A-001
+      - BND-MAPROD-001
 
   - id: BND-CLAIM-006
     claim: "Boundary provides a production MCP JSON-RPC proxy adapter"
@@ -94,6 +100,34 @@ claims:
         - "Boundary production-protects MCP tools without deployment isolation"
     gaps: []
     depends_on: []
+
+  - id: BND-CLAIM-007
+    claim: "Boundary provides a preview Managed Agents proxy adapter"
+    status: partial
+    adapter: managedagents
+    evidence:
+      tests:
+        - path: tests/integration/managed_agents_lifecycle_test.go
+          assertion: "Managed Agents tool events are governed and auto-resolved as allow or deny confirmations"
+        - path: tests/integration/managed_agents_multiagent_test.go
+          assertion: "Managed Agents thread budgets and trust state affect confirmations"
+      docs:
+        - path: docs/adapters/MANAGED_AGENTS.md
+          section: "Lifecycle"
+        - path: docs/deployment/managed-agents-bypass-proofing.md
+          section: "Required Controls"
+    public_language:
+      allowed:
+        - "Boundary provides a preview Managed Agents proxy adapter for policy-driven tool confirmations."
+      forbidden:
+        - "Boundary production-protects Managed Agents without a live upstream conformance run"
+        - "Boundary controls Managed Agents sessions when customer apps can send confirmations directly"
+    gaps:
+      - id: BND-MAPROD-001
+        description: "Production status requires a live upstream Anthropic Managed Agents conformance run with operator-owned credentials."
+        spec: "SPEC 4"
+    depends_on:
+      - BND-MAPROD-001
 
   - id: BND-CLAIM-004
     claim: "Boundary is a SQL firewall"
