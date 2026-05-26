@@ -3,7 +3,7 @@ package cli
 import (
 	"testing"
 
-	"github.com/fulcrum-governance/gil/governance"
+	"github.com/fulcrum-governance/boundary/governance"
 )
 
 func TestParseCommand(t *testing.T) {

@@ -1,9 +1,9 @@
-module github.com/fulcrum-governance/gil/examples/simple
+module github.com/fulcrum-governance/boundary/examples/simple
 
 go 1.23
 
-replace github.com/fulcrum-governance/gil => ../../
+replace github.com/fulcrum-governance/boundary => ../../
 
-require github.com/fulcrum-governance/gil v0.0.0
+require github.com/fulcrum-governance/boundary v0.0.0
 
 require github.com/google/uuid v1.6.0 // indirect

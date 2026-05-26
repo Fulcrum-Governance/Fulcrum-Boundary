@@ -13,7 +13,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/fulcrum-governance/gil/governance"
+	"github.com/fulcrum-governance/boundary/governance"
 )
 
 func sqlGuard(_ context.Context, req *governance.GovernanceRequest) (*governance.InterceptorResult, error) {

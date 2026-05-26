@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/fulcrum-governance/gil/governance"
+	"github.com/fulcrum-governance/boundary/governance"
 )
 
 func TestParseRequest_MissingCode_ReturnsParseError(t *testing.T) {
