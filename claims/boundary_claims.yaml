@@ -1,0 +1,121 @@
+claims:
+  - id: BND-CLAIM-001
+    claim: "Boundary governs MCP Safety Gateway requests before execution when the tool route passes through Boundary"
+    status: delivered
+    adapter: mcp
+    evidence:
+      tests:
+        - path: internal/boundarycli/cli_test.go
+          assertion: "DROP TABLE requests are denied before the downstream handler runs"
+      docs:
+        - path: docs/BOUNDARY_CONDITIONS.md
+          section: "Protected condition"
+        - path: docs/LAUNCH_TRUTH_FREEZE.md
+          section: "What v0.2.0 Proves"
+    public_language:
+      allowed:
+        - "Boundary evaluates an agent action before it reaches the privileged tool when the deployment routes that action through Boundary."
+        - "MCP Safety Gateway"
+      forbidden:
+        - "Boundary prevents all SQL injection"
+        - "Boundary is a SQL firewall"
+    gaps: []
+    depends_on: []
+
+  - id: BND-CLAIM-002
+    claim: "Boundary emits structured decision records for every governed verdict"
+    status: delivered
+    evidence:
+      tests:
+        - path: governance/slog_audit_test.go
+          assertion: "Pipeline decisions emit structured audit events"
+      docs:
+        - path: docs/DECISION_RECORDS.md
+          section: "Decision Records"
+    public_language:
+      allowed:
+        - "Every governed verdict produces a structured decision record."
+      forbidden:
+        - "verifiable receipt"
+        - "cryptographic proof of verdict"
+    gaps: []
+    depends_on: []
+
+  - id: BND-CLAIM-003
+    claim: "Boundary ships six transport adapter packages with mixed maturity"
+    status: partial
+    evidence:
+      tests:
+        - path: adapters/mcp/adapter_test.go
+          assertion: "MCP request parsing is covered"
+        - path: adapters/cli/adapter_test.go
+          assertion: "CLI adapter parsing and metadata are covered"
+        - path: adapters/codeexec/adapter_test.go
+          assertion: "Code execution adapter parsing is covered"
+        - path: adapters/grpc/adapter_test.go
+          assertion: "gRPC interceptor behavior is covered in its module"
+        - path: adapters/webhook/adapter_test.go
+          assertion: "Webhook handler allow/deny behavior is covered"
+        - path: adapters/a2a/adapter_test.go
+          assertion: "A2A request parsing is covered"
+      docs:
+        - path: docs/ADAPTER_READINESS_MATRIX.md
+          section: "Readiness Matrix"
+    public_language:
+      allowed:
+        - "Boundary includes MCP, CLI, CodeExec, gRPC, Webhook, and A2A adapters with maturity tracked per adapter."
+      forbidden:
+        - "six production adapters"
+        - "supports all major agent transports"
+    gaps:
+      - id: BND-CG-001
+        description: "Production status requires full lifecycle conformance, integration tests, bypass proof, and fail-mode tests."
+        spec: "SPEC 2"
+      - id: BND-A2A-001
+        description: "A2A remains stub-level until real protocol forwarding, metadata, and fail-closed behavior are implemented."
+        spec: "SPEC 4"
+    depends_on:
+      - BND-CG-001
+      - BND-A2A-001
+
+  - id: BND-CLAIM-004
+    claim: "Boundary is a SQL firewall"
+    status: false
+    evidence:
+      tests: []
+      docs:
+        - path: docs/LAUNCH_TRUTH_FREEZE.md
+          section: "What v0.2.0 Does Not Claim"
+    public_language:
+      allowed:
+        - "The launch policy is demo-grade destructive-action blocking via string matching."
+      forbidden:
+        - "Boundary is a SQL firewall"
+        - "Boundary prevents all SQL injection"
+    gaps:
+      - id: BND-POL-002
+        description: "SQL AST guard and broader policy semantics are planned for a later spec."
+        spec: "SPEC 5"
+    depends_on:
+      - BND-POL-002
+
+  - id: BND-CLAIM-005
+    claim: "Boundary produces receipt-grade decision records"
+    status: false
+    evidence:
+      tests: []
+      docs:
+        - path: docs/LAUNCH_TRUTH_FREEZE.md
+          section: "What v0.2.0 Does Not Claim"
+    public_language:
+      allowed:
+        - "Boundary emits structured decision records."
+      forbidden:
+        - "receipt-grade decision records"
+        - "verifiable receipts"
+    gaps:
+      - id: BND-REC-001
+        description: "Receipt-grade records require policy hashes, request hashes, and verification mechanics."
+        spec: "SPEC 6"
+    depends_on:
+      - BND-REC-001

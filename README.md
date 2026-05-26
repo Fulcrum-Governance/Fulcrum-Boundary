@@ -125,17 +125,36 @@ of outcome.
 
 ## Transport Adapters
 
+Boundary tracks adapter maturity explicitly. See
+[`docs/ADAPTER_READINESS_MATRIX.md`](./docs/ADAPTER_READINESS_MATRIX.md) and the
+per-adapter `readiness.yaml` files for the ten-step lifecycle behind each row.
+
+### Production
+
+No adapter is listed as production in this phase. Production status requires
+full lifecycle conformance, integration tests, bypass proof, and fail-mode
+tests.
+
+### Preview
+
 | Adapter | Package | Handles |
 |---|---|---|
-| MCP | `adapters/mcp` | JSON-RPC `tools/call` requests from Model Context Protocol servers |
-| CLI | `adapters/cli` | Shell commands including pipe chains, with a risk classifier |
-| Code exec | `adapters/codeexec` | Python and JavaScript source submitted to a sandbox, with obfuscation analysis |
-| gRPC | `adapters/grpc` | gRPC unary calls via a server interceptor (separate module) |
-| A2A *(experimental)* | `adapters/a2a` | Google Agent-to-Agent protocol task messages — adapter governs the decision only; `ForwardGoverned`, `InspectResponse`, and `EmitGovernanceMetadata` are no-ops in the current implementation, so the full transport lifecycle is not yet at parity with MCP/CLI/CodeExec |
-| Webhook | `adapters/webhook` | HTTP webhook tool-call payloads |
+| MCP | `adapters/mcp` | JSON-RPC `tools/call` requests from Model Context Protocol servers; forwarding and bypass proof are delegated to the MCP Safety Gateway topology |
+| CLI | `adapters/cli` | Shell commands including pipe chains, with a risk classifier; execution control is delegated to the host command wrapper |
+| Code exec | `adapters/codeexec` | Python and JavaScript source submitted to a sandbox, with obfuscation analysis; execution is delegated to the sandbox runtime |
+| gRPC | `adapters/grpc` | gRPC unary calls via a server interceptor in a separate module |
+| Webhook | `adapters/webhook` | HTTP webhook tool-call payloads, with handler-owned allow/deny response shaping |
+
+### Experimental
+
+| Adapter | Package | Handles |
+|---|---|---|
+| A2A | `adapters/a2a` | Minimal Google Agent-to-Agent task parsing; forwarding, inspection, metadata, bypass proof, and fail-closed behavior are stub-level today |
 
 Each adapter implements the `governance.TransportAdapter` interface. Adding a
-new transport is a matter of satisfying that interface — see
+new transport is a matter of satisfying that interface and declaring lifecycle
+readiness — see
+[`docs/ADAPTER_CONTRACT.md`](./docs/ADAPTER_CONTRACT.md) and
 [ARCHITECTURE.md](./ARCHITECTURE.md#adding-a-new-transport-adapter).
 
 The gRPC adapter lives in its own Go module under `adapters/grpc/` so that

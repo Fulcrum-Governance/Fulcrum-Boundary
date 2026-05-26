@@ -1,0 +1,45 @@
+adapter: cli
+status: preview
+target_status: preview
+lifecycle:
+  parse: implemented
+  identify: implemented
+  evaluate: delegated
+  deny: delegated
+  forward: delegated
+  inspect: implemented
+  metadata: implemented
+  record: delegated
+  bypass_proof: stub
+  fail_closed: delegated
+delegated_steps:
+  - step: evaluate
+    owner: governance.Pipeline
+    contract: docs/ADAPTER_CONTRACT.md
+  - step: deny
+    owner: agent runtime command bridge
+    contract: docs/ADAPTER_CONTRACT.md
+  - step: forward
+    owner: agent runtime command bridge
+    contract: docs/ADAPTER_CONTRACT.md
+  - step: record
+    owner: governance.AuditPublisher
+    contract: docs/DECISION_RECORDS.md
+  - step: fail_closed
+    owner: host command wrapper
+    contract: docs/security/FAIL_MODE_MATRIX.md
+bypass_model: process
+fail_closed_transports:
+  - cli
+evidence:
+  tests:
+    - adapters/cli/adapter_test.go
+    - adapters/cli/classifier_test.go
+    - adapters/cli/inspector_test.go
+  docs:
+    - docs/ADAPTER_CONTRACT.md
+    - docs/ADAPTER_READINESS_MATRIX.md
+gaps:
+  - id: BND-CLI-001
+    description: "Production CLI status requires an owned shell execution wrapper and bypass proof around the command path."
+    spec: "SPEC 2"

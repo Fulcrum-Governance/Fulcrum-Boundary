@@ -6,7 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-No unreleased changes yet.
+### Added
+
+- Boundary claims ledger with a machine-readable release truth gate.
+- Adapter readiness declarations and reusable lifecycle conformance tests.
+- Adapter readiness matrix and release checklist linking claims and readiness gates.
+
+### Changed
+
+- README transport adapter documentation now separates production, preview, and experimental maturity.
 
 ## [0.2.0] - 2026-05-26
 

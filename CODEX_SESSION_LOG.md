@@ -1,5 +1,61 @@
 # CODEX Session Log
 
+## 2026-05-26 — Boundary Phase 1 Claims And Adapter Readiness
+
+### Context
+
+- Spec: `/Users/td/ConceptDev/Projects/Fulcrum-codex/.claude/sprint/BOUNDARY_SPEC_SERIES.md`
+- Phase: `Phase 1 — SPEC 1 Claims Ledger + Release Truth System` and `SPEC 2 Adapter Completion Standard`
+- Branch: `codex/2026-05-26-boundary-phase1-foundation`
+- Scope boundary: foundation artifacts only; no adapter runtime behavior changes and no adapter expansion.
+
+### Preflight
+
+- Confirmed work in Boundary repo: `/Users/td/ConceptDev/Projects/Boundary`
+- Confirmed branch: `codex/2026-05-26-boundary-phase1-foundation`
+- Confirmed working tree was clean before Phase 1 edits.
+- Re-read the active spec plus the current release truth and adapter contract docs:
+  - `docs/LAUNCH_TRUTH_FREEZE.md`
+  - `docs/ADAPTER_CONTRACT.md`
+  - `README.md`
+
+### Built
+
+- Added human and machine claims surfaces:
+  - `docs/CLAIMS_LEDGER.md`
+  - `claims/boundary_claims.yaml`
+  - `claims/claims_test.go`
+- Added a release checklist that references the claims ledger and readiness gates:
+  - `docs/RELEASE_CHECKLIST.md`
+- Added adapter lifecycle vocabulary and conformance validation:
+  - `governance/adapter_lifecycle.go`
+  - `tests/adapter_conformance/adapter_readiness_test.go`
+- Added per-adapter readiness declarations for current shipped adapters:
+  - `adapters/mcp/readiness.yaml`
+  - `adapters/cli/readiness.yaml`
+  - `adapters/codeexec/readiness.yaml`
+  - `adapters/grpc/readiness.yaml`
+  - `adapters/webhook/readiness.yaml`
+  - `adapters/a2a/readiness.yaml`
+- Added `docs/ADAPTER_READINESS_MATRIX.md` and updated `README.md` so adapters are split by maturity level.
+- Updated `docs/ADAPTER_CONTRACT.md` to distinguish five-method interface conformance from ten-step lifecycle readiness.
+- Updated `CHANGELOG.md` with unreleased Phase 1 entries.
+
+### Verification
+
+- `env -u GOROOT go test ./claims ./tests/adapter_conformance`: pass
+- `env -u GOROOT go test ./... -short`: pass
+- `(cd adapters/grpc && env -u GOROOT go test ./...)`: pass
+- `env -u GOROOT go vet ./...`: pass
+- `(cd adapters/grpc && env -u GOROOT go vet ./...)`: pass
+- `git ls-files '*.go' | xargs gofmt -l`: pass, empty output
+- `git diff --check`: pass
+
+### Notes For Next Step
+
+- Phase 1 intentionally leaves all adapters below production maturity. Follow-on specs should promote individual adapters only after lifecycle tests, bypass proof, and fail-mode evidence exist.
+- The README now has no production adapter row. That is deliberate until a later adapter-specific spec proves production readiness.
+
 ## 2026-05-06 — Phase 2 Proof And Citation Cleanup
 
 ### Context

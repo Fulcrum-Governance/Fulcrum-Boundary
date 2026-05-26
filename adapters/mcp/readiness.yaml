@@ -1,0 +1,47 @@
+adapter: mcp
+status: preview
+target_status: production
+lifecycle:
+  parse: implemented
+  identify: implemented
+  evaluate: delegated
+  deny: delegated
+  forward: delegated
+  inspect: implemented
+  metadata: implemented
+  record: delegated
+  bypass_proof: delegated
+  fail_closed: delegated
+delegated_steps:
+  - step: evaluate
+    owner: governance.Pipeline
+    contract: docs/ADAPTER_CONTRACT.md
+  - step: deny
+    owner: MCP Safety Gateway middleware
+    contract: docs/BOUNDARY_CONDITIONS.md
+  - step: forward
+    owner: MCP Safety Gateway middleware
+    contract: docs/ADAPTER_CONTRACT.md
+  - step: record
+    owner: governance.AuditPublisher
+    contract: docs/DECISION_RECORDS.md
+  - step: bypass_proof
+    owner: Docker demo network topology
+    contract: docs/BOUNDARY_CONDITIONS.md
+  - step: fail_closed
+    owner: gateway host
+    contract: docs/security/FAIL_MODE_MATRIX.md
+bypass_model: network
+fail_closed_transports:
+  - mcp
+evidence:
+  tests:
+    - adapters/mcp/adapter_test.go
+    - internal/boundarycli/cli_test.go
+  docs:
+    - docs/BOUNDARY_CONDITIONS.md
+    - docs/ADAPTER_READINESS_MATRIX.md
+gaps:
+  - id: BND-MCP-001
+    description: "Production status requires the adapter package and gateway path to share one lifecycle conformance suite, including forwarding and bypass proof."
+    spec: "SPEC 3"

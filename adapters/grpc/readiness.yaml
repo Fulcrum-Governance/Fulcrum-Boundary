@@ -1,0 +1,40 @@
+adapter: grpc
+status: preview
+target_status: production
+lifecycle:
+  parse: implemented
+  identify: implemented
+  evaluate: implemented
+  deny: implemented
+  forward: delegated
+  inspect: stub
+  metadata: delegated
+  record: delegated
+  bypass_proof: stub
+  fail_closed: delegated
+delegated_steps:
+  - step: forward
+    owner: gRPC server interceptor chain
+    contract: docs/ADAPTER_CONTRACT.md
+  - step: metadata
+    owner: gRPC trailers emitted by interceptor host
+    contract: docs/ADAPTER_CONTRACT.md
+  - step: record
+    owner: governance.AuditPublisher
+    contract: docs/DECISION_RECORDS.md
+  - step: fail_closed
+    owner: gRPC interceptor host
+    contract: docs/security/FAIL_MODE_MATRIX.md
+bypass_model: api-gateway
+fail_closed_transports:
+  - grpc
+evidence:
+  tests:
+    - adapters/grpc/adapter_test.go
+  docs:
+    - docs/ADAPTER_CONTRACT.md
+    - docs/ADAPTER_READINESS_MATRIX.md
+gaps:
+  - id: BND-GRPC-001
+    description: "Production status requires complete metadata/trailer conformance, response inspection policy, bypass proof, and fail-mode tests."
+    spec: "SPEC 2"

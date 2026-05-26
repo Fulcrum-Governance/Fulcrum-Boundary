@@ -1,0 +1,32 @@
+adapter: a2a
+status: experimental
+target_status: preview
+lifecycle:
+  parse: implemented
+  identify: implemented
+  evaluate: delegated
+  deny: stub
+  forward: stub
+  inspect: stub
+  metadata: stub
+  record: delegated
+  bypass_proof: stub
+  fail_closed: stub
+delegated_steps:
+  - step: evaluate
+    owner: governance.Pipeline
+    contract: docs/ADAPTER_CONTRACT.md
+  - step: record
+    owner: governance.AuditPublisher
+    contract: docs/DECISION_RECORDS.md
+bypass_model: runtime
+fail_closed_transports: []
+evidence:
+  tests:
+    - adapters/a2a/adapter_test.go
+  docs:
+    - docs/ADAPTER_READINESS_MATRIX.md
+gaps:
+  - id: BND-A2A-001
+    description: "Replace minimal local task schema and no-op lifecycle methods with real A2A protocol control."
+    spec: "SPEC 4"
