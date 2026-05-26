@@ -13,6 +13,8 @@ import (
 	"github.com/fulcrum-governance/boundary/governance"
 )
 
+const demoSelectUsersSQL = "SELECT id, email, plan FROM users ORDER BY id LIMIT 3"
+
 type toolCallPayload struct {
 	ToolName  string         `json:"tool_name"`
 	AgentID   string         `json:"agent_id,omitempty"`
@@ -112,21 +114,14 @@ func postgresHandler(db *sql.DB) http.Handler {
 		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()
 
+		query, ok := supportedDemoQuery(sqlText)
+		if !ok {
+			http.Error(w, "unsupported demo SQL; this gateway executes only the canned safe SELECT after governance allows it", http.StatusBadRequest)
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
-		if queryReturnsRows(sqlText) {
-			writeRows(ctx, w, db, sqlText)
-			return
-		}
-		result, err := db.ExecContext(ctx, sqlText)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadGateway)
-			return
-		}
-		affected, _ := result.RowsAffected()
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"ok":            true,
-			"rows_affected": affected,
-		})
+		writeRows(ctx, w, db, query)
 	})
 }
 
@@ -153,11 +148,12 @@ func extractSQL(payload *toolCallPayload) string {
 	return ""
 }
 
-func queryReturnsRows(sqlText string) bool {
-	normalized := strings.ToLower(strings.TrimSpace(sqlText))
-	return strings.HasPrefix(normalized, "select") ||
-		strings.HasPrefix(normalized, "with") ||
-		strings.HasPrefix(normalized, "show")
+func supportedDemoQuery(sqlText string) (string, bool) {
+	normalized := strings.Join(strings.Fields(sqlText), " ")
+	if strings.EqualFold(normalized, demoSelectUsersSQL) {
+		return demoSelectUsersSQL, true
+	}
+	return "", false
 }
 
 func writeRows(ctx context.Context, w http.ResponseWriter, db *sql.DB, sqlText string) {

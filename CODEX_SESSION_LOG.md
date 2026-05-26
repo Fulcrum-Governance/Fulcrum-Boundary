@@ -214,6 +214,7 @@
 - Hardened YAML policy loading against symlinked policy files and annotated the directory-scoped read for gosec.
 - Tidied the nested gRPC adapter module so CI does not require a `go mod tidy` update.
 - Updated GitHub topics to: `ai-agents`, `agent-governance`, `mcp`, `policy-enforcement`, `security`, `golang`.
+- Tightened the demo Postgres downstream so it executes only the canned safe SELECT after governance allows it; this keeps the release demo from treating arbitrary agent-provided SQL as an executable downstream query.
 
 ### Verification
 
