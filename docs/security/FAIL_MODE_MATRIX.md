@@ -65,7 +65,7 @@ Seven fault classes × six transports. Each cell is one of:
 - **PASS** — pipeline is not involved; downstream error is surfaced by the
   caller's runtime unchanged.
 - **ERR→caller** — adapter `ParseRequest` returns a Go error; the embedding
-  runtime (mcpproxy, agent runtime, sandbox runtime) decides what the caller
+  runtime (MCP gateway, agent runtime, sandbox runtime) decides what the caller
   sees. Functionally the tool call does not proceed, which is equivalent to
   deny — but the decision and audit event are **not** produced by the Boundary
   pipeline.
@@ -76,22 +76,23 @@ Seven fault classes × six transports. Each cell is one of:
 |---|---|---|---|---|---|---|
 | Trust store unreachable | DENY `pipeline.go:136-140` | DENY `pipeline.go:136-140` | DENY `pipeline.go:136-140` | DENY `pipeline.go:136-140` | DENY `pipeline.go:136-140` | DENY `pipeline.go:136-140` |
 | Agent ISOLATED or TERMINATED | DENY `pipeline.go:141-146` | DENY `pipeline.go:141-146` | DENY `pipeline.go:141-146` | DENY `pipeline.go:141-146` | DENY `pipeline.go:141-146` | DENY `pipeline.go:141-146` |
-| Adapter parse failure | ERR→caller `adapters/mcp/adapter.go:44-64` | ERR→caller `adapters/cli/adapter.go:52-82` | ERR→caller `adapters/codeexec/adapter.go:52-79` | `codes.Internal` `adapters/grpc/adapter.go:141-143` | ERR→caller `adapters/a2a/adapter.go:51-73` | HTTP 400 `adapters/webhook/adapter.go:139-143` |
+| Adapter parse failure | JSON-RPC error `adapters/mcp/gateway.go` or ERR→caller from raw adapter use | ERR→caller `adapters/cli/adapter.go:52-82` | ERR→caller `adapters/codeexec/adapter.go:52-79` | `codes.Internal` `adapters/grpc/adapter.go:141-143` | ERR→caller `adapters/a2a/adapter.go:51-73` | HTTP 400 `adapters/webhook/adapter.go:139-143` |
 | Interceptor error | DENY `pipeline.go:169-173` | DENY `pipeline.go:169-173` | DENY `pipeline.go:169-173` | DENY `pipeline.go:169-173` | DENY `pipeline.go:169-173` | DENY `pipeline.go:169-173` |
 | PolicyEval error (transport in `FailClosedTransports`) | DENY `pipeline.go:189-193` | DENY `pipeline.go:189-193` | DENY `pipeline.go:189-193` | DENY `pipeline.go:189-193` | DENY `pipeline.go:189-193` | DENY `pipeline.go:189-193` |
 | PolicyEval error (transport NOT in `FailClosedTransports`) | ALLOW `pipeline.go:194-195` | ALLOW `pipeline.go:194-195` | ALLOW `pipeline.go:194-195` | ALLOW `pipeline.go:194-195` | ALLOW `pipeline.go:194-195` | ALLOW `pipeline.go:194-195` |
-| Downstream tool error (5xx / non-zero exit) | PASS `adapters/mcp/adapter.go:86-88` | PASS `adapters/cli/adapter.go:120-122` | PASS `adapters/codeexec/adapter.go:112-114` | PASS `adapters/grpc/adapter.go:97-99` | PASS `adapters/a2a/adapter.go:89-92` | PASS `adapters/webhook/adapter.go:100-102` |
+| Downstream tool error (5xx / non-zero exit) | PASS through governed proxy response inspection `adapters/mcp/forwarder.go` | PASS `adapters/cli/adapter.go:120-122` | PASS `adapters/codeexec/adapter.go:112-114` | PASS `adapters/grpc/adapter.go:97-99` | PASS `adapters/a2a/adapter.go:89-92` | PASS `adapters/webhook/adapter.go:100-102` |
 
 **Notes on the matrix:**
 
 - **Adapter parse failure** happens BEFORE the pipeline runs. No audit event
   is emitted by the pipeline in this case, because `Evaluate` is never
   called. The gRPC and webhook adapters embed pipeline invocation in their
-  own HTTP/gRPC handlers (`adapters/grpc/adapter.go:131-157`,
-  `adapters/webhook/adapter.go:128-177`), which is why they can map
-  parse errors to protocol-level fail-closed responses (`codes.Internal`,
-  HTTP 400). MCP, CLI, CodeExec, and A2A adapters only provide parsing; the
-  embedding runtime (mcpproxy, agent runtime, sandbox runtime, A2A caller)
+  own HTTP/gRPC handlers (`adapters/mcp/gateway.go`,
+  `adapters/grpc/adapter.go:131-157`, `adapters/webhook/adapter.go:128-177`),
+  which is why they can map parse errors to protocol-level fail-closed responses
+  (JSON-RPC error, `codes.Internal`, HTTP 400). CLI, CodeExec, and A2A adapters
+  only provide parsing; the embedding runtime (agent runtime, sandbox runtime,
+  A2A caller)
   is responsible for translating a parse error into a protocol response.
 
 - **PolicyEval error (fail-open row)** is the only cell in the entire matrix
@@ -99,20 +100,19 @@ Seven fault classes × six transports. Each cell is one of:
   `FailClosedTransports` exists — it lets operators flip this row to DENY
   per security-critical transport.
 
-- **Downstream tool error (PASS row)**: every `ForwardGoverned` method on
-  every adapter is a no-op or stub. Forwarding is the responsibility of the
-  surrounding runtime (mcpproxy, agent runtime, sandbox runtime, gRPC
-  interceptor chain, webhook `Handler()`). The governance decision is
-  emitted before forwarding happens, so downstream 5xx or non-zero exit does
-  not retroactively change the action in the audit event.
+- **Downstream tool error (PASS row)**: the MCP proxy now forwards allowed
+  JSON-RPC requests itself and inspects upstream errors. Other adapters still
+  delegate forwarding to the surrounding runtime (agent runtime, sandbox
+  runtime, gRPC interceptor chain, webhook `Handler()`). The governance
+  decision is emitted before forwarding happens, so downstream 5xx or non-zero
+  exit does not retroactively change the action in the audit event.
 
 ## 3. Recommended `FailClosedTransports` Defaults
 
-`PipelineConfig.FailClosedTransports` is `nil` by default
-(`pipeline.go:19-21`), which means **all transports fail-open on PolicyEval
-errors unless operators opt in**. Recommended production defaults below. This
-is a recommendation, not an enforced policy — the pipeline ships with the
-empty default.
+`PipelineConfig.FailClosedTransports` is `nil` by default, which means Boundary
+applies `DefaultFailClosedTransports` (`mcp`, `code_exec`, and `grpc`). Operators
+can pass an explicit empty slice to opt out, or a populated slice to override the
+secure-by-default set.
 
 | Transport | Recommended | Rationale |
 |---|---|---|

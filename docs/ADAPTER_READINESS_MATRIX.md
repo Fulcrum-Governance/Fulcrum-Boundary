@@ -39,12 +39,12 @@ Step states are `implemented`, `delegated`, `not_applicable`, or `stub`.
 
 | Adapter | Status | Target | parse | identify | evaluate | deny | forward | inspect | metadata | record | bypass_proof | fail_closed | Key gap |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| mcp | preview | production | implemented | implemented | delegated | delegated | delegated | implemented | implemented | delegated | delegated | delegated | BND-MCP-001: share one lifecycle conformance suite across adapter package and gateway path. |
+| mcp | production | production | implemented | implemented | implemented | implemented | implemented | implemented | implemented | delegated | delegated | implemented | Production proxy path ships with lifecycle tests; bypass proof remains a deployment topology contract. |
 | cli | preview | preview | implemented | implemented | delegated | delegated | delegated | implemented | implemented | delegated | stub | delegated | BND-CLI-001: owned shell execution wrapper and bypass proof. |
 | codeexec | preview | production | implemented | implemented | delegated | delegated | delegated | implemented | implemented | delegated | stub | delegated | BND-CODE-001: sandbox lifecycle integration tests and bypass proof. |
 | grpc | preview | production | implemented | implemented | implemented | implemented | delegated | stub | delegated | delegated | stub | delegated | BND-GRPC-001: metadata/trailer conformance, response policy, and bypass proof. |
 | webhook | preview | preview | implemented | implemented | implemented | implemented | delegated | implemented | delegated | delegated | stub | delegated | BND-WEB-001: explicit mode split between informational and execution forwarding. |
 | a2a | experimental | preview | implemented | implemented | delegated | stub | stub | stub | stub | delegated | stub | stub | BND-A2A-001: real A2A protocol control instead of no-op lifecycle methods. |
 
-No adapter is listed as production in this phase. Production status is reserved
-for a later adapter-specific spec that proves the full lifecycle.
+MCP is the first production adapter. Other adapters remain below production
+until an adapter-specific spec proves their full lifecycle.

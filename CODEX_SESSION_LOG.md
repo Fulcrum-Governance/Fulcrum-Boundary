@@ -288,3 +288,33 @@
 
 - GitHub license detection via `gh repo view --json licenseInfo` returned `null`, but `gh api repos/Fulcrum-Governance/Boundary/license` detects Apache-2.0 correctly and the repository has a visible Apache 2.0 `LICENSE` file.
 - Local `gosec` reported zero issues after the YAML loader hardening but emitted SSA/toolchain errors against local Go 1.26/nested-module dependencies; GitHub Actions remains the authoritative security-scan check after push.
+
+## 2026-05-26 — Spec 3 MCP Production Adapter
+
+### Context
+
+- Branch: `codex/2026-05-26-boundary-phase1-foundation`, continuing the Boundary spec-series execution after Phase 1 was committed as `67ec4d7`.
+- Scope: Spec 3 only. Promote MCP from demo adapter to production-grade governed JSON-RPC proxy while keeping non-MCP adapters below production maturity.
+
+### Built
+
+- Added `adapters/mcp/gateway.go`, `forwarder.go`, `identity.go`, `metadata.go`, `response_inspector.go`, and `tools_list_filter.go`.
+- Extended the MCP adapter so `ForwardGoverned` forwards allowed JSON-RPC requests to an upstream MCP HTTP server and refuses denied or ungoverned requests.
+- Added JSON-RPC lifecycle handling for malformed input, invalid requests, notifications, batches, request ID preservation, governed denial errors, upstream forwarding errors, and governance metadata.
+- Added `tools/list` policy filtering so denied tools are removed from discovery responses.
+- Updated `boundary serve --upstream` so HTTP(S) upstreams run in MCP proxy mode while Postgres DSNs continue to use the existing demo downstream.
+- Added integration coverage in `tests/integration/mcp_gateway_lifecycle_test.go` for allowed-once forwarding, deny-before-upstream, metadata, `tools/list` filtering, batch requests, parse errors, fail-closed pipeline errors, and bypass probing.
+- Added `docs/adapters/MCP.md` and updated adapter readiness, claims ledger, README, changelog, adapter contract, and fail-mode docs to mark only MCP as production-ready.
+
+### Verification
+
+- `env -u GOROOT go test ./adapters/mcp ./tests/integration ./claims ./tests/adapter_conformance`: pass.
+- `env -u GOROOT go test ./... -short`: pass.
+- `env -u GOROOT go vet ./...`: pass.
+- `git ls-files '*.go' | xargs gofmt -l`: pass.
+- `git diff --check`: pass.
+
+### Notes
+
+- SSE and stdio MCP transport variants remain future transport work; this phase establishes the production HTTP JSON-RPC proxy path.
+- The Postgres safety demo path remains available through `boundary serve` when `--upstream` is a Postgres DSN.

@@ -21,6 +21,7 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 
+	"github.com/fulcrum-governance/boundary/adapters/mcp"
 	"github.com/fulcrum-governance/boundary/governance"
 )
 
@@ -57,7 +58,7 @@ Usage:
   boundary <command> [flags]
 
 Commands:
-  serve           Start the MCP Safety Gateway
+  serve           Start the Boundary gateway
   demo postgres   Run the Postgres safety demo against a running gateway
   verify          Validate YAML policy files
   doctor          Check local gateway prerequisites
@@ -77,7 +78,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("boundary serve", stderr)
 	listen := fs.String("listen", ":8080", "HTTP listen address")
 	policyDir := fs.String("policies", "./policies/", "directory containing YAML policy files")
-	upstream := fs.String("upstream", "postgres://demo:demo@localhost:5432/demo?sslmode=disable", "Postgres upstream DSN")
+	upstream := fs.String("upstream", "postgres://demo:demo@localhost:5432/demo?sslmode=disable", "upstream MCP HTTP URL or Postgres demo DSN")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return 0
@@ -91,25 +92,54 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	db, err := sql.Open("pgx", *upstream)
-	if err != nil {
-		fmt.Fprintf(stderr, "open upstream: %v\n", err)
-		return 1
-	}
-	defer db.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	if err := db.PingContext(ctx); err != nil {
-		fmt.Fprintf(stderr, "upstream ping failed: %v\n", err)
-		return 1
-	}
-
 	logger := slog.New(slog.NewJSONHandler(stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	pipeline := governance.NewPipeline(governance.PipelineConfig{
 		StaticPolicies: rules,
 		GatewayVersion: Version,
 	}, nil, nil, governance.NewSlogAuditPublisher(logger))
+
+	handler, mode, closeUpstream, err := serveHandler(*upstream, pipeline)
+	if err != nil {
+		fmt.Fprintf(stderr, "upstream setup failed: %v\n", err)
+		return 1
+	}
+	if closeUpstream != nil {
+		defer func() {
+			if err := closeUpstream(); err != nil {
+				fmt.Fprintf(stderr, "upstream close failed: %v\n", err)
+			}
+		}()
+	}
+
+	fmt.Fprintf(stderr, "boundary serve listening on %s in %s mode with %d static policy rules\n", *listen, mode, len(rules))
+	srv := &http.Server{
+		Addr:              *listen,
+		Handler:           handler,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		fmt.Fprintf(stderr, "server error: %v\n", err)
+		return 1
+	}
+	return 0
+}
+
+func serveHandler(upstream string, pipeline *governance.Pipeline) (http.Handler, string, func() error, error) {
+	parsed, err := url.Parse(upstream)
+	if err == nil && (parsed.Scheme == "http" || parsed.Scheme == "https") {
+		return mcp.NewGateway(pipeline, mcp.NewHTTPForwarder(upstream), "default"), "mcp-proxy", nil, nil
+	}
+
+	db, err := sql.Open("pgx", upstream)
+	if err != nil {
+		return nil, "", nil, fmt.Errorf("open postgres demo upstream: %w", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := db.PingContext(ctx); err != nil {
+		_ = db.Close()
+		return nil, "", nil, fmt.Errorf("postgres demo ping: %w", err)
+	}
 
 	downstream := postgresHandler(db)
 	middleware := governance.NewMiddleware(pipeline, downstream, governance.MiddlewareConfig{
@@ -120,18 +150,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		TenantIDHeader:   governance.HeaderGovernanceTenantID,
 		ToolNameFromPath: true,
 	})
-
-	fmt.Fprintf(stderr, "boundary serve listening on %s with %d static policy rules\n", *listen, len(rules))
-	srv := &http.Server{
-		Addr:              *listen,
-		Handler:           middleware,
-		ReadHeaderTimeout: 5 * time.Second,
-	}
-	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		fmt.Fprintf(stderr, "server error: %v\n", err)
-		return 1
-	}
-	return 0
+	return middleware, "postgres-demo", db.Close, nil
 }
 
 func runDemo(args []string, stdout, stderr io.Writer) int {

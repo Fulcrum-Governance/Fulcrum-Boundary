@@ -42,7 +42,7 @@ claims:
     depends_on: []
 
   - id: BND-CLAIM-003
-    claim: "Boundary ships six transport adapter packages with mixed maturity"
+    claim: "Boundary ships one production MCP adapter and five lower-maturity transport adapter packages"
     status: partial
     evidence:
       tests:
@@ -63,20 +63,37 @@ claims:
           section: "Readiness Matrix"
     public_language:
       allowed:
-        - "Boundary includes MCP, CLI, CodeExec, gRPC, Webhook, and A2A adapters with maturity tracked per adapter."
+        - "Boundary includes a production MCP adapter plus CLI, CodeExec, gRPC, Webhook, and A2A adapters with maturity tracked per adapter."
       forbidden:
         - "six production adapters"
         - "supports all major agent transports"
     gaps:
-      - id: BND-CG-001
-        description: "Production status requires full lifecycle conformance, integration tests, bypass proof, and fail-mode tests."
-        spec: "SPEC 2"
       - id: BND-A2A-001
         description: "A2A remains stub-level until real protocol forwarding, metadata, and fail-closed behavior are implemented."
         spec: "SPEC 4"
     depends_on:
-      - BND-CG-001
       - BND-A2A-001
+
+  - id: BND-CLAIM-006
+    claim: "Boundary provides a production MCP JSON-RPC proxy adapter"
+    status: delivered
+    adapter: mcp
+    evidence:
+      tests:
+        - path: tests/integration/mcp_gateway_lifecycle_test.go
+          assertion: "MCP gateway governs, forwards, filters, preserves ids, and fails closed"
+      docs:
+        - path: docs/adapters/MCP.md
+          section: "Lifecycle"
+        - path: docs/ADAPTER_READINESS_MATRIX.md
+          section: "Readiness Matrix"
+    public_language:
+      allowed:
+        - "Boundary provides a production MCP JSON-RPC proxy adapter."
+      forbidden:
+        - "Boundary production-protects MCP tools without deployment isolation"
+    gaps: []
+    depends_on: []
 
   - id: BND-CLAIM-004
     claim: "Boundary is a SQL firewall"

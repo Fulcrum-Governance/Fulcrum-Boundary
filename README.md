@@ -131,15 +131,14 @@ per-adapter `readiness.yaml` files for the ten-step lifecycle behind each row.
 
 ### Production
 
-No adapter is listed as production in this phase. Production status requires
-full lifecycle conformance, integration tests, bypass proof, and fail-mode
-tests.
+| Adapter | Package | Handles |
+|---|---|---|
+| MCP | `adapters/mcp` | HTTP JSON-RPC MCP proxying for `tools/call` and `tools/list`; allowed requests forward to an upstream MCP server, denied requests never reach upstream, and responses carry governance metadata |
 
 ### Preview
 
 | Adapter | Package | Handles |
 |---|---|---|
-| MCP | `adapters/mcp` | JSON-RPC `tools/call` requests from Model Context Protocol servers; forwarding and bypass proof are delegated to the MCP Safety Gateway topology |
 | CLI | `adapters/cli` | Shell commands including pipe chains, with a risk classifier; execution control is delegated to the host command wrapper |
 | Code exec | `adapters/codeexec` | Python and JavaScript source submitted to a sandbox, with obfuscation analysis; execution is delegated to the sandbox runtime |
 | gRPC | `adapters/grpc` | gRPC unary calls via a server interceptor in a separate module |

@@ -35,7 +35,7 @@ type TransportAdapter interface {
 |---|---|---|
 | `Type()` | **required** | Return one of the `TransportType` constants in [`governance/request.go`](../governance/request.go). Must be stable across calls. |
 | `ParseRequest` | **required (real work)** | Convert protocol-specific input into a `GovernanceRequest`. Failure must return a `governance.ParseError` (use `governance.NewParseError`). See "ParseRequest contract" below. |
-| `ForwardGoverned` | **optional / often a stub** | Forward the governed call to the downstream tool *only* if your adapter owns the transport. Existing adapters whose forwarding is handled elsewhere return `nil, nil` (webhook, gRPC, A2A) or a fixed error explaining who owns forwarding (MCP, CLI, codeexec). Do not perform side effects that the caller did not ask for. |
+| `ForwardGoverned` | **optional / often a stub** | Forward the governed call to the downstream tool *only* if your adapter owns the transport. MCP owns this in proxy mode through `adapters/mcp.Gateway`; adapters whose forwarding is handled elsewhere return `nil, nil` (webhook, gRPC, A2A) or a fixed error explaining who owns forwarding (CLI, codeexec). Do not perform side effects that the caller did not ask for. |
 | `InspectResponse` | **optional** | Examine `ToolResponse.Content` for governance concerns (size limits, sensitive-data patterns, exit codes). Adapters with no opinion return `&ResponseInspection{Safe: true}, nil`. |
 | `EmitGovernanceMetadata` | **optional** | Attach the governance decision's `Action`, `EnvelopeID`, and `RequestID` to the response so callers can read the verdict without parsing the body. Adapters whose host (e.g. an HTTP handler) writes governance headers directly may return `nil`. |
 
@@ -135,14 +135,13 @@ process and language:
 Repo: [`fulcrum-io`](https://fulcrumlayer.io) (`/internal/adapters/mcp`,
 `/internal/adapters/cli`, `/internal/adapters/codeexec`).
 
-The runtime control plane wraps the Boundary adapters in production-grade
-forwarding code: the MCP adapter feeds the `mcpproxy` JSON-RPC interceptor,
-the CLI adapter is invoked from the agent runtime command bridge, and the
-code-exec adapter is invoked from the Python/JavaScript sandbox gateway. In
-every case, Boundary is the parsing and decision layer; the surrounding fulcrum-io
-service owns the actual transport I/O. That is why the shipped Boundary adapters
-return a fixed error from `ForwardGoverned` rather than attempting to forward
-themselves — the consumer must override or wrap.
+The runtime control plane wraps most Boundary adapters in production-grade
+forwarding code: the CLI adapter is invoked from the agent runtime command
+bridge, and the code-exec adapter is invoked from the Python/JavaScript sandbox
+gateway. MCP is the exception in Boundary itself: `adapters/mcp.Gateway` is an
+out-of-process JSON-RPC proxy that evaluates, denies, forwards, inspects, and
+adds metadata before returning to the MCP client. Kernel-connected fulcrum-io
+deployments can still place Secure MCP Servers behind that Boundary proxy.
 
 ### `fulcrum-trust` LangGraph adapter
 
