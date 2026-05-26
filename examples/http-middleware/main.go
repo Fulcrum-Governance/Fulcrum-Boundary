@@ -21,7 +21,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/fulcrum-governance/gil/governance"
+	"github.com/fulcrum-governance/boundary/governance"
 )
 
 func main() {

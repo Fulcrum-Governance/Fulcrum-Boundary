@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/fulcrum-governance/gil/governance"
+	"github.com/fulcrum-governance/boundary/governance"
 )
 
 // ParseCommand splits a shell command string into pipe segments.

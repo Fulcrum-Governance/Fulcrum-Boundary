@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fulcrum-governance/gil/governance"
+	"github.com/fulcrum-governance/boundary/governance"
 )
 
 // RateLimitConfig defines a token bucket rate limit.

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fulcrum-governance/gil/governance"
+	"github.com/fulcrum-governance/boundary/governance"
 )
 
 func newPipeline(t *testing.T, deny bool, denyTool string) *governance.Pipeline {

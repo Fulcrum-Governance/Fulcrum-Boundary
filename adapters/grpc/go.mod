@@ -1,11 +1,11 @@
-module github.com/fulcrum-governance/gil/adapters/grpc
+module github.com/fulcrum-governance/boundary/adapters/grpc
 
 go 1.25.0
 
-replace github.com/fulcrum-governance/gil => ../../
+replace github.com/fulcrum-governance/boundary => ../../
 
 require (
-	github.com/fulcrum-governance/gil v0.0.0
+	github.com/fulcrum-governance/boundary v0.0.0
 	github.com/google/uuid v1.6.0
 	google.golang.org/grpc v1.81.0
 )

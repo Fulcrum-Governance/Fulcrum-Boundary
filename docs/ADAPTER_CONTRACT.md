@@ -131,7 +131,7 @@ pipeline's `TrustChecker` slot.
 
 ### Direct consumers (your code)
 
-Any Go service that imports `github.com/fulcrum-governance/gil/governance`
+Any Go service that imports `github.com/fulcrum-governance/boundary/governance`
 can construct adapters directly. The pattern is:
 
 ```go

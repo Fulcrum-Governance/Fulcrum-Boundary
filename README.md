@@ -2,8 +2,8 @@
 
 > The governance interception layer for the agent control plane. Harness-agnostic, protocol-agnostic, out-of-process pre-execution control for AI agent tool calls.
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/fulcrum-governance/gil.svg)](https://pkg.go.dev/github.com/fulcrum-governance/gil)
-[![Go Report Card](https://goreportcard.com/badge/github.com/fulcrum-governance/gil)](https://goreportcard.com/report/github.com/fulcrum-governance/gil)
+[![Go Reference](https://pkg.go.dev/badge/github.com/fulcrum-governance/boundary.svg)](https://pkg.go.dev/github.com/fulcrum-governance/boundary)
+[![Go Report Card](https://goreportcard.com/badge/github.com/fulcrum-governance/boundary)](https://goreportcard.com/report/github.com/fulcrum-governance/boundary)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 
 ## What is GIL?
@@ -54,7 +54,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/fulcrum-governance/gil/governance"
+	"github.com/fulcrum-governance/boundary/governance"
 )
 
 func main() {

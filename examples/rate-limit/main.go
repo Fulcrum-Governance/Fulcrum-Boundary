@@ -14,8 +14,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/fulcrum-governance/gil/governance"
-	"github.com/fulcrum-governance/gil/interceptors"
+	"github.com/fulcrum-governance/boundary/governance"
+	"github.com/fulcrum-governance/boundary/interceptors"
 )
 
 func main() {

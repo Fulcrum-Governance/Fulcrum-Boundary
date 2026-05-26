@@ -7,7 +7,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/fulcrum-governance/gil/governance"
+	"github.com/fulcrum-governance/boundary/governance"
 )
 
 func main() {

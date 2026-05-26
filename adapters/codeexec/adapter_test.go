@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fulcrum-governance/gil/governance"
+	"github.com/fulcrum-governance/boundary/governance"
 )
 
 // Compile-time interface check.
