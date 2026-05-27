@@ -1,5 +1,37 @@
 # CODEX Session Log
 
+## 2026-05-27 - v0.3 Publication + Command Boundary v0.4 Design
+
+### Context
+
+- Parent goal: keep the v0.3.0 public release stable while preparing the next
+  Command Boundary preview train.
+- Branch: `codex/2026-05-27-boundary-v030-v04-sequence`
+- Scope: planning/design artifact only. No product behavior, release claim, or
+  Command Boundary implementation changed.
+
+### What changed
+
+- Added
+  `docs/superpowers/specs/2026-05-27-boundary-v030-publication-command-boundary-design.md`.
+- Captured the ordered train: v0.3.0 publication polish first, then Command
+  Boundary as a v0.4 preview sequence.
+- Kept Command Boundary behind routed-command language: `boundary command run`,
+  `boundary shell`, and project-local shims only.
+
+### Verification
+
+- Spec self-review: pass; no placeholders or open-ended requirements in the
+  design spec.
+- `git diff --check`: pass.
+
+### Notes For Next Step
+
+- Do not implement Command Boundary until the written design/spec has been
+  reviewed.
+- Command Boundary claims must stay preview/planned until implementation and
+  reconciliation evidence exists.
+
 ## 2026-05-27 - GitHub Actions Node 24 Maintenance
 
 ### Context
