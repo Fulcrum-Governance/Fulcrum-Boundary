@@ -57,7 +57,9 @@ claims:
         - path: tests/adapters/cli_lifecycle_test.go
           assertion: "CLI governed lifecycle denies before execution, executes allowed commands once, records decisions, fails closed on pipeline errors, and documents direct shell bypass"
         - path: adapters/codeexec/adapter_test.go
-          assertion: "Code execution adapter parsing is covered"
+          assertion: "Code execution adapter parsing, governed forwarding, denial, metadata, and sandbox-policy denials are covered"
+        - path: tests/adapters/codeexec_lifecycle_test.go
+          assertion: "CodeExec governed lifecycle denies before execution, executes allowed code through a configured boundary, records decisions, fails closed on pipeline errors, and documents direct execution bypass"
         - path: adapters/grpc/adapter_test.go
           assertion: "gRPC interceptor behavior is covered in its module"
         - path: tests/integration/managed_agents_lifecycle_test.go

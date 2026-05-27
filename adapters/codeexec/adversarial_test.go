@@ -20,7 +20,7 @@ func TestAdversarial_UnicodeConfusable(t *testing.T) {
 		language string
 		// wantDetected means the code SHOULD be caught (Latin variant).
 		// When confusables are used the regex won't match, which is the
-		// correct security posture: the sandboxed runtime would reject
+		// correct security posture: the execution runtime would reject
 		// the code at import/eval time anyway. We verify the Latin
 		// originals ARE detected.
 		wantDetected bool
@@ -35,7 +35,7 @@ func TestAdversarial_UnicodeConfusable(t *testing.T) {
 			name:         "python: Cyrillic а in eval not detected (correct — runtime rejects)",
 			code:         "ev\u0430l(\"1+1\")", // Cyrillic а
 			language:     "python",
-			wantDetected: false, // regex won't match, sandbox runtime rejects invalid identifier
+			wantDetected: false, // regex won't match, execution runtime rejects invalid identifier
 		},
 		{
 			name:         "js: Latin eval detected",

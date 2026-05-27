@@ -1,7 +1,7 @@
 // Package codeexec provides the code-execution transport adapter for the
 // Fulcrum Boundary. It governs agents that generate and execute
-// code in sandboxed environments by analysing source text for risky operations
-// and mapping them to governance actions.
+// code through configured execution boundaries by analysing source text for
+// risky operations and mapping them to governance actions.
 package codeexec
 
 // Operation describes a single risky operation detected in source code.
