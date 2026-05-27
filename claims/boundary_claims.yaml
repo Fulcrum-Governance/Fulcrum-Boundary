@@ -431,3 +431,27 @@ claims:
         - "signed receipt by default"
     gaps: []
     depends_on: []
+
+  - id: BND-CLAIM-CMD-001
+    claim: "Boundary defines a preview Command Boundary design for project-local command governance"
+    status: planned
+    evidence:
+      tests: []
+      docs:
+        - path: docs/command-boundary/DESIGN.md
+          section: "Purpose"
+        - path: docs/command-boundary/PREVIEW_CLAIMS.md
+          section: "Planned Claim"
+    public_language:
+      allowed:
+        - "Boundary can govern project-local command paths when commands route through boundary command run, boundary shell, or project-local shims."
+        - "Command Boundary is a preview design for project-local command governance."
+      forbidden:
+        - "Boundary controls your shell"
+        - "Boundary protects all CLI activity"
+        - "Boundary prevents every overeager agent action"
+        - "Boundary protects direct shell access"
+        - "Boundary provides production command governance"
+        - "Boundary provides shell sandboxing"
+    gaps: []
+    depends_on: []
