@@ -72,6 +72,34 @@ See [docs/firewall/DASHBOARD.md](./docs/firewall/DASHBOARD.md). The dashboard
 reads local files only; it is not hosted monitoring and does not protect MCP
 servers by itself.
 
+## Firewall + Secure GitHub Demo Quick Start
+
+The launch demo starts with a poisoned GitHub issue fixture and ends with a
+private-repo mutation denied before any upstream GitHub call:
+
+```bash
+tmp=$(mktemp -d)
+cp docs/firewall/fixtures/claude_desktop_config.json "$tmp/mcp.json"
+
+boundary inventory --config "$tmp/mcp.json" --format markdown
+boundary graph --config "$tmp/mcp.json" --format mermaid
+boundary policy generate --out "$tmp/boundary-firewall-policies"
+boundary verify --policies "$tmp/boundary-firewall-policies"
+
+boundary secure github setup --out "$tmp/secure-github"
+boundary secure github serve --fixture --dry-run
+boundary redteam --pack github-lethal-trifecta
+boundary dashboard --format html --out "$tmp/dashboard.html" \
+  --config "$tmp/mcp.json" \
+  --policies "$tmp/boundary-firewall-policies"
+```
+
+The Secure GitHub path is preview and fixture-backed. It proves the tested
+write-after-taint denial path only; live GitHub App conformance and deployment
+bypass proof are required before production status. See
+[docs/DEMO_SCRIPT.md](./docs/DEMO_SCRIPT.md) and
+[docs/YC_DEMO_NARRATIVE.md](./docs/YC_DEMO_NARRATIVE.md).
+
 ## Library Quick Start
 
 ```go
