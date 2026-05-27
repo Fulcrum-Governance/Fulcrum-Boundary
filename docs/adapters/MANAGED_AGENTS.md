@@ -1,9 +1,9 @@
 # Managed Agents Adapter
 
-The Managed Agents adapter governs Anthropic Managed Agents sessions in proxy
-mode. Customer applications call Boundary, Boundary opens or streams the
-upstream session, and Boundary resolves tool-confirmation pauses before they
-reach the privileged tool path.
+The Managed Agents adapter is preview until a live upstream conformance run is
+recorded with operator-owned credentials. In proxy mode, customer applications
+call Boundary, Boundary opens or streams the upstream session, and Boundary
+resolves tool-confirmation pauses before they reach the privileged tool path.
 
 ## Protocol Mapping
 
@@ -52,6 +52,13 @@ tool confirmations upstream.
 
 See
 [`docs/deployment/managed-agents-bypass-proofing.md`](../deployment/managed-agents-bypass-proofing.md).
+
+## Live Conformance
+
+The live conformance harness and post-run promotion checklist are documented in
+[`MANAGED_AGENTS_CONFORMANCE.md`](./MANAGED_AGENTS_CONFORMANCE.md). The harness
+skips cleanly without credentials and validates sanitized transcript evidence
+when `BOUNDARY_MA_CONFORMANCE=true` is set.
 
 ## Limitations
 

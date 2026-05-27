@@ -21,6 +21,12 @@ coverage.html
 /bin/
 /dist/
 
+# Managed Agents conformance transcripts
+tests/conformance/managed_agents/transcript/*.raw
+tests/conformance/managed_agents/transcript/*.secret*
+tests/conformance/managed_agents/transcript/*unsanitized*
+tests/conformance/managed_agents/transcript/*.log
+
 # Compiled example binaries (keep source, ignore build output).
 /examples/simple/simple
 /examples/mcp-proxy/mcp-proxy
