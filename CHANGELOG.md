@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Boundary claims ledger with a machine-readable release truth gate.
 - Adapter readiness declarations and reusable lifecycle conformance tests.
+- Release truth reconciliation report tying claims, adapter maturity, changelog, README, and launch truth freeze to current repo evidence.
 - Adapter readiness matrix and release checklist linking claims and readiness gates.
 - Production MCP JSON-RPC proxy path with governed forwarding, response metadata, tools/list filtering, batch handling, and lifecycle tests.
 - Preview Managed Agents adapter with policy-driven tool confirmations, per-thread budget and trust tracking, and credential-bound bypass proofing docs.
