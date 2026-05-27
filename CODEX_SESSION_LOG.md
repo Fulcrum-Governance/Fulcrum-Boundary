@@ -1,5 +1,35 @@
 # CODEX Session Log
 
+## 2026-05-27 - Release Demo And YC Surface
+
+### Context
+
+- Parent goal: Firewall + Secure GitHub MCP release train.
+- Subgoal: `Subgoal 9 - Release Demo And YC Surface`.
+- Branch: `codex/2026-05-27-yc-demo-surface`
+- Scope: launch/demo documentation and README quickstart only; no product behavior changes.
+
+### What changed
+
+- Added `docs/DEMO_SCRIPT.md` for the poisoned GitHub issue to private-repo mutation fixture demo.
+- Added `docs/YC_DEMO_NARRATIVE.md` with claim-safe YC copy and evidence links.
+- Added `docs/LAUNCH_README.md` with the local launch flow and verification checklist.
+- Added `docs/SCREENSHOT_SCRIPT.md` for real local screenshots only.
+- Updated README with a Firewall + Secure GitHub demo quickstart.
+- Updated the changelog with the launch documentation surface.
+
+### Verification
+
+- `go test ./claims/... -count=1`: pass
+- `go test ./... -short -count=1 -timeout 5m`: pass
+- `git diff --check`: pass
+- Public-language scan for forbidden overclaim phrases in the new docs: no new matches outside the claims authority files.
+- Launch command smoke with a freshly built local `boundary` binary: inventory, graph, policy generate, policy verify, Secure GitHub setup, Secure GitHub dry-run, redteam fixture, and dashboard HTML generation all passed.
+
+### Notes For Next Step
+
+- After verification and merge, start Subgoal 10 final Firewall + Secure GitHub truth reconciliation from clean `main`.
+
 ## 2026-05-27 - Firewall Dashboard And Local Demo Visibility
 
 ### Context
