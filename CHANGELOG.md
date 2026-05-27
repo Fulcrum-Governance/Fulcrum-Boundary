@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - MCP Firewall `boundary inventory --format ndjson` record stream with a versioned JSON schema for tool-ingestible discovery output.
 - MCP Firewall `boundary inventory ingest` command for Boundary, generic, and external MCP inventory NDJSON mapping.
 - MCP Firewall GitHub Action for repo-local MCP config audits with Markdown summaries and optional SARIF output.
+- MkDocs Material docs-site skeleton with GitHub Pages workflow and strict docs build target.
 - Install and release workflow polish with `make selftest`, `make demo-github`, `make release-check`, and `docs/INSTALL.md`.
 - Final public release truth report covering README first-run status, claims, feature status, adapter/profile maturity, install status, external inventory ingest, and forbidden release language.
 - MCP Firewall `boundary dashboard` command with local-only text, JSON, HTML, and loopback server views over inventory, risk paths, policies, install receipts, descriptor locks, and local decision-record files.

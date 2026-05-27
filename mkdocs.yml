@@ -1,0 +1,43 @@
+site_name: Fulcrum Boundary
+site_description: The action boundary for MCP-native agents.
+repo_url: https://github.com/Fulcrum-Governance/Fulcrum-Boundary
+repo_name: Fulcrum-Governance/Fulcrum-Boundary
+docs_dir: docs-site
+site_dir: site
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.instant
+    - navigation.top
+    - content.code.copy
+    - content.tabs.link
+    - toc.follow
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - tables
+  - toc:
+      permalink: true
+nav:
+  - Home: index.md
+  - Quickstart: quickstart.md
+  - Demo: demo.md
+  - Concepts:
+      - Action Boundary: concepts/action-boundary.md
+  - MCP Firewall:
+      - Overview: firewall/index.md
+      - Inventory: firewall/inventory.md
+      - Risk Graph: firewall/risk-graph.md
+      - External Ingest: firewall/external-ingest.md
+  - Secure MCP:
+      - Overview: secure-mcp/index.md
+      - Secure GitHub: secure-mcp/github.md
+  - Reference:
+      - CLI: reference/cli.md
+      - Claims: reference/claims.md

@@ -1,4 +1,4 @@
-.PHONY: build demo test selftest demo-github release-check
+.PHONY: build demo test selftest demo-github release-check docs-build
 
 COMPOSE := docker compose -f examples/mcp-postgres-gateway/docker-compose.yml
 BOUNDARY_DEMO_PORT ?= 18080
@@ -26,3 +26,6 @@ demo-github:
 
 release-check:
 	./scripts/release-check.sh
+
+docs-build:
+	./scripts/docs-build.sh
