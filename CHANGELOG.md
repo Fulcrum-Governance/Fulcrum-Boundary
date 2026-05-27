@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Preview A2A governed lifecycle adapter with protocol snapshot, denial shaping, governed forwarding, response inspection, governance metadata, and fail-closed handling for malformed or unsupported mandatory fields.
 - Preview CLI governed command execution lifecycle with deny-before-execute behavior, `os/exec` forwarding, decision records, metadata, and direct-shell bypass limitation coverage.
 - Preview CodeExec governed execution lifecycle with policy-gated forwarding, explicit execution-boundary metadata, sandbox-policy denials, output inspection, and direct-execution bypass limitation coverage.
+- Preview gRPC unary lifecycle with governance response trailers, best-effort response inspection, fail-closed interceptor behavior, and explicit streaming limitations.
 - Policy schema v1 validation, richer PolicyEval request projection, and a Postgres AST guard with a 30+ case evasion corpus.
 - Standalone trust integration with adaptive termination, trust transition audit events, and `boundary trust show`.
 - Standalone and kernel integration contracts with runtime config validation and proof-correspondence documentation.

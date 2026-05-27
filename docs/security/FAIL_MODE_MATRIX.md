@@ -81,11 +81,11 @@ Seven fault classes × seven transports. Each cell is one of:
 |---|---|---|---|---|---|---|---|
 | Trust store unreachable | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` |
 | Agent ISOLATED or TERMINATED | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` |
-| Adapter parse failure | JSON-RPC error `adapters/mcp/gateway.go` or ERR→caller from raw adapter use | ERR→caller `adapters/cli/adapter.go` | ERR→caller `adapters/codeexec/adapter.go` | `codes.Internal` `adapters/grpc/adapter.go` | ERR→caller or deny confirmation from proxy resolver `adapters/managedagents` | ERR→caller `adapters/a2a/adapter.go` | HTTP 400 `adapters/webhook/adapter.go` |
+| Adapter parse failure | JSON-RPC error `adapters/mcp/gateway.go` or ERR→caller from raw adapter use | ERR→caller `adapters/cli/adapter.go` | ERR→caller `adapters/codeexec/adapter.go` | `codes.InvalidArgument` with deny trailers `adapters/grpc/adapter.go` | ERR→caller or deny confirmation from proxy resolver `adapters/managedagents` | ERR→caller `adapters/a2a/adapter.go` | HTTP 400 `adapters/webhook/adapter.go` |
 | Interceptor error | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` |
 | PolicyEval error (transport in `FailClosedTransports`) | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` |
 | PolicyEval error (transport NOT in `FailClosedTransports`) | ALLOW `pipeline.go` | ALLOW `pipeline.go` | ALLOW `pipeline.go` | ALLOW `pipeline.go` | ALLOW `pipeline.go` | ALLOW `pipeline.go` | ALLOW `pipeline.go` |
-| Downstream tool error (5xx / non-zero exit) | PASS through governed proxy response inspection `adapters/mcp/forwarder.go` | PASS `adapters/cli/adapter.go` | PASS `adapters/codeexec/adapter.go` | PASS `adapters/grpc/adapter.go` | PASS through proxied session stream with response inspection `adapters/managedagents/response_inspector.go` | PASS `adapters/a2a/adapter.go` | PASS `adapters/webhook/adapter.go` |
+| Downstream tool error (5xx / non-zero exit) | PASS through governed proxy response inspection `adapters/mcp/forwarder.go` | PASS `adapters/cli/adapter.go` | PASS `adapters/codeexec/adapter.go` | PASS handler error after allow decision, with governance trailers where the server context permits `adapters/grpc/adapter.go` | PASS through proxied session stream with response inspection `adapters/managedagents/response_inspector.go` | PASS `adapters/a2a/adapter.go` | PASS `adapters/webhook/adapter.go` |
 
 **Notes on the matrix:**
 
@@ -191,7 +191,7 @@ new tests are implemented by this PRD — this is a plan.
 | FI-013 | MCP adapter parse failure | MCP | `adapter.ParseRequest(ctx, 42)` (unsupported raw type) | error: `unsupported raw type int for MCP adapter` | Existing: `adapters/mcp/adapter_test.go` |
 | FI-014 | CLI adapter parse failure | CLI | empty `Command` field | error: `empty command` | Existing: `adapters/cli/adapter_test.go` |
 | FI-015 | CodeExec adapter parse failure | CodeExec | missing `Code` or `Language` field | error: `code field is required` / `language field is required` | Existing: `adapters/codeexec/adapter_test.go` |
-| FI-016 | gRPC adapter parse failure | gRPC | `CallInfo.Method == ""` | error: `Method is required`; interceptor maps to `codes.Internal` | Existing: `adapters/grpc/adapter_test.go` |
+| FI-016 | gRPC adapter parse failure | gRPC | `CallInfo.Method == ""` | error: `Method is required`; interceptor maps to `codes.InvalidArgument` with deny trailers | Existing: `adapters/grpc/adapter_test.go` |
 | FI-017 | A2A adapter parse failure | A2A | `TaskMessage.Action == ""` | error: `Action is required` | Existing: `adapters/a2a/adapter_test.go` |
 | FI-018 | Webhook adapter parse failure | Webhook | POST `{}` to `Handler` | HTTP 400 with JSON `{"error":"..."}` | Existing: `adapters/webhook/adapter_test.go` (spot check) |
 | FI-019 | Interceptor error | MCP | interceptor returns `(nil, errors.New("crashed"))` | DENY, reason contains `interceptor error` | Existing: `TestPipeline_InterceptorError` (`governance/pipeline_test.go:221-235`) |
@@ -203,7 +203,7 @@ new tests are implemented by this PRD — this is a plan.
 | FI-025 | PolicyEval error (fail-closed) | MCP | stub evaluator returns error; `FailClosedTransports = [TransportMCP]` | DENY, reason contains `policy evaluation failed (fail-closed)` | Existing: resolved in PRD-004R Phase 2 — see §6. Covered by `TestPipeline_EvaluatorError_FailClosedTransport_Denies` (`governance/pipeline_evaluator_test.go`). |
 | FI-026 | PolicyEval error (fail-closed) | CLI | same as FI-025 with `FailClosedTransports = [TransportCLI]` | DENY | Existing: resolved in PRD-004R Phase 2 — see §6. Same `TestPipeline_EvaluatorError_FailClosedTransport_Denies` exercises the per-transport behavior. |
 | FI-027 | PolicyEval error (fail-closed) | CodeExec | same with `FailClosedTransports = [TransportCodeExec]` | DENY | Existing: resolved in PRD-004R Phase 2 — see §6. |
-| FI-028 | PolicyEval error (fail-closed) | gRPC | same with `FailClosedTransports = [TransportGRPC]` | DENY | Existing: resolved in PRD-004R Phase 2 — see §6. |
+| FI-028 | PolicyEval error (fail-closed) | gRPC | same with `FailClosedTransports = [TransportGRPC]` | DENY before handler, with governance trailers | Existing: resolved in PRD-004R Phase 2; adapter path covered by `adapters/grpc/adapter_test.go`. |
 | FI-029 | PolicyEval error (fail-closed) | A2A | same with `FailClosedTransports = [TransportA2A]` | DENY | Existing: resolved in PRD-004R Phase 2 — see §6. |
 | FI-030 | PolicyEval error (fail-closed) | Webhook | same with `FailClosedTransports = [TransportWebhook]` | DENY | Existing: resolved in PRD-004R Phase 2 — see §6. |
 | FI-031 | PolicyEval error (fail-open) | any | stub evaluator returns error; transport NOT in `FailClosedTransports` | ALLOW (pre-existing default), no reason overwrite | Existing: resolved in PRD-004R Phase 2 — see §6. Covered by `TestPipeline_EvaluatorError_FailOpenTransport_Allows` (`governance/pipeline_evaluator_test.go`). |
