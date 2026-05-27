@@ -26,6 +26,29 @@ type WebhookPayload struct {
 	TraceID   string         `json:"trace_id,omitempty"`
 }
 
+type Mode string
+
+const (
+	ModeExecution     Mode = "execution"
+	ModeInformational Mode = "informational"
+)
+
+// HandlerConfig selects whether a webhook endpoint is an execution gate or an
+// informational audit sink.
+type HandlerConfig struct {
+	Mode       Mode
+	ForwardURL string
+	Client     *http.Client
+}
+
+// Result is the JSON envelope returned by mode-aware webhook handlers.
+type Result struct {
+	Mode     Mode                           `json:"mode"`
+	CanDeny  bool                           `json:"can_deny"`
+	Control  string                         `json:"control"`
+	Decision *governance.GovernanceDecision `json:"decision,omitempty"`
+}
+
 // Adapter implements governance.TransportAdapter for webhook payloads.
 type Adapter struct {
 	// DefaultTenantID is applied when the payload does not specify one.
@@ -112,12 +135,13 @@ func (a *Adapter) EmitGovernanceMetadata(_ context.Context, _ *governance.ToolRe
 	return nil
 }
 
-// Handler returns an http.HandlerFunc that runs the governance pipeline
-// on incoming webhook payloads.
+// Handler returns an execution-mode http.HandlerFunc that runs the governance
+// pipeline on incoming webhook payloads. It is retained for compatibility;
+// new endpoints should prefer HandlerWithConfig so the mode is explicit.
 //
 // Behavior:
 //   - Parse error → 400 Bad Request with JSON error body.
-//   - Pipeline error → 500 Internal Server Error.
+//   - Pipeline error → fail closed; the payload is not forwarded.
 //   - Decision is not allowed → 403 Forbidden with the decision JSON.
 //   - Decision is allowed and forwardURL == "" → 200 OK with the decision JSON.
 //   - Decision is allowed and forwardURL != "" → POST the original payload
@@ -126,8 +150,24 @@ func (a *Adapter) EmitGovernanceMetadata(_ context.Context, _ *governance.ToolRe
 // Governance headers (X-Governance-Action, X-Governance-Reason,
 // X-Governance-Envelope-ID) are added to every response.
 func Handler(pipeline *governance.Pipeline, forwardURL string) http.HandlerFunc {
+	return HandlerWithConfig(pipeline, HandlerConfig{
+		Mode:       ModeExecution,
+		ForwardURL: forwardURL,
+	})
+}
+
+// HandlerWithConfig returns an http.HandlerFunc for either informational or
+// execution webhook mode.
+//
+// Informational mode records the governance verdict for an action that already
+// happened. It never forwards, never returns 403, and must not be described as
+// pre-execution denial.
+//
+// Execution mode treats Boundary as a pre-execution approval gate. Denied
+// requests and governance failures are not forwarded.
+func HandlerWithConfig(pipeline *governance.Pipeline, cfg HandlerConfig) http.HandlerFunc {
 	adapter := NewAdapter("")
-	client := &http.Client{}
+	cfg = normalizeConfig(cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -141,31 +181,55 @@ func Handler(pipeline *governance.Pipeline, forwardURL string) http.HandlerFunc 
 			writeJSONError(w, http.StatusBadRequest, err.Error())
 			return
 		}
+		writeModeHeaders(w, cfg.Mode)
+
+		if pipeline == nil {
+			if cfg.Mode == ModeInformational {
+				writeJSONError(w, http.StatusInternalServerError, "governance: pipeline is required")
+				return
+			}
+			writeJSONError(w, http.StatusServiceUnavailable, "governance: pipeline is required; execution webhook not forwarded")
+			return
+		}
 
 		decision, err := pipeline.Evaluate(r.Context(), req)
 		if err != nil {
-			writeJSONError(w, http.StatusInternalServerError, "governance: "+err.Error())
+			if cfg.Mode == ModeInformational {
+				writeJSONError(w, http.StatusInternalServerError, "governance: "+err.Error())
+				return
+			}
+			writeJSONError(w, http.StatusServiceUnavailable, "governance: "+err.Error()+"; execution webhook not forwarded")
 			return
 		}
 
 		writeGovernanceHeaders(w, decision)
+		if cfg.Mode == ModeInformational {
+			writeJSON(w, http.StatusOK, Result{
+				Mode:     ModeInformational,
+				CanDeny:  false,
+				Control:  "post_execution_audit_only",
+				Decision: decision,
+			})
+			return
+		}
+
 		if !decision.Allowed() {
 			writeJSON(w, http.StatusForbidden, decision)
 			return
 		}
 
-		if forwardURL == "" {
+		if cfg.ForwardURL == "" {
 			writeJSON(w, http.StatusOK, decision)
 			return
 		}
 
-		fwd, err := http.NewRequestWithContext(r.Context(), http.MethodPost, forwardURL, bytes.NewReader(body))
+		fwd, err := http.NewRequestWithContext(r.Context(), http.MethodPost, cfg.ForwardURL, bytes.NewReader(body))
 		if err != nil {
 			writeJSONError(w, http.StatusInternalServerError, "build forward request: "+err.Error())
 			return
 		}
 		fwd.Header.Set("Content-Type", "application/json")
-		resp, err := client.Do(fwd)
+		resp, err := cfg.Client.Do(fwd)
 		if err != nil {
 			writeJSONError(w, http.StatusBadGateway, "forward: "+err.Error())
 			return
@@ -174,6 +238,21 @@ func Handler(pipeline *governance.Pipeline, forwardURL string) http.HandlerFunc 
 		w.WriteHeader(resp.StatusCode)
 		_, _ = io.Copy(w, resp.Body)
 	}
+}
+
+func normalizeConfig(cfg HandlerConfig) HandlerConfig {
+	if cfg.Mode != ModeInformational && cfg.Mode != ModeExecution {
+		cfg.Mode = ModeExecution
+	}
+	if cfg.Client == nil {
+		cfg.Client = &http.Client{}
+	}
+	return cfg
+}
+
+func writeModeHeaders(w http.ResponseWriter, mode Mode) {
+	w.Header().Set("X-Governance-Webhook-Mode", string(mode))
+	w.Header().Set("X-Governance-Can-Deny", fmt.Sprintf("%t", mode == ModeExecution))
 }
 
 func writeGovernanceHeaders(w http.ResponseWriter, d *governance.GovernanceDecision) {

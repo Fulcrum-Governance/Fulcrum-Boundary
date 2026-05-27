@@ -44,7 +44,7 @@ Step states are `implemented`, `delegated`, `not_applicable`, or `stub`.
 | codeexec | preview | preview | implemented | implemented | delegated | implemented | implemented | implemented | implemented | delegated | delegated | implemented | BND-CODE-001: production requires a real named sandbox boundary with integration tests and bypass proof. |
 | grpc | preview | preview | implemented | implemented | implemented | implemented | delegated | implemented | implemented | delegated | delegated | implemented | BND-GRPC-001: production requires deployment bypass evidence; streaming workloads require per-message governance lifecycle tests. |
 | managedagents | preview | production | implemented | implemented | implemented | implemented | implemented | implemented | implemented | delegated | delegated | implemented | BND-MAPROD-001: live upstream Managed Agents conformance run with operator-owned credentials. |
-| webhook | preview | preview | implemented | implemented | implemented | implemented | delegated | implemented | delegated | delegated | stub | delegated | BND-WEB-001: explicit mode split between informational and execution forwarding. |
+| webhook | preview | preview | implemented | implemented | implemented | implemented | delegated | implemented | delegated | delegated | delegated | implemented | BND-WEB-001: production requires deployment evidence that execution webhooks are the sole downstream action path; informational webhooks remain post-execution audit only. |
 | a2a | preview | preview | implemented | implemented | delegated | implemented | implemented | implemented | implemented | delegated | delegated | implemented | BND-A2A-002: live protocol conformance and deployment bypass evidence before production. |
 
 MCP is the first production adapter. Managed Agents now has a preview proxy
@@ -53,5 +53,7 @@ snapshot. CodeExec now has a preview governed lifecycle, but remains below
 production until a real named sandbox boundary is tested and documented. gRPC
 now has a preview unary lifecycle with governance trailers and response
 inspection; streaming workloads remain below production until per-message
-governance is implemented and tested. Other adapters remain below production
-until an adapter-specific spec proves their full lifecycle.
+governance is implemented and tested. Webhook now separates informational
+post-execution audit mode from execution pre-approval mode, but remains below
+production until deployment bypass evidence exists. Other adapters remain below
+production until an adapter-specific spec proves their full lifecycle.
