@@ -46,7 +46,7 @@ claims:
     depends_on: []
 
   - id: BND-CLAIM-003
-    claim: "Boundary ships one production MCP adapter and six lower-maturity transport adapter packages"
+    claim: "Boundary ships one production MCP adapter and six preview adapter packages with lifecycle maturity tracked per adapter"
     status: partial
     evidence:
       tests:

@@ -319,7 +319,7 @@ reputation; and the formal core publishes machine-checkable proof artifacts.
 | Repo | Role | License |
 |------|------|---------|
 | [`fulcrum-io`](https://github.com/Fulcrum-Governance/fulcrum-io) | Runtime control plane: policy engine, envelope, Foundry, MCP proxy, dashboard | BSL 1.1 |
-| **`Boundary`** (this repo) | Out-of-process action boundary: transport adapters, 4-stage pipeline, MCP Safety Gateway | Apache 2.0 |
+| [`Fulcrum-Boundary`](https://github.com/Fulcrum-Governance/Fulcrum-Boundary) | Out-of-process action boundary: transport adapters, 4-stage pipeline, MCP Safety Gateway | Apache 2.0 |
 | [`fulcrum-trust`](https://github.com/Fulcrum-Governance/fulcrum-trust) | Trust engine: Beta(α,β) evaluator, circuit breaker, LangGraph adapter | Apache 2.0 |
 | [`Fulcrum-Proofs`](https://github.com/Fulcrum-Governance/Fulcrum-Proofs) | Formal core: Lean 4 proofs, claim ledger, theorem inventory | MIT |
 
