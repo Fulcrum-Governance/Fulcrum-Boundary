@@ -1,11 +1,11 @@
-module github.com/fulcrum-governance/boundary/examples/redis-trust
+module github.com/fulcrum-governance/fulcrum-boundary/examples/redis-trust
 
 go 1.23.0
 
-replace github.com/fulcrum-governance/boundary => ../../
+replace github.com/fulcrum-governance/fulcrum-boundary => ../../
 
 require (
-	github.com/fulcrum-governance/boundary v0.0.0
+	github.com/fulcrum-governance/fulcrum-boundary v0.0.0
 	github.com/redis/go-redis/v9 v9.7.3
 )
 

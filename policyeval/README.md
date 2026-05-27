@@ -112,7 +112,7 @@ import (
     "context"
     "log"
 
-    "github.com/fulcrum-governance/boundary/policyeval"
+    "github.com/fulcrum-governance/fulcrum-boundary/policyeval"
 )
 
 func main() {

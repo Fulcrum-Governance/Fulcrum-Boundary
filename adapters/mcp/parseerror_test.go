@@ -6,7 +6,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/fulcrum-governance/boundary/governance"
+	"github.com/fulcrum-governance/fulcrum-boundary/governance"
 )
 
 // TestParseRequest_UnsupportedRawType_ReturnsParseError pins the typed error

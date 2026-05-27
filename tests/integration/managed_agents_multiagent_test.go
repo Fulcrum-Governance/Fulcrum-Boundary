@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/fulcrum-governance/boundary/adapters/managedagents"
-	"github.com/fulcrum-governance/boundary/governance"
+	"github.com/fulcrum-governance/fulcrum-boundary/adapters/managedagents"
+	"github.com/fulcrum-governance/fulcrum-boundary/governance"
 )
 
 func TestManagedAgentsTracksThreadBudgetsAndTrust(t *testing.T) {

@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/fulcrum-governance/boundary/policyeval"
+	"github.com/fulcrum-governance/fulcrum-boundary/policyeval"
 )
 
 // DefaultFailClosedTransports enumerates the transports that fail-closed on

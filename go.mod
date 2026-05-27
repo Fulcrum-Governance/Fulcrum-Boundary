@@ -1,4 +1,4 @@
-module github.com/fulcrum-governance/boundary
+module github.com/fulcrum-governance/fulcrum-boundary
 
 go 1.23.0
 

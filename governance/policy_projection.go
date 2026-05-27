@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/fulcrum-governance/boundary/policyeval"
+	"github.com/fulcrum-governance/fulcrum-boundary/policyeval"
 )
 
 // ProjectPolicyEvalRequest turns the canonical GovernanceRequest into the

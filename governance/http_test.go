@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/fulcrum-governance/boundary/policyeval"
+	"github.com/fulcrum-governance/fulcrum-boundary/policyeval"
 )
 
 func TestMiddleware_DenyReturns403WithJSON(t *testing.T) {

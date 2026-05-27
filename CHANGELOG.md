@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- Renamed repo and module path from `boundary` to `fulcrum-boundary` for naming consistency across the Fulcrum repo family.
 - README transport adapter documentation now separates production, preview, and experimental maturity.
 
 ## [0.2.0] - 2026-05-26
@@ -39,7 +40,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
-- Renamed the OSS project and module path to Fulcrum Boundary at `github.com/fulcrum-governance/boundary`.
+- Renamed the OSS project and module path to Fulcrum Boundary at `github.com/fulcrum-governance/fulcrum-boundary`.
 - Extracted `PolicyEvaluator` as a named interface with explicit error-path tests.
 - Aligned public docs around the pre-execution action-boundary framing.
 - Added README cross-links, `CITATION.cff`, and `CODE_OF_CONDUCT.md` for the Fulcrum public-surface standard.
@@ -62,6 +63,6 @@ Initial public release of the project now known as Fulcrum Boundary.
 
 ---
 
-[Unreleased]: https://github.com/Fulcrum-Governance/Boundary/compare/v0.2.0...HEAD
-[0.2.0]: https://github.com/Fulcrum-Governance/Boundary/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/Fulcrum-Governance/Boundary/releases/tag/v0.1.0
+[Unreleased]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/releases/tag/v0.1.0

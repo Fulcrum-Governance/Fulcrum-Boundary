@@ -21,9 +21,9 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 
-	"github.com/fulcrum-governance/boundary/adapters/mcp"
-	"github.com/fulcrum-governance/boundary/governance"
-	sqlguard "github.com/fulcrum-governance/boundary/interceptors/sql"
+	"github.com/fulcrum-governance/fulcrum-boundary/adapters/mcp"
+	"github.com/fulcrum-governance/fulcrum-boundary/governance"
+	sqlguard "github.com/fulcrum-governance/fulcrum-boundary/interceptors/sql"
 )
 
 var Version = "0.2.0-dev"

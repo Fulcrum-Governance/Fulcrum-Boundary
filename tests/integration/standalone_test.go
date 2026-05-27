@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/fulcrum-governance/boundary/governance"
-	"github.com/fulcrum-governance/boundary/governance/standalone"
+	"github.com/fulcrum-governance/fulcrum-boundary/governance"
+	"github.com/fulcrum-governance/fulcrum-boundary/governance/standalone"
 	"github.com/stretchr/testify/require"
 )
 

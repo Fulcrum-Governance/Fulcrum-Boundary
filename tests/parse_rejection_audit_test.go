@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fulcrum-governance/boundary/adapters/mcp"
-	"github.com/fulcrum-governance/boundary/governance"
+	"github.com/fulcrum-governance/fulcrum-boundary/adapters/mcp"
+	"github.com/fulcrum-governance/fulcrum-boundary/governance"
 )
 
 type captureAuditPublisher struct {

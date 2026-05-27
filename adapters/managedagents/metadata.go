@@ -1,6 +1,6 @@
 package managedagents
 
-import "github.com/fulcrum-governance/boundary/governance"
+import "github.com/fulcrum-governance/fulcrum-boundary/governance"
 
 // Metadata is attached to proxied session events and upstream confirmations.
 type Metadata struct {

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/fulcrum-governance/boundary/governance"
+	"github.com/fulcrum-governance/fulcrum-boundary/governance"
 )
 
 // ToolResolver evaluates always_ask tool events and emits the corresponding

@@ -11,7 +11,7 @@
 
 ### Preflight
 
-- Confirmed work in Boundary repo: `/Users/td/ConceptDev/Projects/Boundary`
+- Confirmed work in Boundary repo: `/Users/td/ConceptDev/Projects/Fulcrum-Boundary`
 - Confirmed branch: `codex/2026-05-26-boundary-phase1-foundation`
 - Confirmed working tree was clean before Phase 1 edits.
 - Re-read the active spec plus the current release truth and adapter contract docs:
@@ -60,7 +60,7 @@
 
 ### Context
 
-- Phase: `Phase 2 — governance-interception-layer proof/citation cleanup`
+- Phase: `Phase 2 — Fulcrum-Boundary proof/citation cleanup`
 - Branch: `fix/gil-phase2-proof-citation-cleanup-2026-05-06`
 - Upstream sequencing: `Fulcrum-Proofs` PR #20 and PR #21 merged; `fulcrum-trust` Phase 2 framing lane merged; this GIL lane is next in the approved order.
 
@@ -223,7 +223,7 @@
 ### Context
 
 - Branch: `gate1/mcp-safety-gateway` from clean `main` at `6e9a330`.
-- Project identity: Fulcrum Boundary, module `github.com/fulcrum-governance/boundary`.
+- Project identity: Fulcrum Boundary, module `github.com/fulcrum-governance/fulcrum-boundary`.
 - Scope: Gate 1 proof of control only. No trust integration, receipt verification, benchmarks, or compliance docs.
 
 ### Built
@@ -286,7 +286,7 @@
 
 ### Notes
 
-- GitHub license detection via `gh repo view --json licenseInfo` returned `null`, but `gh api repos/Fulcrum-Governance/Boundary/license` detects Apache-2.0 correctly and the repository has a visible Apache 2.0 `LICENSE` file.
+- GitHub license detection via `gh repo view --json licenseInfo` returned `null`, but `gh api repos/Fulcrum-Governance/Fulcrum-Boundary/license` detects Apache-2.0 correctly and the repository has a visible Apache 2.0 `LICENSE` file.
 - Local `gosec` reported zero issues after the YAML loader hardening but emitted SSA/toolchain errors against local Go 1.26/nested-module dependencies; GitHub Actions remains the authoritative security-scan check after push.
 
 ## 2026-05-26 — Spec 3 MCP Production Adapter

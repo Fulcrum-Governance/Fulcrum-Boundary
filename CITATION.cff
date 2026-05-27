@@ -1,17 +1,16 @@
 cff-version: 1.2.0
-message: "If you use GIL, please cite the software."
+message: "If you use Fulcrum Boundary, please cite the software."
 type: software
-title: "Governance Interception Layer (GIL)"
-version: "0.1.0"
-date-released: "2026-04-15"
+title: "Fulcrum Boundary"
+version: "0.2.0"
+date-released: "2026-05-26"
 license: "Apache-2.0"
-repository-code: "https://github.com/Fulcrum-Governance/governance-interception-layer"
-url: "https://github.com/Fulcrum-Governance/governance-interception-layer"
+repository-code: "https://github.com/Fulcrum-Governance/Fulcrum-Boundary"
+url: "https://github.com/Fulcrum-Governance/Fulcrum-Boundary"
 authors:
   - family-names: Diefenbach
     given-names: Anthony
 abstract: >-
-  Governance Interception Layer (GIL) is the open-source enforcement boundary
-  for the Fulcrum governance kernel. It provides transport adapters, a
-  fail-aware policy pipeline, and portable pre-execution control for AI agent
-  tool calls.
+  Fulcrum Boundary is the open-source enforcement boundary for the Fulcrum
+  governance kernel. It provides transport adapters, a fail-aware policy
+  pipeline, and portable pre-execution control for AI agent tool calls.

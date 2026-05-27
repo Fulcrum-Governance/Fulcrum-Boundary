@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/fulcrum-governance/boundary/governance"
+	"github.com/fulcrum-governance/fulcrum-boundary/governance"
 )
 
 // Inspector detects sensitive data in CLI input and output.

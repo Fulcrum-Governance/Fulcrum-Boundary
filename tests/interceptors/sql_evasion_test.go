@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	sqlguard "github.com/fulcrum-governance/boundary/interceptors/sql"
+	sqlguard "github.com/fulcrum-governance/fulcrum-boundary/interceptors/sql"
 	"gopkg.in/yaml.v3"
 )
 

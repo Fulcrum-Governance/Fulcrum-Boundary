@@ -21,7 +21,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/fulcrum-governance/boundary/governance"
+	"github.com/fulcrum-governance/fulcrum-boundary/governance"
 )
 
 // RedisTrustChecker reads agent trust state from Redis keys of the form

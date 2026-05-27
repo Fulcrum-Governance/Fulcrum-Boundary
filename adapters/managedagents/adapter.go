@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/fulcrum-governance/boundary/governance"
+	"github.com/fulcrum-governance/fulcrum-boundary/governance"
 )
 
 // Adapter implements governance.TransportAdapter for Managed Agents events.

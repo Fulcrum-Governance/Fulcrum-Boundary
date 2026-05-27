@@ -1,6 +1,6 @@
 package main
 
-import "github.com/fulcrum-governance/boundary/internal/boundarycli"
+import "github.com/fulcrum-governance/fulcrum-boundary/internal/boundarycli"
 
 type RuntimeConfig = boundarycli.RuntimeConfig
 

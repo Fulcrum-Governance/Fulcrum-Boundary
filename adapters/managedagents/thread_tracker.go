@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/fulcrum-governance/boundary/governance"
+	"github.com/fulcrum-governance/fulcrum-boundary/governance"
 )
 
 // ThreadState tracks the budget and trust state for a session thread.
