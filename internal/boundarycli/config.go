@@ -57,6 +57,7 @@ type SecurityConfig struct {
 }
 
 func LoadRuntimeConfig(path string) (*RuntimeConfig, error) {
+	// #nosec G304 -- config path is an explicit operator-selected CLI input.
 	body, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
