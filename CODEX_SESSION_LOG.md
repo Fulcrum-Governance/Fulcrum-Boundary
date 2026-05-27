@@ -1,5 +1,39 @@
 # CODEX Session Log
 
+## 2026-05-27 - Docs Site Skeleton
+
+### Context
+
+- Parent goal: Final public Boundary release polish.
+- Subgoal: `Subgoal 3 - Docs Site Skeleton With GitHub Pages`.
+- Branch: `codex/2026-05-27-docs-site-skeleton`
+- Scope: add a buildable Material for MkDocs skeleton and GitHub Pages workflow
+  without claiming the public docs site is live before workflow publication.
+
+### What changed
+
+- Added `mkdocs.yml` and a `docs-site/` page skeleton covering quickstart,
+  demo, action-boundary concepts, MCP Firewall, Secure GitHub, CLI reference,
+  and claims.
+- Added `scripts/docs-build.sh` and `make docs-build`.
+- Added `.github/workflows/docs.yml` for strict docs builds on PRs and
+  GitHub Pages deployment on `main` when repository Pages settings allow it.
+- Ignored local MkDocs build output at `/site/`.
+
+### Verification
+
+- `git diff --check`: pass.
+- `./scripts/assert-no-public-vendor-refs.sh`: pass.
+- `./scripts/docs-build.sh`: pass.
+- `make docs-build`: pass.
+- `go test ./claims/... -count=1`: pass.
+- `go test ./... -short -count=1 -timeout 5m`: pass.
+
+### Notes For Next Step
+
+- After this branch lands, start CLI help/reference/output polish from clean
+  `main`.
+
 ## 2026-05-27 - README Visual Polish
 
 ### Context
