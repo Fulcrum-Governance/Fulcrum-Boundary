@@ -153,6 +153,12 @@ func TestHandler_Denied_Returns403(t *testing.T) {
 	if !strings.Contains(w.Header().Get("X-Governance-Reason"), "blocked by test policy") {
 		t.Fatalf("missing reason header: %v", w.Header())
 	}
+	if got := w.Header().Get("X-Governance-Webhook-Mode"); got != string(ModeExecution) {
+		t.Fatalf("expected execution mode header, got %q", got)
+	}
+	if got := w.Header().Get("X-Governance-Can-Deny"); got != "true" {
+		t.Fatalf("expected can-deny header true, got %q", got)
+	}
 }
 
 func TestHandler_BadJSON_Returns400(t *testing.T) {
@@ -204,6 +210,102 @@ func TestHandler_ForwardURL_AllowsForward(t *testing.T) {
 	}
 	if got := w.Header().Get("X-Governance-Action"); got != "allow" {
 		t.Fatalf("expected allow header on forward path, got %q", got)
+	}
+}
+
+func TestHandlerWithConfig_Informational_DoesNotDenyOrForward(t *testing.T) {
+	forwarded := false
+	downstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		forwarded = true
+		w.WriteHeader(http.StatusAccepted)
+	}))
+	defer downstream.Close()
+
+	pipe := newPipeline(t, true, "drop_table")
+	h := HandlerWithConfig(pipe, HandlerConfig{
+		Mode:       ModeInformational,
+		ForwardURL: downstream.URL,
+	})
+
+	body, _ := json.Marshal(WebhookPayload{Tool: "drop_table", AgentID: "a", TenantID: "t"})
+	r := httptest.NewRequest(http.MethodPost, "/hook", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	h(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("informational mode must not deny; got %d body=%s", w.Code, w.Body.String())
+	}
+	if forwarded {
+		t.Fatal("informational mode must not forward to downstream action")
+	}
+	if got := w.Header().Get("X-Governance-Webhook-Mode"); got != string(ModeInformational) {
+		t.Fatalf("expected informational mode header, got %q", got)
+	}
+	if got := w.Header().Get("X-Governance-Can-Deny"); got != "false" {
+		t.Fatalf("expected can-deny header false, got %q", got)
+	}
+	var result Result
+	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+		t.Fatalf("decode result: %v", err)
+	}
+	if result.CanDeny {
+		t.Fatal("informational result must not claim can_deny")
+	}
+	if result.Decision == nil || result.Decision.Action != "deny" {
+		t.Fatalf("expected recorded deny verdict inside informational result: %+v", result.Decision)
+	}
+}
+
+func TestHandlerWithConfig_Execution_DeniedDoesNotForward(t *testing.T) {
+	forwarded := false
+	downstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		forwarded = true
+		w.WriteHeader(http.StatusAccepted)
+	}))
+	defer downstream.Close()
+
+	pipe := newPipeline(t, true, "drop_table")
+	h := HandlerWithConfig(pipe, HandlerConfig{
+		Mode:       ModeExecution,
+		ForwardURL: downstream.URL,
+	})
+
+	body, _ := json.Marshal(WebhookPayload{Tool: "drop_table", AgentID: "a", TenantID: "t"})
+	r := httptest.NewRequest(http.MethodPost, "/hook", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	h(w, r)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("execution mode should deny before forwarding; got %d body=%s", w.Code, w.Body.String())
+	}
+	if forwarded {
+		t.Fatal("execution mode denial must not forward")
+	}
+}
+
+func TestHandlerWithConfig_Execution_MissingPipelineDoesNotForward(t *testing.T) {
+	forwarded := false
+	downstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		forwarded = true
+		w.WriteHeader(http.StatusAccepted)
+	}))
+	defer downstream.Close()
+
+	h := HandlerWithConfig(nil, HandlerConfig{
+		Mode:       ModeExecution,
+		ForwardURL: downstream.URL,
+	})
+
+	body, _ := json.Marshal(WebhookPayload{Tool: "noop", AgentID: "a", TenantID: "t"})
+	r := httptest.NewRequest(http.MethodPost, "/hook", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	h(w, r)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("execution mode should fail closed without pipeline; got %d body=%s", w.Code, w.Body.String())
+	}
+	if forwarded {
+		t.Fatal("execution mode missing pipeline must not forward")
 	}
 }
 

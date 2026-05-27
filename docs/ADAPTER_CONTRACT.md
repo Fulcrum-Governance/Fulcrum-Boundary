@@ -192,6 +192,11 @@ The shipped [`webhook.Handler`](../adapters/webhook/adapter.go) and
 [`grpc.UnaryInterceptor`](../adapters/grpc/adapter.go) collapse this
 pattern into a single function.
 
+Webhook endpoints must declare a mode. Informational mode is post-execution
+audit only: it records a governance verdict but cannot deny before execution and
+must not forward. Execution mode is pre-execution approval: it can deny before
+forwarding and must not forward denied payloads or pipeline failures.
+
 For gRPC unary calls, governance metadata is emitted through response trailers:
 `governance-action`, `governance-rule`, `governance-mode`,
 `governance-trust`, `governance-request-id`, and

@@ -67,7 +67,9 @@ claims:
         - path: tests/integration/managed_agents_lifecycle_test.go
           assertion: "Managed Agents proxy auto-resolves tool confirmations by policy"
         - path: adapters/webhook/adapter_test.go
-          assertion: "Webhook handler allow/deny behavior is covered"
+          assertion: "Webhook informational and execution modes are covered; execution mode denies before forwarding and informational mode records without claiming denial control"
+        - path: tests/adapter_conformance/webhook_conformance_test.go
+          assertion: "Webhook readiness remains preview and documents the informational/execution split and bypass requirements"
         - path: adapters/a2a/adapter_test.go
           assertion: "A2A request parsing, denial, forwarding, metadata, inspection, and fail-closed behavior are covered"
         - path: tests/adapters/a2a_lifecycle_test.go

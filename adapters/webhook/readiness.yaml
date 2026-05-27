@@ -10,8 +10,8 @@ lifecycle:
   inspect: implemented
   metadata: delegated
   record: delegated
-  bypass_proof: stub
-  fail_closed: delegated
+  bypass_proof: delegated
+  fail_closed: implemented
 delegated_steps:
   - step: forward
     owner: webhook.Handler forwardURL mode
@@ -23,18 +23,23 @@ delegated_steps:
     owner: governance.AuditPublisher
     contract: docs/DECISION_RECORDS.md
   - step: fail_closed
-    owner: webhook.Handler
+    owner: webhook.Handler execution mode
     contract: docs/security/FAIL_MODE_MATRIX.md
+  - step: bypass_proof
+    owner: deployment topology
+    contract: docs/adapters/WEBHOOK.md
 bypass_model: api-gateway
 fail_closed_transports:
   - webhook
 evidence:
   tests:
     - adapters/webhook/adapter_test.go
+    - tests/adapter_conformance/webhook_conformance_test.go
   docs:
+    - docs/adapters/WEBHOOK.md
     - docs/ADAPTER_CONTRACT.md
     - docs/ADAPTER_READINESS_MATRIX.md
 gaps:
   - id: BND-WEB-001
-    description: "Preview status needs an explicit mode split between informational decisions and execution forwarding."
+    description: "Production status requires deployment evidence that execution webhooks are the sole downstream action path; informational webhooks remain post-execution audit only."
     spec: "SPEC 2"

@@ -83,9 +83,9 @@ Seven fault classes × seven transports. Each cell is one of:
 | Agent ISOLATED or TERMINATED | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` |
 | Adapter parse failure | JSON-RPC error `adapters/mcp/gateway.go` or ERR→caller from raw adapter use | ERR→caller `adapters/cli/adapter.go` | ERR→caller `adapters/codeexec/adapter.go` | `codes.InvalidArgument` with deny trailers `adapters/grpc/adapter.go` | ERR→caller or deny confirmation from proxy resolver `adapters/managedagents` | ERR→caller `adapters/a2a/adapter.go` | HTTP 400 `adapters/webhook/adapter.go` |
 | Interceptor error | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` |
-| PolicyEval error (transport in `FailClosedTransports`) | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` |
-| PolicyEval error (transport NOT in `FailClosedTransports`) | ALLOW `pipeline.go` | ALLOW `pipeline.go` | ALLOW `pipeline.go` | ALLOW `pipeline.go` | ALLOW `pipeline.go` | ALLOW `pipeline.go` | ALLOW `pipeline.go` |
-| Downstream tool error (5xx / non-zero exit) | PASS through governed proxy response inspection `adapters/mcp/forwarder.go` | PASS `adapters/cli/adapter.go` | PASS `adapters/codeexec/adapter.go` | PASS handler error after allow decision, with governance trailers where the server context permits `adapters/grpc/adapter.go` | PASS through proxied session stream with response inspection `adapters/managedagents/response_inspector.go` | PASS `adapters/a2a/adapter.go` | PASS `adapters/webhook/adapter.go` |
+| PolicyEval error (transport in `FailClosedTransports`) | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | Execution mode does not forward; informational mode reports error only |
+| PolicyEval error (transport NOT in `FailClosedTransports`) | ALLOW `pipeline.go` | ALLOW `pipeline.go` | ALLOW `pipeline.go` | ALLOW `pipeline.go` | ALLOW `pipeline.go` | ALLOW `pipeline.go` | Execution mode follows pipeline result; informational mode remains audit-only |
+| Downstream tool error (5xx / non-zero exit) | PASS through governed proxy response inspection `adapters/mcp/forwarder.go` | PASS `adapters/cli/adapter.go` | PASS `adapters/codeexec/adapter.go` | PASS handler error after allow decision, with governance trailers where the server context permits `adapters/grpc/adapter.go` | PASS through proxied session stream with response inspection `adapters/managedagents/response_inspector.go` | PASS `adapters/a2a/adapter.go` | Execution mode passes downstream response after allow; informational mode never forwards |
 
 **Notes on the matrix:**
 
@@ -242,7 +242,7 @@ bypass evidence are recorded.
   convenience helper `governance.IsParseError(err)` to detect parse
   failures and route them through whatever deny-equivalent behavior their
   runtime wants. The underlying cause is preserved via `Unwrap`.
-  Protocol-specific surface (HTTP 400 for webhook, `codes.Internal` for
+  Protocol-specific surface (HTTP 400 for webhook, `codes.InvalidArgument` for
   gRPC) still differs by design — the three-way split documented in §2 is
   correct for those transports — but MCP/CLI/CodeExec/A2A callers can now
   handle parse failures uniformly via the typed error, instead of
