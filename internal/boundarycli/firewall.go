@@ -104,7 +104,7 @@ func runFirewallInventory(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("boundary inventory", stderr)
 	root := fs.String("root", ".", "project root to inspect for repo-local MCP configs")
 	home := fs.String("home", "", "home directory to inspect for user MCP configs")
-	format := fs.String("format", "json", "inventory format: json, markdown, or sarif")
+	format := fs.String("format", "json", "inventory format: json, ndjson, markdown, or sarif")
 	out := fs.String("out", "", "write inventory report to a file instead of stdout")
 	includeDefaults := fs.Bool("include-defaults", true, "include known Claude Desktop, Cursor, VS Code, and repo-local config paths")
 	var configs pathListFlag

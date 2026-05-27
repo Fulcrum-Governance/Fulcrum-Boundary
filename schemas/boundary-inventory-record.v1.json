@@ -1,0 +1,321 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fulcrum-governance.github.io/fulcrum-boundary/schemas/boundary-inventory-record.v1.json",
+  "title": "Boundary Inventory Record v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "record_type",
+    "record_id",
+    "scan_id",
+    "sequence",
+    "timestamp"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "boundary.inventory.record.v1"
+    },
+    "record_type": {
+      "enum": [
+        "scan_start",
+        "agent_client",
+        "mcp_config",
+        "mcp_server",
+        "tool_descriptor",
+        "tool_capability",
+        "risk_path",
+        "policy_recommendation",
+        "descriptor_lock_status",
+        "install_status",
+        "decision_record_ref",
+        "scan_summary"
+      ]
+    },
+    "record_id": {
+      "type": "string",
+      "pattern": "^scan_[a-f0-9]{16}:[0-9]{6}$"
+    },
+    "scan_id": {
+      "type": "string",
+      "pattern": "^scan_[a-f0-9]{16}$"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "scan_start": {
+      "$ref": "#/$defs/scan_start"
+    },
+    "agent_client": {
+      "$ref": "#/$defs/agent_client"
+    },
+    "mcp_config": {
+      "$ref": "#/$defs/mcp_config"
+    },
+    "mcp_server": {
+      "$ref": "#/$defs/mcp_server"
+    },
+    "tool_descriptor": {
+      "$ref": "#/$defs/tool_descriptor"
+    },
+    "tool_capability": {
+      "$ref": "#/$defs/tool_capability"
+    },
+    "risk_path": {
+      "$ref": "#/$defs/risk_path"
+    },
+    "policy_recommendation": {
+      "$ref": "#/$defs/policy_recommendation"
+    },
+    "descriptor_lock_status": {
+      "$ref": "#/$defs/descriptor_lock_status"
+    },
+    "install_status": {
+      "$ref": "#/$defs/install_status"
+    },
+    "decision_record_ref": {
+      "$ref": "#/$defs/decision_record_ref"
+    },
+    "scan_summary": {
+      "$ref": "#/$defs/scan_summary"
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "record_type": { "const": "scan_start" } } },
+      "then": { "required": ["scan_start"] }
+    },
+    {
+      "if": { "properties": { "record_type": { "const": "agent_client" } } },
+      "then": { "required": ["agent_client"] }
+    },
+    {
+      "if": { "properties": { "record_type": { "const": "mcp_config" } } },
+      "then": { "required": ["mcp_config"] }
+    },
+    {
+      "if": { "properties": { "record_type": { "const": "mcp_server" } } },
+      "then": { "required": ["mcp_server"] }
+    },
+    {
+      "if": { "properties": { "record_type": { "const": "tool_descriptor" } } },
+      "then": { "required": ["tool_descriptor"] }
+    },
+    {
+      "if": { "properties": { "record_type": { "const": "tool_capability" } } },
+      "then": { "required": ["tool_capability"] }
+    },
+    {
+      "if": { "properties": { "record_type": { "const": "risk_path" } } },
+      "then": { "required": ["risk_path"] }
+    },
+    {
+      "if": { "properties": { "record_type": { "const": "policy_recommendation" } } },
+      "then": { "required": ["policy_recommendation"] }
+    },
+    {
+      "if": { "properties": { "record_type": { "const": "descriptor_lock_status" } } },
+      "then": { "required": ["descriptor_lock_status"] }
+    },
+    {
+      "if": { "properties": { "record_type": { "const": "install_status" } } },
+      "then": { "required": ["install_status"] }
+    },
+    {
+      "if": { "properties": { "record_type": { "const": "decision_record_ref" } } },
+      "then": { "required": ["decision_record_ref"] }
+    },
+    {
+      "if": { "properties": { "record_type": { "const": "scan_summary" } } },
+      "then": { "required": ["scan_summary"] }
+    }
+  ],
+  "$defs": {
+    "scan_start": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["root", "generated_at", "inventory_schema_version", "scope"],
+      "properties": {
+        "root": { "type": "string" },
+        "generated_at": { "type": "string", "format": "date-time" },
+        "inventory_schema_version": { "type": "string" },
+        "scope": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "agent_client": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["client", "scope", "config_files"],
+      "properties": {
+        "client": { "type": "string" },
+        "scope": { "type": "string" },
+        "config_files": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "mcp_config": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "client", "scope", "server_count"],
+      "properties": {
+        "path": { "type": "string" },
+        "client": { "type": "string" },
+        "scope": { "type": "string" },
+        "server_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "mcp_server": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "client", "config_path", "highest_risk", "governed_route"],
+      "properties": {
+        "name": { "type": "string" },
+        "client": { "type": "string" },
+        "config_path": { "type": "string" },
+        "command": { "type": "string" },
+        "url": { "type": "string" },
+        "args": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "env_keys": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "descriptor_tools": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "highest_risk": { "type": "string" },
+        "governed_route": { "type": "boolean" }
+      }
+    },
+    "tool_descriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["server", "client", "config_path", "tool"],
+      "properties": {
+        "server": { "type": "string" },
+        "client": { "type": "string" },
+        "config_path": { "type": "string" },
+        "tool": { "type": "string" }
+      }
+    },
+    "tool_capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["server", "client", "config_path", "tool", "category", "class", "reason"],
+      "properties": {
+        "server": { "type": "string" },
+        "client": { "type": "string" },
+        "config_path": { "type": "string" },
+        "tool": { "type": "string" },
+        "category": { "type": "string" },
+        "class": { "type": "string" },
+        "source_class": { "type": "string" },
+        "sink_class": { "type": "string" },
+        "mutation_class": { "type": "string" },
+        "reason": { "type": "string" }
+      }
+    },
+    "risk_path": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "category", "server", "client", "config_path", "tool", "source", "sink", "risk_class", "reason", "mitigation"],
+      "properties": {
+        "id": { "type": "string" },
+        "category": { "type": "string" },
+        "server": { "type": "string" },
+        "client": { "type": "string" },
+        "config_path": { "type": "string" },
+        "tool": { "type": "string" },
+        "source": { "type": "string" },
+        "sink": { "type": "string" },
+        "risk_class": { "type": "string" },
+        "reason": { "type": "string" },
+        "mitigation": { "type": "string" }
+      }
+    },
+    "policy_recommendation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "filename", "description", "mode", "review"],
+      "properties": {
+        "name": { "type": "string" },
+        "filename": { "type": "string" },
+        "description": { "type": "string" },
+        "mode": { "const": "starter_policy_for_operator_review" },
+        "risk_paths": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "review": { "type": "string" }
+      }
+    },
+    "descriptor_lock_status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["config_path", "client", "status", "reason"],
+      "properties": {
+        "config_path": { "type": "string" },
+        "client": { "type": "string" },
+        "status": { "enum": ["not_checked", "ok", "drift", "missing", "partial"] },
+        "reason": { "type": "string" }
+      }
+    },
+    "install_status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["server", "client", "config_path", "status", "governed", "bypass_path", "recommendation"],
+      "properties": {
+        "server": { "type": "string" },
+        "client": { "type": "string" },
+        "config_path": { "type": "string" },
+        "status": { "enum": ["ungoverned_route", "governed_route_detected"] },
+        "governed": { "type": "boolean" },
+        "bypass_path": { "type": "string" },
+        "recommendation": { "type": "string" }
+      }
+    },
+    "decision_record_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["record_id"],
+      "properties": {
+        "record_id": { "type": "string" },
+        "path": { "type": "string" },
+        "note": { "type": "string" }
+      }
+    },
+    "scan_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "complete", "config_files", "servers", "github_servers", "high_risk_servers", "unknown_servers", "risk_paths", "errors"],
+      "properties": {
+        "status": { "enum": ["complete", "partial"] },
+        "complete": { "type": "boolean" },
+        "config_files": { "type": "integer", "minimum": 0 },
+        "servers": { "type": "integer", "minimum": 0 },
+        "github_servers": { "type": "integer", "minimum": 0 },
+        "high_risk_servers": { "type": "integer", "minimum": 0 },
+        "unknown_servers": { "type": "integer", "minimum": 0 },
+        "risk_paths": { "type": "integer", "minimum": 0 },
+        "errors": { "type": "integer", "minimum": 0 },
+        "record_counts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  }
+}

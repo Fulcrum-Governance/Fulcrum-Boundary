@@ -1,5 +1,37 @@
 # CODEX Session Log
 
+## 2026-05-27 - Inventory NDJSON Record Schema
+
+### Context
+
+- Parent goal: Final public Boundary release hardening.
+- Subgoal: `Subgoal 4 - Inventory NDJSON Record Schema`.
+- Branch: `codex/2026-05-27-inventory-ndjson-schema`
+- Scope: add machine-ingestible MCP Firewall inventory records without expanding into SBOM, EDR, package vulnerability scanning, or universal endpoint inventory.
+
+### What changed
+
+- Added `boundary inventory --format ndjson` through the existing inventory renderer and `--out` path.
+- Added versioned inventory record builders for scan start, agent clients, MCP configs, MCP servers, tool descriptors, capabilities, risk paths, starter-policy recommendations, descriptor-lock status, install status, and scan summary.
+- Added `schemas/boundary-inventory-record.v1.json` and schema-backed fixture tests for every emitted NDJSON line.
+- Added `docs/firewall/INVENTORY_RECORDS.md` and updated discovery inventory docs with completion semantics, secret handling, and scope boundaries.
+- Updated the changelog with the NDJSON inventory record stream.
+
+### Verification
+
+- `go test ./internal/firewall/... -count=1 -timeout 5m`: pass
+- `go test ./tests/firewall/... -count=1 -timeout 5m`: pass
+- `go test ./claims/... -count=1`: pass
+- `go test ./... -short -count=1 -timeout 5m`: pass
+- `jq empty schemas/boundary-inventory-record.v1.json`: pass
+- `go run ./cmd/boundary inventory --format ndjson` against a temp MCP fixture: pass
+- `git diff --check`: pass
+
+### Notes For Next Step
+
+- After this branch lands, start `Subgoal 5 - External Inventory Ingest` from clean `main`.
+- The `decision_record_ref` record type is reserved for streams that include references to existing decision records; plain inventory does not create decision records.
+
 ## 2026-05-27 - GitHub Lethal-Trifecta Demo
 
 ### Context
