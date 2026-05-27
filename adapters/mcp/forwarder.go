@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/fulcrum-governance/boundary/governance"
+	"github.com/fulcrum-governance/fulcrum-boundary/governance"
 )
 
 // Forwarder sends an allowed MCP JSON-RPC request to an upstream server.

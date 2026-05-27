@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fulcrum-governance/boundary/governance"
+	"github.com/fulcrum-governance/fulcrum-boundary/governance"
 )
 
 const demoSelectUsersSQL = "SELECT id, email, plan FROM users ORDER BY id LIMIT 3"

@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/fulcrum-governance/boundary/governance"
-	sqlguard "github.com/fulcrum-governance/boundary/interceptors/sql"
+	"github.com/fulcrum-governance/fulcrum-boundary/governance"
+	sqlguard "github.com/fulcrum-governance/fulcrum-boundary/interceptors/sql"
 )
 
 func TestPostgresClassifierUsesASTClasses(t *testing.T) {

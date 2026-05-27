@@ -7,13 +7,32 @@ This file records the release-facing truth for Fulcrum Boundary v0.2.0. It is a 
 | Surface | Release value |
 |---|---|
 | OSS project name | Fulcrum Boundary |
-| GitHub repository | `Fulcrum-Governance/Boundary` |
-| Go module path | `github.com/fulcrum-governance/boundary` |
+| GitHub repository | `Fulcrum-Governance/Fulcrum-Boundary` |
+| Go module path | `github.com/fulcrum-governance/fulcrum-boundary` |
 | CLI binary | `boundary` |
 | First release campaign | MCP Safety Gateway |
 | Primary release claim | Boundary evaluates an agent action before it reaches the privileged tool when the deployment routes that action through Boundary. |
 
 Historical names and repository redirects are intentionally omitted from release-facing docs. Public setup instructions should point to the current module path and repository only.
+
+## Rename History
+
+### 2026-05-27: Fulcrum-Boundary repo-family alignment
+
+- Old repository: `Fulcrum-Governance/Boundary`
+- Old Go module path: `github.com/fulcrum-governance/boundary`
+- New repository: `Fulcrum-Governance/Fulcrum-Boundary`
+- New Go module path: `github.com/fulcrum-governance/fulcrum-boundary`
+- Reason: align the Boundary repository with the Fulcrum repo-family naming convention used by `fulcrum-io`, `fulcrum-trust`, and `Fulcrum-Proofs`.
+- Go proxy note: `proxy.golang.org` may continue serving cached `@latest` metadata for the previous module path until it re-polls. Commit-pinned and tag-pinned installs avoid that transient cache window.
+
+Verification recorded 2026-05-27:
+
+- `go mod tidy && go build ./...` passed for the root module.
+- `go mod tidy && go build ./...` passed for all seven nested modules: `adapters/grpc`, `examples/custom-interceptor`, `examples/http-middleware`, `examples/mcp-proxy`, `examples/rate-limit`, `examples/redis-trust`, and `examples/simple`.
+- `env -u GOROOT go test ./... -short -count=1 -timeout 5m` passed across 19 root packages.
+- `go vet ./...` passed.
+- `git ls-files '*.go' | xargs gofmt -l` returned no files.
 
 ## What v0.2.0 Proves
 

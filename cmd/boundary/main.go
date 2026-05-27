@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/fulcrum-governance/boundary/internal/boundarycli"
+	"github.com/fulcrum-governance/fulcrum-boundary/internal/boundarycli"
 )
 
 func main() {

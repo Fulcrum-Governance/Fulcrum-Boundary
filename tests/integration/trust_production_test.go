@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fulcrum-governance/boundary/internal/boundarycli"
+	"github.com/fulcrum-governance/fulcrum-boundary/internal/boundarycli"
 )
 
 func TestTrustShowDisplaysStandaloneState(t *testing.T) {

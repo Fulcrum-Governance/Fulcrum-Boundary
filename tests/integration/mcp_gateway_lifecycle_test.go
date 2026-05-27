@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fulcrum-governance/boundary/adapters/mcp"
-	"github.com/fulcrum-governance/boundary/governance"
-	"github.com/fulcrum-governance/boundary/policyeval"
+	"github.com/fulcrum-governance/fulcrum-boundary/adapters/mcp"
+	"github.com/fulcrum-governance/fulcrum-boundary/governance"
+	"github.com/fulcrum-governance/fulcrum-boundary/policyeval"
 )
 
 func TestMCPGateway_AllowsForwardsOnceAndAddsMetadata(t *testing.T) {

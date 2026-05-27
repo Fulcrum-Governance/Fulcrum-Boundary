@@ -13,8 +13,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/fulcrum-governance/boundary/adapters/mcp"
-	"github.com/fulcrum-governance/boundary/governance"
+	"github.com/fulcrum-governance/fulcrum-boundary/adapters/mcp"
+	"github.com/fulcrum-governance/fulcrum-boundary/governance"
 )
 
 func main() {

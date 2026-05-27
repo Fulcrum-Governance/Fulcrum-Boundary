@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/fulcrum-governance/boundary/policyeval"
+	"github.com/fulcrum-governance/fulcrum-boundary/policyeval"
 )
 
 // Every test below pins DecisionMode for one of the branches in

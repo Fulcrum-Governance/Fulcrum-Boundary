@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/fulcrum-governance/boundary/policyeval"
+	"github.com/fulcrum-governance/fulcrum-boundary/policyeval"
 )
 
 // newMatchAllPolicy builds a policy whose single rule has no conditions

@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fulcrum-governance/boundary/governance"
-	"github.com/fulcrum-governance/boundary/governance/kernel"
-	"github.com/fulcrum-governance/boundary/internal/boundarycli"
+	"github.com/fulcrum-governance/fulcrum-boundary/governance"
+	"github.com/fulcrum-governance/fulcrum-boundary/governance/kernel"
+	"github.com/fulcrum-governance/fulcrum-boundary/internal/boundarycli"
 	"github.com/stretchr/testify/require"
 )
 

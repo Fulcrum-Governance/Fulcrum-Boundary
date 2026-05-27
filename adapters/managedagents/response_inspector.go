@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"strings"
 
-	"github.com/fulcrum-governance/boundary/governance"
+	"github.com/fulcrum-governance/fulcrum-boundary/governance"
 )
 
 // InspectResponse flags obvious Managed Agents tool-result concerns for

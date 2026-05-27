@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fulcrum-governance/boundary/policyeval"
+	"github.com/fulcrum-governance/fulcrum-boundary/policyeval"
 )
 
 // errorEvaluator is a PolicyEvaluator stub that always returns an error.

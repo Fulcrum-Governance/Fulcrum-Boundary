@@ -9,7 +9,7 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/fulcrum-governance/boundary/governance"
+	"github.com/fulcrum-governance/fulcrum-boundary/governance"
 )
 
 // Gateway is an HTTP JSON-RPC MCP proxy that governs every request before

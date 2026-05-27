@@ -2,9 +2,9 @@
 
 > Pre-execution control for agent actions across transports. Fulcrum Boundary sits between agent intent and privileged tools, decides before execution, and emits an inspectable decision record.
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/fulcrum-governance/boundary.svg)](https://pkg.go.dev/github.com/fulcrum-governance/boundary)
-[![CI](https://github.com/Fulcrum-Governance/Boundary/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Fulcrum-Governance/Boundary/actions/workflows/ci.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/fulcrum-governance/boundary)](https://goreportcard.com/report/github.com/fulcrum-governance/boundary)
+[![Go Reference](https://pkg.go.dev/badge/github.com/fulcrum-governance/fulcrum-boundary.svg)](https://pkg.go.dev/github.com/fulcrum-governance/fulcrum-boundary)
+[![CI](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/actions/workflows/ci.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/fulcrum-governance/fulcrum-boundary)](https://goreportcard.com/report/github.com/fulcrum-governance/fulcrum-boundary)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 
 ## What is Fulcrum Boundary?
@@ -45,7 +45,7 @@ BYPASS BLOCKED ...
 For a local binary:
 
 ```bash
-go install github.com/fulcrum-governance/boundary/cmd/boundary@latest
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@latest
 boundary --help
 boundary verify --policies examples/mcp-postgres-gateway/policies
 ```
@@ -59,7 +59,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/fulcrum-governance/boundary/governance"
+	"github.com/fulcrum-governance/fulcrum-boundary/governance"
 )
 
 func main() {
