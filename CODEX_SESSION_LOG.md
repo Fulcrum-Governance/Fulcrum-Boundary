@@ -1,5 +1,42 @@
 # CODEX Session Log
 
+## 2026-05-27 - Command Boundary Design Docs
+
+### Context
+
+- Parent goal: execute the v0.3 publication plus v0.4 Command Boundary sequence.
+- Subgoal: define Command Boundary as a post-v0.3 preview design before
+  implementation.
+- Branch: `codex/2026-05-27-command-boundary-design`
+- Scope: docs and planned claim only. No runtime command execution, CLI wiring,
+  shell shims, redteam runtime, README promotion, mkdocs nav, or v0.3.0 release
+  truth changed.
+
+### What changed
+
+- Added `docs/command-boundary/README.md`.
+- Added `docs/command-boundary/DESIGN.md`.
+- Added `docs/command-boundary/COMMAND_TAXONOMY.md`.
+- Added `docs/command-boundary/BYPASS_MODEL.md`.
+- Added `docs/command-boundary/PREVIEW_CLAIMS.md`.
+- Added `docs/command-boundary/REDTEAM_FIXTURES.md`.
+- Added planned claim `BND-CLAIM-CMD-001` in
+  `claims/boundary_claims.yaml`.
+- Added the matching planned claim row in `docs/CLAIMS_LEDGER.md`.
+
+### Verification
+
+- `go test ./claims/... -count=1`: pass.
+- `go test ./... -short -count=1 -timeout 5m`: pass.
+- `git diff --check`: pass.
+
+### Notes For Next Step
+
+- The next branch can implement `boundary command classify` without command
+  execution.
+- Keep Command Boundary public language as preview-only and routed-only until
+  implementation evidence exists.
+
 ## 2026-05-27 - Command Boundary Design Implementation Plan
 
 ### Context
