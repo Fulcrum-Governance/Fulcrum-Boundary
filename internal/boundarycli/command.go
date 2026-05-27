@@ -21,6 +21,10 @@ func runCommand(args []string, stdout, stderr io.Writer) int {
 		return runCommandClassify(args[1:], stdout, stderr)
 	case "run":
 		return runCommandRun(args[1:], stdout, stderr)
+	case "install":
+		return runCommandInstall(args[1:], stdout, stderr)
+	case "uninstall":
+		return runCommandUninstall(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "unknown command subcommand %q\n\n", args[0])
 		printCommandHelp(stderr)
@@ -32,7 +36,7 @@ func printCommandHelp(w io.Writer) {
 	fmt.Fprintf(w, `Boundary Command Preview
 
 Purpose:
-  Classify project-local command paths before future command governance.
+  Classify and govern project-local command paths routed through Boundary.
 
 Usage:
   boundary command <subcommand> [flags]
@@ -40,16 +44,20 @@ Usage:
 Commands:
   classify        Classify a command without executing it
   run             Evaluate and run a wrapper-routed command
+  install         Install project-local command shims
+  uninstall       Remove project-local command shims
 
 Examples:
   boundary command classify -- git status
   boundary command classify -- git push origin main
   boundary command classify --json -- rm -rf dist
   boundary command run -- git status
+  boundary command install --project
 
 Notes:
   - classify never executes commands.
   - run executes only after the preview command policy allows or warns.
+  - install and uninstall touch only the project .boundary/bin directory.
   - Command Boundary governs only commands routed through Boundary.
 `)
 }
