@@ -411,3 +411,34 @@
 
 - Receipt-grade means hash-verifiable decision records. Signature fields exist in the v1 schema, but Boundary does not claim signed receipts by default.
 - Parse rejections use `raw_shape_hash`, not `request_hash`, because no canonical governed request exists for malformed input.
+
+## 2026-05-26 — Spec 7 Trust Integration + Adaptive Termination
+
+### Context
+
+- Branch: `codex/2026-05-26-boundary-phase1-foundation`, continuing after Spec 6 was committed as `030884f`.
+- Scope: Spec 7 only. Add standalone trust state, kernel Redis trust-state integration, adaptive termination, trust transition records, and CLI inspection while keeping fulcrum-trust as the canonical Beta-model owner.
+
+### Built
+
+- Added trust backend interfaces and implementations in `governance/trust_*.go`: in-memory standalone Beta trust, kernel Redis IPC reads/writes, production trust config, and trust outcome mapping.
+- Added circuit-breaker thresholds and adaptive action handling so repeated protected-tool failures move agents from `TRUSTED` to `EVALUATING` to `ISOLATED`.
+- Extended the governance pipeline with required-agent-ID enforcement, pre-policy trust denials for isolated or terminated agents, fail-closed trust backend errors on protected transports, post-decision trust updates, and `trust_transition` audit events.
+- Added `boundary trust show`, standalone `boundary trust reset`, `boundary serve --trust-mode`, `--trust-redis-url`, `--require-agent-id`, and `boundary demo trust-degradation`.
+- Added trust docs at `docs/TRUST_INTEGRATION.md` and `docs/ADAPTIVE_TERMINATION.md`, plus `examples/trust-degradation-demo/`.
+- Updated launch truth, threat model, fail-mode matrix, claims ledger, and changelog with bounded delivered trust claims.
+
+### Verification
+
+- `env -u GOROOT go test ./governance ./tests ./tests/integration -run 'TestStandaloneTrust|TestTrustStateFromScore|TestAdaptiveTermination|TestTrustShow|TestTrustDegradation|TestKernelTrust' -count=1`: pass.
+- `env -u GOROOT go test ./... -short`: pass.
+- `env -u GOROOT go vet ./...`: pass.
+- `git ls-files '*.go' | xargs gofmt -l`: pass.
+- `git diff --check`: pass.
+- `env -u GOROOT go run ./cmd/boundary demo trust-degradation`: pass; demo reaches `ISOLATED` and blocks the later protected query pre-execution.
+- `env -u GOROOT go run ./cmd/boundary trust show demo-agent`: pass; prints a standalone unknown-agent trusted snapshot.
+
+### Notes
+
+- Standalone mode is process-local and is intended for demos and disconnected deployments.
+- Kernel mode reads fulcrum-trust IPC state through Redis and fails closed on protected transports when trust state cannot be checked.

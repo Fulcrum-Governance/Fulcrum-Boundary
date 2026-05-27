@@ -35,7 +35,6 @@ Fulcrum Boundary v0.2.0 does not claim:
 - general SQL firewall coverage
 - universal SQL injection prevention
 - signed receipts by default
-- trust-based adaptive termination
 - multi-agent coordination governance
 - benchmark superiority
 - compliance certification
@@ -52,7 +51,11 @@ are required or enabled by default.
 | YAML policy loading | Present |
 | Structured decision records | Present |
 | Receipt verification | Present |
+| Trust integration | Present |
+| Adaptive termination | Present |
 | `docs/RECEIPTS.md` | Present |
+| `docs/TRUST_INTEGRATION.md` | Present |
+| `docs/ADAPTIVE_TERMINATION.md` | Present |
 | `docs/DECISION_RECORDS.md` | Present |
 | `docs/LIMITATIONS.md` | Present |
 | `docs/BOUNDARY_CONDITIONS.md` | Present |

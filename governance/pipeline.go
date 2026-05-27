@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -44,6 +45,10 @@ type PipelineConfig struct {
 
 	// BuildDigest identifies the Boundary binary or image that emitted the record.
 	BuildDigest string
+
+	// RequireAgentID denies protected adapter requests that do not carry an
+	// agent identity. This is intended for production trust-aware deployments.
+	RequireAgentID bool
 
 	// FailClosedTransports are transports that deny on pipeline errors.
 	// All other transports fail-open on pipeline errors.
@@ -88,6 +93,7 @@ type Pipeline struct {
 	gatewayVersion   string
 	policyBundleHash string
 	buildDigest      string
+	requireAgentID   bool
 	failClosed       map[TransportType]bool
 	dryRun           bool
 }
@@ -122,6 +128,7 @@ func NewPipeline(cfg PipelineConfig, trust TrustChecker, evaluator PolicyEvaluat
 		gatewayVersion:   cfg.GatewayVersion,
 		policyBundleHash: cfg.PolicyBundleHash,
 		buildDigest:      cfg.BuildDigest,
+		requireAgentID:   cfg.RequireAgentID,
 		failClosed:       fc,
 		dryRun:           cfg.DryRun,
 	}
@@ -181,10 +188,31 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 		TrustState:   TrustStateTrusted.String(),
 	}
 	trustState := TrustStateTrusted
+	var trustUpdate *TrustDecisionUpdate
 
 	defer func() {
 		decision.Duration = time.Since(start)
+		if update, err := p.recordTrustDecision(ctx, req, decision); err == nil && update != nil {
+			trustUpdate = update
+			decision.TrustScore = update.After.Score
+			decision.TrustState = update.After.State.String()
+			if update.After.State == TrustStateIsolated && decision.Allowed() {
+				decision.Action = "deny"
+				decision.Reason = fmt.Sprintf("agent %s is ISOLATED", req.AgentID)
+			} else if update.After.State == TrustStateEvaluating && decision.Allowed() {
+				decision.Action = "require_approval"
+				decision.Reason = fmt.Sprintf("agent %s is degraded", req.AgentID)
+			}
+		} else if err != nil && decision.Allowed() && p.failClosed[req.Transport] {
+			decision.Action = "deny"
+			decision.Reason = fmt.Sprintf("trust update failed: %v", err)
+			decision.TrustScore = 0.0
+			decision.TrustState = TrustStateIsolated.String()
+		}
 		p.emitAudit(ctx, req, decision)
+		if trustUpdate != nil && trustUpdate.Transition {
+			p.emitTrustTransition(ctx, req, decision, *trustUpdate)
+		}
 		if p.dryRun && decision.Action == "deny" {
 			original := decision.Reason
 			if original == "" {
@@ -197,6 +225,13 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 	}()
 
 	// Stage 1: Trust Check
+	if p.requireAgentID && p.failClosed[req.Transport] && req.AgentID == "" {
+		decision.Action = "deny"
+		decision.Reason = "agent identity is required for protected adapter"
+		decision.TrustScore = 0.0
+		decision.TrustState = TrustStateIsolated.String()
+		return decision, nil
+	}
 	if p.trustChecker != nil && req.AgentID != "" {
 		state, err := p.trustChecker.CheckAgentState(ctx, req.AgentID)
 		if err != nil {
@@ -333,5 +368,53 @@ func (p *Pipeline) emitAudit(ctx context.Context, req *GovernanceRequest, decisi
 		PolicyFile:          decision.PolicyFile,
 		GatewayVersion:      decision.GatewayVersion,
 		TraceID:             req.TraceID,
+	})
+}
+
+func (p *Pipeline) recordTrustDecision(ctx context.Context, req *GovernanceRequest, decision *GovernanceDecision) (*TrustDecisionUpdate, error) {
+	if req == nil || req.AgentID == "" {
+		return nil, nil
+	}
+	backend, ok := p.trustChecker.(TrustBackend)
+	if !ok {
+		return nil, nil
+	}
+	if decision == nil || strings.HasPrefix(decision.Reason, "trust check failed") || strings.Contains(decision.Reason, " is ISOLATED") || strings.Contains(decision.Reason, " is TERMINATED") {
+		return nil, nil
+	}
+	update, err := backend.RecordDecision(ctx, req, decision)
+	if err != nil {
+		return nil, err
+	}
+	return &update, nil
+}
+
+func (p *Pipeline) emitTrustTransition(ctx context.Context, req *GovernanceRequest, decision *GovernanceDecision, update TrustDecisionUpdate) {
+	p.auditor.Publish(ctx, AuditEvent{
+		EventType:           "trust_transition",
+		RequestID:           req.RequestID,
+		Transport:           req.Transport,
+		ToolName:            req.ToolName,
+		Action:              decision.Action,
+		Reason:              fmt.Sprintf("trust %s -> %s after %s", update.Before.State, update.After.State, update.Outcome),
+		TrustScore:          update.After.Score,
+		EnvelopeID:          decision.EnvelopeID,
+		AgentID:             req.AgentID,
+		TenantID:            req.TenantID,
+		Timestamp:           time.Now(),
+		PolicyBundleHash:    p.policyBundleHash,
+		BoundaryBuildDigest: p.buildDigest,
+		RequestHash:         ComputeRequestHash(req),
+		TrustState:          update.After.State.String(),
+		DecisionMode:        DecisionModeDeterministic,
+		MatchedRule:         decision.MatchedRule,
+		PolicyFile:          decision.PolicyFile,
+		GatewayVersion:      decision.GatewayVersion,
+		TraceID:             req.TraceID,
+		Metadata: map[string]interface{}{
+			"trust_before": update.Before.State.String(),
+			"trust_after":  update.After.State.String(),
+			"outcome":      string(update.Outcome),
+		},
 	})
 }

@@ -152,6 +152,33 @@ claims:
     gaps: []
     depends_on: []
 
+  - id: BND-CLAIM-009
+    claim: "Boundary provides standalone trust integration and adaptive termination for protected adapters"
+    status: delivered
+    evidence:
+      tests:
+        - path: tests/adaptive_termination_test.go
+          assertion: "Repeated protected-tool violations isolate an agent before later protected requests execute"
+        - path: tests/integration/trust_production_test.go
+          assertion: "Trust state updates are emitted in decision records and exposed by boundary trust show"
+        - path: tests/integration/trust_fail_closed_test.go
+          assertion: "Kernel trust errors fail closed before protected requests reach downstream execution"
+      docs:
+        - path: docs/TRUST_INTEGRATION.md
+          section: "Modes"
+        - path: docs/ADAPTIVE_TERMINATION.md
+          section: "State Transitions"
+    public_language:
+      allowed:
+        - "Boundary provides standalone trust integration and adaptive termination for protected adapters."
+        - "Repeated protected-tool violations can isolate an agent before later protected calls execute."
+      forbidden:
+        - "Boundary guarantees universal agent safety"
+        - "Boundary replaces deployment isolation"
+        - "Boundary owns Fulcrum's canonical trust model"
+    gaps: []
+    depends_on: []
+
   - id: BND-CLAIM-004
     claim: "Boundary is a SQL firewall"
     status: false

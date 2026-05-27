@@ -47,6 +47,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runDoctor(args[1:], stdout, stderr)
 	case "audit":
 		return runAudit(args[1:], os.Stdin, stdout, stderr)
+	case "trust":
+		return runTrust(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "unknown command %q\n\n", args[0])
 		printRootHelp(stderr)
@@ -67,6 +69,7 @@ Commands:
   verify-record   Verify a receipt-grade decision record
   doctor          Check local gateway prerequisites
   audit           Pretty-print structured decision records
+  trust           Inspect or reset trust state
 
 Use "boundary <command> --help" for command flags.
 `)
@@ -83,6 +86,9 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	listen := fs.String("listen", ":8080", "HTTP listen address")
 	policyDir := fs.String("policies", "./policies/", "directory containing YAML policy files")
 	upstream := fs.String("upstream", "postgres://demo:demo@localhost:5432/demo?sslmode=disable", "upstream MCP HTTP URL or Postgres demo DSN")
+	trustMode := fs.String("trust-mode", "disabled", "trust mode: disabled, standalone, or kernel")
+	trustRedisURL := fs.String("trust-redis-url", "redis://localhost:6379", "Redis URL for kernel trust mode")
+	requireAgentID := fs.Bool("require-agent-id", false, "deny protected adapter requests without agent identity")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return 0
@@ -102,11 +108,25 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	}
 
 	logger := slog.New(slog.NewJSONHandler(stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	trustBackend, err := governance.NewProductionTrustBackend(governance.ProductionTrustConfig{
+		Mode: governance.TrustMode(*trustMode),
+		Kernel: governance.KernelTrustConfig{
+			RedisURL:   *trustRedisURL,
+			IPCPrefix:  "agent:",
+			TimeoutMS:  100,
+			FailClosed: true,
+		},
+	})
+	if err != nil {
+		fmt.Fprintf(stderr, "trust backend: %v\n", err)
+		return 1
+	}
 	pipeline := governance.NewPipeline(governance.PipelineConfig{
 		StaticPolicies:   policyResult.Rules,
 		GatewayVersion:   Version,
 		PolicyBundleHash: policyHash,
-	}, nil, nil, governance.NewSlogAuditPublisher(logger))
+		RequireAgentID:   *requireAgentID,
+	}, trustBackend, nil, governance.NewSlogAuditPublisher(logger))
 	pipeline.RegisterInterceptor("query", sqlguard.NewPostgresInterceptor())
 
 	handler, mode, closeUpstream, err := serveHandler(*upstream, pipeline)
@@ -167,7 +187,11 @@ func serveHandler(upstream string, pipeline *governance.Pipeline) (http.Handler,
 func runDemo(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" {
 		fmt.Fprintln(stdout, "Usage: boundary demo postgres [--gateway URL] [--bypass-host HOST] [--bypass-port PORT]")
+		fmt.Fprintln(stdout, "       boundary demo trust-degradation")
 		return 0
+	}
+	if args[0] == "trust-degradation" {
+		return runTrustDegradationDemo(stdout, stderr)
 	}
 	if args[0] != "postgres" {
 		fmt.Fprintf(stderr, "unknown demo %q\n", args[0])
@@ -403,6 +427,150 @@ func runAudit(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "read log: %v\n", err)
 		return 1
 	}
+	return 0
+}
+
+func runTrust(args []string, stdout, stderr io.Writer) int {
+	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" {
+		fmt.Fprintln(stdout, "Usage: boundary trust show [--redis-url URL] [--ipc-prefix PREFIX] <agent-id>")
+		fmt.Fprintln(stdout, "       boundary trust reset <agent-id>")
+		return 0
+	}
+	switch args[0] {
+	case "show":
+		return runTrustShow(args[1:], stdout, stderr)
+	case "reset":
+		if len(args) != 2 {
+			fmt.Fprintln(stderr, "usage: boundary trust reset <agent-id>")
+			return 1
+		}
+		backend := governance.NewStandaloneTrustBackend(governance.StandaloneTrustConfig{})
+		snapshot, err := backend.ResetAgentTrust(context.Background(), args[1])
+		if err != nil {
+			fmt.Fprintf(stderr, "trust reset failed: %v\n", err)
+			return 1
+		}
+		printTrustSnapshot(stdout, snapshot)
+		return 0
+	default:
+		fmt.Fprintf(stderr, "unknown trust command %q\n", args[0])
+		return 1
+	}
+}
+
+func runTrustShow(args []string, stdout, stderr io.Writer) int {
+	fs := newFlagSet("boundary trust show", stderr)
+	redisURL := fs.String("redis-url", "", "Redis URL for kernel-connected trust state")
+	ipcPrefix := fs.String("ipc-prefix", "agent:", "Redis IPC key prefix")
+	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
+		return 1
+	}
+	if fs.NArg() != 1 {
+		fmt.Fprintln(stderr, "usage: boundary trust show [--redis-url URL] [--ipc-prefix PREFIX] <agent-id>")
+		return 1
+	}
+	var backend governance.TrustBackend
+	var err error
+	if *redisURL != "" {
+		backend, err = governance.NewProductionTrustBackend(governance.ProductionTrustConfig{
+			Mode: governance.TrustModeKernel,
+			Kernel: governance.KernelTrustConfig{
+				RedisURL:   *redisURL,
+				IPCPrefix:  *ipcPrefix,
+				TimeoutMS:  100,
+				FailClosed: true,
+			},
+		})
+		if err != nil {
+			fmt.Fprintf(stderr, "trust backend failed: %v\n", err)
+			return 1
+		}
+	} else {
+		backend = governance.NewStandaloneTrustBackend(governance.StandaloneTrustConfig{})
+	}
+	snapshot, err := backend.GetAgentTrust(context.Background(), fs.Arg(0))
+	if err != nil {
+		fmt.Fprintf(stderr, "trust show failed: %v\n", err)
+		return 1
+	}
+	printTrustSnapshot(stdout, snapshot)
+	return 0
+}
+
+func printTrustSnapshot(w io.Writer, snapshot governance.TrustSnapshot) {
+	fmt.Fprintf(w, "agent_id: %s\n", snapshot.AgentID)
+	fmt.Fprintf(w, "state: %s\n", snapshot.State)
+	fmt.Fprintf(w, "score: %.3f\n", snapshot.Score)
+	if snapshot.Known {
+		fmt.Fprintf(w, "alpha: %.3f\n", snapshot.Alpha)
+		fmt.Fprintf(w, "beta: %.3f\n", snapshot.Beta)
+		fmt.Fprintf(w, "interactions: %d\n", snapshot.InteractionCount)
+	} else {
+		fmt.Fprintln(w, "known: false")
+	}
+}
+
+func runTrustDegradationDemo(stdout, stderr io.Writer) int {
+	auditor := governance.NewSlogAuditPublisher(slog.New(slog.NewJSONHandler(stdout, &slog.HandlerOptions{Level: slog.LevelInfo})))
+	trust := governance.NewStandaloneTrustBackend(governance.StandaloneTrustConfig{
+		InitialAlpha: 5,
+		InitialBeta:  1,
+	})
+	pipeline := governance.NewPipeline(governance.PipelineConfig{
+		StaticPolicies: []governance.StaticPolicyRule{
+			{
+				Name:   "block-drop-table",
+				Tool:   "query",
+				Action: "deny",
+				Reason: "destructive SQL",
+				Match: &governance.StaticPolicyMatch{
+					Field:           "arguments.sql",
+					Contains:        "DROP TABLE",
+					CaseInsensitive: true,
+				},
+			},
+		},
+		GatewayVersion: Version,
+		RequireAgentID: true,
+	}, trust, nil, auditor)
+	ctx := context.Background()
+	agentID := "demo-agent"
+	queries := []string{
+		"SELECT 1",
+		"DROP TABLE users",
+		"DROP TABLE users",
+		"DROP TABLE users",
+		"DROP TABLE users",
+		"DROP TABLE users",
+		"DROP TABLE users",
+		"DROP TABLE users",
+		"DROP TABLE users",
+		"DROP TABLE users",
+		"SELECT 2",
+	}
+	for _, sqlText := range queries {
+		req := &governance.GovernanceRequest{
+			Transport: governance.TransportMCP,
+			AgentID:   agentID,
+			TenantID:  "demo",
+			ToolName:  "query",
+			Action:    "tools/call",
+			Arguments: map[string]any{"sql": sqlText},
+		}
+		decision, err := pipeline.Evaluate(ctx, req)
+		if err != nil {
+			fmt.Fprintf(stderr, "trust demo failed: %v\n", err)
+			return 1
+		}
+		snapshot, _ := trust.GetAgentTrust(ctx, agentID)
+		fmt.Fprintf(stdout, "query=%q action=%s trust=%.2f state=%s reason=%s\n", sqlText, decision.Action, snapshot.Score, snapshot.State, decision.Reason)
+	}
+	snapshot, _ := trust.GetAgentTrust(ctx, agentID)
+	fmt.Fprintln(stdout, "\nCurrent trust:")
+	printTrustSnapshot(stdout, snapshot)
 	return 0
 }
 

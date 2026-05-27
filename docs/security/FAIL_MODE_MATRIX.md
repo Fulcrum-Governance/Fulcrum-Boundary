@@ -21,7 +21,7 @@ audit event via a deferred hook (`pipeline.go:118-130`). The staging is:
 
 | # | Stage | Location | Error behavior |
 |---|-------|----------|----------------|
-| 1 | Trust Check | `pipeline.go:132-150` | **Always fail-closed.** Trust error → deny (`pipeline.go:136-140`). Agent in `ISOLATED`/`TERMINATED` state → deny (`pipeline.go:141-146`). `EVALUATING` state proceeds with trust score 0.5 (`pipeline.go:147-149`). No per-transport override. Stage is skipped entirely when `trustChecker == nil` or `req.AgentID == ""`. |
+| 1 | Trust Check | `pipeline.go` | **Always fail-closed for protected production adapters.** Trust error → deny. Agent in `ISOLATED`/`TERMINATED` state → deny. Production trust backends convert `EVALUATING` to `require_approval`; legacy `TrustChecker` implementations may still allow with trust score 0.5. Stage is skipped only when trust mode is disabled, and production deployments can require `agent_id`. |
 | 2 | Static Policies | `pipeline.go:152-165` | **No error path.** Glob matching via `path.Match` discards the match error (`pipeline.go:80-89`); malformed patterns are treated as non-matching rather than crashing the pipeline. |
 | 3 | Domain Interceptors | `pipeline.go:167-181` | **Always fail-closed.** Interceptor returns an error → deny with reason `interceptor error: %v` (`pipeline.go:169-173`). Interceptor returns `{Allowed: false}` uses its own action/reason; empty action defaults to `deny` (`pipeline.go:174-181`). |
 | 4 | PolicyEval | `pipeline.go:183-215` | **Per-transport configurable.** Evaluator error → deny only if `req.Transport` is in `PipelineConfig.FailClosedTransports` (`pipeline.go:189-193`). Otherwise the error is swallowed and the pre-existing `allow` default is returned (`pipeline.go:194-195`). |
