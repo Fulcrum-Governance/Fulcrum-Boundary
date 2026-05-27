@@ -1,5 +1,35 @@
 # CODEX Session Log
 
+## 2026-05-27 - Dependabot Alert Remediation
+
+### Context
+
+- Branch: `codex/2026-05-27-dependabot-alerts`
+- Scope: resolve active GitHub Dependabot alerts on the default branch with minimal dependency and CI updates.
+
+### What changed
+
+- Upgraded `github.com/jackc/pgx/v5` from `v5.7.6` to `v5.9.2` to pick up the patched release for the active `pgx` advisories.
+- Removed the stale indirect `golang.org/x/crypto` dependency from the root module graph through `go mod tidy`, resolving the active `x/crypto` advisories by removal.
+- Raised the root module `go` directive to `1.25.0` because `pgx v5.9.2` declares Go 1.25.
+- Updated CI root test and lint jobs to use Go 1.25+.
+
+### Verification
+
+- `go test ./... -count=1 -timeout 5m`: pass
+- `(cd adapters/grpc && go test ./... -count=1 -timeout 5m)`: pass
+- `go test ./claims/... -count=1 -timeout 5m`: pass
+- `go vet ./...`: pass
+- `git ls-files '*.go' | xargs gofmt -l`: pass, empty
+- `GOTOOLCHAIN=go1.25.0 go test ./... -short -count=1 -timeout 5m`: pass
+- `GOTOOLCHAIN=go1.26.3 go test ./... -short -count=1 -timeout 5m`: pass
+- `GOTOOLCHAIN=go1.26.3 go run golang.org/x/vuln/cmd/govulncheck@latest ./...`: pass, no vulnerabilities found
+- `git diff --check`: pass
+
+### Notes For Next Step
+
+- Push PR, verify CI, merge, and confirm Dependabot alerts close on `main`.
+
 ## 2026-05-27 - Firewall + Secure GitHub Truth Reconciliation
 
 ### Context
