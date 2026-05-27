@@ -8,6 +8,16 @@ The machine-readable source is [`claims/boundary_claims.yaml`](../claims/boundar
 The release gate in [`claims/claims_test.go`](../claims/claims_test.go) parses
 that file and validates the evidence rules.
 
+Public copy also follows the Boundary language system:
+[`docs/LANGUAGE_SYSTEM.md`](./LANGUAGE_SYSTEM.md),
+[`docs/LEXICON.md`](./LEXICON.md),
+[`docs/COPY_RULES.md`](./COPY_RULES.md), and
+[`docs/BOUNDARY_PRODUCT_PRIMITIVES.md`](./BOUNDARY_PRODUCT_PRIMITIVES.md).
+The language lint gate in
+[`claims/language_lint_test.go`](../claims/language_lint_test.go) scans public
+docs for controlled overclaim phrases while preserving explicit limitation and
+claim-control language.
+
 ## Status Vocabulary
 
 | Status | Meaning |
@@ -37,3 +47,5 @@ that file and validates the evidence rules.
 Release notes can only make uncaveated behavior claims whose status is
 `delivered`. Partial claims must carry the gap language from the YAML ledger.
 False claims must not appear in `README.md`, release notes, or launch copy.
+Public language must also avoid controlled overclaim phrases unless they appear
+in claim-control, language-control, historical, or explicit limitation context.

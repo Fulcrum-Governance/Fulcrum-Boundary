@@ -1,5 +1,35 @@
 # CODEX Session Log
 
+## 2026-05-27 - Language System Lock
+
+### Context
+
+- Parent goal: Firewall + Secure GitHub MCP release train.
+- Subgoal: `Subgoal 1 - Language System Lock`.
+- Branch: `codex/2026-05-27-language-system-lock`
+- Scope: docs, README, claims-ledger language discipline, changelog, and claims test gate only.
+
+### What changed
+
+- Added Boundary language authority docs:
+  - `docs/LANGUAGE_SYSTEM.md`
+  - `docs/LEXICON.md`
+  - `docs/COPY_RULES.md`
+  - `docs/BOUNDARY_PRODUCT_PRIMITIVES.md`
+- Added `claims/language_lint_test.go` to scan public docs for controlled overclaim phrases.
+- Updated README hero copy to the action-boundary frame.
+- Linked the language system from the claims ledger and README.
+- Updated `CHANGELOG.md` with the language-lock entry.
+
+### Verification
+
+- `go test ./claims/... -count=1`: pass
+- `go test ./... -short -count=1 -timeout 5m`: pass
+
+### Notes For Next Step
+
+- If merged, start Subgoal 2 or Subgoal 3 from clean `main` depending on whether docs or implementation should lead the next lane.
+
 ## 2026-05-27 — Firewall + Secure GitHub Goal Set
 
 ### Context

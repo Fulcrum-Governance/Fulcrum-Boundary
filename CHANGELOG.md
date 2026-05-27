@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- Fulcrum Boundary language system docs, lexicon, copy rules, product primitives, and a public-language lint gate for controlled overclaim phrases.
 - Boundary claims ledger with a machine-readable release truth gate.
 - Adapter readiness declarations and reusable lifecycle conformance tests.
 - Release truth reconciliation report tying claims, adapter maturity, changelog, README, and launch truth freeze to current repo evidence.
