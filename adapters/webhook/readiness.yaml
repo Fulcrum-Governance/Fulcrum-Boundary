@@ -1,0 +1,40 @@
+adapter: webhook
+status: preview
+target_status: preview
+lifecycle:
+  parse: implemented
+  identify: implemented
+  evaluate: implemented
+  deny: implemented
+  forward: delegated
+  inspect: implemented
+  metadata: delegated
+  record: delegated
+  bypass_proof: stub
+  fail_closed: delegated
+delegated_steps:
+  - step: forward
+    owner: webhook.Handler forwardURL mode
+    contract: docs/ADAPTER_CONTRACT.md
+  - step: metadata
+    owner: webhook.Handler response headers
+    contract: docs/ADAPTER_CONTRACT.md
+  - step: record
+    owner: governance.AuditPublisher
+    contract: docs/DECISION_RECORDS.md
+  - step: fail_closed
+    owner: webhook.Handler
+    contract: docs/security/FAIL_MODE_MATRIX.md
+bypass_model: api-gateway
+fail_closed_transports:
+  - webhook
+evidence:
+  tests:
+    - adapters/webhook/adapter_test.go
+  docs:
+    - docs/ADAPTER_CONTRACT.md
+    - docs/ADAPTER_READINESS_MATRIX.md
+gaps:
+  - id: BND-WEB-001
+    description: "Preview status needs an explicit mode split between informational decisions and execution forwarding."
+    spec: "SPEC 2"

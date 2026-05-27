@@ -1,5 +1,61 @@
 # CODEX Session Log
 
+## 2026-05-26 — Boundary Phase 1 Claims And Adapter Readiness
+
+### Context
+
+- Spec: `/Users/td/ConceptDev/Projects/Fulcrum-codex/.claude/sprint/BOUNDARY_SPEC_SERIES.md`
+- Phase: `Phase 1 — SPEC 1 Claims Ledger + Release Truth System` and `SPEC 2 Adapter Completion Standard`
+- Branch: `codex/2026-05-26-boundary-phase1-foundation`
+- Scope boundary: foundation artifacts only; no adapter runtime behavior changes and no adapter expansion.
+
+### Preflight
+
+- Confirmed work in Boundary repo: `/Users/td/ConceptDev/Projects/Boundary`
+- Confirmed branch: `codex/2026-05-26-boundary-phase1-foundation`
+- Confirmed working tree was clean before Phase 1 edits.
+- Re-read the active spec plus the current release truth and adapter contract docs:
+  - `docs/LAUNCH_TRUTH_FREEZE.md`
+  - `docs/ADAPTER_CONTRACT.md`
+  - `README.md`
+
+### Built
+
+- Added human and machine claims surfaces:
+  - `docs/CLAIMS_LEDGER.md`
+  - `claims/boundary_claims.yaml`
+  - `claims/claims_test.go`
+- Added a release checklist that references the claims ledger and readiness gates:
+  - `docs/RELEASE_CHECKLIST.md`
+- Added adapter lifecycle vocabulary and conformance validation:
+  - `governance/adapter_lifecycle.go`
+  - `tests/adapter_conformance/adapter_readiness_test.go`
+- Added per-adapter readiness declarations for current shipped adapters:
+  - `adapters/mcp/readiness.yaml`
+  - `adapters/cli/readiness.yaml`
+  - `adapters/codeexec/readiness.yaml`
+  - `adapters/grpc/readiness.yaml`
+  - `adapters/webhook/readiness.yaml`
+  - `adapters/a2a/readiness.yaml`
+- Added `docs/ADAPTER_READINESS_MATRIX.md` and updated `README.md` so adapters are split by maturity level.
+- Updated `docs/ADAPTER_CONTRACT.md` to distinguish five-method interface conformance from ten-step lifecycle readiness.
+- Updated `CHANGELOG.md` with unreleased Phase 1 entries.
+
+### Verification
+
+- `env -u GOROOT go test ./claims ./tests/adapter_conformance`: pass
+- `env -u GOROOT go test ./... -short`: pass
+- `(cd adapters/grpc && env -u GOROOT go test ./...)`: pass
+- `env -u GOROOT go vet ./...`: pass
+- `(cd adapters/grpc && env -u GOROOT go vet ./...)`: pass
+- `git ls-files '*.go' | xargs gofmt -l`: pass, empty output
+- `git diff --check`: pass
+
+### Notes For Next Step
+
+- Phase 1 intentionally leaves all adapters below production maturity. Follow-on specs should promote individual adapters only after lifecycle tests, bypass proof, and fail-mode evidence exist.
+- The README now has no production adapter row. That is deliberate until a later adapter-specific spec proves production readiness.
+
 ## 2026-05-06 — Phase 2 Proof And Citation Cleanup
 
 ### Context
@@ -232,3 +288,215 @@
 
 - GitHub license detection via `gh repo view --json licenseInfo` returned `null`, but `gh api repos/Fulcrum-Governance/Boundary/license` detects Apache-2.0 correctly and the repository has a visible Apache 2.0 `LICENSE` file.
 - Local `gosec` reported zero issues after the YAML loader hardening but emitted SSA/toolchain errors against local Go 1.26/nested-module dependencies; GitHub Actions remains the authoritative security-scan check after push.
+
+## 2026-05-26 — Spec 3 MCP Production Adapter
+
+### Context
+
+- Branch: `codex/2026-05-26-boundary-phase1-foundation`, continuing the Boundary spec-series execution after Phase 1 was committed as `67ec4d7`.
+- Scope: Spec 3 only. Promote MCP from demo adapter to production-grade governed JSON-RPC proxy while keeping non-MCP adapters below production maturity.
+
+### Built
+
+- Added `adapters/mcp/gateway.go`, `forwarder.go`, `identity.go`, `metadata.go`, `response_inspector.go`, and `tools_list_filter.go`.
+- Extended the MCP adapter so `ForwardGoverned` forwards allowed JSON-RPC requests to an upstream MCP HTTP server and refuses denied or ungoverned requests.
+- Added JSON-RPC lifecycle handling for malformed input, invalid requests, notifications, batches, request ID preservation, governed denial errors, upstream forwarding errors, and governance metadata.
+- Added `tools/list` policy filtering so denied tools are removed from discovery responses.
+- Updated `boundary serve --upstream` so HTTP(S) upstreams run in MCP proxy mode while Postgres DSNs continue to use the existing demo downstream.
+- Added integration coverage in `tests/integration/mcp_gateway_lifecycle_test.go` for allowed-once forwarding, deny-before-upstream, metadata, `tools/list` filtering, batch requests, parse errors, fail-closed pipeline errors, and bypass probing.
+- Added `docs/adapters/MCP.md` and updated adapter readiness, claims ledger, README, changelog, adapter contract, and fail-mode docs to mark only MCP as production-ready.
+
+### Verification
+
+- `env -u GOROOT go test ./adapters/mcp ./tests/integration ./claims ./tests/adapter_conformance`: pass.
+- `env -u GOROOT go test ./... -short`: pass.
+- `env -u GOROOT go vet ./...`: pass.
+- `git ls-files '*.go' | xargs gofmt -l`: pass.
+- `git diff --check`: pass.
+
+### Notes
+
+- SSE and stdio MCP transport variants remain future transport work; this phase establishes the production HTTP JSON-RPC proxy path.
+- The Postgres safety demo path remains available through `boundary serve` when `--upstream` is a Postgres DSN.
+
+## 2026-05-26 — Spec 4 Managed Agents Adapter
+
+### Context
+
+- Branch: `codex/2026-05-26-boundary-phase1-foundation`, continuing after Spec 3 was committed as `c19e53b`.
+- Scope: Spec 4 only. Add a Managed Agents proxy adapter and keep its public status at preview until live upstream Anthropic conformance is recorded.
+- Current API check: the Managed Agents session-events contract supports `user.tool_confirmation` with `result: "allow"` or `result: "deny"` plus optional `deny_message`, so Boundary can deny directly rather than relying on timeout behavior.
+
+### Built
+
+- Added `adapters/managedagents/` with protocol types, event parsing, `TransportAdapter` implementation, session proxy, policy-driven tool resolver, confirmation forwarder, metadata attachment, response inspection, and per-thread budget/trust tracking.
+- Added `governance.TransportManagedAgents` and included it in the default fail-closed transport set.
+- Added integration coverage for end-to-end session proxying, per-tool policy resolution, allow/deny confirmations, decision-record emission, thread budget denial, trust isolation denial, and bypass-config verification.
+- Added `docs/adapters/MANAGED_AGENTS.md`, `docs/deployment/managed-agents-bypass-proofing.md`, and `examples/managed-agents-governed-session/`.
+- Updated README, adapter readiness, fail-mode matrix, adapter contract, claims ledger, and changelog to include Managed Agents as a preview adapter.
+
+### Verification
+
+- `env -u GOROOT go test ./adapters/managedagents ./tests/integration ./claims ./tests/adapter_conformance`: pass.
+- `env -u GOROOT go test ./... -short`: pass.
+- `env -u GOROOT go vet ./...`: pass.
+- `git ls-files '*.go' | xargs gofmt -l`: pass.
+- `git diff --check`: pass.
+
+### Notes
+
+- Bypass proof is credential/topology based: Boundary must be the only component with the upstream Managed Agents API key, and customer apps must not be able to send confirmations directly.
+- Standalone budget and trust tracking are in-process; kernel-connected deployments should sync to fulcrum-io budget enforcement and fulcrum-trust state.
+
+## 2026-05-26 — Spec 5 Policy v1 + SQL AST Guard
+
+### Context
+
+- Branch: `codex/2026-05-26-boundary-phase1-foundation`, continuing after Spec 4 was committed as `134deeb`.
+- Scope: Spec 5 only. Add policy schema v1 validation, richer PolicyEval request projection, and a Postgres AST guard while preserving v0.2.0 legacy YAML policy loading.
+
+### Built
+
+- Added `schemas/policy.v1.yaml`, `policyeval/schema.go`, and validation tests for schema-versioned policy documents.
+- Kept legacy top-level YAML policies backward compatible while validating v1 documents strictly through the same loader used by `boundary verify` and `boundary serve`.
+- Expanded static policy matching with typed conditions, scopes, transport restrictions, regex/equality/not conditions, and decision-mode propagation.
+- Added `governance.ProjectPolicyEvalRequest` so PolicyEval receives tenant, agent, transport, tool, action, arguments, trust state, risk class, resource IDs, request hash, policy version, and provenance.
+- Added `interceptors/sql/` with a Postgres parser-backed AST classifier and fail-closed guard for unknown or destructive SQL.
+- Added a 30+ case SQL evasion corpus plus interceptor tests for comments, dollar strings, mixed statements, invalid tokens, destructive DDL, writes, reads, and administrative statements.
+- Registered the Postgres AST guard in `boundary serve` for the demo `query` tool.
+- Added `docs/POLICY_SCHEMA.md` and `docs/policies/POSTGRES.md`; updated README, changelog, launch truth, fail-mode docs, and claims ledger.
+
+### Verification
+
+- `env -u GOROOT go test ./policyeval ./governance ./interceptors/sql ./internal/boundarycli ./tests ./tests/interceptors`: pass.
+- `env -u GOROOT go test ./... -short`: pass.
+- `env -u GOROOT go run ./cmd/boundary verify --policies schemas`: pass, `warnings: 0`.
+- `env -u GOROOT go run ./cmd/boundary verify --policies examples/mcp-postgres-gateway/policies`: pass, preserving v0.2.0 YAML policy compatibility.
+- `env -u GOROOT go vet ./...`: pass.
+- `git ls-files '*.go' | xargs gofmt -l`: pass.
+- `git diff --check`: pass.
+
+### Notes
+
+- The Postgres AST guard is a statement classifier and fail-closed interceptor, not a general SQL firewall or universal SQL injection prevention claim.
+- Static policies run before interceptors; AST class conditions are intended for PolicyEval or for adapters that pre-populate `sql_class` before the static-policy stage.
+
+## 2026-05-26 — Spec 6 Receipt-Grade Decision Records
+
+### Context
+
+- Branch: `codex/2026-05-26-boundary-phase1-foundation`, continuing after Spec 5 was committed as `a1f2453`.
+- Scope: Spec 6 only. Add verifiable decision records, canonical request and policy hashes, parse-rejection events, optional signature schema support, and CLI verification.
+
+### Built
+
+- Added v1 decision-record primitives in `governance/receipt*.go`, including canonical decision hashing, canonical JSON request hashing, canonical YAML policy-bundle hashing, optional Ed25519 signing support, and record verification.
+- Extended audit events and slog output with `schema_version`, `record_id`, `policy_bundle_hash`, `request_hash`, `raw_shape_hash`, `decision_hash`, `trust_state`, `boundary_build_digest`, and optional signature fields.
+- Added `boundary verify-record` to validate stored records against request JSON, policy directories, build digests, and record hashes.
+- Added MCP parse-rejection auditing so malformed or invalid JSON-RPC requests emit `parse_rejected` records with `raw_shape_hash` even when no pipeline evaluation occurs.
+- Added `schemas/decision-record.v1.json`, `docs/RECEIPTS.md`, and refreshed decision-record, launch-truth, and claims-ledger language to allow receipt-grade records while forbidding signed-by-default claims.
+- Added tests for canonical request hashing, metadata-independent policy hashing, tamper detection, CLI `verify-record`, and parse-rejection audit emission.
+
+### Verification
+
+- `env -u GOROOT go test ./internal/boundarycli ./tests -run 'TestRun_VerifyRecord|TestReceipt|TestPolicyBundle|TestParseRejection' -count=1`: pass.
+- `env -u GOROOT go test ./... -short`: pass.
+- `env -u GOROOT go vet ./...`: pass.
+- `git ls-files '*.go' | xargs gofmt -l`: pass.
+- `git diff --check`: pass.
+- `env -u GOROOT go run ./cmd/boundary verify --policies schemas`: pass, `warnings: 0`.
+- `env -u GOROOT go run ./cmd/boundary verify --policies examples/mcp-postgres-gateway/policies`: pass, `warnings: 0`.
+
+### Notes
+
+- Receipt-grade means hash-verifiable decision records. Signature fields exist in the v1 schema, but Boundary does not claim signed receipts by default.
+- Parse rejections use `raw_shape_hash`, not `request_hash`, because no canonical governed request exists for malformed input.
+
+## 2026-05-26 — Spec 7 Trust Integration + Adaptive Termination
+
+### Context
+
+- Branch: `codex/2026-05-26-boundary-phase1-foundation`, continuing after Spec 6 was committed as `030884f`.
+- Scope: Spec 7 only. Add standalone trust state, kernel Redis trust-state integration, adaptive termination, trust transition records, and CLI inspection while keeping fulcrum-trust as the canonical Beta-model owner.
+
+### Built
+
+- Added trust backend interfaces and implementations in `governance/trust_*.go`: in-memory standalone Beta trust, kernel Redis IPC reads/writes, production trust config, and trust outcome mapping.
+- Added circuit-breaker thresholds and adaptive action handling so repeated protected-tool failures move agents from `TRUSTED` to `EVALUATING` to `ISOLATED`.
+- Extended the governance pipeline with required-agent-ID enforcement, pre-policy trust denials for isolated or terminated agents, fail-closed trust backend errors on protected transports, post-decision trust updates, and `trust_transition` audit events.
+- Added `boundary trust show`, standalone `boundary trust reset`, `boundary serve --trust-mode`, `--trust-redis-url`, `--require-agent-id`, and `boundary demo trust-degradation`.
+- Added trust docs at `docs/TRUST_INTEGRATION.md` and `docs/ADAPTIVE_TERMINATION.md`, plus `examples/trust-degradation-demo/`.
+- Updated launch truth, threat model, fail-mode matrix, claims ledger, and changelog with bounded delivered trust claims.
+
+### Verification
+
+- `env -u GOROOT go test ./governance ./tests ./tests/integration -run 'TestStandaloneTrust|TestTrustStateFromScore|TestAdaptiveTermination|TestTrustShow|TestTrustDegradation|TestKernelTrust' -count=1`: pass.
+- `env -u GOROOT go test ./... -short`: pass.
+- `env -u GOROOT go vet ./...`: pass.
+- `git ls-files '*.go' | xargs gofmt -l`: pass.
+- `git diff --check`: pass.
+- `env -u GOROOT go run ./cmd/boundary demo trust-degradation`: pass; demo reaches `ISOLATED` and blocks the later protected query pre-execution.
+- `env -u GOROOT go run ./cmd/boundary trust show demo-agent`: pass; prints a standalone unknown-agent trusted snapshot.
+
+### Notes
+
+- Standalone mode is process-local and is intended for demos and disconnected deployments.
+- Kernel mode reads fulcrum-trust IPC state through Redis and fails closed on protected transports when trust state cannot be checked.
+
+## 2026-05-26 — Spec 8 Cross-Repo Integration Contract
+
+### Context
+
+- Branch: `codex/2026-05-26-boundary-phase1-foundation`, continuing after Spec 7 was committed as `9b069e3`.
+- Scope: Spec 8 only. Define Boundary's standalone/kernel seams against the Fulcrum control plane, add runtime config validation, and document proof correspondence without claiming runtime proof extraction.
+
+### Built
+
+- Added `governance/providers.go` with integration interfaces for policy, cost, budget, escalation, envelope lifecycle, and proof correspondence.
+- Added `governance/standalone/` implementations for local policy loading, in-process trust, local budget tracking, approval escalation, local envelopes, and static proof correspondence.
+- Added `governance/kernel/` bridge implementations for Redis policies, Redis trust, HTTP budget enforcement, NATS-style escalation, NATS-style audit, and NATS-style envelope events using injectable transports.
+- Added `config/schema.v1.yaml`, runtime config loading/validation, and `boundary serve --config`; unsafe kernel config fails before startup.
+- Added `docs/INTEGRATION.md`, `docs/STANDALONE_VS_KERNEL.md`, and `docs/PROOF_BOUNDARY.md`.
+- Updated README, claims ledger, and changelog with bounded integration-contract language.
+- Reviewed `docs/PROOF_BOUNDARY.md` against actual theorem names in `/Users/td/ConceptDev/Projects/Fulcrum-Proofs/proofs/lean/`.
+
+### Verification
+
+- `env -u GOROOT go test ./claims ./tests/integration ./internal/boundarycli ./cmd/boundary -run 'TestClaims|TestStandaloneBundle|TestKernelBundle|TestRuntimeConfig|TestRun_Serve' -count=1`: pass.
+- `env -u GOROOT go test ./... -short`: pass.
+- `env -u GOROOT go vet ./...`: pass.
+- `git ls-files '*.go' | xargs gofmt -l`: pass.
+- `git diff --check`: pass.
+- `env -u GOROOT go run ./cmd/boundary verify --policies schemas`: pass, `warnings: 0`.
+- `env -u GOROOT go run ./cmd/boundary verify --policies examples/mcp-postgres-gateway/policies`: pass, `warnings: 0`.
+
+### Notes
+
+- Kernel package tests use fake Redis, HTTP, and publisher transports; live fulcrum-io service conformance remains an operator-environment acceptance step.
+- Boundary proof correspondence remains `design` scope only. Boundary itself still must not emit `proved` decisions.
+
+## 2026-05-26 — Boundary Spec Series Closeout
+
+### Completed Phases
+
+- Phase 1 foundation gates: claims ledger and adapter readiness standard.
+- Spec 3: production MCP JSON-RPC proxy adapter.
+- Spec 4: preview Managed Agents proxy adapter.
+- Spec 5: policy schema v1 and Postgres AST guard.
+- Spec 6: receipt-grade decision records.
+- Spec 7: trust integration and adaptive termination.
+- Spec 8: cross-repo standalone/kernel integration contract.
+
+### Final Verification
+
+- `env -u GOROOT go test ./... -short`: pass.
+- `env -u GOROOT go vet ./...`: pass.
+- `git ls-files '*.go' | xargs gofmt -l`: pass.
+- `git diff --check HEAD`: pass.
+- `env -u GOROOT go run ./cmd/boundary verify --policies schemas`: pass, `warnings: 0`.
+- `env -u GOROOT go run ./cmd/boundary verify --policies examples/mcp-postgres-gateway/policies`: pass, `warnings: 0`.
+
+### Notes
+
+- Branch: `codex/2026-05-26-boundary-phase1-foundation`.
+- All phases in `.claude/sprint/BOUNDARY_SPEC_SERIES.md` have been implemented, validated, and committed in sequence.

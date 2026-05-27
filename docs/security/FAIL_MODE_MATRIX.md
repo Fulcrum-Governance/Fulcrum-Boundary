@@ -21,10 +21,15 @@ audit event via a deferred hook (`pipeline.go:118-130`). The staging is:
 
 | # | Stage | Location | Error behavior |
 |---|-------|----------|----------------|
-| 1 | Trust Check | `pipeline.go:132-150` | **Always fail-closed.** Trust error → deny (`pipeline.go:136-140`). Agent in `ISOLATED`/`TERMINATED` state → deny (`pipeline.go:141-146`). `EVALUATING` state proceeds with trust score 0.5 (`pipeline.go:147-149`). No per-transport override. Stage is skipped entirely when `trustChecker == nil` or `req.AgentID == ""`. |
+| 1 | Trust Check | `pipeline.go` | **Always fail-closed for protected production adapters.** Trust error → deny. Agent in `ISOLATED`/`TERMINATED` state → deny. Production trust backends convert `EVALUATING` to `require_approval`; legacy `TrustChecker` implementations may still allow with trust score 0.5. Stage is skipped only when trust mode is disabled, and production deployments can require `agent_id`. |
 | 2 | Static Policies | `pipeline.go:152-165` | **No error path.** Glob matching via `path.Match` discards the match error (`pipeline.go:80-89`); malformed patterns are treated as non-matching rather than crashing the pipeline. |
 | 3 | Domain Interceptors | `pipeline.go:167-181` | **Always fail-closed.** Interceptor returns an error → deny with reason `interceptor error: %v` (`pipeline.go:169-173`). Interceptor returns `{Allowed: false}` uses its own action/reason; empty action defaults to `deny` (`pipeline.go:174-181`). |
 | 4 | PolicyEval | `pipeline.go:183-215` | **Per-transport configurable.** Evaluator error → deny only if `req.Transport` is in `PipelineConfig.FailClosedTransports` (`pipeline.go:189-193`). Otherwise the error is swallowed and the pre-existing `allow` default is returned (`pipeline.go:194-195`). |
+
+The Postgres SQL interceptor is a concrete Stage 3 guard: unknown or
+unparsable SQL returns `deny`, destructive SQL returns `deny`, administrative
+SQL returns `escalate`, and read/write classes continue with `sql_class`
+annotations for PolicyEval.
 
 Every decision emitted by `Pipeline.Evaluate` now carries an explicit
 `decision_mode` label (see `governance/decision_mode.go`, PRD-002). The
@@ -58,40 +63,41 @@ would have blocked, even when dry-run flips the caller-visible action.
 
 ## 2. Fail-Mode Matrix
 
-Seven fault classes × six transports. Each cell is one of:
+Seven fault classes × seven transports. Each cell is one of:
 
 - **DENY** — pipeline sets `decision.Action = "deny"`.
 - **ALLOW** — pipeline leaves the default `decision.Action = "allow"`.
 - **PASS** — pipeline is not involved; downstream error is surfaced by the
   caller's runtime unchanged.
 - **ERR→caller** — adapter `ParseRequest` returns a Go error; the embedding
-  runtime (mcpproxy, agent runtime, sandbox runtime) decides what the caller
+  runtime (MCP gateway, agent runtime, sandbox runtime) decides what the caller
   sees. Functionally the tool call does not proceed, which is equivalent to
   deny — but the decision and audit event are **not** produced by the Boundary
   pipeline.
 - **HTTP 400 / codes.Internal** — adapter surfaces a protocol-specific
   fail-closed error before pipeline entry.
 
-| Fault Class | MCP | CLI | Code Exec | gRPC | A2A | Webhook |
-|---|---|---|---|---|---|---|
-| Trust store unreachable | DENY `pipeline.go:136-140` | DENY `pipeline.go:136-140` | DENY `pipeline.go:136-140` | DENY `pipeline.go:136-140` | DENY `pipeline.go:136-140` | DENY `pipeline.go:136-140` |
-| Agent ISOLATED or TERMINATED | DENY `pipeline.go:141-146` | DENY `pipeline.go:141-146` | DENY `pipeline.go:141-146` | DENY `pipeline.go:141-146` | DENY `pipeline.go:141-146` | DENY `pipeline.go:141-146` |
-| Adapter parse failure | ERR→caller `adapters/mcp/adapter.go:44-64` | ERR→caller `adapters/cli/adapter.go:52-82` | ERR→caller `adapters/codeexec/adapter.go:52-79` | `codes.Internal` `adapters/grpc/adapter.go:141-143` | ERR→caller `adapters/a2a/adapter.go:51-73` | HTTP 400 `adapters/webhook/adapter.go:139-143` |
-| Interceptor error | DENY `pipeline.go:169-173` | DENY `pipeline.go:169-173` | DENY `pipeline.go:169-173` | DENY `pipeline.go:169-173` | DENY `pipeline.go:169-173` | DENY `pipeline.go:169-173` |
-| PolicyEval error (transport in `FailClosedTransports`) | DENY `pipeline.go:189-193` | DENY `pipeline.go:189-193` | DENY `pipeline.go:189-193` | DENY `pipeline.go:189-193` | DENY `pipeline.go:189-193` | DENY `pipeline.go:189-193` |
-| PolicyEval error (transport NOT in `FailClosedTransports`) | ALLOW `pipeline.go:194-195` | ALLOW `pipeline.go:194-195` | ALLOW `pipeline.go:194-195` | ALLOW `pipeline.go:194-195` | ALLOW `pipeline.go:194-195` | ALLOW `pipeline.go:194-195` |
-| Downstream tool error (5xx / non-zero exit) | PASS `adapters/mcp/adapter.go:86-88` | PASS `adapters/cli/adapter.go:120-122` | PASS `adapters/codeexec/adapter.go:112-114` | PASS `adapters/grpc/adapter.go:97-99` | PASS `adapters/a2a/adapter.go:89-92` | PASS `adapters/webhook/adapter.go:100-102` |
+| Fault Class | MCP | CLI | Code Exec | gRPC | Managed Agents | A2A | Webhook |
+|---|---|---|---|---|---|---|---|
+| Trust store unreachable | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` |
+| Agent ISOLATED or TERMINATED | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` |
+| Adapter parse failure | JSON-RPC error `adapters/mcp/gateway.go` or ERR→caller from raw adapter use | ERR→caller `adapters/cli/adapter.go` | ERR→caller `adapters/codeexec/adapter.go` | `codes.Internal` `adapters/grpc/adapter.go` | ERR→caller or deny confirmation from proxy resolver `adapters/managedagents` | ERR→caller `adapters/a2a/adapter.go` | HTTP 400 `adapters/webhook/adapter.go` |
+| Interceptor error | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` |
+| PolicyEval error (transport in `FailClosedTransports`) | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` |
+| PolicyEval error (transport NOT in `FailClosedTransports`) | ALLOW `pipeline.go` | ALLOW `pipeline.go` | ALLOW `pipeline.go` | ALLOW `pipeline.go` | ALLOW `pipeline.go` | ALLOW `pipeline.go` | ALLOW `pipeline.go` |
+| Downstream tool error (5xx / non-zero exit) | PASS through governed proxy response inspection `adapters/mcp/forwarder.go` | PASS `adapters/cli/adapter.go` | PASS `adapters/codeexec/adapter.go` | PASS `adapters/grpc/adapter.go` | PASS through proxied session stream with response inspection `adapters/managedagents/response_inspector.go` | PASS `adapters/a2a/adapter.go` | PASS `adapters/webhook/adapter.go` |
 
 **Notes on the matrix:**
 
 - **Adapter parse failure** happens BEFORE the pipeline runs. No audit event
   is emitted by the pipeline in this case, because `Evaluate` is never
   called. The gRPC and webhook adapters embed pipeline invocation in their
-  own HTTP/gRPC handlers (`adapters/grpc/adapter.go:131-157`,
-  `adapters/webhook/adapter.go:128-177`), which is why they can map
-  parse errors to protocol-level fail-closed responses (`codes.Internal`,
-  HTTP 400). MCP, CLI, CodeExec, and A2A adapters only provide parsing; the
-  embedding runtime (mcpproxy, agent runtime, sandbox runtime, A2A caller)
+  own HTTP/gRPC handlers (`adapters/mcp/gateway.go`,
+  `adapters/grpc/adapter.go:131-157`, `adapters/webhook/adapter.go:128-177`),
+  which is why they can map parse errors to protocol-level fail-closed responses
+  (JSON-RPC error, `codes.Internal`, HTTP 400). CLI, CodeExec, and A2A adapters
+  only provide parsing; the embedding runtime (agent runtime, sandbox runtime,
+  A2A caller)
   is responsible for translating a parse error into a protocol response.
 
 - **PolicyEval error (fail-open row)** is the only cell in the entire matrix
@@ -99,24 +105,24 @@ Seven fault classes × six transports. Each cell is one of:
   `FailClosedTransports` exists — it lets operators flip this row to DENY
   per security-critical transport.
 
-- **Downstream tool error (PASS row)**: every `ForwardGoverned` method on
-  every adapter is a no-op or stub. Forwarding is the responsibility of the
-  surrounding runtime (mcpproxy, agent runtime, sandbox runtime, gRPC
-  interceptor chain, webhook `Handler()`). The governance decision is
-  emitted before forwarding happens, so downstream 5xx or non-zero exit does
-  not retroactively change the action in the audit event.
+- **Downstream tool error (PASS row)**: the MCP proxy now forwards allowed
+  JSON-RPC requests itself and inspects upstream errors. Other adapters still
+  delegate forwarding to the surrounding runtime (agent runtime, sandbox
+  runtime, gRPC interceptor chain, webhook `Handler()`). The governance
+  decision is emitted before forwarding happens, so downstream 5xx or non-zero
+  exit does not retroactively change the action in the audit event.
 
 ## 3. Recommended `FailClosedTransports` Defaults
 
-`PipelineConfig.FailClosedTransports` is `nil` by default
-(`pipeline.go:19-21`), which means **all transports fail-open on PolicyEval
-errors unless operators opt in**. Recommended production defaults below. This
-is a recommendation, not an enforced policy — the pipeline ships with the
-empty default.
+`PipelineConfig.FailClosedTransports` is `nil` by default, which means Boundary
+applies `DefaultFailClosedTransports` (`mcp`, `managed_agents`, `code_exec`,
+and `grpc`). Operators can pass an explicit empty slice to opt out, or a
+populated slice to override the secure-by-default set.
 
 | Transport | Recommended | Rationale |
 |---|---|---|
 | `TransportMCP` | **fail-closed** | Model-facing tool surface; silently allowing on evaluator outage means the governance layer degrades to the pre-Boundary state for agent tool calls. This is the single most security-critical row in the matrix. |
+| `TransportManagedAgents` | **fail-closed** | Hosted-agent tool confirmations are execution gates. Evaluator outage must deny by withholding or denying confirmation rather than letting a tool proceed. |
 | `TransportCodeExec` | **fail-closed** | Arbitrary code execution. A PolicyEval outage that allows-by-default here sidesteps the 21 Python + 9 JavaScript obfuscation detection categories — currently 57 + 36 compiled regex patterns (`adapters/codeexec/analyzer_python.go`, `analyzer_javascript.go`). |
 | `TransportCLI` | **fail-closed** | Command execution with parsed pipe-chain risk classification (`adapters/cli/classifier.go`). Silently allowing on evaluator outage drops the high-risk classification results. |
 | `TransportGRPC` | fail-closed | Unary RPC interceptor (`adapters/grpc/adapter.go:131-157`). Internal service surface; defaulting to fail-closed matches the rest of the control plane's default posture. |

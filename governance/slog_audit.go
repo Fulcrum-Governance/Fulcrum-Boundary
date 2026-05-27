@@ -32,8 +32,16 @@ func (p *SlogAuditPublisher) Publish(ctx context.Context, event AuditEvent) {
 	case "deny", "escalate", "require_approval":
 		level = slog.LevelWarn
 	}
+	record := BuildDecisionRecord(event)
+	msg := event.EventType
+	if msg == "" {
+		msg = "governance_decision"
+	}
 
-	logger.LogAttrs(ctx, level, "governance_decision",
+	logger.LogAttrs(ctx, level, msg,
+		slog.String("schema_version", record.SchemaVersion),
+		slog.String("event_type", record.EventType),
+		slog.String("record_id", record.RecordID),
 		slog.String("request_id", event.RequestID),
 		slog.String("transport", string(event.Transport)),
 		slog.String("tool_name", event.ToolName),
@@ -42,7 +50,16 @@ func (p *SlogAuditPublisher) Publish(ctx context.Context, event AuditEvent) {
 		slog.String("decision_mode", string(event.DecisionMode)),
 		slog.String("matched_rule", event.MatchedRule),
 		slog.String("policy_file", event.PolicyFile),
+		slog.String("policy_bundle_hash", event.PolicyBundleHash),
 		slog.String("gateway_version", event.GatewayVersion),
+		slog.String("boundary_version", event.GatewayVersion),
+		slog.String("boundary_build_digest", event.BoundaryBuildDigest),
+		slog.String("request_hash", record.RequestHash),
+		slog.String("raw_shape_hash", record.RawShapeHash),
+		slog.String("decision_hash", record.DecisionHash),
+		slog.String("trust_state", record.TrustState),
+		slog.String("signature", record.Signature),
+		slog.String("signature_key_id", record.SignatureKeyID),
 		slog.String("trace_id", event.TraceID),
 		slog.String("agent_id", event.AgentID),
 		slog.String("tenant_id", event.TenantID),

@@ -1,0 +1,39 @@
+# Claims Ledger
+
+This ledger is the Boundary-specific extension to Fulcrum's broader claims-lock
+discipline. It binds public language to repo evidence so release notes, README
+copy, and demo language do not outrun what the Boundary code and docs prove.
+
+The machine-readable source is [`claims/boundary_claims.yaml`](../claims/boundary_claims.yaml).
+The release gate in [`claims/claims_test.go`](../claims/claims_test.go) parses
+that file and validates the evidence rules.
+
+## Status Vocabulary
+
+| Status | Meaning |
+|---|---|
+| `delivered` | May be used in release notes when the claim has at least one test path and one doc path. |
+| `partial` | May be used only with maturity or gap caveats. Each partial claim must name linked build tasks. |
+| `planned` | Roadmap only. Do not state as current behavior. |
+| `false` | Do not use as a public claim. The validation gate checks that the claim text is absent from `README.md`. |
+
+## Current Claims
+
+| ID | Status | Claim | Evidence | Public boundary |
+|---|---|---|---|---|
+| BND-CLAIM-001 | delivered | Boundary governs MCP Safety Gateway requests before execution when the tool route passes through Boundary. | `internal/boundarycli/cli_test.go`, `docs/BOUNDARY_CONDITIONS.md`, `docs/LAUNCH_TRUTH_FREEZE.md` | Scoped to routed deployments and the Docker demo topology. |
+| BND-CLAIM-002 | delivered | Boundary emits structured decision records for every governed verdict. | `governance/slog_audit_test.go`, `docs/DECISION_RECORDS.md` | Records include stable request, policy bundle, and decision hashes; signatures are optional. |
+| BND-CLAIM-003 | partial | Boundary ships one production MCP adapter and six lower-maturity transport adapter packages. | Adapter package tests, `docs/ADAPTER_READINESS_MATRIX.md` | Use the maturity matrix. Do not call every adapter production-grade. |
+| BND-CLAIM-004 | false | Boundary is a SQL firewall. | `docs/LAUNCH_TRUTH_FREEZE.md` | Boundary includes a Postgres AST guard for statement classification, but it is not a general SQL firewall. |
+| BND-CLAIM-005 | delivered | Boundary produces receipt-grade decision records. | `tests/receipt_verification_test.go`, `internal/boundarycli/cli_test.go`, `docs/RECEIPTS.md` | Receipt-grade means hash-verifiable records; do not imply signed receipts by default. |
+| BND-CLAIM-006 | delivered | Boundary provides a production MCP JSON-RPC proxy adapter. | `tests/integration/mcp_gateway_lifecycle_test.go`, `docs/adapters/MCP.md`, `docs/ADAPTER_READINESS_MATRIX.md` | Production MCP protection still requires deployment isolation around the upstream tool server. |
+| BND-CLAIM-007 | partial | Boundary provides a preview Managed Agents proxy adapter. | `tests/integration/managed_agents_lifecycle_test.go`, `tests/integration/managed_agents_multiagent_test.go`, `docs/adapters/MANAGED_AGENTS.md` | Preview only until a live upstream conformance run is recorded. |
+| BND-CLAIM-008 | delivered | Boundary includes a Postgres AST guard for classifying SQL statements before PolicyEval. | `tests/interceptors/sql_postgres_test.go`, `tests/interceptors/sql_evasion_test.go`, `docs/policies/POSTGRES.md`, `docs/POLICY_SCHEMA.md` | Do not turn this into a general SQL firewall or SQL injection prevention claim. |
+| BND-CLAIM-009 | delivered | Boundary provides standalone trust integration and adaptive termination for protected adapters. | `tests/adaptive_termination_test.go`, `tests/integration/trust_production_test.go`, `tests/integration/trust_fail_closed_test.go`, `docs/TRUST_INTEGRATION.md`, `docs/ADAPTIVE_TERMINATION.md` | Boundary can isolate repeated violators before later protected calls execute; it does not replace deployment isolation or own Fulcrum's canonical trust model. |
+| BND-CLAIM-010 | delivered | Boundary defines standalone and kernel integration contracts for the Fulcrum control plane. | `tests/integration/standalone_test.go`, `tests/integration/kernel_test.go`, `docs/INTEGRATION.md`, `docs/STANDALONE_VS_KERNEL.md`, `docs/PROOF_BOUNDARY.md` | Contracts name the seams; they do not mean Boundary emits `proved` decisions or connects to every Fulcrum service without operator config. |
+
+## Release Rule
+
+Release notes can only make uncaveated behavior claims whose status is
+`delivered`. Partial claims must carry the gap language from the YAML ledger.
+False claims must not appear in `README.md`, release notes, or launch copy.

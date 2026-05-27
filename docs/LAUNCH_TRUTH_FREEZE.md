@@ -23,6 +23,8 @@ The MCP Safety Gateway demo proves the release spine:
 - a destructive demo `DROP TABLE` request is denied before execution
 - a direct bypass attempt from the demo agent fails by network topology
 - every verdict emits a structured decision record
+- the Postgres path uses an AST guard for statement classification
+- decision records include verifiable request, policy bundle, and decision hashes
 
 The bypass claim is scoped to the Docker demo topology. Production deployments must enforce the same sole-route constraint with their own infrastructure controls.
 
@@ -31,14 +33,14 @@ The bypass claim is scoped to the Docker demo topology. Production deployments m
 Fulcrum Boundary v0.2.0 does not claim:
 
 - general SQL firewall coverage
-- sophisticated SQL obfuscation resistance
-- receipt verification
-- trust-based adaptive termination
+- universal SQL injection prevention
+- signed receipts by default
 - multi-agent coordination governance
 - benchmark superiority
 - compliance certification
 
-The release uses the term **decision records**. Do not call them receipts until verification mechanics such as policy hashes, request hashes, and record verification are implemented.
+Receipt-grade means hash-verifiable decision records. Do not imply signatures
+are required or enabled by default.
 
 ## Verified Release Surface
 
@@ -48,6 +50,12 @@ The release uses the term **decision records**. Do not call them receipts until 
 | `examples/mcp-postgres-gateway/` Docker demo | Present |
 | YAML policy loading | Present |
 | Structured decision records | Present |
+| Receipt verification | Present |
+| Trust integration | Present |
+| Adaptive termination | Present |
+| `docs/RECEIPTS.md` | Present |
+| `docs/TRUST_INTEGRATION.md` | Present |
+| `docs/ADAPTIVE_TERMINATION.md` | Present |
 | `docs/DECISION_RECORDS.md` | Present |
 | `docs/LIMITATIONS.md` | Present |
 | `docs/BOUNDARY_CONDITIONS.md` | Present |
@@ -67,12 +75,13 @@ Use:
 - action boundary
 - pre-execution control
 - decision record
+- receipt-grade decision record
 
 Do not use as public release names:
 
 - Zero-Trust MCP Router
 - MCP gateway as the whole project identity
 - governance platform as the lead phrase
-- receipts for v0.2.0 decision records
+- signed receipts by default
 
 Adapters change. The boundary does not.

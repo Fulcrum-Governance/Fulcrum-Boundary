@@ -1,0 +1,20 @@
+schema_version: "1"
+policy:
+  name: example-postgres-policy
+  version: "1.0.0"
+  transport: mcp
+  rules:
+    - name: deny-destructive-postgres
+      tool: query
+      action: deny
+      reason: Destructive SQL is blocked before upstream execution.
+      conditions:
+        - type: ast_class
+          value: DESTRUCTIVE
+    - name: escalate-admin-postgres
+      tool: query
+      action: escalate
+      reason: Administrative SQL requires explicit review.
+      conditions:
+        - type: ast_class
+          value: ADMIN

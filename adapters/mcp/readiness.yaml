@@ -1,0 +1,34 @@
+adapter: mcp
+status: production
+target_status: production
+lifecycle:
+  parse: implemented
+  identify: implemented
+  evaluate: implemented
+  deny: implemented
+  forward: implemented
+  inspect: implemented
+  metadata: implemented
+  record: delegated
+  bypass_proof: delegated
+  fail_closed: implemented
+delegated_steps:
+  - step: record
+    owner: governance.AuditPublisher
+    contract: docs/DECISION_RECORDS.md
+  - step: bypass_proof
+    owner: deployment network topology
+    contract: docs/BOUNDARY_CONDITIONS.md
+bypass_model: network
+fail_closed_transports:
+  - mcp
+evidence:
+  tests:
+    - adapters/mcp/adapter_test.go
+    - tests/integration/mcp_gateway_lifecycle_test.go
+    - internal/boundarycli/cli_test.go
+  docs:
+    - docs/BOUNDARY_CONDITIONS.md
+    - docs/adapters/MCP.md
+    - docs/ADAPTER_READINESS_MATRIX.md
+gaps: []

@@ -1,0 +1,97 @@
+cases:
+  - id: select-basic
+    sql: SELECT id FROM users
+    want: READ
+  - id: select-cte
+    sql: WITH recent AS (SELECT id FROM users) SELECT id FROM recent
+    want: READ
+  - id: select-comments
+    sql: SELECT /* DROP TABLE users */ id FROM users
+    want: READ
+  - id: select-dollar-string
+    sql: SELECT $$DROP TABLE users$$
+    want: READ
+  - id: select-function-call
+    sql: SELECT now()
+    want: READ
+  - id: insert-basic
+    sql: INSERT INTO audit_log(message) VALUES ('ok')
+    want: WRITE
+  - id: update-basic
+    sql: UPDATE users SET plan = 'pro' WHERE id = 1
+    want: WRITE
+  - id: delete-basic
+    sql: DELETE FROM users WHERE id = 1
+    want: WRITE
+  - id: merge-basic
+    sql: MERGE INTO users u USING staging s ON u.id = s.id WHEN MATCHED THEN UPDATE SET plan = s.plan
+    want: WRITE
+  - id: copy-to
+    sql: COPY users TO STDOUT
+    want: WRITE
+  - id: drop-table
+    sql: DROP TABLE users
+    want: DESTRUCTIVE
+  - id: drop-table-if-exists
+    sql: DROP TABLE IF EXISTS users
+    want: DESTRUCTIVE
+  - id: drop-schema-cascade
+    sql: DROP SCHEMA public CASCADE
+    want: DESTRUCTIVE
+  - id: truncate
+    sql: TRUNCATE TABLE users
+    want: DESTRUCTIVE
+  - id: mixed-select-drop
+    sql: SELECT 1; DROP TABLE users
+    want: DESTRUCTIVE
+  - id: comment-before-drop
+    sql: /* harmless */ DROP TABLE users
+    want: DESTRUCTIVE
+  - id: split-keyword-comment
+    sql: DR/**/OP TABLE users
+    want: UNKNOWN
+  - id: unicode-homoglyph
+    sql: DRОP TABLE users
+    want: UNKNOWN
+  - id: unterminated-comment
+    sql: SELECT 1 /* open
+    want: UNKNOWN
+  - id: invalid-token
+    sql: SELECT @@@
+    want: UNKNOWN
+  - id: alter-table
+    sql: ALTER TABLE users ADD COLUMN internal_note text
+    want: ADMIN
+  - id: create-table
+    sql: CREATE TABLE tmp_users(id integer)
+    want: ADMIN
+  - id: create-index
+    sql: CREATE INDEX idx_users_id ON users(id)
+    want: ADMIN
+  - id: grant
+    sql: GRANT SELECT ON users TO analyst
+    want: ADMIN
+  - id: set-role
+    sql: SET ROLE admin
+    want: ADMIN
+  - id: explain-select
+    sql: EXPLAIN SELECT id FROM users
+    want: ADMIN
+  - id: transaction
+    sql: BEGIN
+    want: ADMIN
+  - id: vacuum
+    sql: VACUUM users
+    want: ADMIN
+  - id: reindex
+    sql: REINDEX TABLE users
+    want: ADMIN
+  - id: listen
+    sql: LISTEN channel
+    want: ADMIN
+  - id: empty
+    sql: ""
+    want: UNKNOWN
+  - id: multi-write-read
+    sql: INSERT INTO audit_log(message) VALUES ('ok'); SELECT id FROM audit_log
+    want: WRITE

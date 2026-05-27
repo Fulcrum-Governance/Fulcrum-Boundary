@@ -8,8 +8,14 @@ by focusing on the contract itself rather than the surrounding pipeline.
 The interface is defined in
 [`governance/adapter.go`](../governance/adapter.go) and intentionally has only
 five methods. The split between "real work" and "defensive glue" is deliberate
-— most adapters should only need to implement `Type()` and `ParseRequest()`
-in earnest.
+— many adapters implement protocol parsing directly while delegating forwarding,
+recording, and bypass proof to the host runtime.
+
+Interface conformance is necessary but not sufficient for production maturity.
+Readiness is tracked separately through the ten-step lifecycle in
+[`governance/adapter_lifecycle.go`](../governance/adapter_lifecycle.go),
+[`docs/ADAPTER_READINESS_MATRIX.md`](./ADAPTER_READINESS_MATRIX.md), and each
+`adapters/<name>/readiness.yaml` declaration.
 
 ## Interface
 
@@ -29,7 +35,7 @@ type TransportAdapter interface {
 |---|---|---|
 | `Type()` | **required** | Return one of the `TransportType` constants in [`governance/request.go`](../governance/request.go). Must be stable across calls. |
 | `ParseRequest` | **required (real work)** | Convert protocol-specific input into a `GovernanceRequest`. Failure must return a `governance.ParseError` (use `governance.NewParseError`). See "ParseRequest contract" below. |
-| `ForwardGoverned` | **optional / often a stub** | Forward the governed call to the downstream tool *only* if your adapter owns the transport. Existing adapters whose forwarding is handled elsewhere return `nil, nil` (webhook, gRPC, A2A) or a fixed error explaining who owns forwarding (MCP, CLI, codeexec). Do not perform side effects that the caller did not ask for. |
+| `ForwardGoverned` | **optional / often a stub** | Forward the governed call to the downstream tool *only* if your adapter owns the transport. MCP owns this in proxy mode through `adapters/mcp.Gateway`; Managed Agents owns upstream tool confirmations through `adapters/managedagents.SessionProxy`; adapters whose forwarding is handled elsewhere return `nil, nil` (webhook, gRPC, A2A) or a fixed error explaining who owns forwarding (CLI, codeexec). Do not perform side effects that the caller did not ask for. |
 | `InspectResponse` | **optional** | Examine `ToolResponse.Content` for governance concerns (size limits, sensitive-data patterns, exit codes). Adapters with no opinion return `&ResponseInspection{Safe: true}, nil`. |
 | `EmitGovernanceMetadata` | **optional** | Attach the governance decision's `Action`, `EnvelopeID`, and `RequestID` to the response so callers can read the verdict without parsing the body. Adapters whose host (e.g. an HTTP handler) writes governance headers directly may return `nil`. |
 
@@ -96,6 +102,29 @@ adapter does decide whether the pipeline runs at all. The implications:
   hook, not an enforcement hook — denying based on response content requires a
   pipeline rerun (rare; most callers log the inspection and move on).
 
+## Lifecycle readiness
+
+Production-grade adapters must complete or formally delegate all ten lifecycle
+steps:
+
+| Step | Contract |
+|---|---|
+| `parse` | Convert transport-specific payload into `GovernanceRequest`. |
+| `identify` | Populate agent, tenant, and trace identity. |
+| `evaluate` | Run the request through `governance.Pipeline`. |
+| `deny` | Return a transport-shaped denial and do not forward. |
+| `forward` | Send allowed requests to the tool through the governed path only. |
+| `inspect` | Inspect tool responses where the protocol allows. |
+| `metadata` | Attach governance verdict metadata to the response. |
+| `record` | Emit a structured decision record. |
+| `bypass_proof` | Prove the deployment removes direct tool access around Boundary. |
+| `fail_closed` | Deny rather than pass through on governance errors. |
+
+Step states are `implemented`, `delegated`, `not_applicable`, or `stub`.
+Delegated steps must name an owner and a contract document. A package may satisfy
+`TransportAdapter` while still remaining preview or experimental if one of the
+production lifecycle steps is delegated without proof or still stubbed.
+
 ## Cross-repo consumers
 
 Three consumers integrate against this interface today, each in a different
@@ -106,14 +135,16 @@ process and language:
 Repo: [`fulcrum-io`](https://fulcrumlayer.io) (`/internal/adapters/mcp`,
 `/internal/adapters/cli`, `/internal/adapters/codeexec`).
 
-The runtime control plane wraps the Boundary adapters in production-grade
-forwarding code: the MCP adapter feeds the `mcpproxy` JSON-RPC interceptor,
-the CLI adapter is invoked from the agent runtime command bridge, and the
-code-exec adapter is invoked from the Python/JavaScript sandbox gateway. In
-every case, Boundary is the parsing and decision layer; the surrounding fulcrum-io
-service owns the actual transport I/O. That is why the shipped Boundary adapters
-return a fixed error from `ForwardGoverned` rather than attempting to forward
-themselves — the consumer must override or wrap.
+The runtime control plane wraps most Boundary adapters in production-grade
+forwarding code: the CLI adapter is invoked from the agent runtime command
+bridge, and the code-exec adapter is invoked from the Python/JavaScript sandbox
+gateway. MCP is the exception in Boundary itself: `adapters/mcp.Gateway` is an
+out-of-process JSON-RPC proxy that evaluates, denies, forwards, inspects, and
+adds metadata before returning to the MCP client. Kernel-connected fulcrum-io
+deployments can still place Secure MCP Servers behind that Boundary proxy.
+Managed Agents follows the same out-of-process pattern for hosted-agent session
+streams: Boundary receives the stream, evaluates each tool-use event, and sends
+the upstream `user.tool_confirmation` event with `allow` or `deny`.
 
 ### `fulcrum-trust` LangGraph adapter
 
@@ -176,6 +207,10 @@ The procedure mirrors
    branch.
 6. Document the protocol-specific input struct with a brief Go doc comment
    above its declaration.
+7. Add `adapters/<yourname>/readiness.yaml` and update
+   [`docs/ADAPTER_READINESS_MATRIX.md`](./ADAPTER_READINESS_MATRIX.md). The
+   `tests/adapter_conformance` gate fails when a shipped adapter has no
+   readiness declaration or omits a lifecycle step.
 
 If your adapter pulls in a heavy dependency (a third-party protocol library),
 follow the gRPC adapter's lead and put the package in its own `go.mod` so the

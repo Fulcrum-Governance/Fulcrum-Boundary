@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/fulcrum-governance/boundary/policyeval"
 	"gopkg.in/yaml.v3"
 )
 
@@ -66,9 +67,9 @@ func LoadStaticPolicyFiles(dir string) (*StaticPolicyLoadResult, error) {
 			return nil, fmt.Errorf("read policy file %s: %w", path, err)
 		}
 
-		var doc StaticPolicyDocument
-		if err := yaml.Unmarshal(body, &doc); err != nil {
-			return nil, fmt.Errorf("parse policy file %s: %w", path, err)
+		doc, err := parseStaticPolicyDocument(path, body)
+		if err != nil {
+			return nil, err
 		}
 
 		result.Files = append(result.Files, path)
@@ -95,11 +96,11 @@ func LoadStaticPolicyFiles(dir string) (*StaticPolicyLoadResult, error) {
 			if rule.Action == "" {
 				result.Warnings = append(result.Warnings, fmt.Sprintf("%s: rule %q has empty action", path, rule.Name))
 			}
-			if rule.Match != nil && rule.Match.Field == "" {
+			if rule.Match != nil && rule.Match.Field == "" && staticMatchRequiresField(*rule.Match) {
 				result.Warnings = append(result.Warnings, fmt.Sprintf("%s: rule %q has empty match field", path, rule.Name))
 			}
 			for _, condition := range rule.Conditions {
-				if condition.Field == "" {
+				if condition.Field == "" && staticMatchRequiresField(condition) {
 					result.Warnings = append(result.Warnings, fmt.Sprintf("%s: rule %q has empty condition field", path, rule.Name))
 				}
 			}
@@ -112,4 +113,81 @@ func LoadStaticPolicyFiles(dir string) (*StaticPolicyLoadResult, error) {
 	}
 
 	return result, nil
+}
+
+// ParseStaticPolicyDocument parses either the legacy static-policy YAML shape
+// or policy schema v1 into Boundary's in-process static rule representation.
+func ParseStaticPolicyDocument(path string, body []byte) (*StaticPolicyDocument, error) {
+	return parseStaticPolicyDocument(path, body)
+}
+
+func staticMatchRequiresField(match StaticPolicyMatch) bool {
+	switch strings.ToLower(strings.TrimSpace(match.Type)) {
+	case "transport_is", "agent_in", "agent_not_in", "ast_class":
+		return false
+	default:
+		return true
+	}
+}
+
+func parseStaticPolicyDocument(path string, body []byte) (*StaticPolicyDocument, error) {
+	if policyeval.IsPolicyV1YAML(body) {
+		doc, err := policyeval.ValidatePolicyV1YAML(path, body)
+		if err != nil {
+			return nil, err
+		}
+		return convertPolicyV1Document(doc), nil
+	}
+
+	var doc StaticPolicyDocument
+	if err := yaml.Unmarshal(body, &doc); err != nil {
+		return nil, fmt.Errorf("parse policy file %s: %w", path, err)
+	}
+	return &doc, nil
+}
+
+func convertPolicyV1Document(doc *policyeval.PolicyV1Document) *StaticPolicyDocument {
+	if doc == nil {
+		return &StaticPolicyDocument{}
+	}
+	out := &StaticPolicyDocument{
+		Name:    doc.Policy.Name,
+		Version: doc.Policy.Version,
+		Rules:   make([]StaticPolicyRule, 0, len(doc.Policy.Rules)),
+	}
+	for _, rule := range doc.Policy.Rules {
+		staticRule := StaticPolicyRule{
+			Name:         rule.Name,
+			Tool:         rule.Tool,
+			Action:       strings.ToLower(strings.TrimSpace(rule.Action)),
+			Reason:       rule.Reason,
+			Transport:    firstNonEmpty(rule.Transport, doc.Policy.Transport),
+			DecisionMode: DecisionMode(rule.DecisionMode),
+			TenantScope:  append([]string{}, rule.TenantScope...),
+			AgentScope:   append([]string{}, rule.AgentScope...),
+			Conditions:   make([]StaticPolicyMatch, 0, len(rule.Conditions)),
+			Metadata:     rule.Metadata,
+		}
+		if rule.Match != nil {
+			match := convertPolicyV1Condition(*rule.Match)
+			staticRule.Match = &match
+		}
+		for _, condition := range rule.Conditions {
+			staticRule.Conditions = append(staticRule.Conditions, convertPolicyV1Condition(condition))
+		}
+		out.Rules = append(out.Rules, staticRule)
+	}
+	return out
+}
+
+func convertPolicyV1Condition(condition policyeval.PolicyV1Condition) StaticPolicyMatch {
+	return StaticPolicyMatch{
+		Type:            strings.ToLower(strings.TrimSpace(condition.Type)),
+		Field:           condition.Field,
+		Contains:        condition.Contains,
+		Value:           condition.Value,
+		Values:          append([]string{}, condition.Values...),
+		Regex:           condition.Regex,
+		CaseInsensitive: condition.CaseInsensitive,
+	}
 }
