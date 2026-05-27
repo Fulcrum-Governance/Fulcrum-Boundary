@@ -8,6 +8,8 @@ Branch: `codex/2026-05-27-command-boundary-truth`
 
 Release train: post-v0.3.0 Command Boundary preview
 
+Release package: `v0.4.0` (see `docs/RELEASE_TRUTH_V040.md`)
+
 ## Summary
 
 This report reconciles the Command Boundary preview after the design, classifier,

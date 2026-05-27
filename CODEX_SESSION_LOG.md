@@ -1,5 +1,45 @@
 # CODEX Session Log
 
+## 2026-05-27 - v0.4.0 Command Boundary Release Packaging
+
+### Context
+
+- Parent goal: release the already-merged Command Boundary preview as Fulcrum
+  Boundary v0.4.0.
+- Branch: `codex/2026-05-27-v040-command-boundary-release`
+- Scope: release packaging, public copy alignment, changelog, release notes,
+  release truth, and verification. No product behavior changed.
+
+### What changed
+
+- Added `docs/releases/v0.4.0.md`.
+- Added `docs/RELEASE_TRUTH_V040.md`.
+- Added `docs/superpowers/plans/2026-05-27-v040-command-boundary-release.md`.
+- Updated active install examples to `@v0.4.0`.
+- Updated MCP audit GitHub Action examples to `@v0.4.0`.
+- Updated Command Boundary docs to state the preview is packaged in v0.4.0.
+- Split the changelog so `Unreleased` is reset, `0.4.0` records Command
+  Boundary preview packaging, and the prior large release surface is under
+  `0.3.0`.
+
+### Verification
+
+- `make docs-build`: pass.
+- `go test ./internal/commandboundary/... -count=1 -timeout 5m`: pass.
+- `go test ./tests/commandboundary/... -count=1 -timeout 5m`: pass.
+- `go test ./tests/redteam/... -run Command -count=1 -timeout 5m`: pass.
+- `go test ./claims/... -count=1`: pass.
+- `make release-check`: pass.
+- Public forbidden-copy sweep found matches only in forbidden-language,
+  limitation, claim-control, or planning sections.
+
+### Notes For Next Step
+
+- Merge this release branch to `main`, tag `v0.4.0`, publish the GitHub
+  release from `docs/releases/v0.4.0.md`, and run the tag install smoke test.
+- After v0.4.0 is published, start the v0.5 Filesystem/Edit Boundary design
+  train for direct file-write governance.
+
 ## 2026-05-27 - Command Boundary Project Shell And Shims
 
 ### Context

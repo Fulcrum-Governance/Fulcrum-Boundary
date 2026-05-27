@@ -74,5 +74,5 @@ workflow.
 
 Command Boundary does not alter v0.3.0 release truth. MCP remains the production
 adapter path for v0.3.0. Secure GitHub remains preview. Command Boundary is a
-post-v0.3.0 preview surface and must remain described with routed-path
-qualifiers.
+post-v0.3.0 preview surface packaged in v0.4.0 and must remain described with
+routed-path qualifiers.

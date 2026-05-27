@@ -1,8 +1,9 @@
 # Command Boundary Preview
 
 Command Boundary is the preview follow-on release train after Fulcrum Boundary
-v0.3.0. It extends Boundary's action-boundary model from MCP-routed tools to
-project-local command paths when those commands route through Boundary.
+v0.3.0 and is packaged in v0.4.0. It extends Boundary's action-boundary model
+from MCP-routed tools to project-local command paths when those commands route
+through Boundary.
 
 The design premise is intentionally narrow:
 

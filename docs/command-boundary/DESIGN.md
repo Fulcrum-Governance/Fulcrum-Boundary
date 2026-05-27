@@ -14,9 +14,9 @@ The design brings the existing Boundary shape to command paths:
 5. Execute only when policy allows.
 6. Emit a command decision record.
 
-This is a preview design. It is not part of the v0.3.0 release claim and does
-not describe current runtime behavior unless a later implementation document
-states otherwise.
+This began as a preview design and is not part of the v0.3.0 release claim.
+The implemented preview is packaged in v0.4.0; runtime behavior is documented
+in the classify, run, shell, install, and redteam guides in this directory.
 
 ## Product Sentence
 
