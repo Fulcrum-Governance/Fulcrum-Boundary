@@ -1,5 +1,38 @@
 # CODEX Session Log
 
+## 2026-05-27 — Firewall + Secure GitHub Goal Set
+
+### Context
+
+- Goal: ship the Fulcrum Boundary Firewall + Secure GitHub MCP release train.
+- Source planning docs:
+  - `/Users/td/ConceptDev/Projects/Fulcrum/.claude/sprint/Execution_Pack.md`
+  - `/Users/td/ConceptDev/Projects/Fulcrum/.claude/sprint/Context_from_GPT.md`
+  - `/Users/td/ConceptDev/Projects/Fulcrum/.claude/sprint/active-builds/secure-github-mcp/SPEC.md`
+- Branch: `codex/2026-05-27-boundary-firewall-securegithub-goals`
+- Scope: planning and goal decomposition only; no product behavior changes.
+
+### What changed
+
+- Added `docs/superpowers/specs/2026-05-27-boundary-firewall-securegithub-goals.md`.
+- Converted the sprint execution pack into a parent goal plus sequential subgoals.
+- Removed stale "Tony reviews" and "do not auto-merge" gates from the working plan.
+- Preserved current merge-autonomy rules: Codex-owned PRs can be merged when scoped, verified, mergeable, and not blocked by a real decision gate.
+- Folded in Secure GitHub MCP source inspiration while tightening overclaim risk:
+  - Secure GitHub stays Boundary-native for this release.
+  - Fixture evidence lands before live GitHub App production claims.
+  - No "no one else detects this" or universal prompt-injection prevention claims.
+  - Full 51-tool coverage remains deferred unless implemented and tested.
+
+### Verification
+
+- `git diff --check`: pass
+
+### Notes For Next Step
+
+- Start Subgoal 1 from clean `main`: Language System Lock.
+- Use claim/readiness gates as the release-truth authority for every follow-on branch.
+
 ## 2026-05-26 — Boundary Phase 1 Claims And Adapter Readiness
 
 ### Context
