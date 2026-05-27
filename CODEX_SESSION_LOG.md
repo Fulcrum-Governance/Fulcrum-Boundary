@@ -1,5 +1,39 @@
 # CODEX Session Log
 
+## 2026-05-27 - GitHub Action MCP Audit
+
+### Context
+
+- Parent goal: Final public Boundary release hardening.
+- Subgoal: `Subgoal 6 - GitHub Action MCP Audit`.
+- Branch: `codex/2026-05-27-github-action-mcp-audit`
+- Scope: add a repo-local MCP audit GitHub Action without installing the gateway, scanning runner home directories by default, or claiming runtime protection.
+
+### What changed
+
+- Added `actions/mcp-audit/action.yml` and `actions/mcp-audit/README.md`.
+- Added `scripts/actions/mcp-audit.sh` to run Boundary inventory, risk graph, optional SARIF output, dry-run starter-policy generation into the action artifact directory, GitHub step summary output, and action outputs.
+- Added `docs/firewall/GITHUB_ACTION.md`.
+- Added `tests/actions/mcp_audit_fixture_test.go`.
+- Added delivered claim `BND-CLAIM-017` for the repo-local MCP audit action.
+- Split MCP discovery defaults so repo-local root configs are always inspected while `--include-defaults=false` suppresses user-level HOME/client defaults for CI.
+- Updated the changelog with the MCP audit action.
+
+### Verification
+
+- `go test ./internal/firewall/... -count=1 -timeout 5m`: pass
+- `go test ./tests/actions/... -count=1 -timeout 5m`: pass
+- `go test ./claims/... -count=1`: pass
+- `go test ./... -short -count=1 -timeout 5m`: pass
+- `go vet ./...`: pass
+- `golangci-lint run ./...`: pass, `0 issues`
+- `bash -n scripts/actions/mcp-audit.sh && git diff --check`: pass
+- `git ls-files '*.go' | xargs gofmt -l`: pass
+
+### Notes For Next Step
+
+- After this branch lands, start `Subgoal 7 - Install And Release Workflow Polish` from clean `main`.
+
 ## 2026-05-27 - External Inventory Ingest
 
 ### Context

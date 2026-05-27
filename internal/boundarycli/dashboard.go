@@ -25,7 +25,7 @@ func runFirewallDashboard(args []string, stdout, stderr io.Writer) int {
 	out := fs.String("out", "", "write dashboard output to a file instead of stdout")
 	serve := fs.Bool("serve", false, "serve the dashboard from a loopback-only local HTTP server")
 	listen := fs.String("listen", "127.0.0.1:8942", "loopback listen address for --serve")
-	includeDefaults := fs.Bool("include-defaults", true, "include known Claude Desktop, Cursor, VS Code, and repo-local config paths")
+	includeDefaults := fs.Bool("include-defaults", true, "include known user-level Claude Desktop, Cursor, and VS Code config paths")
 	var configs pathListFlag
 	var records pathListFlag
 	fs.Var(&configs, "config", "additional MCP config path; may be repeated or comma-separated")

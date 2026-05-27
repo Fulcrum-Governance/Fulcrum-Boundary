@@ -370,6 +370,30 @@ claims:
     gaps: []
     depends_on: []
 
+  - id: BND-CLAIM-017
+    claim: "Boundary provides a GitHub Action that audits repo-local MCP configs and emits Markdown and SARIF reports"
+    status: delivered
+    evidence:
+      tests:
+        - path: tests/actions/mcp_audit_fixture_test.go
+          assertion: "MCP audit action metadata exposes expected inputs/outputs and the action script audits repo-local MCP configs, writes Markdown/SARIF reports, and avoids HOME default scans unless enabled"
+      docs:
+        - path: docs/firewall/GITHUB_ACTION.md
+          section: "Boundary MCP Audit GitHub Action"
+        - path: actions/mcp-audit/README.md
+          section: "Fulcrum Boundary MCP Audit Action"
+    public_language:
+      allowed:
+        - "Boundary provides a GitHub Action that audits repo-local MCP configs and emits Markdown and SARIF reports."
+        - "The MCP audit action scans repo-local MCP configs by default and does not scan runner home directories unless include-defaults is enabled."
+      forbidden:
+        - "Boundary Action protects MCP servers at runtime"
+        - "Boundary Action scans host home directories by default"
+        - "Boundary Action installs the gateway"
+        - "Boundary Action proves all MCP risks are blocked"
+    gaps: []
+    depends_on: []
+
   - id: BND-CLAIM-004
     claim: "Boundary is a SQL firewall"
     status: "false"
