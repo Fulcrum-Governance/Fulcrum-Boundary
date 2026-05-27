@@ -1,0 +1,95 @@
+# MCP Firewall Discovery And Inventory
+
+Boundary can inventory local MCP client configuration before any install or
+rewrite step exists. Discovery is read-only for MCP client configs: it reads
+known config files, classifies server capability risk, and reports what it
+found. It does not mutate Claude Desktop, Cursor, VS Code, or repo-local MCP
+configs.
+
+## Commands
+
+Initialize a Boundary-owned firewall workspace:
+
+```bash
+boundary init
+```
+
+The init command may create `.boundary/firewall/boundary-firewall.json`. It does
+not change MCP client config files.
+
+Inventory discovered MCP configs:
+
+```bash
+boundary inventory --format json
+boundary inventory --format markdown
+boundary inventory --format sarif --out boundary-mcp.sarif.json
+```
+
+Useful flags:
+
+| Flag | Meaning |
+|---|---|
+| `--root` | Project root for repo-local `.mcp.json`, `mcp.json`, `.cursor/mcp.json`, and `.vscode/mcp.json`. |
+| `--home` | Home directory for user-level Claude Desktop, Cursor, and VS Code config discovery. |
+| `--config` | Extra MCP config path. May be repeated or comma-separated. |
+| `--include-defaults` | Include known default paths. Defaults to true. |
+| `--format` | `json`, `markdown`, or `sarif`. |
+| `--out` | Write the report to a file instead of stdout. |
+
+## Config Paths
+
+Boundary looks for:
+
+- Claude Desktop user config:
+  - `~/Library/Application Support/Claude/claude_desktop_config.json`
+  - `~/.config/Claude/claude_desktop_config.json`
+  - `~/AppData/Roaming/Claude/claude_desktop_config.json`
+- Cursor user and repo config:
+  - `~/Library/Application Support/Cursor/User/mcp.json`
+  - `~/.cursor/mcp.json`
+  - `~/.config/Cursor/User/mcp.json`
+  - `<root>/.cursor/mcp.json`
+- VS Code user and repo config:
+  - `~/Library/Application Support/Code/User/mcp.json`
+  - `~/.config/Code/User/mcp.json`
+  - `~/AppData/Roaming/Code/User/mcp.json`
+  - `<root>/.vscode/mcp.json`
+- Repo-local config:
+  - `<root>/.mcp.json`
+  - `<root>/mcp.json`
+
+## Classification
+
+Inventory classifies by MCP server name, command, URL, args, and optional tool
+descriptors embedded in fixture configs.
+
+Built-in categories:
+
+| Category | Example risk |
+|---|---|
+| GitHub | Reads can taint context; private-repo writes are W1; merge/create/fork paths are W2. |
+| Filesystem | Local reads are R0; writes and deletes are W1. |
+| Database | Query tools are W1 because statement class determines read or mutation behavior. |
+| Messaging | Message sends are W0 external publication paths. |
+| Shell | Command execution is W2. |
+| Unknown | Server could not be classified and should be reviewed before routing. |
+
+GitHub inventory uses the Secure MCP preview taxonomy in
+[`docs/SECURE_MCP_TOOL_TAXONOMY.md`](../SECURE_MCP_TOOL_TAXONOMY.md).
+
+## Report Shapes
+
+JSON is the canonical machine format. Markdown is for local review. SARIF is
+for code scanning surfaces and marks W1/W2 servers as high-risk MCP capability
+findings.
+
+Inventory reports include environment variable names, but they do not include
+environment variable values. CLI args that look like token, key, password, or
+secret values are redacted.
+
+## Claim Boundary
+
+This release proves local discovery and inventory classification from config
+files and fixtures. It does not install Boundary into any client config and does
+not prove that discovered MCP servers are protected. Protection begins only when
+future install or serve commands route tool calls through Boundary.

@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "shell": {
+      "command": "boundary-fixture-shell-mcp"
+    },
+    "slack": {
+      "command": "slack-mcp"
+    }
+  }
+}

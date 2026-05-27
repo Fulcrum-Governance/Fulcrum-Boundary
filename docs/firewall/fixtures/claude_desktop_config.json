@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "github": {
+      "command": "github-mcp-server",
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    },
+    "postgres": {
+      "command": "postgres-mcp",
+      "env": {
+        "DATABASE_URL": "${DATABASE_URL}"
+      }
+    }
+  }
+}
