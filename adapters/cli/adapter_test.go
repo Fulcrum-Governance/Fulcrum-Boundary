@@ -336,7 +336,52 @@ func TestAdapter_ForwardGoverned_ReturnsError(t *testing.T) {
 	a := NewAdapter("default-tenant")
 	_, err := a.ForwardGoverned(context.Background(), nil, nil)
 	if err == nil {
-		t.Error("expected error from ForwardGoverned stub")
+		t.Error("expected error for nil request")
+	}
+}
+
+func TestAdapter_ForwardGoverned_DeniedDoesNotExecute(t *testing.T) {
+	executor := &recordingExecutor{}
+	a := NewAdapterWithExecutor("default-tenant", executor)
+	req := &governance.GovernanceRequest{
+		Transport: governance.TransportCLI,
+		Command:   "echo denied",
+		PipeChain: []governance.PipeSegment{{Command: "echo", Args: []string{"denied"}}},
+	}
+	resp, err := a.ForwardGoverned(context.Background(), req, &governance.GovernanceDecision{Action: "deny", Reason: "blocked"})
+	if err != nil {
+		t.Fatalf("ForwardGoverned: %v", err)
+	}
+	if executor.calls != 0 {
+		t.Fatal("denied command reached executor")
+	}
+	if resp.ExitCode != 126 {
+		t.Fatalf("denied response exit code = %d, want 126", resp.ExitCode)
+	}
+}
+
+func TestAdapter_ForwardGoverned_AllowedExecutesOnceWithMetadata(t *testing.T) {
+	executor := &recordingExecutor{response: &governance.ToolResponse{Content: []byte("ok\n")}}
+	a := NewAdapterWithExecutor("default-tenant", executor)
+	req := &governance.GovernanceRequest{
+		Transport: governance.TransportCLI,
+		Command:   "echo ok",
+		PipeChain: []governance.PipeSegment{{Command: "echo", Args: []string{"ok"}}},
+	}
+	resp, err := a.ForwardGoverned(context.Background(), req, &governance.GovernanceDecision{
+		Action:     "allow",
+		RequestID:  "req-1",
+		EnvelopeID: "env-1",
+		PolicyID:   "pol-1",
+	})
+	if err != nil {
+		t.Fatalf("ForwardGoverned: %v", err)
+	}
+	if executor.calls != 1 {
+		t.Fatalf("executor calls = %d, want 1", executor.calls)
+	}
+	if resp.Metadata["x-fulcrum-action"] != "allow" || resp.Metadata["x-fulcrum-policy-id"] != "pol-1" {
+		t.Fatalf("governance metadata missing: %+v", resp.Metadata)
 	}
 }
 
@@ -359,6 +404,38 @@ func TestAdapter_WithCustomClassifier(t *testing.T) {
 	if req.PipeChain[0].RiskLevel != "read" {
 		t.Errorf("PipeChain[0].RiskLevel = %q, want %q", req.PipeChain[0].RiskLevel, "read")
 	}
+}
+
+func TestOSExecutor_ExecutesWithoutShellAndAddsGovernedEnv(t *testing.T) {
+	a := NewAdapter("default-tenant")
+	input := &CommandInput{Command: "printf ${BOUNDARY_GOVERNED}:${BOUNDARY_TRANSPORT}"}
+	req, err := a.ParseRequest(context.Background(), input)
+	if err != nil {
+		t.Fatalf("ParseRequest: %v", err)
+	}
+	resp, err := a.ForwardGoverned(context.Background(), req, &governance.GovernanceDecision{Action: "allow", RequestID: "req-1", EnvelopeID: "env-1"})
+	if err != nil {
+		t.Fatalf("ForwardGoverned: %v", err)
+	}
+	if string(resp.Content) != "${BOUNDARY_GOVERNED}:${BOUNDARY_TRANSPORT}" {
+		t.Fatalf("command appears to have been shell-expanded, got %q", string(resp.Content))
+	}
+	if resp.Metadata["x-fulcrum-action"] != "allow" {
+		t.Fatalf("governance metadata missing: %+v", resp.Metadata)
+	}
+}
+
+type recordingExecutor struct {
+	calls    int
+	response *governance.ToolResponse
+}
+
+func (e *recordingExecutor) Execute(_ context.Context, _ *governance.GovernanceRequest) (*governance.ToolResponse, error) {
+	e.calls++
+	if e.response != nil {
+		return e.response, nil
+	}
+	return &governance.ToolResponse{Content: []byte("ok\n"), Metadata: map[string]string{}}, nil
 }
 
 func TestAdapter_DestructivePipeChain(t *testing.T) {

@@ -196,21 +196,21 @@ func TestPipeline_FailClosedTransports_BuildsMap(t *testing.T) {
 // TestPipeline_FailClosedTransports_NilAppliesDefault verifies that a nil
 // FailClosedTransports slice triggers DefaultFailClosedTransports — the
 // kernel's security-critical transports (MCP, Managed Agents, CodeExec, gRPC,
-// A2A) are fail-closed out of the box, and the informational transports (CLI,
-// Webhook) are
+// A2A) are fail-closed out of the box, and the informational transports
+// (Webhook) are
 // not. Operators who want different defaults must set the field explicitly.
 func TestPipeline_FailClosedTransports_NilAppliesDefault(t *testing.T) {
 	p := NewPipeline(PipelineConfig{}, nil, nil, nil) // nil FailClosedTransports
 
 	// Security-critical transports must be fail-closed by default.
-	for _, tr := range []TransportType{TransportMCP, TransportManagedAgents, TransportCodeExec, TransportGRPC, TransportA2A} {
+	for _, tr := range []TransportType{TransportMCP, TransportManagedAgents, TransportCLI, TransportCodeExec, TransportGRPC, TransportA2A} {
 		if !p.failClosed[tr] {
 			t.Errorf("expected %s to default to fail-closed", tr)
 		}
 	}
 
 	// Informational transports must NOT be fail-closed by default.
-	for _, tr := range []TransportType{TransportCLI, TransportWebhook} {
+	for _, tr := range []TransportType{TransportWebhook} {
 		if p.failClosed[tr] {
 			t.Errorf("expected %s NOT to default to fail-closed", tr)
 		}
@@ -242,6 +242,7 @@ func TestPipeline_DefaultFailClosedTransports_ExportedValue(t *testing.T) {
 	want := map[TransportType]bool{
 		TransportMCP:           true,
 		TransportManagedAgents: true,
+		TransportCLI:           true,
 		TransportCodeExec:      true,
 		TransportGRPC:          true,
 		TransportA2A:           true,

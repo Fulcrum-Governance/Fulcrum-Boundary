@@ -22,6 +22,7 @@ type Adapter struct {
 	defaultTenantID string
 	classifier      *Classifier
 	inspector       *Inspector
+	executor        Executor
 }
 
 // NewAdapter creates a CLI transport adapter with the given default tenant ID.
@@ -30,6 +31,7 @@ func NewAdapter(defaultTenantID string) *Adapter {
 		defaultTenantID: defaultTenantID,
 		classifier:      NewClassifier(),
 		inspector:       NewInspector(),
+		executor:        OSExecutor{},
 	}
 }
 
@@ -39,6 +41,20 @@ func NewAdapterWithClassifier(defaultTenantID string, c *Classifier) *Adapter {
 		defaultTenantID: defaultTenantID,
 		classifier:      c,
 		inspector:       NewInspector(),
+		executor:        OSExecutor{},
+	}
+}
+
+// NewAdapterWithExecutor creates a CLI transport adapter with a custom executor.
+func NewAdapterWithExecutor(defaultTenantID string, executor Executor) *Adapter {
+	if executor == nil {
+		executor = OSExecutor{}
+	}
+	return &Adapter{
+		defaultTenantID: defaultTenantID,
+		classifier:      NewClassifier(),
+		inspector:       NewInspector(),
+		executor:        executor,
 	}
 }
 
@@ -114,11 +130,28 @@ func (a *Adapter) ParseRequest(_ context.Context, raw any) (*governance.Governan
 	}, nil
 }
 
-// ForwardGoverned forwards the governed CLI command to the downstream executor.
-// This is a stub — actual CLI execution is handled by the agent runtime.
-// The adapter only provides the parsing and governance integration layer.
-func (a *Adapter) ForwardGoverned(_ context.Context, _ *governance.GovernanceRequest, _ *governance.GovernanceDecision) (*governance.ToolResponse, error) {
-	return nil, fmt.Errorf("CLI forwarding is handled by the agent runtime")
+// ForwardGoverned executes the governed CLI command only when the decision
+// allows it. Denied commands never reach the executor.
+func (a *Adapter) ForwardGoverned(ctx context.Context, req *governance.GovernanceRequest, decision *governance.GovernanceDecision) (*governance.ToolResponse, error) {
+	if req == nil {
+		return nil, fmt.Errorf("governance request is required")
+	}
+	if decision == nil || !decision.Allowed() {
+		return deniedResponse(decision), nil
+	}
+	resp, err := a.executor.Execute(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if err := a.EmitGovernanceMetadata(ctx, resp, decision); err != nil {
+		return nil, err
+	}
+	inspection, err := a.InspectResponse(ctx, resp)
+	if err != nil {
+		return nil, err
+	}
+	attachInspectionMetadata(resp, inspection)
+	return resp, nil
 }
 
 // InspectResponse examines CLI command output for governance concerns.
@@ -144,6 +177,33 @@ func (a *Adapter) EmitGovernanceMetadata(_ context.Context, resp *governance.Too
 		resp.Metadata["x-fulcrum-policy-id"] = decision.PolicyID
 	}
 	return nil
+}
+
+// GovernCommand runs the complete wrapper-owned CLI lifecycle.
+func (a *Adapter) GovernCommand(ctx context.Context, raw any, pipeline *governance.Pipeline) (*governance.ToolResponse, error) {
+	req, err := a.ParseRequest(ctx, raw)
+	if err != nil {
+		return nil, err
+	}
+	if pipeline == nil {
+		decision := &governance.GovernanceDecision{
+			RequestID:  req.RequestID,
+			Action:     "deny",
+			Reason:     "governance pipeline is required",
+			EnvelopeID: req.EnvelopeID,
+		}
+		return a.ForwardGoverned(ctx, req, decision)
+	}
+	decision, err := pipeline.Evaluate(ctx, req)
+	if err != nil {
+		decision = &governance.GovernanceDecision{
+			RequestID:  req.RequestID,
+			Action:     "deny",
+			Reason:     fmt.Sprintf("governance pipeline error: %v", err),
+			EnvelopeID: req.EnvelopeID,
+		}
+	}
+	return a.ForwardGoverned(ctx, req, decision)
 }
 
 // Compile-time interface check.
