@@ -94,7 +94,7 @@ func TestRenderInventoryFormats(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for _, format := range []string{"json", "markdown", "sarif"} {
+	for _, format := range []string{"json", "ndjson", "markdown", "sarif"} {
 		body, err := RenderInventory(inventory, format)
 		if err != nil {
 			t.Fatalf("render %s: %v", format, err)
@@ -104,6 +104,10 @@ func TestRenderInventoryFormats(t *testing.T) {
 		case "json":
 			if !strings.Contains(text, `"schema_version": "boundary.firewall.inventory.v1"`) {
 				t.Fatalf("json report missing schema: %s", text)
+			}
+		case "ndjson":
+			if !strings.Contains(text, `"record_type":"scan_start"`) || !strings.Contains(text, `"record_type":"scan_summary"`) {
+				t.Fatalf("ndjson report missing start/summary records: %s", text)
 			}
 		case "markdown":
 			if !strings.Contains(text, "create_or_update_file:W1") {

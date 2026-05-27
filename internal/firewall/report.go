@@ -11,6 +11,8 @@ func RenderInventory(inventory Inventory, format string) ([]byte, error) {
 	switch strings.ToLower(format) {
 	case "", "json":
 		return json.MarshalIndent(inventory, "", "  ")
+	case "ndjson":
+		return RenderInventoryNDJSON(inventory)
 	case "markdown", "md":
 		return []byte(renderMarkdown(inventory)), nil
 	case "sarif":

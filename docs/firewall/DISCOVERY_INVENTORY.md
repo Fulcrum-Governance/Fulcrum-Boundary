@@ -21,6 +21,7 @@ Inventory discovered MCP configs:
 
 ```bash
 boundary inventory --format json
+boundary inventory --format ndjson --out boundary-inventory.ndjson
 boundary inventory --format markdown
 boundary inventory --format sarif --out boundary-mcp.sarif.json
 ```
@@ -33,7 +34,7 @@ Useful flags:
 | `--home` | Home directory for user-level Claude Desktop, Cursor, and VS Code config discovery. |
 | `--config` | Extra MCP config path. May be repeated or comma-separated. |
 | `--include-defaults` | Include known default paths. Defaults to true. |
-| `--format` | `json`, `markdown`, or `sarif`. |
+| `--format` | `json`, `ndjson`, `markdown`, or `sarif`. |
 | `--out` | Write the report to a file instead of stdout. |
 
 ## Config Paths
@@ -79,14 +80,28 @@ GitHub inventory uses the Secure MCP preview taxonomy in
 
 ## Report Shapes
 
-JSON is the canonical machine format. Markdown is for local review. SARIF is
-for code scanning surfaces and marks W1/W2 servers as high-risk MCP capability
-findings.
+JSON is the canonical snapshot format. NDJSON is the record-stream format for
+tool ingestion, one JSON object per line. Markdown is for local review. SARIF
+is for code scanning surfaces and marks W1/W2 servers as high-risk MCP
+capability findings.
+
+NDJSON records validate against
+[`schemas/boundary-inventory-record.v1.json`](../../schemas/boundary-inventory-record.v1.json)
+and are documented in
+[`docs/firewall/INVENTORY_RECORDS.md`](./INVENTORY_RECORDS.md). A consumer
+should treat a stream as complete only when the final `scan_summary.status` is
+`complete`; partial scans can still contain useful MCP config and server
+records, but they are not complete inventory snapshots.
 
 Inventory reports include environment variable names, but they do not include
 environment variable values. CLI args that look like token, key, password, or
 secret values are redacted, including opaque values that follow secret-bearing
 flags such as `--token` or `--api-key`.
+
+The inventory scope is MCP client configs, servers, tool descriptors,
+capabilities, risk paths, governed or ungoverned routes, descriptor-lock scope,
+and starter policy recommendations. It is not a full SBOM, EDR feed, package
+vulnerability scanner, or universal endpoint inventory.
 
 ## Claim Boundary
 
