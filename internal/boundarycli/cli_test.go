@@ -19,7 +19,7 @@ func TestRun_HelpListsCommands(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("expected exit 0, got %d", code)
 	}
-	for _, want := range []string{"init", "inventory", "serve", "demo postgres", "verify", "verify-record", "doctor", "audit"} {
+	for _, want := range []string{"init", "inventory", "graph", "policy generate", "serve", "demo postgres", "verify", "verify-record", "doctor", "audit"} {
 		if !strings.Contains(stdout.String(), want) {
 			t.Fatalf("help output missing %q: %s", want, stdout.String())
 		}

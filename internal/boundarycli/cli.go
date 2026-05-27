@@ -39,6 +39,10 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runFirewallInit(args[1:], stdout, stderr)
 	case "inventory":
 		return runFirewallInventory(args[1:], stdout, stderr)
+	case "graph":
+		return runFirewallGraph(args[1:], stdout, stderr)
+	case "policy":
+		return runFirewallPolicy(args[1:], stdout, stderr)
 	case "serve":
 		return runServe(args[1:], stdout, stderr)
 	case "demo":
@@ -69,6 +73,8 @@ Usage:
 Commands:
   init            Initialize a Boundary firewall workspace
   inventory       Discover MCP configs and inventory server capabilities
+  graph           Render inventory-derived MCP risk paths
+  policy generate Generate starter Boundary firewall policies
   serve           Start the Boundary gateway
   demo postgres   Run the Postgres safety demo against a running gateway
   verify          Validate YAML policy files
