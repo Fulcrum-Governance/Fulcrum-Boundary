@@ -1,5 +1,34 @@
 # CODEX Session Log
 
+## 2026-05-27 - Command Boundary Design Implementation Plan
+
+### Context
+
+- Parent goal: execute the v0.3 publication plus v0.4 Command Boundary sequence.
+- Subgoal: plan the Command Boundary design-doc branch from the merged v0.3
+  publication materials lane.
+- Branch: `codex/2026-05-27-command-boundary-design-plan`
+- Scope: planning artifact only. No Command Boundary docs, claims, runtime code,
+  CLI wiring, shell shims, redteam runtime, or v0.3.0 release truth changed.
+
+### What changed
+
+- Added `docs/superpowers/plans/2026-05-27-command-boundary-design.md`.
+- Decomposed the docs-and-claims design lane into overview, design, taxonomy,
+  bypass model, preview-claims, redteam-fixture, verification, and PR steps.
+
+### Verification
+
+- Plan self-review: pass; markdown fences are balanced and the placeholder scan
+  found only intentional command-shape placeholders.
+- `git diff --check`: pass.
+
+### Notes For Next Step
+
+- Execute the plan on `codex/2026-05-27-command-boundary-design` from a clean
+  `main`.
+- Keep Command Boundary implementation out of the design-doc branch.
+
 ## 2026-05-27 - v0.3 Publication Materials
 
 ### Context
