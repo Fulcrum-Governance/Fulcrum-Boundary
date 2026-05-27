@@ -1,5 +1,40 @@
 # CODEX Session Log
 
+## 2026-05-27 - Repo Metadata Polish
+
+### Context
+
+- Parent goal: Final public Boundary release polish.
+- Subgoal: `Subgoal 5 - Repo Metadata, Social Preview, And Badges`.
+- Branch: `codex/2026-05-27-repo-metadata-polish`
+- Scope: document GitHub repository description, topics, badge rules, social
+  preview asset, and first screenshot/GIF plan without adding fake signals.
+
+### What changed
+
+- Added `docs/REPO_PRESENTATION.md`.
+- Added `docs/assets/social-preview.svg`.
+- Confirmed README badges are limited to real CI, Go Reference, Go Report Card,
+  and Apache 2.0 license signals.
+
+### Verification
+
+- `git diff --check`: pass.
+- `python3 -c "import xml.etree.ElementTree as ET; ET.parse('docs/assets/social-preview.svg')"`:
+  pass.
+- `./scripts/assert-no-public-vendor-refs.sh`: pass.
+- `gh repo view Fulcrum-Governance/Fulcrum-Boundary --json description,repositoryTopics`:
+  pass; live description and topics match `docs/REPO_PRESENTATION.md`.
+- `make docs-build`: pass.
+- `go test ./claims/... -count=1`: pass.
+- `go test ./... -short -count=1 -timeout 5m`: pass.
+- `go vet ./...`: pass.
+
+### Notes For Next Step
+
+- After this branch lands, run final no-vendor presentation truth
+  reconciliation from clean `main`.
+
 ## 2026-05-27 - CLI Output Polish
 
 ### Context
