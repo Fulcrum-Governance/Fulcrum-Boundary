@@ -1,5 +1,40 @@
 # CODEX Session Log
 
+## 2026-05-27 - GitHub Actions Node 24 Maintenance
+
+### Context
+
+- Parent goal: Resolve post-v0.3 workflow deprecation annotations and adjacent
+  workflow hygiene issues.
+- Branch: `codex/2026-05-27-boundary-actions-node24`
+- Scope: CI, CodeQL, and docs workflow maintenance only. No product behavior or
+  release-truth copy changed.
+
+### What changed
+
+- Updated Docs workflow actions to Node 24-backed majors:
+  `actions/checkout@v6`, `actions/setup-python@v6`,
+  `actions/upload-pages-artifact@v5`, and `actions/deploy-pages@v5`.
+- Updated CodeQL workflow to `actions/checkout@v6`, `actions/setup-go@v6`, and
+  `github/codeql-action/*@v4`.
+- Updated CI lint workflow to `golangci/golangci-lint-action@v9`.
+- Replaced branch-pinned `securego/gosec@master` with a tagged direct Go tool
+  invocation: `go run github.com/securego/gosec/v2/cmd/gosec@v2.26.1 ./...`.
+
+### Verification
+
+- `go run github.com/rhysd/actionlint/cmd/actionlint@latest`: pass.
+- `go run github.com/securego/gosec/v2/cmd/gosec@v2.26.1 ./...`: pass,
+  issues: 0.
+- `./scripts/docs-build.sh`: pass.
+- `make release-check`: pass.
+
+### Notes
+
+- Upstream action metadata was checked before the change; the replacement action
+  majors use Node 24 or composite actions where applicable.
+- This maintenance pass leaves the public v0.3.0 release surface unchanged.
+
 ## 2026-05-27 - No-Vendor Repo Polish Reconciliation
 
 ### Context
