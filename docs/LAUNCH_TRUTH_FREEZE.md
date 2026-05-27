@@ -61,6 +61,29 @@ Fulcrum Boundary v0.2.0 does not claim:
 Receipt-grade means hash-verifiable decision records. Do not imply signatures
 are required or enabled by default.
 
+## 2026-05-27: Post-Audit Adapter State
+
+The post-audit adapter work updates the release-facing adapter state without
+changing the public release boundary:
+
+- MCP is the only production adapter.
+- CLI, CodeExec, gRPC, Managed Agents, Webhook, and A2A are preview adapters.
+- Managed Agents remains preview until a live upstream conformance run is
+  recorded with operator-owned credentials.
+- A2A remains preview until live protocol conformance and deployment bypass
+  evidence are recorded.
+- CodeExec is policy-gated execution unless a real named sandbox boundary is
+  implemented, tested, and documented.
+- gRPC governs unary RPCs through the interceptor; streaming workloads remain
+  preview until per-message governance is implemented and tested.
+- Webhook separates informational post-execution audit mode from execution
+  pre-approval mode. Only execution mode can deny before forwarding, and it
+  requires deployment evidence that Boundary is the sole downstream action path.
+
+The current repo does not record user adoption or customer deployment evidence.
+Release language should describe implemented capabilities and operator
+deployment requirements, not production adoption.
+
 ## Verified Release Surface
 
 | Surface | Status |
