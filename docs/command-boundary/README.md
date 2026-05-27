@@ -1,8 +1,8 @@
 # Command Boundary Preview
 
-Command Boundary is the planned next release train for Fulcrum Boundary after
+Command Boundary is the preview follow-on release train after Fulcrum Boundary
 v0.3.0. It extends Boundary's action-boundary model from MCP-routed tools to
-project-local command paths.
+project-local command paths when those commands route through Boundary.
 
 The design premise is intentionally narrow:
 
@@ -24,9 +24,9 @@ managers, cloud CLIs, Docker, filesystem tools, and database clients. Command
 Boundary is the preview path for bringing the same pre-execution decision model
 to those command routes without taking over the user's shell globally.
 
-## Planned Modes
+## Preview Modes
 
-Command Boundary has three planned modes:
+Command Boundary has three preview modes:
 
 | Mode | Example | Scope |
 |---|---|---|
@@ -39,12 +39,19 @@ All three modes are project-local and reversible. They do not modify
 
 ## Current Status
 
-This directory defines the design only. Runtime implementation, CLI wiring,
-project shims, command decision records, and command redteam packs land in later
-branches.
+This directory documents the current preview implementation:
 
-Command Boundary is preview-only until implementation tests, bypass evidence,
-and release truth reconciliation exist.
+- `boundary command classify` classifies commands without execution.
+- `boundary command run` evaluates wrapper-routed commands before execution.
+- `boundary command install --project` and `boundary command uninstall --project`
+  manage project-local shims.
+- `boundary shell` launches a scoped subshell with project shims on `PATH`.
+- command redteam packs exercise fixture command-risk paths without live
+  mutation.
+
+Command Boundary remains preview-only. Production command governance requires
+deployment evidence that the Boundary route is the relevant command path for the
+protected project or workflow.
 
 ## Documents
 
@@ -52,4 +59,10 @@ and release truth reconciliation exist.
 - [Command Taxonomy](./COMMAND_TAXONOMY.md)
 - [Bypass Model](./BYPASS_MODEL.md)
 - [Preview Claims](./PREVIEW_CLAIMS.md)
+- [Classify](./CLASSIFY.md)
+- [Run Wrapper](./RUN.md)
+- [Shell](./SHELL.md)
+- [Install](./INSTALL.md)
+- [Demo](./DEMO.md)
+- [Redteam](./REDTEAM.md)
 - [Redteam Fixtures](./REDTEAM_FIXTURES.md)

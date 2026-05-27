@@ -1,20 +1,21 @@
 # Command Boundary Preview Claims
 
-Command Boundary is a planned preview surface. This document controls the
-language that may be used before runtime implementation lands.
+Command Boundary is a preview surface. This document controls the language that
+may be used while the implementation remains project-local, routed-path-only,
+and below production maturity.
 
-## Planned Claim
+## Preview Claim
 
 `BND-CLAIM-CMD-001`:
 
-> Boundary defines a preview Command Boundary design for project-local command
-> governance.
+> Boundary provides preview project-local command governance for commands routed
+> through boundary command run, boundary shell, or project-local shims.
 
-Status: `planned`
+Status: `partial`
 
-This means the repo may describe the design and roadmap. It must not state that
-Command Boundary currently governs commands until implementation, tests, and
-release truth reconciliation land.
+This means the repo may describe the implemented preview routes. It must not
+state that Command Boundary controls direct shell execution, global shells, CI
+jobs, SSH sessions, cron jobs, or arbitrary command paths outside Boundary.
 
 ## Approved Copy
 
@@ -22,7 +23,8 @@ The following language is approved for design and roadmap docs:
 
 - Boundary can govern project-local command paths when commands route through
   `boundary command run`, `boundary shell`, or project-local shims.
-- Command Boundary is a preview design for project-local command governance.
+- Command Boundary provides preview project-local command governance for
+  commands routed through Boundary.
 - Command Boundary governs routed command paths only.
 - Direct shell access is outside Boundary unless the environment routes commands
   through the wrapper or project-local shims.
@@ -42,10 +44,11 @@ Do not use these statements as product claims:
 
 ## Claim Advancement Requirements
 
-The planned claim can move beyond `planned` only after implementation branches
-add evidence for the routed command path.
+`BND-CLAIM-CMD-001` can move from `partial` to `delivered` only after release
+truth reconciliation records the current command status, test results, approved
+copy, forbidden copy, and bypass boundary.
 
-Minimum evidence for a partial preview claim:
+Evidence currently supporting the partial preview claim:
 
 - `boundary command classify` classifies commands without executing them;
 - `boundary command run` denies blocked commands before execution;
@@ -70,5 +73,6 @@ workflow.
 ## Relationship To Existing Claims
 
 Command Boundary does not alter v0.3.0 release truth. MCP remains the production
-adapter path for v0.3.0. Secure GitHub remains preview. Command Boundary remains
-roadmap/design until implementation evidence exists.
+adapter path for v0.3.0. Secure GitHub remains preview. Command Boundary is a
+post-v0.3.0 preview surface and must remain described with routed-path
+qualifiers.

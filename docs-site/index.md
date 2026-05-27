@@ -28,6 +28,7 @@ flowchart LR
   preview adapter/profile surfaces.
 - Secure GitHub is fixture-backed until live GitHub App conformance and
   deployment bypass evidence are recorded.
+- Command Boundary is a preview, routed-path-only command governance surface.
 - Generated policies are starter policies for operator review.
 - The dashboard is local-only artifact visibility.
 - Boundary governs routed tools; direct tool access is outside the governed

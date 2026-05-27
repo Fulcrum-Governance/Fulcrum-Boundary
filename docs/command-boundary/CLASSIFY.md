@@ -2,10 +2,8 @@
 
 `boundary command classify` classifies a command without executing it.
 
-This is the first implementation slice of Command Boundary preview. It does not
-run commands, install shims, launch a project shell, or enforce policy. It
-produces a command class, risk level, recommended action, and reason for later
-governance steps.
+It produces a command class, risk level, recommended action, and reason for
+later governance steps. Classification never executes the command.
 
 ## Usage
 
@@ -69,7 +67,7 @@ Redaction preserves command shape while avoiding raw secret values.
 `boundary command classify` proves that Boundary can map routed command argv into
 the Command Boundary taxonomy without executing the command.
 
-It does not prove:
+By itself, classification does not prove:
 
 - command execution governance;
 - denial before execution;
@@ -78,4 +76,5 @@ It does not prove:
 - global shell control;
 - CI, cron, SSH, or editor task control.
 
-Those belong to later Command Boundary preview implementation slices.
+Use `boundary command run`, `boundary shell`, and the project-local shim docs
+for the routed execution paths.

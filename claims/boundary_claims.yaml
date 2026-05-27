@@ -433,19 +433,29 @@ claims:
     depends_on: []
 
   - id: BND-CLAIM-CMD-001
-    claim: "Boundary defines a preview Command Boundary design for project-local command governance"
-    status: planned
+    claim: "Boundary provides preview project-local command governance for commands routed through boundary command run, boundary shell, or project-local shims"
+    status: partial
     evidence:
-      tests: []
+      tests:
+        - path: internal/commandboundary/classifier_test.go
+          assertion: "command classification covers common command-risk classes without executing commands"
+        - path: internal/commandboundary/executor_test.go
+          assertion: "wrapper-routed commands are evaluated before execution and denied commands do not execute"
+        - path: internal/commandboundary/shim_test.go
+          assertion: "project-local command shims route through boundary command run without global shell mutation"
+        - path: tests/commandboundary/run_test.go
+          assertion: "CLI command run emits decision records and does not execute denied commands"
       docs:
         - path: docs/command-boundary/DESIGN.md
           section: "Purpose"
         - path: docs/command-boundary/PREVIEW_CLAIMS.md
-          section: "Planned Claim"
+          section: "Preview Claim"
+        - path: docs/command-boundary/DEMO.md
+          section: "Claim Boundary"
     public_language:
       allowed:
         - "Boundary can govern project-local command paths when commands route through boundary command run, boundary shell, or project-local shims."
-        - "Command Boundary is a preview design for project-local command governance."
+        - "Boundary provides preview project-local command governance for commands routed through boundary command run, boundary shell, or project-local shims."
       forbidden:
         - "Boundary controls your shell"
         - "Boundary protects all CLI activity"
@@ -453,7 +463,10 @@ claims:
         - "Boundary protects direct shell access"
         - "Boundary provides production command governance"
         - "Boundary provides shell sandboxing"
-    gaps: []
+    gaps:
+      - id: BND-CMD-003
+        description: "Release truth reconciliation has not yet recorded the final Command Boundary preview status, test evidence, approved copy, forbidden copy, and bypass boundary."
+        spec: "Spec 8 — Command Boundary Truth Reconciliation"
     depends_on: []
 
   - id: BND-CLAIM-CMD-002

@@ -27,6 +27,16 @@ boundary secure github --help
 boundary redteam --pack github-lethal-trifecta
 ```
 
+Command Boundary preview commands:
+
+```bash
+boundary command classify --help
+boundary command run --help
+boundary command install --project
+boundary shell --help
+boundary redteam --pack command-secret-exfil
+```
+
 Release verification commands:
 
 ```bash

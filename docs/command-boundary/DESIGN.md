@@ -58,7 +58,7 @@ Only the command passed through `boundary command run` is governed. Boundary
 parses the command and arguments without invoking a shell, classifies the action,
 evaluates policy, and executes only if the decision permits execution.
 
-The planned execution rule is:
+The preview execution rule is:
 
 - `allow`: execute once through `os/exec`;
 - `warn`: execute only if the policy mode allows warnings to proceed;
@@ -74,7 +74,7 @@ The project shell launches a subshell with project-local shims first in `PATH`:
 boundary shell
 ```
 
-Planned environment:
+Preview environment:
 
 ```bash
 PATH="$PWD/.boundary/bin:$PATH"
@@ -96,7 +96,7 @@ Project shim mode creates command wrappers under `.boundary/bin`:
 boundary command install --project
 ```
 
-Default planned shims:
+Default shims:
 
 ```text
 git
