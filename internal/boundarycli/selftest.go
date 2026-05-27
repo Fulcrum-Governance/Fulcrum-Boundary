@@ -13,7 +13,18 @@ import (
 )
 
 func runSelftest(args []string, stdout, stderr io.Writer) int {
-	fs := newFlagSet("boundary selftest", stderr)
+	fs := newHelpFlagSet("boundary selftest", stderr, commandHelp{
+		Purpose: "Run local no-credential Boundary release checks.",
+		Usage:   "boundary selftest [--json] [--no-color]",
+		Common: []string{
+			"boundary selftest",
+			"boundary selftest --json",
+		},
+		Notes: []string{
+			"Selftest uses fixtures and local checks only; it does not use credentials, network, or live mutation.",
+			"Passing selftest is a first-run signal, not live deployment conformance.",
+		},
+	})
 	jsonOutput := fs.Bool("json", false, "emit machine-readable JSON")
 	noColor := fs.Bool("no-color", false, "disable ANSI color in text output")
 	if err := fs.Parse(args); err != nil {

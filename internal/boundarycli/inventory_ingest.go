@@ -12,8 +12,18 @@ import (
 )
 
 func runFirewallInventoryIngest(args []string, stdout, stderr io.Writer) int {
-	fs := newFlagSet("boundary inventory ingest", stderr)
-	file := fs.String("file", "", "NDJSON inventory file to ingest")
+	fs := newHelpFlagSet("boundary inventory ingest", stderr, commandHelp{
+		Purpose: "Ingest external MCP inventory NDJSON into Boundary firewall inventory records.",
+		Usage:   "boundary inventory ingest --file inventory.ndjson [--source external-mcp] [--summary]",
+		Common: []string{
+			"boundary inventory ingest --file fixtures/external-inventory/external-mcp-inventory.ndjson --source external-mcp --summary",
+		},
+		Notes: []string{
+			"External inventory is input data; Boundary does not depend on or endorse a scanner.",
+			"Partial snapshots keep install recommendations disabled unless --allow-partial is set.",
+		},
+	})
+	file := fs.String("file", "", "external MCP inventory NDJSON file to ingest")
 	source := fs.String("source", "boundary", "inventory source: boundary, generic, or external-mcp")
 	format := fs.String("format", "json", "ingest report format: json")
 	out := fs.String("out", "", "write ingest report to a file instead of stdout")

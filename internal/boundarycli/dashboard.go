@@ -15,7 +15,18 @@ import (
 )
 
 func runFirewallDashboard(args []string, stdout, stderr io.Writer) int {
-	fs := newFlagSet("boundary dashboard", stderr)
+	fs := newHelpFlagSet("boundary dashboard", stderr, commandHelp{
+		Purpose: "Render a local-only dashboard from inventory, policies, receipts, and records.",
+		Usage:   "boundary dashboard [--format text|html|json] [--serve] [--out PATH]",
+		Common: []string{
+			"boundary dashboard --format html --out .boundary/firewall/dashboard.html",
+			"boundary dashboard --serve --listen 127.0.0.1:8942",
+		},
+		Notes: []string{
+			"The served dashboard is loopback-only and intended for local operator review.",
+			"Dashboard output is a presentation surface, not a policy enforcement path.",
+		},
+	})
 	root := fs.String("root", ".", "project root to inspect for repo-local MCP configs")
 	home := fs.String("home", "", "home directory to inspect for user MCP configs")
 	policyDir := fs.String("policies", "boundary-firewall-policies", "directory containing generated or reviewed Boundary firewall policies")

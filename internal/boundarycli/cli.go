@@ -85,6 +85,9 @@ func Run(args []string, stdout, stderr io.Writer) int {
 func printRootHelp(w io.Writer) {
 	fmt.Fprintf(w, `Fulcrum Boundary
 
+Purpose:
+  Govern routed tools before privileged execution and record the verdict.
+
 Usage:
   boundary <command> [flags]
 
@@ -119,6 +122,41 @@ Use "boundary <command> --help" for command flags.
 func newFlagSet(name string, stderr io.Writer) *flag.FlagSet {
 	fs := flag.NewFlagSet(name, flag.ContinueOnError)
 	fs.SetOutput(stderr)
+	return fs
+}
+
+type commandHelp struct {
+	Purpose string
+	Usage   string
+	Common  []string
+	Notes   []string
+}
+
+func newHelpFlagSet(name string, stderr io.Writer, help commandHelp) *flag.FlagSet {
+	fs := newFlagSet(name, stderr)
+	fs.Usage = func() {
+		out := fs.Output()
+		if help.Purpose != "" {
+			fmt.Fprintf(out, "%s\n\n", help.Purpose)
+		}
+		if help.Usage != "" {
+			fmt.Fprintf(out, "Usage:\n  %s\n", help.Usage)
+		}
+		if len(help.Common) > 0 {
+			fmt.Fprintln(out, "\nCommon usage:")
+			for _, line := range help.Common {
+				fmt.Fprintf(out, "  %s\n", line)
+			}
+		}
+		if len(help.Notes) > 0 {
+			fmt.Fprintln(out, "\nNotes:")
+			for _, line := range help.Notes {
+				fmt.Fprintf(out, "  - %s\n", line)
+			}
+		}
+		fmt.Fprintln(out, "\nFlags:")
+		fs.PrintDefaults()
+	}
 	return fs
 }
 
@@ -253,9 +291,26 @@ func serveHandler(upstream string, pipeline *governance.Pipeline) (handler http.
 
 func runDemo(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" {
-		fmt.Fprintln(stdout, "Usage: boundary demo postgres [--gateway URL] [--bypass-host HOST] [--bypass-port PORT]")
-		fmt.Fprintln(stdout, "       boundary demo github-lethal-trifecta [--json|--markdown] [--out PATH] [--dashboard]")
-		fmt.Fprintln(stdout, "       boundary demo trust-degradation")
+		fmt.Fprint(stdout, `Run Boundary demos that show governed routes and explicit fixture/live boundaries.
+
+Usage:
+  boundary demo <name> [flags]
+
+Common usage:
+  boundary demo github-lethal-trifecta
+  boundary demo github-lethal-trifecta --markdown --out demo.md
+  boundary demo postgres --gateway http://localhost:8080/mcp
+  boundary demo trust-degradation
+
+Demos:
+  postgres                 Exercise allow, deny, and direct-bypass checks against a running gateway
+  github-lethal-trifecta   Fixture-only Secure GitHub denial demo
+  trust-degradation        Local adaptive-trust degradation demo
+
+Notes:
+  - Fixture demos use no credentials, no network, and no live mutation.
+  - Postgres requires a running gateway and explicit bypass host/port checks.
+`)
 		return 0
 	}
 	if args[0] == "trust-degradation" {
@@ -268,7 +323,17 @@ func runDemo(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "unknown demo %q\n", args[0])
 		return 1
 	}
-	fs := newFlagSet("boundary demo postgres", stderr)
+	fs := newHelpFlagSet("boundary demo postgres", stderr, commandHelp{
+		Purpose: "Run the Postgres allow, deny, and bypass demo against a running Boundary gateway.",
+		Usage:   "boundary demo postgres [--gateway URL] [--bypass-host HOST] [--bypass-port PORT]",
+		Common: []string{
+			"boundary demo postgres --gateway http://localhost:8080/mcp",
+		},
+		Notes: []string{
+			"This demo requires a running gateway and checks direct Postgres bypass separately.",
+			"Direct database access must be blocked by deployment topology, not by CLI output.",
+		},
+	})
 	gateway := fs.String("gateway", "http://localhost:8080/mcp", "gateway endpoint URL")
 	bypassHost := fs.String("bypass-host", "localhost", "host to test for direct Postgres bypass")
 	bypassPort := fs.String("bypass-port", "5432", "port to test for direct Postgres bypass")

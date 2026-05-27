@@ -1,0 +1,18 @@
+Boundary selftest
+status: pass
+live mutation: none
+credentials: none
+network: none
+
+[pass] cli_boots - boundary selftest command dispatcher reached
+[pass] inventory_fixture_loads - loaded 1 GitHub MCP fixture with high-risk capabilities and redacted env values
+[pass] risk_graph_fixture_renders - rendered 4 risk paths including repo-write paths
+[pass] policy_generator_valid - generated 6 starter policies with 12 valid rules
+[pass] descriptor_lock_baseline - descriptor lock verified ok against baseline fixture
+[pass] descriptor_lock_detects_drift - modified descriptor produced drift and default deny behavior
+[pass] redteam_github_lethal_trifecta - GitHub write-after-taint fixture denied before upstream
+[pass] secure_github_live_mode_fails_closed - live GitHub App mode rejected before serving and without credentials
+[pass] decision_record_emitted - decision record rec_<example> emitted with sha256:<example>
+[pass] claims_validation_pointer - run go test ./claims/... -count=1 for claims and language validation
+
+next: go test ./claims/... -count=1

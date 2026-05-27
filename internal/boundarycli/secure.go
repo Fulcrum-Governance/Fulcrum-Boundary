@@ -13,13 +13,16 @@ import (
 
 func runSecure(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
-		fmt.Fprint(stdout, `Fulcrum Boundary secure profiles
+		fmt.Fprint(stdout, `Manage Secure MCP preview profiles for routed tools.
 
 Usage:
   boundary secure <profile> <command> [flags]
 
 Profiles:
   github   Secure GitHub MCP preview profile
+
+Notes:
+  - Secure profiles remain preview until live upstream conformance evidence exists.
 
 Use "boundary secure github --help" for profile commands.
 `)
@@ -36,16 +39,22 @@ Use "boundary secure github --help" for profile commands.
 
 func runSecureGitHub(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
-		fmt.Fprint(stdout, `Secure GitHub MCP preview profile
+		fmt.Fprint(stdout, `Secure GitHub MCP preview profile for routed GitHub tools.
 
 Usage:
   boundary secure github <command> [flags]
+
+Common usage:
+  boundary secure github setup --out .boundary/secure-github
+  boundary secure github serve --fixture --dry-run
 
 Commands:
   setup   Write a fixture profile and starter policy bundle
   serve   Serve the fixture Secure GitHub MCP profile
 
-Secure GitHub remains preview until live GitHub App conformance evidence exists.
+Notes:
+  - Fixture mode uses no credentials, no network, and no live mutation.
+  - Secure GitHub remains preview until live GitHub App conformance evidence exists.
 `)
 		return 0
 	}

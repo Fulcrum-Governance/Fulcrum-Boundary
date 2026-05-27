@@ -19,7 +19,18 @@ type configTarget struct {
 }
 
 func runFirewallInstall(args []string, stdout, stderr io.Writer) int {
-	fs := newFlagSet("boundary install", stderr)
+	fs := newHelpFlagSet("boundary install", stderr, commandHelp{
+		Purpose: "Rewrite selected MCP config entries so routed tools execute through Boundary.",
+		Usage:   "boundary install (--config PATH | --client NAME | --all) [--server NAME] [--dry-run]",
+		Common: []string{
+			"boundary install --config path/to/mcp.json --server shell --dry-run",
+			"boundary install --client repo --out .boundary/firewall",
+		},
+		Notes: []string{
+			"Dry runs do not mutate MCP configs, backups, or receipts.",
+			"Install changes only selected routes; direct upstream access remains a deployment bypass unless removed.",
+		},
+	})
 	root := fs.String("root", ".", "project root to inspect for repo-local MCP configs")
 	home := fs.String("home", "", "home directory to inspect for user MCP configs")
 	clientFlag := fs.String("client", "", "client to install into: claude, cursor, vscode, repo, or custom")
@@ -78,7 +89,17 @@ func runFirewallInstall(args []string, stdout, stderr io.Writer) int {
 }
 
 func runFirewallUninstall(args []string, stdout, stderr io.Writer) int {
-	fs := newFlagSet("boundary uninstall", stderr)
+	fs := newHelpFlagSet("boundary uninstall", stderr, commandHelp{
+		Purpose: "Restore an MCP config from a Boundary install receipt.",
+		Usage:   "boundary uninstall --receipt PATH [--dry-run] [--force]",
+		Common: []string{
+			"boundary uninstall --receipt .boundary/firewall/install-receipts/example.json --dry-run",
+		},
+		Notes: []string{
+			"Dry runs show the restore plan without changing local files.",
+			"Use --force only after reviewing config-hash drift from the install receipt.",
+		},
+	})
 	receipt := fs.String("receipt", "", "Boundary install receipt path")
 	dryRun := fs.Bool("dry-run", false, "show restore plan without changing configs")
 	force := fs.Bool("force", false, "restore even when the current config hash no longer matches the install receipt")

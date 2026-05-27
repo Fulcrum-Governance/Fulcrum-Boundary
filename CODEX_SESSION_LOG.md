@@ -1,5 +1,42 @@
 # CODEX Session Log
 
+## 2026-05-27 - CLI Output Polish
+
+### Context
+
+- Parent goal: Final public Boundary release polish.
+- Subgoal: `Subgoal 4 - CLI Help, Examples, And Terminal Output Polish`.
+- Branch: `codex/2026-05-27-cli-output-polish`
+- Scope: make CLI help and example output intentional, readable, and consistent
+  without changing product behavior.
+
+### What changed
+
+- Added purpose, usage, common usage, and fixture/live boundary notes to reviewed
+  CLI help surfaces.
+- Added `docs/CLI_REFERENCE.md` and linked the docs-site CLI reference to it.
+- Added stable example outputs under `examples/cli/` for selftest, demo,
+  inventory markdown, risk graph Mermaid, and external MCP inventory NDJSON
+  ingest summary.
+- Added `tests/cli_output/` coverage for help text language and banned vendor
+  output terms.
+
+### Verification
+
+- `git diff --check`: pass.
+- `./scripts/assert-no-public-vendor-refs.sh`: pass.
+- `make docs-build`: pass.
+- `git ls-files '*.go' | xargs gofmt -l`: pass.
+- `go test ./tests/cli_output/... -count=1`: pass.
+- `go test ./claims/... -count=1`: pass.
+- `go test ./... -short -count=1 -timeout 5m`: pass.
+- `go vet ./...`: pass.
+
+### Notes For Next Step
+
+- After this branch lands, start repo metadata, social preview, and badge polish
+  from clean `main`.
+
 ## 2026-05-27 - Docs Site Skeleton
 
 ### Context
