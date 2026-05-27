@@ -55,6 +55,23 @@ boundary --help
 boundary verify --policies examples/mcp-postgres-gateway/policies
 ```
 
+## MCP Firewall Local Visibility
+
+Boundary can inventory local MCP client configs, render risk paths, generate
+starter policies, install reversible Boundary routes, verify descriptor locks,
+and show those local artifacts in a local-only dashboard:
+
+```bash
+boundary inventory --format markdown
+boundary graph --format mermaid
+boundary policy generate --out boundary-firewall-policies
+boundary dashboard --format html --out .boundary/firewall/dashboard.html
+```
+
+See [docs/firewall/DASHBOARD.md](./docs/firewall/DASHBOARD.md). The dashboard
+reads local files only; it is not hosted monitoring and does not protect MCP
+servers by itself.
+
 ## Library Quick Start
 
 ```go
