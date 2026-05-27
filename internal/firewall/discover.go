@@ -48,8 +48,9 @@ func BuildInventory(options DiscoverOptions) (Inventory, error) {
 	}
 
 	candidates := make([]Candidate, 0)
+	candidates = append(candidates, RepoLocalCandidates(absRoot)...)
 	if options.IncludeDefaults {
-		candidates = append(candidates, DefaultCandidates(absRoot, home)...)
+		candidates = append(candidates, UserDefaultCandidates(home)...)
 	}
 	for _, path := range options.AdditionalConfigPaths {
 		expanded := expandPath(path, home)
@@ -115,6 +116,13 @@ func BuildInventory(options DiscoverOptions) (Inventory, error) {
 
 func DefaultCandidates(root, home string) []Candidate {
 	var candidates []Candidate
+	candidates = append(candidates, RepoLocalCandidates(root)...)
+	candidates = append(candidates, UserDefaultCandidates(home)...)
+	return candidates
+}
+
+func RepoLocalCandidates(root string) []Candidate {
+	var candidates []Candidate
 	if root != "" {
 		candidates = append(candidates,
 			Candidate{Path: filepath.Join(root, ".mcp.json"), Client: ClientRepoLocal, Scope: "repo"},
@@ -123,6 +131,11 @@ func DefaultCandidates(root, home string) []Candidate {
 			Candidate{Path: filepath.Join(root, ".vscode", "mcp.json"), Client: ClientVSCode, Scope: "repo"},
 		)
 	}
+	return candidates
+}
+
+func UserDefaultCandidates(home string) []Candidate {
+	var candidates []Candidate
 	if home != "" {
 		candidates = append(candidates,
 			Candidate{Path: filepath.Join(home, "Library", "Application Support", "Claude", "claude_desktop_config.json"), Client: ClientClaudeDesktop, Scope: "user"},

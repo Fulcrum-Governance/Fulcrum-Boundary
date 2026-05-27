@@ -36,7 +36,7 @@ func runFirewallInit(args []string, stdout, stderr io.Writer) int {
 	home := fs.String("home", "", "home directory to inspect for user MCP configs")
 	outDir := fs.String("out", ".boundary/firewall", "Boundary-owned firewall workspace directory")
 	dryRun := fs.Bool("dry-run", false, "print initialization plan without writing files")
-	includeDefaults := fs.Bool("include-defaults", true, "include known Claude Desktop, Cursor, VS Code, and repo-local config paths")
+	includeDefaults := fs.Bool("include-defaults", true, "include known user-level Claude Desktop, Cursor, and VS Code config paths")
 	var configs pathListFlag
 	fs.Var(&configs, "config", "additional MCP config path; may be repeated or comma-separated")
 	if err := fs.Parse(args); err != nil {
@@ -114,7 +114,7 @@ func runFirewallInventory(args []string, stdout, stderr io.Writer) int {
 	home := fs.String("home", "", "home directory to inspect for user MCP configs")
 	format := fs.String("format", "json", "inventory format: json, ndjson, markdown, or sarif")
 	out := fs.String("out", "", "write inventory report to a file instead of stdout")
-	includeDefaults := fs.Bool("include-defaults", true, "include known Claude Desktop, Cursor, VS Code, and repo-local config paths")
+	includeDefaults := fs.Bool("include-defaults", true, "include known user-level Claude Desktop, Cursor, and VS Code config paths")
 	var configs pathListFlag
 	fs.Var(&configs, "config", "additional MCP config path; may be repeated or comma-separated")
 	if err := fs.Parse(args); err != nil {
@@ -158,7 +158,7 @@ func runFirewallGraph(args []string, stdout, stderr io.Writer) int {
 	home := fs.String("home", "", "home directory to inspect for user MCP configs")
 	format := fs.String("format", "json", "graph format: json or mermaid")
 	out := fs.String("out", "", "write graph report to a file instead of stdout")
-	includeDefaults := fs.Bool("include-defaults", true, "include known Claude Desktop, Cursor, VS Code, and repo-local config paths")
+	includeDefaults := fs.Bool("include-defaults", true, "include known user-level Claude Desktop, Cursor, and VS Code config paths")
 	var configs pathListFlag
 	fs.Var(&configs, "config", "additional MCP config path; may be repeated or comma-separated")
 	if err := fs.Parse(args); err != nil {

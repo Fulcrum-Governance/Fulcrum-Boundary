@@ -1,0 +1,64 @@
+name: Fulcrum Boundary MCP Audit
+description: Audit repo-local MCP configs with Fulcrum Boundary and emit Markdown and SARIF reports.
+author: Fulcrum Governance
+
+inputs:
+  root:
+    description: Repository root to audit for repo-local MCP configs.
+    required: false
+    default: "."
+  format:
+    description: Primary report format: markdown or sarif.
+    required: false
+    default: "markdown"
+  sarif:
+    description: Generate and upload SARIF when true.
+    required: false
+    default: "true"
+  fail-on-critical:
+    description: Fail the workflow when critical MCP risk paths are found.
+    required: false
+    default: "false"
+  include-defaults:
+    description: Include user-level default MCP config paths. Keep false in CI.
+    required: false
+    default: "false"
+
+outputs:
+  critical-count:
+    description: Number of critical MCP risk paths found.
+    value: ${{ steps.audit.outputs.critical-count }}
+  high-count:
+    description: Number of high-risk MCP tools found.
+    value: ${{ steps.audit.outputs.high-count }}
+  report-path:
+    description: Path to the generated primary report.
+    value: ${{ steps.audit.outputs.report-path }}
+  sarif-path:
+    description: Path to the generated SARIF report, when requested.
+    value: ${{ steps.audit.outputs.sarif-path }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: ${{ github.action_path }}/../../go.mod
+
+    - name: Run Boundary MCP audit
+      id: audit
+      shell: bash
+      run: |
+        "${GITHUB_ACTION_PATH}/../../scripts/actions/mcp-audit.sh" \
+          --root "${{ inputs.root }}" \
+          --format "${{ inputs.format }}" \
+          --sarif "${{ inputs.sarif }}" \
+          --fail-on-critical "${{ inputs.fail-on-critical }}" \
+          --include-defaults "${{ inputs.include-defaults }}"
+
+    - name: Upload Boundary MCP SARIF
+      if: ${{ inputs.sarif == 'true' || inputs.format == 'sarif' }}
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ steps.audit.outputs.sarif-path }}

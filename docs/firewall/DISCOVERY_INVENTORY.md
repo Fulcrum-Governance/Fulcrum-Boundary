@@ -33,11 +33,15 @@ Useful flags:
 | `--root` | Project root for repo-local `.mcp.json`, `mcp.json`, `.cursor/mcp.json`, and `.vscode/mcp.json`. |
 | `--home` | Home directory for user-level Claude Desktop, Cursor, and VS Code config discovery. |
 | `--config` | Extra MCP config path. May be repeated or comma-separated. |
-| `--include-defaults` | Include known default paths. Defaults to true. |
+| `--include-defaults` | Include known user-level Claude Desktop, Cursor, and VS Code default paths. Defaults to true. Repo-local root paths are always inspected. |
 | `--format` | `json`, `ndjson`, `markdown`, or `sarif`. |
 | `--out` | Write the report to a file instead of stdout. |
 
 ## Config Paths
+
+Boundary always looks for repo-local config paths under `--root`. When
+`--include-defaults=true`, it also looks for user-level MCP client configs under
+`--home`.
 
 Boundary looks for:
 

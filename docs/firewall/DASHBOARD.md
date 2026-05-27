@@ -63,7 +63,7 @@ Append `?format=json` to the local URL for JSON output.
 | `--root` | Project root used for repo-local MCP config discovery. Defaults to `.`. |
 | `--home` | Home directory used for user-level MCP config discovery. Defaults to the current user home. |
 | `--config` | Additional MCP config path. May be repeated or comma-separated. |
-| `--include-defaults` | Include known Claude Desktop, Cursor, VS Code, and repo-local config paths. Defaults to true. |
+| `--include-defaults` | Include known user-level Claude Desktop, Cursor, and VS Code config paths. Defaults to true. Repo-local root paths are always inspected. |
 | `--policies` | Policy directory to parse and summarize. Defaults to `boundary-firewall-policies`. |
 | `--lock` | Descriptor lockfile to verify in warning mode for visibility. |
 | `--receipts` | Directory containing Boundary install receipts. |

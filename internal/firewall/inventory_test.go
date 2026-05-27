@@ -80,6 +80,49 @@ func TestBuildInventoryDiscoversConfigsAndClassifiesGitHub(t *testing.T) {
 	}
 }
 
+func TestBuildInventoryAlwaysDiscoversRepoLocalRootConfigs(t *testing.T) {
+	root := t.TempDir()
+	home := t.TempDir()
+	writeMCPConfig(t, filepath.Join(root, ".mcp.json"), `{
+  "mcpServers": {
+    "github": {
+      "command": "github-mcp",
+      "tools": [{"name": "merge_pull_request"}]
+    }
+  }
+}`)
+	writeMCPConfig(t, filepath.Join(home, "Library", "Application Support", "Claude", "claude_desktop_config.json"), `{
+  "mcpServers": {
+    "slack": {
+      "command": "slack-mcp"
+    }
+  }
+}`)
+
+	inventory, err := BuildInventory(DiscoverOptions{
+		Root:            root,
+		Home:            home,
+		IncludeDefaults: false,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if inventory.Summary.ConfigFiles != 1 {
+		t.Fatalf("config files = %d, want repo-local only 1", inventory.Summary.ConfigFiles)
+	}
+	if inventory.Summary.Servers != 1 {
+		t.Fatalf("servers = %d, want repo-local only 1", inventory.Summary.Servers)
+	}
+	if inventory.Configs[0].Scope != "repo" {
+		t.Fatalf("repo-local config scope = %q, want repo", inventory.Configs[0].Scope)
+	}
+	for _, server := range inventory.Servers {
+		if server.Name == "slack" {
+			t.Fatalf("user-level HOME config was discovered with IncludeDefaults=false: %+v", inventory.Servers)
+		}
+	}
+}
+
 func TestRenderInventoryFormats(t *testing.T) {
 	root := t.TempDir()
 	writeMCPConfig(t, filepath.Join(root, "mcp.json"), `{
