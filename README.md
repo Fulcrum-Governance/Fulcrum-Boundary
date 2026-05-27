@@ -1,6 +1,6 @@
 # Fulcrum Boundary
 
-> Pre-execution control for agent actions across transports. Fulcrum Boundary sits between agent intent and privileged tools, decides before execution, and emits an inspectable decision record.
+> The action boundary for MCP-native agents. See what your AI tools can do, block what they should not, and record every verdict before privileged execution.
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/fulcrum-governance/fulcrum-boundary.svg)](https://pkg.go.dev/github.com/fulcrum-governance/fulcrum-boundary)
 [![CI](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/actions/workflows/ci.yml)
@@ -14,6 +14,11 @@ Fulcrum Boundary is the out-of-process action boundary for production AI agents.
 The first packaged release is the **MCP Safety Gateway**: route a Postgres tool call through Boundary, allow a safe `SELECT`, block a destructive `DROP TABLE`, demonstrate that the demo agent cannot bypass the gateway network path, and inspect the structured decision record.
 
 Boundary includes a production MCP adapter plus CLI, CodeExec, gRPC, Managed Agents, Webhook, and A2A adapter packages with maturity tracked per adapter. Direct tool calls are governed only when routed through Boundary and when the deployment topology prevents the agent from reaching the privileged tool directly.
+
+Public language follows the Boundary lexicon and claim rules in
+[`docs/LANGUAGE_SYSTEM.md`](./docs/LANGUAGE_SYSTEM.md),
+[`docs/LEXICON.md`](./docs/LEXICON.md), and
+[`docs/COPY_RULES.md`](./docs/COPY_RULES.md).
 
 ## MCP Safety Gateway Quick Start
 
