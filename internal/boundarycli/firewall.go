@@ -109,7 +109,18 @@ func runFirewallInventory(args []string, stdout, stderr io.Writer) int {
 			args = []string{"--help"}
 		}
 	}
-	fs := newFlagSet("boundary inventory", stderr)
+	fs := newHelpFlagSet("boundary inventory", stderr, commandHelp{
+		Purpose: "Discover MCP configs and render the tools Boundary can route.",
+		Usage:   "boundary inventory [--format json|ndjson|markdown|sarif] [--config PATH] [--out PATH]",
+		Common: []string{
+			"boundary inventory --format markdown",
+			"boundary inventory --config docs/firewall/fixtures/repo_mcp.json --include-defaults=false --format markdown",
+		},
+		Notes: []string{
+			"Discovery is local file inspection; it does not contact live MCP servers.",
+			"Use install only after reviewing which routed tools should pass through Boundary.",
+		},
+	})
 	root := fs.String("root", ".", "project root to inspect for repo-local MCP configs")
 	home := fs.String("home", "", "home directory to inspect for user MCP configs")
 	format := fs.String("format", "json", "inventory format: json, ndjson, markdown, or sarif")
@@ -153,7 +164,18 @@ func runFirewallInventory(args []string, stdout, stderr io.Writer) int {
 }
 
 func runFirewallGraph(args []string, stdout, stderr io.Writer) int {
-	fs := newFlagSet("boundary graph", stderr)
+	fs := newHelpFlagSet("boundary graph", stderr, commandHelp{
+		Purpose: "Render inventory-derived MCP risk paths for review.",
+		Usage:   "boundary graph [--format json|mermaid] [--config PATH] [--out PATH]",
+		Common: []string{
+			"boundary graph --format mermaid",
+			"boundary graph --config docs/firewall/fixtures/repo_mcp.json --include-defaults=false --format mermaid",
+		},
+		Notes: []string{
+			"Risk paths describe potential routes; they are not proof that a live action occurred.",
+			"Mermaid output is intended for README, docs, and operator review.",
+		},
+	})
 	root := fs.String("root", ".", "project root to inspect for repo-local MCP configs")
 	home := fs.String("home", "", "home directory to inspect for user MCP configs")
 	format := fs.String("format", "json", "graph format: json or mermaid")
@@ -221,7 +243,18 @@ Use "boundary policy <command> --help" for command flags.
 }
 
 func runFirewallPolicyGenerate(args []string, stdout, stderr io.Writer) int {
-	fs := newFlagSet("boundary policy generate", stderr)
+	fs := newHelpFlagSet("boundary policy generate", stderr, commandHelp{
+		Purpose: "Generate starter policies for Boundary firewall review.",
+		Usage:   "boundary policy generate [--out DIR] [--force] [--format text|json]",
+		Common: []string{
+			"boundary policy generate --out boundary-firewall-policies",
+			"boundary verify --policies boundary-firewall-policies",
+		},
+		Notes: []string{
+			"Starter policies are a review baseline, not a complete production policy set.",
+			"Operators should inspect and tighten generated rules before relying on them.",
+		},
+	})
 	outDir := fs.String("out", "boundary-firewall-policies", "directory to write starter policy YAML files")
 	force := fs.Bool("force", false, "overwrite existing starter policy files")
 	mode := fs.String("mode", "balanced", "starter policy mode: balanced")

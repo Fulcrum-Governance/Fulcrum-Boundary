@@ -1,0 +1,9 @@
+inventory ingest: fixtures/external-inventory/external-mcp-inventory.ndjson
+source: external-mcp
+snapshot status: complete
+records read: 3
+mcp configs: 1
+mcp servers: 1
+external components: 1
+external findings: 0
+install recommendations enabled: true

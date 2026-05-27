@@ -1,5 +1,8 @@
 # CLI Reference
 
+Canonical repository reference:
+[docs/CLI_REFERENCE.md](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/blob/main/docs/CLI_REFERENCE.md)
+
 First-run commands:
 
 ```bash

@@ -1,0 +1,17 @@
+flowchart LR
+  n_server_custom_shell["shell"]
+  n_server_custom_slack["slack"]
+  n_sink_external_publication["external_publication"]
+  n_sink_policy_projection["policy_projection"]
+  n_sink_runtime["runtime"]
+  n_source_agent_output["agent_output"]
+  n_source_mcp_descriptor["mcp_descriptor"]
+  n_server_custom_shell -->|descriptor_change W1| n_sink_policy_projection
+  n_server_custom_shell -->|privileged_mutation W2| n_sink_runtime
+  n_server_custom_slack -->|external_sink W0| n_sink_external_publication
+  n_server_custom_slack -->|descriptor_change W1| n_sink_policy_projection
+  n_source_agent_output -->|run_command W2| n_server_custom_shell
+  n_source_agent_output -->|send_message W0| n_server_custom_slack
+  n_source_mcp_descriptor -->|descriptor W1| n_server_custom_shell
+  n_source_mcp_descriptor -->|descriptor W1| n_server_custom_slack
+

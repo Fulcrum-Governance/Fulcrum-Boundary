@@ -1,0 +1,41 @@
+GitHub lethal-trifecta demo
+status: pass
+fixture-only: true
+credentials: none
+network: none
+live mutation: none
+expected action: DENY
+actual action: DENY
+reason: lethal_trifecta_detected
+matched rule: deny-github-write-after-taint-fixture
+upstream_called=false
+read_upstream_called=true
+decision record: rec_<example>
+decision hash: sha256:<example>
+inventory: configs=1 servers=1 github_servers=1 high_risk_servers=1
+risk paths: total=6 high_risk=5 repo_write=2
+policies: files=6 rules=12
+workspace retained: false
+
+Checks:
+- [pass] inventory_fixture_loads: github_servers=1
+- [pass] risk_graph_detects_path: repo_write_paths=2
+- [pass] starter_policies_verify: files=6 rules=12
+- [pass] secure_github_fixture_setup: fixture profile and policy artifacts written
+- [pass] redteam_denies_scenario: actual_action=DENY
+- [pass] write_denied_before_upstream: upstream_called=false
+- [pass] decision_record_emitted: rec_<example>
+
+What this proves:
+- Inventory identifies the fixture GitHub MCP server and private-repo mutation tools.
+- Risk graph includes untrusted GitHub context to private repository mutation paths.
+- Starter policies are generated and parsed by Boundary's policy loader.
+- Secure GitHub fixture setup is written without credentials.
+- Redteam fixture evaluates the lethal-trifecta scenario as DENY.
+- Secure GitHub adapter denies the write-after-taint mutation before upstream execution.
+- Decision records are emitted for the denial path.
+
+What this does not prove:
+- Fixture mode does not prove live GitHub App conformance.
+- Fixture mode does not mutate GitHub, call the network, or validate deployment topology.
+- Direct GitHub API or upstream MCP access remains a bypass unless operators remove those paths.

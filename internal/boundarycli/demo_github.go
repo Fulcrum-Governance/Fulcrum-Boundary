@@ -15,7 +15,18 @@ import (
 )
 
 func runGitHubLethalTrifectaDemo(args []string, stdout, stderr io.Writer) int {
-	fs := newFlagSet("boundary demo github-lethal-trifecta", stderr)
+	fs := newHelpFlagSet("boundary demo github-lethal-trifecta", stderr, commandHelp{
+		Purpose: "Run a fixture-only Secure GitHub denial demo for write-after-taint behavior.",
+		Usage:   "boundary demo github-lethal-trifecta [--json|--markdown] [--out PATH] [--dashboard]",
+		Common: []string{
+			"boundary demo github-lethal-trifecta",
+			"boundary demo github-lethal-trifecta --markdown --out demo.md",
+		},
+		Notes: []string{
+			"Fixture mode uses no credentials, no network, and no live GitHub mutation.",
+			"The demo proves pre-upstream denial for the fixture route, not live GitHub App conformance.",
+		},
+	})
 	jsonOutput := fs.Bool("json", false, "emit machine-readable JSON")
 	markdownOutput := fs.Bool("markdown", false, "emit Markdown")
 	outPath := fs.String("out", "", "write the demo report to a file")
