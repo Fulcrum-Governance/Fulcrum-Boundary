@@ -95,10 +95,11 @@ Seven fault classes × seven transports. Each cell is one of:
   own HTTP/gRPC handlers (`adapters/mcp/gateway.go`,
   `adapters/grpc/adapter.go:131-157`, `adapters/webhook/adapter.go:128-177`),
   which is why they can map parse errors to protocol-level fail-closed responses
-  (JSON-RPC error, `codes.Internal`, HTTP 400). CLI, CodeExec, and A2A adapters
-  only provide parsing; the embedding runtime (agent runtime, sandbox runtime,
-  A2A caller)
-  is responsible for translating a parse error into a protocol response.
+  (JSON-RPC error, `codes.Internal`, HTTP 400). CLI and CodeExec adapters only
+  provide parsing, so the embedding runtime (agent runtime or sandbox runtime)
+  is responsible for translating a parse error into a protocol response. The
+  A2A preview adapter also exposes `GovernTask`, which maps malformed or
+  unsupported requests to A2A-shaped unsupported responses without forwarding.
 
 - **PolicyEval error (fail-open row)** is the only cell in the entire matrix
   where the Boundary default behavior is ALLOW on error. This is why
@@ -116,7 +117,7 @@ Seven fault classes × seven transports. Each cell is one of:
 
 `PipelineConfig.FailClosedTransports` is `nil` by default, which means Boundary
 applies `DefaultFailClosedTransports` (`mcp`, `managed_agents`, `code_exec`,
-and `grpc`). Operators can pass an explicit empty slice to opt out, or a
+`grpc`, and `a2a`). Operators can pass an explicit empty slice to opt out, or a
 populated slice to override the secure-by-default set.
 
 | Transport | Recommended | Rationale |
@@ -126,7 +127,7 @@ populated slice to override the secure-by-default set.
 | `TransportCodeExec` | **fail-closed** | Arbitrary code execution. A PolicyEval outage that allows-by-default here sidesteps the 21 Python + 9 JavaScript obfuscation detection categories — currently 57 + 36 compiled regex patterns (`adapters/codeexec/analyzer_python.go`, `analyzer_javascript.go`). |
 | `TransportCLI` | **fail-closed** | Command execution with parsed pipe-chain risk classification (`adapters/cli/classifier.go`). Silently allowing on evaluator outage drops the high-risk classification results. |
 | `TransportGRPC` | fail-closed | Unary RPC interceptor (`adapters/grpc/adapter.go:131-157`). Internal service surface; defaulting to fail-closed matches the rest of the control plane's default posture. |
-| `TransportA2A` | fail-closed (with caveat) | A2A adapter is stub-level (see §6). If A2A is used in production at all, it should fail-closed until the adapter matures. |
+| `TransportA2A` | fail-closed | Preview A2A governed lifecycle. Malformed requests, unknown mandatory fields, and evaluator errors deny or return unsupported fail-closed responses. |
 | `TransportWebhook` | fail-open (with logging) | Webhook is intended for low-trust informational paths — health checks, notification dispatch, etc. Operators who use webhook for governed execution should override to fail-closed. |
 
 The pipeline exercises this map with `p.failClosed[req.Transport]`
@@ -220,17 +221,18 @@ reasoning (the two original closure options) is preserved in §6.
 
 ## 6. Known Gaps and Recommendations
 
-Four of the five gaps originally recorded here were remediated in PRD-004R.
-Status is annotated inline. The A2A gap remains open.
+The A2A stub-level gap was remediated by the preview lifecycle adapter. A2A
+still remains below production until live protocol conformance and deployment
+bypass evidence are recorded.
 
-- **A2A adapter is stub-level.** `adapters/a2a/adapter.go:1-6` declares the
-  protocol "still evolving"; `ForwardGoverned`, `InspectResponse`, and
-  `EmitGovernanceMetadata` are all no-ops (`:89-102`). The adapter parses
-  task messages into `GovernanceRequest` with a minimal local schema; it
-  does not integrate with Google A2A's actual wire protocol. Fail behavior
-  in the matrix above is nominal (what the stub does), not
-  production-tested. Treat A2A cells as "intended behavior" until the
-  adapter matures.
+- **A2A adapter is preview.** `docs/adapters/A2A_PROTOCOL_SNAPSHOT.md`
+  documents the supported A2A JSON-RPC subset and Boundary preview envelope.
+  The adapter now implements denial shaping, governed forwarding, response
+  inspection, metadata attachment, and fail-closed handling for malformed
+  requests, unknown mandatory fields, and pipeline errors. It is not a full
+  A2A server and does not implement streaming, task resubscription, push
+  notifications, full AgentCard negotiation, or multi-hop governance beyond
+  the first Boundary-controlled hop.
 
 - **[RESOLVED in PRD-004R Phase 4] Adapter-level parse failure is now typed.**
   Every adapter's `ParseRequest` returns `*governance.ParseError` on
@@ -246,7 +248,7 @@ Status is annotated inline. The A2A gap remains open.
 
 - **[RESOLVED in PRD-004R Phase 1] `FailClosedTransports` default is no
   longer empty.** The kernel ships with `DefaultFailClosedTransports =
-  [MCP, CodeExec, gRPC]`, applied when
+  [MCP, Managed Agents, CodeExec, gRPC, A2A]`, applied when
   `PipelineConfig.FailClosedTransports == nil`. Operators who need
   fail-open everywhere must pass an explicit (non-nil) empty slice.
   See `governance/pipeline.go`.

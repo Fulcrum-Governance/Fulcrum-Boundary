@@ -144,12 +144,7 @@ per-adapter `readiness.yaml` files for the ten-step lifecycle behind each row.
 | gRPC | `adapters/grpc` | gRPC unary calls via a server interceptor in a separate module |
 | Managed Agents | `adapters/managedagents` | Managed Agents session streams in preview proxy mode, with policy-driven tool confirmations, thread budget tracking, and a documented credential-bound bypass model; production status requires a live upstream conformance run |
 | Webhook | `adapters/webhook` | HTTP webhook tool-call payloads, with handler-owned allow/deny response shaping |
-
-### Experimental
-
-| Adapter | Package | Handles |
-|---|---|---|
-| A2A | `adapters/a2a` | Minimal Google Agent-to-Agent task parsing; forwarding, inspection, metadata, bypass proof, and fail-closed behavior are stub-level today |
+| A2A | `adapters/a2a` | Agent-to-agent task/message envelopes in preview mode, with a documented protocol snapshot, governed forwarding, denial shaping, response inspection, governance metadata, and fail-closed handling for malformed or unsupported mandatory fields |
 
 Each adapter implements the `governance.TransportAdapter` interface. Adding a
 new transport is a matter of satisfying that interface and declaring lifecycle

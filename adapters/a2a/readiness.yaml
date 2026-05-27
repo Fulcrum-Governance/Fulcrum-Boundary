@@ -1,17 +1,17 @@
 adapter: a2a
-status: experimental
+status: preview
 target_status: preview
 lifecycle:
   parse: implemented
   identify: implemented
   evaluate: delegated
-  deny: stub
-  forward: stub
-  inspect: stub
-  metadata: stub
+  deny: implemented
+  forward: implemented
+  inspect: implemented
+  metadata: implemented
   record: delegated
-  bypass_proof: stub
-  fail_closed: stub
+  bypass_proof: delegated
+  fail_closed: implemented
 delegated_steps:
   - step: evaluate
     owner: governance.Pipeline
@@ -19,14 +19,22 @@ delegated_steps:
   - step: record
     owner: governance.AuditPublisher
     contract: docs/DECISION_RECORDS.md
+  - step: bypass_proof
+    owner: deployment topology
+    contract: docs/adapters/A2A.md
 bypass_model: runtime
-fail_closed_transports: []
+fail_closed_transports:
+  - a2a
 evidence:
   tests:
     - adapters/a2a/adapter_test.go
+    - tests/adapters/a2a_lifecycle_test.go
+    - tests/adapter_conformance/a2a_conformance_test.go
   docs:
+    - docs/adapters/A2A.md
+    - docs/adapters/A2A_PROTOCOL_SNAPSHOT.md
     - docs/ADAPTER_READINESS_MATRIX.md
 gaps:
-  - id: BND-A2A-001
-    description: "Replace minimal local task schema and no-op lifecycle methods with real A2A protocol control."
+  - id: BND-A2A-002
+    description: "Preview remains below production until live A2A protocol conformance and deployment bypass evidence are recorded."
     spec: "SPEC 4"

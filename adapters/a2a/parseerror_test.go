@@ -22,8 +22,8 @@ func TestParseRequest_MissingAction_ReturnsParseError(t *testing.T) {
 	if pe.Transport != governance.TransportA2A {
 		t.Errorf("Transport = %s, want a2a", pe.Transport)
 	}
-	if pe.Reason != "TaskMessage.Action is required" {
-		t.Errorf("Reason = %q, want %q", pe.Reason, "TaskMessage.Action is required")
+	if pe.Reason != "TaskEnvelope.Action is required" {
+		t.Errorf("Reason = %q, want %q", pe.Reason, "TaskEnvelope.Action is required")
 	}
 }
 
