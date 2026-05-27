@@ -1,5 +1,27 @@
 # CODEX Session Log
 
+## 2026-05-27 - Public Release Hardening Goal Setup
+
+### Context
+
+- Parent goal: Final public Boundary release hardening from `/Users/td/ConceptDev/Projects/Fulcrum/.claude/sprint/Last_Pass_Specs.md`.
+- Branch: `codex/2026-05-27-boundary-release-next`
+- Scope: translate the last-pass sprint spec into a durable repo-owned goal set before implementation.
+
+### What changed
+
+- Added `docs/superpowers/specs/2026-05-27-boundary-public-release-hardening-goals.md`.
+- Removed stale review/no-auto-merge gates from the execution plan and aligned it with current Codex merge-autonomy rules.
+- Split the heavy selftest/demo step into two subgoals so each implementation branch has a tighter verification surface.
+
+### Verification
+
+- `git diff --check`: pass
+
+### Notes For Next Step
+
+- After this planning artifact lands, execute the subgoals sequentially from clean `main`: public README/copy polish, selftest, GitHub lethal-trifecta demo, inventory NDJSON, external inventory ingest, GitHub Action MCP audit, install/release workflow polish, and final public truth reconciliation.
+
 ## 2026-05-27 - Dependabot Alert Remediation
 
 ### Context
