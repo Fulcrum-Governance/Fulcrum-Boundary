@@ -47,6 +47,69 @@ rules:
 	}
 }
 
+func TestLoadStaticPolicyFiles_LoadsPolicyV1Document(t *testing.T) {
+	dir := t.TempDir()
+	policy := []byte(`schema_version: "1"
+policy:
+  name: postgres-production
+  version: "1.0.0"
+  transport: mcp
+  rules:
+    - name: deny-destructive
+      tool: query
+      action: deny
+      decision_mode: classified
+      tenant_scope: ["tenant-1"]
+      conditions:
+        - type: ast_class
+          value: DESTRUCTIVE
+`)
+	if err := os.WriteFile(filepath.Join(dir, "postgres.yaml"), policy, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := LoadStaticPolicyFiles(dir)
+	if err != nil {
+		t.Fatalf("load policies: %v", err)
+	}
+	if len(result.Rules) != 1 {
+		t.Fatalf("expected 1 rule, got %d", len(result.Rules))
+	}
+	rule := result.Rules[0]
+	if rule.Transport != "mcp" {
+		t.Fatalf("expected transport projection, got %q", rule.Transport)
+	}
+	if rule.DecisionMode != DecisionModeClassified {
+		t.Fatalf("expected classified decision mode, got %q", rule.DecisionMode)
+	}
+	if len(rule.Conditions) != 1 || rule.Conditions[0].Type != "ast_class" {
+		t.Fatalf("unexpected conditions: %#v", rule.Conditions)
+	}
+}
+
+func TestLoadStaticPolicyFiles_InvalidPolicyV1ReturnsError(t *testing.T) {
+	dir := t.TempDir()
+	policy := []byte(`schema_version: "1"
+policy:
+  name: broken
+  version: "1.0.0"
+  rules:
+    - name: invalid
+      tool: query
+      action: deny
+      conditions:
+        - type: regex
+          field: arguments.sql
+          regex: "["
+`)
+	if err := os.WriteFile(filepath.Join(dir, "broken.yaml"), policy, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadStaticPolicyFiles(dir); err == nil {
+		t.Fatal("expected v1 schema validation error")
+	}
+}
+
 func TestStaticPolicyMatch_ArgumentsSQLCaseInsensitive(t *testing.T) {
 	cfg := PipelineConfig{
 		StaticPolicies: []StaticPolicyRule{

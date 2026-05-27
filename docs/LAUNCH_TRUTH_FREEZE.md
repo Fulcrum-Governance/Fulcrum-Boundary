@@ -23,6 +23,7 @@ The MCP Safety Gateway demo proves the release spine:
 - a destructive demo `DROP TABLE` request is denied before execution
 - a direct bypass attempt from the demo agent fails by network topology
 - every verdict emits a structured decision record
+- the Postgres path uses an AST guard for statement classification
 
 The bypass claim is scoped to the Docker demo topology. Production deployments must enforce the same sole-route constraint with their own infrastructure controls.
 
@@ -31,7 +32,7 @@ The bypass claim is scoped to the Docker demo topology. Production deployments m
 Fulcrum Boundary v0.2.0 does not claim:
 
 - general SQL firewall coverage
-- sophisticated SQL obfuscation resistance
+- universal SQL injection prevention
 - receipt verification
 - trust-based adaptive termination
 - multi-agent coordination governance

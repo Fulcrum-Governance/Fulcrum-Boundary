@@ -347,3 +347,36 @@
 
 - Bypass proof is credential/topology based: Boundary must be the only component with the upstream Managed Agents API key, and customer apps must not be able to send confirmations directly.
 - Standalone budget and trust tracking are in-process; kernel-connected deployments should sync to fulcrum-io budget enforcement and fulcrum-trust state.
+
+## 2026-05-26 — Spec 5 Policy v1 + SQL AST Guard
+
+### Context
+
+- Branch: `codex/2026-05-26-boundary-phase1-foundation`, continuing after Spec 4 was committed as `134deeb`.
+- Scope: Spec 5 only. Add policy schema v1 validation, richer PolicyEval request projection, and a Postgres AST guard while preserving v0.2.0 legacy YAML policy loading.
+
+### Built
+
+- Added `schemas/policy.v1.yaml`, `policyeval/schema.go`, and validation tests for schema-versioned policy documents.
+- Kept legacy top-level YAML policies backward compatible while validating v1 documents strictly through the same loader used by `boundary verify` and `boundary serve`.
+- Expanded static policy matching with typed conditions, scopes, transport restrictions, regex/equality/not conditions, and decision-mode propagation.
+- Added `governance.ProjectPolicyEvalRequest` so PolicyEval receives tenant, agent, transport, tool, action, arguments, trust state, risk class, resource IDs, request hash, policy version, and provenance.
+- Added `interceptors/sql/` with a Postgres parser-backed AST classifier and fail-closed guard for unknown or destructive SQL.
+- Added a 30+ case SQL evasion corpus plus interceptor tests for comments, dollar strings, mixed statements, invalid tokens, destructive DDL, writes, reads, and administrative statements.
+- Registered the Postgres AST guard in `boundary serve` for the demo `query` tool.
+- Added `docs/POLICY_SCHEMA.md` and `docs/policies/POSTGRES.md`; updated README, changelog, launch truth, fail-mode docs, and claims ledger.
+
+### Verification
+
+- `env -u GOROOT go test ./policyeval ./governance ./interceptors/sql ./internal/boundarycli ./tests ./tests/interceptors`: pass.
+- `env -u GOROOT go test ./... -short`: pass.
+- `env -u GOROOT go run ./cmd/boundary verify --policies schemas`: pass, `warnings: 0`.
+- `env -u GOROOT go run ./cmd/boundary verify --policies examples/mcp-postgres-gateway/policies`: pass, preserving v0.2.0 YAML policy compatibility.
+- `env -u GOROOT go vet ./...`: pass.
+- `git ls-files '*.go' | xargs gofmt -l`: pass.
+- `git diff --check`: pass.
+
+### Notes
+
+- The Postgres AST guard is a statement classifier and fail-closed interceptor, not a general SQL firewall or universal SQL injection prevention claim.
+- Static policies run before interceptors; AST class conditions are intended for PolicyEval or for adapters that pre-populate `sql_class` before the static-policy stage.

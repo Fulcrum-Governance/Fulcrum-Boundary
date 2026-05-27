@@ -249,6 +249,19 @@ pipeline.
 {Name: "deny-all-db-writes", Tool: "database_*", Action: "deny", Reason: "writes routed through approval"}
 ```
 
+## Policy Schema And SQL Guard
+
+`boundary verify --policies ./policies` validates both legacy v0.2.0 static
+YAML and schema v1 policy files. Schema v1 adds an explicit
+`schema_version: "1"` envelope, condition validation, tenant and agent scopes,
+and richer request projection into PolicyEval. See
+[`docs/POLICY_SCHEMA.md`](./docs/POLICY_SCHEMA.md).
+
+The Postgres interceptor classifies SQL with the PostgreSQL parser AST and
+annotates requests with `sql_class` before PolicyEval. Unknown or unparsable
+SQL fails closed; destructive SQL is denied; administrative SQL escalates. See
+[`docs/policies/POSTGRES.md`](./docs/policies/POSTGRES.md).
+
 ## Examples
 
 | Directory | What it shows |

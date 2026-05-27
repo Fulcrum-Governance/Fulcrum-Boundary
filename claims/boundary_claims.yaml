@@ -129,6 +129,29 @@ claims:
     depends_on:
       - BND-MAPROD-001
 
+  - id: BND-CLAIM-008
+    claim: "Boundary includes a Postgres AST guard for classifying SQL statements before PolicyEval"
+    status: delivered
+    evidence:
+      tests:
+        - path: tests/interceptors/sql_postgres_test.go
+          assertion: "Postgres SQL is classified by parser AST class and destructive or unknown SQL fails closed"
+        - path: tests/interceptors/sql_evasion_test.go
+          assertion: "The SQL evasion corpus contains at least 30 cases and verifies expected classes"
+      docs:
+        - path: docs/policies/POSTGRES.md
+          section: "Postgres AST Guard"
+        - path: docs/POLICY_SCHEMA.md
+          section: "Request Context"
+    public_language:
+      allowed:
+        - "Boundary includes a Postgres AST guard that classifies statements before PolicyEval."
+      forbidden:
+        - "Boundary is a SQL firewall"
+        - "Boundary prevents all SQL injection"
+    gaps: []
+    depends_on: []
+
   - id: BND-CLAIM-004
     claim: "Boundary is a SQL firewall"
     status: false
@@ -139,16 +162,12 @@ claims:
           section: "What v0.2.0 Does Not Claim"
     public_language:
       allowed:
-        - "The launch policy is demo-grade destructive-action blocking via string matching."
+        - "Boundary includes a Postgres AST guard for statement classification, but it is not a general SQL firewall."
       forbidden:
         - "Boundary is a SQL firewall"
         - "Boundary prevents all SQL injection"
-    gaps:
-      - id: BND-POL-002
-        description: "SQL AST guard and broader policy semantics are planned for a later spec."
-        spec: "SPEC 5"
-    depends_on:
-      - BND-POL-002
+    gaps: []
+    depends_on: []
 
   - id: BND-CLAIM-005
     claim: "Boundary produces receipt-grade decision records"

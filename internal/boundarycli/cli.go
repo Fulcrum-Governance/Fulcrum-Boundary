@@ -23,6 +23,7 @@ import (
 
 	"github.com/fulcrum-governance/boundary/adapters/mcp"
 	"github.com/fulcrum-governance/boundary/governance"
+	sqlguard "github.com/fulcrum-governance/boundary/interceptors/sql"
 )
 
 var Version = "0.2.0-dev"
@@ -97,6 +98,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		StaticPolicies: rules,
 		GatewayVersion: Version,
 	}, nil, nil, governance.NewSlogAuditPublisher(logger))
+	pipeline.RegisterInterceptor("query", sqlguard.NewPostgresInterceptor())
 
 	handler, mode, closeUpstream, err := serveHandler(*upstream, pipeline)
 	if err != nil {

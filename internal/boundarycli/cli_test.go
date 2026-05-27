@@ -67,6 +67,34 @@ func TestRun_VerifyPolicyDirectory(t *testing.T) {
 	}
 }
 
+func TestRun_VerifyPolicyDirectoryRejectsInvalidV1(t *testing.T) {
+	dir := t.TempDir()
+	policy := []byte(`schema_version: "1"
+policy:
+  name: broken
+  version: "1.0.0"
+  rules:
+    - name: invalid
+      tool: query
+      action: deny
+      conditions:
+        - type: regex
+          field: arguments.sql
+          regex: "["
+`)
+	if err := os.WriteFile(filepath.Join(dir, "broken.yaml"), policy, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var stderr bytes.Buffer
+	code := Run([]string{"verify", "--policies", dir}, &bytes.Buffer{}, &stderr)
+	if code == 0 {
+		t.Fatalf("expected invalid v1 policy to fail verification")
+	}
+	if !strings.Contains(stderr.String(), "invalid regex") {
+		t.Fatalf("expected schema error, got %s", stderr.String())
+	}
+}
+
 func TestGatewayMiddleware_AllowsSelectAndBlocksDrop(t *testing.T) {
 	rules := []governance.StaticPolicyRule{
 		{

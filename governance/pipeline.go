@@ -169,6 +169,7 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 		// upstream Foundry decisions that never originate here.
 		DecisionMode: DecisionModeDeterministic,
 	}
+	trustState := TrustStateTrusted
 
 	defer func() {
 		decision.Duration = time.Since(start)
@@ -193,6 +194,7 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 			decision.TrustScore = 0.0
 			return decision, nil
 		}
+		trustState = state
 		if state.Blocked() {
 			decision.Action = "deny"
 			decision.Reason = fmt.Sprintf("agent %s is %s", req.AgentID, state)
@@ -212,6 +214,9 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 		decision.PolicyID = rule.Name
 		decision.MatchedRule = rule.Name
 		decision.PolicyFile = rule.PolicyFile
+		if rule.DecisionMode != "" {
+			decision.DecisionMode = rule.DecisionMode
+		}
 		if rule.Action == "deny" {
 			decision.Action = "deny"
 			decision.Reason = rule.Reason
@@ -222,6 +227,17 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 		}
 		if rule.Action == "warn" || rule.Action == "audit" {
 			decision.Action = "warn"
+			decision.Reason = rule.Reason
+			return decision, nil
+		}
+		if rule.Action == "escalate" {
+			decision.Action = "escalate"
+			decision.Reason = rule.Reason
+			decision.DecisionMode = DecisionModeClassified
+			return decision, nil
+		}
+		if rule.Action == "require_approval" {
+			decision.Action = "require_approval"
 			decision.Reason = rule.Reason
 			return decision, nil
 		}
@@ -244,10 +260,7 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 	}
 
 	// Stage 4: PolicyEval Engine
-	evalReq := &policyeval.EvaluationRequest{
-		TenantID:  req.TenantID,
-		ToolNames: []string{req.ToolName},
-	}
+	evalReq := ProjectPolicyEvalRequest(req, &decision.TrustScore, trustState, p.gatewayVersion)
 	evalDecision, err := p.evaluator.Evaluate(ctx, evalReq)
 	if err != nil {
 		if p.failClosed[req.Transport] {
