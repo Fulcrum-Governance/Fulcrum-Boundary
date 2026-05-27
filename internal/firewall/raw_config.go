@@ -29,24 +29,6 @@ func parseRawMCPConfig(body []byte) (rawMCPConfig, map[string]json.RawMessage, e
 	return config, topLevel, nil
 }
 
-func encodeRawMCPConfig(config rawMCPConfig, topLevel map[string]json.RawMessage) ([]byte, error) {
-	if _, ok := topLevel["mcpServers"]; ok {
-		body, err := json.Marshal(config.MCPServers)
-		if err != nil {
-			return nil, err
-		}
-		topLevel["mcpServers"] = body
-	}
-	if _, ok := topLevel["servers"]; ok {
-		body, err := json.Marshal(config.Servers)
-		if err != nil {
-			return nil, err
-		}
-		topLevel["servers"] = body
-	}
-	return encodeTopLevel(topLevel)
-}
-
 func encodeTopLevel(topLevel map[string]json.RawMessage) ([]byte, error) {
 	body, err := json.MarshalIndent(topLevel, "", "  ")
 	if err != nil {

@@ -144,6 +144,7 @@ func VerifyDescriptorLock(options VerifyLockOptions) (LockVerification, error) {
 	if err != nil {
 		return LockVerification{}, err
 	}
+	// #nosec G304 -- lock verification reads the operator-selected Boundary descriptor lock path.
 	body, err := os.ReadFile(lockPath)
 	if err != nil {
 		return LockVerification{}, err

@@ -194,6 +194,7 @@ func UninstallConfig(options UninstallOptions) (UninstallResult, error) {
 	if err != nil {
 		return UninstallResult{}, err
 	}
+	// #nosec G304 -- uninstall reads the operator-selected Boundary install receipt path.
 	body, err := os.ReadFile(receiptPath)
 	if err != nil {
 		return UninstallResult{}, err

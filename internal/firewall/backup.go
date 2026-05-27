@@ -8,8 +8,9 @@ import (
 	"path/filepath"
 )
 
-func readFileBytes(path string) ([]byte, string, error) {
-	body, err := os.ReadFile(path)
+func readFileBytes(path string) (body []byte, digest string, err error) {
+	// #nosec G304 -- Boundary intentionally reads operator-selected MCP config and backup paths.
+	body, err = os.ReadFile(path)
 	if err != nil {
 		return nil, "", err
 	}
