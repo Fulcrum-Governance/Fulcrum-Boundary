@@ -24,7 +24,7 @@ Install the `boundary` CLI with Go:
 
 ```bash
 go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@latest
-boundary --help
+boundary selftest
 ```
 
 Or run from a clean source checkout:
@@ -32,8 +32,10 @@ Or run from a clean source checkout:
 ```bash
 git clone https://github.com/Fulcrum-Governance/Fulcrum-Boundary.git
 cd Fulcrum-Boundary
-go run ./cmd/boundary --help
+go run ./cmd/boundary selftest
 ```
+
+Full install and uninstall notes are in [`docs/INSTALL.md`](./docs/INSTALL.md).
 
 ## Five-Minute Demo
 

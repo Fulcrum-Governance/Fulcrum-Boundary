@@ -1,4 +1,4 @@
-.PHONY: build demo test
+.PHONY: build demo test selftest demo-github release-check
 
 COMPOSE := docker compose -f examples/mcp-postgres-gateway/docker-compose.yml
 BOUNDARY_DEMO_PORT ?= 18080
@@ -17,3 +17,12 @@ demo:
 
 test:
 	env -u GOROOT go test ./...
+
+selftest:
+	./scripts/selftest.sh
+
+demo-github:
+	./scripts/demo-github.sh
+
+release-check:
+	./scripts/release-check.sh
