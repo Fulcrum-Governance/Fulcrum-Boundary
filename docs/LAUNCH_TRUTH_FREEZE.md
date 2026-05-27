@@ -112,6 +112,30 @@ issue to private-repo mutation attempt, then state the proof boundary: fixture
 write-after-taint denial before upstream, with production Secure GitHub gated on
 live GitHub App conformance and deployment bypass evidence.
 
+## 2026-05-27: Final Public Boundary Release Truth
+
+The final public hardening train keeps the same claim boundary while making the
+developer path and machine-ingest surfaces easier to verify:
+
+- `boundary selftest` is the no-credential local release smoke test.
+- `boundary demo github-lethal-trifecta` is the one-command fixture demo for
+  the Secure GitHub write-after-taint path.
+- `boundary inventory --format ndjson` emits the machine-readable Boundary
+  inventory record stream.
+- `boundary inventory ingest` maps Boundary, generic, and fixture-proven
+  Bumblebee-style MCP inventory NDJSON into Boundary inventory records.
+- Bumblebee-style ingest is not an official Bumblebee integration or
+  compatibility claim.
+- The MCP audit GitHub Action scans repo-local MCP configs by default and emits
+  Markdown and optional SARIF reports. It is CI audit/reporting only.
+- Generated policies remain starter policies for operator review.
+- The dashboard remains local-only visibility over local artifacts.
+- Secure GitHub remains preview until live GitHub App conformance and
+  deployment bypass evidence are recorded.
+
+The final public release report is
+[`docs/RELEASE_TRUTH_PUBLIC.md`](./RELEASE_TRUTH_PUBLIC.md).
+
 ## Verified Release Surface
 
 | Surface | Status |

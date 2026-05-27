@@ -45,6 +45,12 @@ those policies, runs the Secure GitHub fixture profile, red-teams the risky
 flow, and writes a local dashboard artifact:
 
 ```bash
+boundary demo github-lethal-trifecta
+```
+
+To inspect the same path step by step:
+
+```bash
 tmp=$(mktemp -d)
 cp docs/firewall/fixtures/claude_desktop_config.json "$tmp/mcp.json"
 

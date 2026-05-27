@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - MCP Firewall `boundary inventory ingest` command for Boundary, generic, and fixture-proven Bumblebee-style MCP inventory NDJSON mapping.
 - MCP Firewall GitHub Action for repo-local MCP config audits with Markdown summaries and optional SARIF output.
 - Install and release workflow polish with `make selftest`, `make demo-github`, `make release-check`, and `docs/INSTALL.md`.
+- Final public release truth report covering README first-run status, claims, feature status, adapter/profile maturity, install status, external inventory ingest, and forbidden release language.
 - MCP Firewall `boundary dashboard` command with local-only text, JSON, HTML, and loopback server views over inventory, risk paths, policies, install receipts, descriptor locks, and local decision-record files.
 - Secure GitHub MCP preview profile with fixture setup/serve commands, taint tracking, one-repo-per-session policy, W1/W2 write-after-taint denial before upstream, and decision-record output.
 - Firewall + Secure GitHub demo and launch docs covering the poisoned GitHub issue fixture, YC narrative, screenshot script, and claim boundaries.
