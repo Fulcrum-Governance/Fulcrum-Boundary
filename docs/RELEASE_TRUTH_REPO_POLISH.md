@@ -2,9 +2,11 @@
 
 Date: 2026-05-27
 
-Audited base commit: `04618ccce29393a1584fba4edda9cc13694913fb`
+Audited base commit: `00ee273582aa7d275d04c37d78e40e6fc25cf117`
 
-Branch: `release/no-vendor-public-truth`
+Branch: `main`
+
+Release tag: `v0.3.0`
 
 ## Summary
 
@@ -20,10 +22,10 @@ Final public posture:
 - External MCP inventory ingest is vendor-neutral.
 - Repo presentation guidance is documented without fake badges or fake
   adoption signals.
-- Public install examples use `@main` until a post-rename release tag supersedes
-  the stale `v0.2.0` module tag.
+- Public install examples use the repeatable `@v0.3.0` release tag; `@latest`
+  resolves to `v0.3.0`.
 - The public Go install path requires Go 1.25+.
-- GitHub Action examples use `@main` until a post-rename action tag exists.
+- GitHub Action examples use `@v0.3.0` for repeatable CI behavior.
 
 ## Test Commands
 
@@ -36,8 +38,9 @@ Final public posture:
 | `make release-check` | Pass |
 | `go test ./claims/... -count=1` | Pass |
 | `go test ./... -count=1 -timeout 5m` | Pass |
-| `GOPROXY=direct GOBIN="$tmp/bin" go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@latest` | Expected fail until a post-rename tag supersedes `v0.2.0`, which still declares the old module path |
-| `GOPROXY=direct GOBIN="$tmp/bin" go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@main` | Pass |
+| `GOPROXY=direct GOBIN="$tmp/bin" go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.3.0` | Pass |
+| `GOPROXY=https://proxy.golang.org,direct go list -m -json github.com/fulcrum-governance/fulcrum-boundary@latest` | Pass: resolves to `v0.3.0` |
+| `GOPROXY=https://proxy.golang.org,direct GOBIN="$tmp/bin" go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@latest` | Pass |
 | `"$tmp/bin/boundary" selftest` | Pass |
 | `"$tmp/bin/boundary" demo github-lethal-trifecta` | Pass |
 
@@ -61,25 +64,24 @@ public vendor-reference guard passes.
 
 ## README First-Run Status
 
-Status: pass with `@main`.
+Status: pass with `@v0.3.0`.
 
 README now uses:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@main
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.3.0
 boundary selftest
 boundary demo github-lethal-trifecta
 ```
 
-The `@main` install was verified with `GOPROXY=direct` from a clean temporary
+The `@v0.3.0` install was verified with `GOPROXY=direct` from a clean temporary
 `GOBIN`. The installed `boundary` binary passed both `selftest` and
 `demo github-lethal-trifecta` without credentials, network calls, or live
 mutation.
 
-`@latest` is intentionally not used in first-run public copy yet. It currently
-resolves to `v0.2.0`, whose `go.mod` still declares the old
-`github.com/fulcrum-governance/boundary` module path. Cut a post-rename release
-tag before moving public install copy back to `@latest`.
+`@latest` was also verified through `proxy.golang.org` and resolves to
+`v0.3.0`. README keeps `@v0.3.0` as the primary copy/paste command for
+repeatability.
 
 The public Go install path requires Go 1.25+.
 
@@ -99,8 +101,8 @@ The MCP audit action documentation states that the action audits repository MCP
 configs, emits Markdown and optional SARIF reports, and does not provide runtime
 protection unless the relevant tool calls are routed through Boundary.
 
-Action examples use `@main` until a post-rename action tag exists. SARIF upload
-examples include `contents: read` and `security-events: write` permissions.
+Action examples use `@v0.3.0` for repeatable CI behavior. SARIF upload examples
+include `contents: read` and `security-events: write` permissions.
 
 The docs do not claim a Marketplace release, package distribution, or runtime
 enforcement from the action.
@@ -176,9 +178,7 @@ historical, or explicit limitation context.
 
 ## Remaining Work
 
-- Cut a post-rename release tag before changing public install copy back to
-  `@latest`.
 - Upload a PNG social preview manually if GitHub repository settings reject the
   repo-owned SVG source.
-- Record the first terminal screenshot or GIF after the release tag is cut, so
-  the capture can use the final install command.
+- Record the first terminal screenshot or GIF using the final `@v0.3.0`
+  install command.

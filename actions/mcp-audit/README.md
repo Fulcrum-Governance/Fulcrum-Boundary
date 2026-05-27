@@ -20,12 +20,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@main
+      - uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.3.0
         with:
           format: sarif
 ```
 
-Use `@main` until a post-rename action tag exists. SARIF upload requires
+Use the release tag for repeatable CI behavior. SARIF upload requires
 `security-events: write`.
 
 ## Inputs

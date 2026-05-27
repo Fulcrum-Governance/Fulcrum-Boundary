@@ -301,7 +301,7 @@ Deliverables:
 
 Key acceptance:
 
-- Action usage is documented as `Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@main` until a post-rename action tag exists.
+- Action usage is documented as `Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.3.0`.
 - Inputs include `root`, `format`, `sarif`, `fail-on-critical`, and `include-defaults`.
 - Outputs include `critical-count`, `high-count`, `report-path`, and `sarif-path`.
 - Default CI behavior scans repo-local MCP configs only.

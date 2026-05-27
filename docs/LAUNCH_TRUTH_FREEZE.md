@@ -1,6 +1,6 @@
 # Launch Truth Freeze
 
-This file records the release-facing truth for Fulcrum Boundary v0.2.0. It is a claims boundary for the OSS release surface, not a competitor benchmark or marketing claim registry.
+This file records the release-facing truth for Fulcrum Boundary. It is a claims boundary for the OSS release surface, not a competitor benchmark or marketing claim registry.
 
 ## Product Identity
 
@@ -128,8 +128,8 @@ developer path and machine-ingest surfaces easier to verify:
   or compatibility claim.
 - The MCP audit GitHub Action scans repo-local MCP configs by default and emits
   Markdown and optional SARIF reports. It is CI audit/reporting only.
-- MCP audit GitHub Action examples use `@main` until a post-rename action tag
-  exists, and SARIF upload examples require `security-events: write`.
+- MCP audit GitHub Action examples use `@v0.3.0` for repeatable CI behavior,
+  and SARIF upload examples require `security-events: write`.
 - Public Go install paths require Go 1.25+.
 - Generated policies remain starter policies for operator review.
 - The dashboard remains local-only visibility over local artifacts.
@@ -138,6 +138,21 @@ developer path and machine-ingest surfaces easier to verify:
 
 The final public release report is
 [`docs/RELEASE_TRUTH_PUBLIC.md`](./RELEASE_TRUTH_PUBLIC.md).
+
+## 2026-05-27: v0.3.0 Post-Rename Release Tag
+
+The first post-rename release tag is `v0.3.0`.
+
+- Tag target: `00ee273582aa7d275d04c37d78e40e6fc25cf117`.
+- `GOPROXY=direct go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.3.0` passed from a clean temporary `GOBIN`.
+- The installed `boundary` binary passed `boundary selftest`.
+- The installed `boundary` binary passed `boundary demo github-lethal-trifecta`.
+- `GOPROXY=https://proxy.golang.org,direct go list -m -json github.com/fulcrum-governance/fulcrum-boundary@latest` resolved to `v0.3.0`.
+- `GOPROXY=https://proxy.golang.org,direct go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@latest` installed a binary that passed `boundary selftest`.
+
+Public README install copy uses `@v0.3.0` for repeatability. Install docs may
+mention `@latest` as an available convenience path now that the public proxy
+resolves to the post-rename tag.
 
 ## Verified Release Surface
 

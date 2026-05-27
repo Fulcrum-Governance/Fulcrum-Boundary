@@ -9,13 +9,19 @@ Requires Go 1.25+.
 ## Go Install
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@main
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.3.0
 boundary selftest
 ```
 
-`@main` follows the current public default branch while the first post-rename
-release tag is pending. After a post-rename tag is cut, this command can move
-back to `@latest`.
+`@v0.3.0` is the first post-rename release tag and is the recommended
+repeatable install target. `@latest` also resolves to `v0.3.0` after the Go
+proxy refreshes.
+
+For the convenience path:
+
+```bash
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@latest
+```
 
 ## From Source
 
