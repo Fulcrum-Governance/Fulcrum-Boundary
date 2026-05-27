@@ -1,5 +1,34 @@
 # CODEX Session Log
 
+## 2026-05-27 - Install And Release Workflow Polish
+
+### Context
+
+- Parent goal: Final public Boundary release hardening.
+- Subgoal: `Subgoal 7 - Install And Release Workflow Polish`.
+- Branch: `codex/2026-05-27-install-release-polish`
+- Scope: make install, selftest, demo, and release verification one-command friendly without claiming nonexistent distribution channels or requiring live credentials.
+
+### What changed
+
+- Added `make selftest`, `make demo-github`, and `make release-check`.
+- Added `scripts/selftest.sh`, `scripts/demo-github.sh`, and `scripts/release-check.sh`; each prints commands, uses `set -euo pipefail`, and runs fixture/no-credential release paths.
+- Added `docs/INSTALL.md` with Go install, source checkout, first useful commands, receipt-based uninstall, and future-only Homebrew language.
+- Updated README install commands to run `boundary selftest` and link to install docs.
+- Updated the changelog with the install/release workflow polish.
+
+### Verification
+
+- `make selftest`: pass
+- `make demo-github`: pass
+- `make release-check`: pass
+- `git diff --check`: pass
+- `rg -n "brew|Homebrew|tap|formula" README.md docs/INSTALL.md docs | head -100`: only the future-only Homebrew placeholder and planning/spec references
+
+### Notes For Next Step
+
+- After this branch lands, start `Subgoal 8 - Final Public Release Truth Reconciliation` from clean `main`.
+
 ## 2026-05-27 - GitHub Action MCP Audit
 
 ### Context
