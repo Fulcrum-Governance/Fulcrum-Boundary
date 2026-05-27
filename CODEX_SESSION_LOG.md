@@ -1,5 +1,34 @@
 # CODEX Session Log
 
+## 2026-05-27 - GitHub Lethal-Trifecta Demo
+
+### Context
+
+- Parent goal: Final public Boundary release hardening.
+- Subgoal: `Subgoal 3 - GitHub Lethal-Trifecta Demo Command`.
+- Branch: `codex/2026-05-27-github-lethal-trifecta-demo`
+- Scope: add a fixture-only one-command Secure GitHub denial demo; no credentials, network mutation, or real system mutation.
+
+### What changed
+
+- Added `boundary demo github-lethal-trifecta` with text, `--json`, `--markdown`, `--out`, and `--dashboard` output paths.
+- Added `internal/demo` orchestration for fixture MCP inventory, risk graph generation, starter policy generation and verification, Secure GitHub fixture setup, redteam execution, Secure GitHub read-then-write denial proof, decision-record artifact output, and optional local dashboard rendering.
+- Added `tests/demo/github_lethal_trifecta_demo_test.go` and `docs/DEMO_GITHUB_LETHAL_TRIFECTA.md`.
+- Updated the changelog with the demo command.
+
+### Verification
+
+- `go test ./internal/demo/... -count=1 -timeout 5m`: pass
+- `go test ./tests/demo/... -count=1 -timeout 5m`: pass
+- `go test ./claims/... -count=1`: pass
+- `go test ./... -short -count=1 -timeout 5m`: pass
+- `go run ./cmd/boundary demo github-lethal-trifecta`: pass
+- `git diff --check`: pass
+
+### Notes For Next Step
+
+- After this branch lands, start `Subgoal 4 - Inventory NDJSON Record Schema` from clean `main`.
+
 ## 2026-05-27 - Boundary Selftest
 
 ### Context

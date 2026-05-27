@@ -104,6 +104,8 @@ Commands:
   mcp proxy       Fail-closed generic MCP proxy entrypoint for installed routes
   serve           Start the Boundary gateway
   demo postgres   Run the Postgres safety demo against a running gateway
+  demo github-lethal-trifecta
+                  Run a fixture-only Secure GitHub denial demo
   verify          Validate YAML policy files
   verify-record   Verify a receipt-grade decision record
   doctor          Check local gateway prerequisites
@@ -252,11 +254,15 @@ func serveHandler(upstream string, pipeline *governance.Pipeline) (handler http.
 func runDemo(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" {
 		fmt.Fprintln(stdout, "Usage: boundary demo postgres [--gateway URL] [--bypass-host HOST] [--bypass-port PORT]")
+		fmt.Fprintln(stdout, "       boundary demo github-lethal-trifecta [--json|--markdown] [--out PATH] [--dashboard]")
 		fmt.Fprintln(stdout, "       boundary demo trust-degradation")
 		return 0
 	}
 	if args[0] == "trust-degradation" {
 		return runTrustDegradationDemo(stdout, stderr)
+	}
+	if args[0] == "github-lethal-trifecta" {
+		return runGitHubLethalTrifectaDemo(args[1:], stdout, stderr)
 	}
 	if args[0] != "postgres" {
 		fmt.Fprintf(stderr, "unknown demo %q\n", args[0])
