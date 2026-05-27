@@ -1784,3 +1784,31 @@
 
 - Command Boundary remains preview and routed-path-only.
 - Production command governance still requires deployment evidence that Boundary is the relevant command path for the protected project or workflow.
+
+## 2026-05-27 — Command Boundary Truth Reconciliation
+
+### Context
+
+- Branch: `codex/2026-05-27-command-boundary-truth`, cut from `main` after PR #76 landed as `6deb560`.
+- Scope: final Command Boundary preview truth reconciliation only. No product behavior changes.
+
+### Built
+
+- Added `docs/RELEASE_TRUTH_COMMAND_BOUNDARY.md`.
+- Marked `BND-CLAIM-CMD-001` delivered as a preview/routed-path-only claim with the new reconciliation report as evidence.
+- Updated `docs/CLAIMS_LEDGER.md`, `docs/command-boundary/PREVIEW_CLAIMS.md`, and docs-site claims language to match the delivered-preview posture.
+
+### Verification
+
+- `make release-check`: pass.
+- `go test ./internal/commandboundary/... -count=1 -timeout 5m`: pass.
+- `go test ./tests/commandboundary/... -count=1 -timeout 5m`: pass.
+- `go test ./tests/redteam/... -run Command -count=1 -timeout 5m`: pass.
+- `go test ./claims/... -count=1`: pass.
+- `go test ./... -count=1 -timeout 5m`: pass.
+- `make docs-build`: pass.
+
+### Notes
+
+- Command Boundary remains preview, not production.
+- MCP production status and Secure GitHub preview status are unchanged.

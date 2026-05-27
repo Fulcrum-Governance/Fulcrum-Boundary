@@ -8,7 +8,7 @@ Current claim posture:
 - MCP is production.
 - CLI, CodeExec, gRPC, Managed Agents, Webhook, A2A, and Secure GitHub are
   preview adapter/profile surfaces.
-- Command Boundary is preview and governs only commands routed through
+- Command Boundary is delivered preview and governs only commands routed through
   Boundary.
 - Boundary is not a SQL firewall.
 - Generated policies are starter policies for operator review.

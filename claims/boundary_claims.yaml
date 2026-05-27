@@ -434,7 +434,7 @@ claims:
 
   - id: BND-CLAIM-CMD-001
     claim: "Boundary provides preview project-local command governance for commands routed through boundary command run, boundary shell, or project-local shims"
-    status: partial
+    status: delivered
     evidence:
       tests:
         - path: internal/commandboundary/classifier_test.go
@@ -452,6 +452,8 @@ claims:
           section: "Preview Claim"
         - path: docs/command-boundary/DEMO.md
           section: "Claim Boundary"
+        - path: docs/RELEASE_TRUTH_COMMAND_BOUNDARY.md
+          section: "Command Boundary Status"
     public_language:
       allowed:
         - "Boundary can govern project-local command paths when commands route through boundary command run, boundary shell, or project-local shims."
@@ -463,10 +465,7 @@ claims:
         - "Boundary protects direct shell access"
         - "Boundary provides production command governance"
         - "Boundary provides shell sandboxing"
-    gaps:
-      - id: BND-CMD-003
-        description: "Release truth reconciliation has not yet recorded the final Command Boundary preview status, test evidence, approved copy, forbidden copy, and bypass boundary."
-        spec: "Spec 8 — Command Boundary Truth Reconciliation"
+    gaps: []
     depends_on: []
 
   - id: BND-CLAIM-CMD-002
