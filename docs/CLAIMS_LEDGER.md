@@ -49,6 +49,7 @@ claim-control language.
 | BND-CLAIM-016 | delivered | Boundary provides a local-only MCP Firewall dashboard over inventory, risk paths, policies, install receipts, descriptor locks, and local decision-record files. | `internal/firewall/dashboard_test.go`, `tests/firewall/inventory_cli_test.go`, `docs/firewall/DASHBOARD.md` | Local visibility only. It is not hosted monitoring and does not protect MCP servers by itself. |
 | BND-CLAIM-017 | delivered | Boundary provides a GitHub Action that audits repo-local MCP configs and emits Markdown and SARIF reports. | `tests/actions/mcp_audit_fixture_test.go`, `docs/firewall/GITHUB_ACTION.md`, `actions/mcp-audit/README.md` | CI audit/reporting only. Repo-local scans are the default; runtime protection requires governed routing through Boundary. |
 | BND-CLAIM-CMD-001 | planned | Boundary defines a preview Command Boundary design for project-local command governance. | `docs/command-boundary/DESIGN.md`, `docs/command-boundary/PREVIEW_CLAIMS.md` | Roadmap/design only. Do not state as current command enforcement behavior until implementation and tests land. |
+| BND-CLAIM-CMD-002 | delivered | Boundary runs fixture Command Boundary redteam packs that deny selected command-risk paths without live mutation. | `internal/redteam/redteam_test.go`, `tests/redteam/command_redteam_test.go`, `docs/command-boundary/REDTEAM.md` | Fixture proof only. It does not prove global shell control, direct-shell protection, or universal coding-agent safety. |
 
 ## Release Rule
 

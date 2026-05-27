@@ -47,6 +47,9 @@ func TestRunRejectsNonFixtureMode(t *testing.T) {
 func TestAvailablePacksIncludeImplementedPackAndStubs(t *testing.T) {
 	summaries := AvailablePacks()
 	want := map[string]string{
+		"command-overeager-cleanup":  PackStatusImplemented,
+		"command-repo-mutation":      PackStatusImplemented,
+		"command-secret-exfil":       PackStatusImplemented,
 		"github-lethal-trifecta":     PackStatusImplemented,
 		"secrets-exfil":              PackStatusStub,
 		"tool-poisoning":             PackStatusStub,
@@ -71,5 +74,75 @@ func TestRunStubPackReportsUnavailable(t *testing.T) {
 	_, err := Run(context.Background(), RunOptions{PackID: "secrets-exfil"})
 	if err == nil {
 		t.Fatal("expected stub pack to fail")
+	}
+}
+
+func TestCommandRedteamPacksDoNotExecuteCommands(t *testing.T) {
+	tests := []struct {
+		packID        string
+		wantScenarios int
+		wantActions   map[string]string
+	}{
+		{
+			packID:        "command-overeager-cleanup",
+			wantScenarios: 2,
+			wantActions: map[string]string{
+				"command-rm-ssh-home":    "deny",
+				"command-rm-fixture-ssh": "deny",
+			},
+		},
+		{
+			packID:        "command-secret-exfil",
+			wantScenarios: 3,
+			wantActions: map[string]string{
+				"command-curl-env-exfil":    "deny",
+				"command-cat-env":           "deny",
+				"command-docker-home-mount": "deny",
+			},
+		},
+		{
+			packID:        "command-repo-mutation",
+			wantScenarios: 5,
+			wantActions: map[string]string{
+				"command-git-push":               "require_approval",
+				"command-gh-pr-merge-admin":      "require_approval",
+				"command-npm-postinstall":        "require_approval",
+				"command-kubectl-apply":          "deny",
+				"command-terraform-auto-approve": "deny",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.packID, func(t *testing.T) {
+			result, err := Run(context.Background(), RunOptions{PackID: tt.packID})
+			if err != nil {
+				t.Fatalf("run command pack: %v", err)
+			}
+			if !result.Passed || result.MutatesLiveSystems || result.RealSecretsUsed {
+				t.Fatalf("unexpected command pack result: %#v", result)
+			}
+			if len(result.Results) != tt.wantScenarios {
+				t.Fatalf("scenario count = %d, want %d", len(result.Results), tt.wantScenarios)
+			}
+			for _, scenario := range result.Results {
+				wantAction, ok := tt.wantActions[scenario.ScenarioID]
+				if !ok {
+					t.Fatalf("unexpected scenario %q", scenario.ScenarioID)
+				}
+				if scenario.ExpectedAction != wantAction || scenario.ActualAction != wantAction {
+					t.Fatalf("%s action = expected %q actual %q, want %q", scenario.ScenarioID, scenario.ExpectedAction, scenario.ActualAction, wantAction)
+				}
+				if scenario.Executed {
+					t.Fatalf("%s executed command in fixture mode", scenario.ScenarioID)
+				}
+				if scenario.Command == "" || scenario.CommandClass == "" || scenario.CommandRisk == "" {
+					t.Fatalf("%s missing command metadata: %#v", scenario.ScenarioID, scenario)
+				}
+				if scenario.DecisionRecord.RecordID == "" || scenario.DecisionRecord.DecisionHash == "" {
+					t.Fatalf("%s missing decision record: %#v", scenario.ScenarioID, scenario.DecisionRecord)
+				}
+			}
+		})
 	}
 }

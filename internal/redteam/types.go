@@ -37,6 +37,7 @@ type Scenario struct {
 	FixtureOnly    bool                          `json:"fixture_only"`
 	NoLiveMutation bool                          `json:"no_live_mutation"`
 	ExpectedAction string                        `json:"expected_action"`
+	CommandArgv    []string                      `json:"command_argv,omitempty"`
 	Request        governance.GovernanceRequest  `json:"request"`
 	Policies       []governance.StaticPolicyRule `json:"policies"`
 }
@@ -70,6 +71,10 @@ type ScenarioResult struct {
 	NoLiveMutation bool                        `json:"no_live_mutation"`
 	ExpectedAction string                      `json:"expected_action"`
 	ActualAction   string                      `json:"actual_action"`
+	Command        string                      `json:"command,omitempty"`
+	CommandClass   string                      `json:"command_class,omitempty"`
+	CommandRisk    string                      `json:"command_risk,omitempty"`
+	Executed       bool                        `json:"executed"`
 	Passed         bool                        `json:"passed"`
 	Reason         string                      `json:"reason"`
 	MatchedRule    string                      `json:"matched_rule,omitempty"`

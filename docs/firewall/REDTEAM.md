@@ -87,6 +87,9 @@ Implemented:
 
 | Pack | Purpose |
 |---|---|
+| `command-overeager-cleanup` | Fixture command paths for destructive local cleanup attempts. |
+| `command-repo-mutation` | Fixture command paths for repository, package, and infrastructure mutation attempts. |
+| `command-secret-exfil` | Fixture command paths for secret-looking reads and network exfiltration attempts. |
 | `github-lethal-trifecta` | Demonstrates private-repo write denial after untrusted GitHub content taints the envelope. |
 
 Reserved stubs:
