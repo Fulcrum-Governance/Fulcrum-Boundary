@@ -346,6 +346,30 @@ claims:
     gaps: []
     depends_on: []
 
+  - id: BND-CLAIM-016
+    claim: "Boundary provides a local-only MCP Firewall dashboard over inventory, risk paths, policies, install receipts, descriptor locks, and local decision-record files"
+    status: delivered
+    evidence:
+      tests:
+        - path: internal/firewall/dashboard_test.go
+          assertion: "Dashboard summarizes local firewall inventory, risk graph, policy, install receipt, descriptor lock, and decision-record artifacts"
+        - path: tests/firewall/inventory_cli_test.go
+          assertion: "boundary dashboard renders text and HTML output from local artifacts and rejects non-loopback serve addresses"
+      docs:
+        - path: docs/firewall/DASHBOARD.md
+          section: "Boundary Firewall Dashboard"
+    public_language:
+      allowed:
+        - "Boundary provides a local-only MCP Firewall dashboard over inventory, risk paths, policy status, install receipts, descriptor lock status, and local decision-record files."
+        - "The dashboard is visibility, not a hosted monitoring service and not runtime protection by itself."
+      forbidden:
+        - "Boundary provides a hosted firewall dashboard"
+        - "Boundary dashboard monitors production deployments"
+        - "Boundary dashboard protects MCP servers by itself"
+        - "Boundary dashboard streams remote telemetry"
+    gaps: []
+    depends_on: []
+
   - id: BND-CLAIM-004
     claim: "Boundary is a SQL firewall"
     status: "false"

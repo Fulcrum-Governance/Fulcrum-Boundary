@@ -41,6 +41,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runFirewallInventory(args[1:], stdout, stderr)
 	case "graph":
 		return runFirewallGraph(args[1:], stdout, stderr)
+	case "dashboard":
+		return runFirewallDashboard(args[1:], stdout, stderr)
 	case "install":
 		return runFirewallInstall(args[1:], stdout, stderr)
 	case "uninstall":
@@ -88,6 +90,7 @@ Commands:
   init            Initialize a Boundary firewall workspace
   inventory       Discover MCP configs and inventory server capabilities
   graph           Render inventory-derived MCP risk paths
+  dashboard       Render a local-only firewall dashboard
   install         Rewrite selected MCP configs through a Boundary route
   uninstall       Restore an MCP config from a Boundary install receipt
   lock            Create a descriptor lockfile for MCP server descriptors

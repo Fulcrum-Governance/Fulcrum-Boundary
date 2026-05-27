@@ -236,6 +236,104 @@ func TestBoundaryInstallUninstallAndLockCLI(t *testing.T) {
 	}
 }
 
+func TestBoundaryDashboardCLIRendersLocalArtifacts(t *testing.T) {
+	root := t.TempDir()
+	home := t.TempDir()
+	configPath := filepath.Join(root, ".mcp.json")
+	policyDir := filepath.Join(root, "boundary-firewall-policies")
+	lockPath := filepath.Join(root, ".boundary", "firewall", "locks", "descriptor-lock.json")
+	receiptsDir := filepath.Join(root, ".boundary", "firewall", "install-receipts")
+	recordPath := filepath.Join(root, "decision-records.jsonl")
+	writeFile(t, configPath, `{
+  "mcpServers": {
+    "github": {
+      "command": "github-mcp-server",
+      "tools": [{"name": "get_issue"}, {"name": "create_or_update_file"}]
+    }
+  }
+}`)
+	writeFile(t, filepath.Join(receiptsDir, "install.json"), `{
+  "schema_version": "boundary.firewall.install_receipt.v1",
+  "generated_at": "2026-05-27T12:00:00Z",
+  "config_path": "`+configPath+`",
+  "client": "repo_local",
+  "state": "installed",
+  "mutated": true,
+  "servers": [{"name": "github", "boundary_command": "boundary"}]
+}`)
+	writeFile(t, recordPath, `{"schema_version":"1","record_id":"rec_dashboard_cli","timestamp":"2026-05-27T12:01:00Z","adapter":"mcp","tool":"github.create_or_update_file","action":"deny","matched_rule":"deny-github-write-after-taint","decision_hash":"sha256:dashboard"}`)
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := boundarycli.Run([]string{"policy", "generate", "--out", policyDir}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("policy generate exit = %d, stderr=%s", code, stderr.String())
+	}
+	stdout.Reset()
+	stderr.Reset()
+	code = boundarycli.Run([]string{"lock", "--config", configPath, "--client", "repo", "--out", lockPath}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("lock exit = %d, stderr=%s", code, stderr.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code = boundarycli.Run([]string{
+		"dashboard",
+		"--root", root,
+		"--home", home,
+		"--policies", policyDir,
+		"--lock", lockPath,
+		"--receipts", receiptsDir,
+		"--records", recordPath,
+		"--format", "text",
+	}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("dashboard text exit = %d, stderr=%s", code, stderr.String())
+	}
+	for _, want := range []string{
+		"Boundary Firewall Dashboard",
+		"local-only: true",
+		"policy status: ok",
+		"install receipts: 1",
+		"lock status: ok",
+		"recent decisions: 1",
+	} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Fatalf("dashboard text missing %q: %s", want, stdout.String())
+		}
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code = boundarycli.Run([]string{
+		"dashboard",
+		"--root", root,
+		"--home", home,
+		"--policies", policyDir,
+		"--lock", lockPath,
+		"--receipts", receiptsDir,
+		"--records", recordPath,
+		"--format", "html",
+	}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("dashboard html exit = %d, stderr=%s", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "<title>Boundary Firewall Dashboard</title>") || !strings.Contains(stdout.String(), "Local only") {
+		t.Fatalf("dashboard html missing expected content: %s", stdout.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code = boundarycli.Run([]string{"dashboard", "--serve", "--listen", "0.0.0.0:8942"}, &stdout, &stderr)
+	if code == 0 {
+		t.Fatalf("dashboard serve accepted non-loopback listener")
+	}
+	if !strings.Contains(stderr.String(), "loopback") {
+		t.Fatalf("dashboard serve stderr missing loopback guard: %s", stderr.String())
+	}
+}
+
 func firstReceiptPath(t *testing.T, outDir string) string {
 	t.Helper()
 	entries, err := os.ReadDir(filepath.Join(outDir, "install-receipts"))

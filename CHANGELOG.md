@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - MCP Firewall `boundary graph` and `boundary policy generate` commands with inventory-derived risk paths and verifiable starter policy templates.
 - MCP Firewall `boundary install`, `boundary uninstall`, `boundary lock`, and `boundary verify-lock` commands with dry-run support, byte-for-byte backup restore, install receipts, and descriptor drift checks.
 - MCP Firewall `boundary redteam` command with fixture-only GitHub lethal-trifecta deny proof, decision-record output, and reserved attack-pack stubs.
+- MCP Firewall `boundary dashboard` command with local-only text, JSON, HTML, and loopback server views over inventory, risk paths, policies, install receipts, descriptor locks, and local decision-record files.
 - Secure GitHub MCP preview profile with fixture setup/serve commands, taint tracking, one-repo-per-session policy, W1/W2 write-after-taint denial before upstream, and decision-record output.
 - Secure MCP contract, server template, tool taxonomy, and profile docs for claim-safe governed MCP profile development.
 - Fulcrum Boundary language system docs, lexicon, copy rules, product primitives, and a public-language lint gate for controlled overclaim phrases.

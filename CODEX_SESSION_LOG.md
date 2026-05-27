@@ -1,5 +1,40 @@
 # CODEX Session Log
 
+## 2026-05-27 - Firewall Dashboard And Local Demo Visibility
+
+### Context
+
+- Parent goal: Firewall + Secure GitHub MCP release train.
+- Subgoal: `Subgoal 8 - Dashboard, Local Demo Visibility, And Optional GitHub Action`.
+- Branch: `codex/2026-05-27-firewall-dashboard-action`
+- Scope: local-only dashboard command, rendered dashboard docs, tests, and claim entry.
+
+### What changed
+
+- Added a local dashboard model that reads Boundary's real MCP Firewall artifacts: inventory, risk graph, policy directory, install receipts, descriptor lock status, and operator-provided decision-record JSONL files.
+- Added `boundary dashboard` with text, JSON, HTML, and loopback-only local server modes.
+- Added loopback enforcement for dashboard serving so the release surface stays local-only.
+- Added `docs/firewall/DASHBOARD.md`, README quick commands, changelog entry, and delivered claim `BND-CLAIM-016`.
+- Split the optional GitHub Action into a follow-up package because action output, SARIF behavior, and public claims need their own small release lane.
+
+### Verification
+
+- `go test ./internal/firewall/... -count=1 -timeout 5m`: pass
+- `go test ./tests/firewall/... -count=1 -timeout 5m`: pass
+- `go test ./internal/boundarycli/... -count=1 -timeout 5m`: pass
+- `go test ./claims/... -count=1`: pass
+- `go test ./... -short -count=1 -timeout 5m`: pass
+- `go vet ./...`: pass
+- `git ls-files '*.go' | xargs gofmt -l`: pass, empty
+- `golangci-lint run --timeout=5m`: pass, `0 issues`
+- `gosec ./internal/firewall/... ./internal/boundarycli/... ./tests/firewall/...`: pass, `Issues: 0`
+- `git diff --check`: pass
+- `go run ./cmd/boundary dashboard --root "$tmp/root" --home "$tmp/home" --policies "$tmp/policies" --lock "$tmp/root/.boundary/firewall/locks/descriptor-lock.json" --format text`: pass
+
+### Notes For Next Step
+
+- After verification and merge, start Subgoal 9 release demo and YC surface from clean `main`.
+
 ## 2026-05-27 - Secure GitHub MCP Preview Profile
 
 ### Context
