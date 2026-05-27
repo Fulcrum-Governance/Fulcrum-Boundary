@@ -11,7 +11,7 @@ and below production maturity.
 > Boundary provides preview project-local command governance for commands routed
 > through boundary command run, boundary shell, or project-local shims.
 
-Status: `partial`
+Status: `delivered`
 
 This means the repo may describe the implemented preview routes. It must not
 state that Command Boundary controls direct shell execution, global shells, CI
@@ -44,11 +44,11 @@ Do not use these statements as product claims:
 
 ## Claim Advancement Requirements
 
-`BND-CLAIM-CMD-001` can move from `partial` to `delivered` only after release
-truth reconciliation records the current command status, test results, approved
-copy, forbidden copy, and bypass boundary.
+`BND-CLAIM-CMD-001` is delivered as a preview claim because implementation
+tests and release truth reconciliation now record the current command status,
+test results, approved copy, forbidden copy, and bypass boundary.
 
-Evidence currently supporting the partial preview claim:
+Evidence supporting the delivered preview claim:
 
 - `boundary command classify` classifies commands without executing them;
 - `boundary command run` denies blocked commands before execution;
