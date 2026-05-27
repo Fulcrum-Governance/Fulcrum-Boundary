@@ -1,3 +1,0 @@
-{"scanner":"bumblebee-style-fixture","kind":"mcp_server","server_name":"github","launcher":"npx","args":["@modelcontextprotocol/server-github"],"config_path":"mcp.json","tools":["get_issue","merge_pull_request"]}
-{"scanner":"bumblebee-style-fixture","kind":"extension","extension":"github.copilot-chat","version":"fixture","severity":"info"}
-{"scanner":"bumblebee-style-fixture","status":"complete"}

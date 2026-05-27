@@ -152,8 +152,8 @@ func normalizeExternalInventorySource(source string) string {
 		return "boundary"
 	case "generic":
 		return "generic"
-	case "bumblebee", "bumblebee-style", "bumblebee_style":
-		return "bumblebee"
+	case "external-mcp", "external_mcp":
+		return "external-mcp"
 	default:
 		return ""
 	}

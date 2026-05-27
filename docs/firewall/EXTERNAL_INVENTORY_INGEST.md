@@ -1,12 +1,18 @@
 # External Inventory Ingest
 
-Boundary can ingest newline-delimited inventory snapshots from Boundary itself
-or from generic MCP inventory exports:
+Boundary can ingest external MCP inventory NDJSON and map recognizable
+MCP-related records into Boundary inventory records.
+
+This is a vendor-neutral ingest surface. Boundary does not depend on, shell out
+to, import, endorse, or claim compatibility with any named third-party scanner.
+External inventory may describe many endpoint facts. Boundary only promotes
+records that relate to agent clients, MCP configs, MCP servers, MCP tools,
+capability classes, risk paths, governed routes, or policy recommendations.
 
 ```bash
 boundary inventory ingest --file inventory.ndjson --source boundary
 boundary inventory ingest --file generic-mcp.ndjson --source generic --out ingest-report.json
-boundary inventory ingest --file bumblebee-style-mcp.ndjson --source bumblebee --summary
+boundary inventory ingest --file external-mcp-inventory.ndjson --source external-mcp --summary
 ```
 
 The command maps recognizable MCP config, server, launcher, tool, and endpoint
@@ -27,12 +33,11 @@ containing:
 |---|---|
 | `boundary` | Boundary inventory NDJSON from `boundary inventory --format ndjson`. |
 | `generic` | Generic NDJSON with recognizable MCP fields such as `mcp`, `mcpServers`, `server_name`, `server`, `command`, `args`, `launcher`, `npx`, `uvx`, `docker`, `claude_desktop_config.json`, `mcp.json`, or `.mcp.json`. |
-| `bumblebee` | Fixture-proven mapping for Bumblebee-style MCP inventory records. This is not an official Bumblebee integration or compatibility claim. |
+| `external-mcp` | Vendor-neutral mapping for external MCP inventory records with recognizable MCP server, tool, config, package, extension, endpoint, or summary fields. |
 
-Boundary does not shell out to Bumblebee, import Bumblebee packages, or depend
-on Bumblebee at runtime. The `bumblebee` source name only selects a mapping mode
-covered by the fixture in
-[`fixtures/external-inventory/bumblebee-style-mcp.ndjson`](../../fixtures/external-inventory/bumblebee-style-mcp.ndjson).
+The `external-mcp` source name selects a Boundary-owned mapping mode covered by
+the fixture in
+[`fixtures/external-inventory/external-mcp-inventory.ndjson`](../../fixtures/external-inventory/external-mcp-inventory.ndjson).
 
 ## Completion Semantics
 

@@ -22,8 +22,8 @@ The final public truth is:
 - Secure GitHub is the flagship preview profile and is fixture-backed.
 - Generated policies are starter policies for operator review.
 - Dashboard output is local-only artifact visibility, not hosted monitoring.
-- External/Bumblebee-style ingest is fixture-proven MCP inventory mapping, not
-  official Bumblebee compatibility.
+- External inventory ingest is Boundary-owned MCP inventory mapping, not an
+  official third-party scanner integration or compatibility claim.
 - The GitHub Action is repo-local CI audit/reporting only.
 - Boundary governs routed tools. Tools that bypass Boundary are outside the
   governed route.
@@ -37,7 +37,7 @@ The final public truth is:
 | `go test ./... -count=1 -timeout 5m` | Pass |
 | `go run ./cmd/boundary selftest` | Pass: all ten selftest checks passed without credentials, network mutation, or live mutation |
 | `go run ./cmd/boundary demo github-lethal-trifecta` | Pass: `actual action: DENY`, `reason: lethal_trifecta_detected`, `upstream_called=false` |
-| `go run ./cmd/boundary inventory ingest --file fixtures/external-inventory/bumblebee-style-mcp.ndjson --source bumblebee --summary` | Pass: complete snapshot, 3 records read, 1 MCP config, 1 MCP server |
+| `go run ./cmd/boundary inventory ingest --file fixtures/external-inventory/external-mcp-inventory.ndjson --source external-mcp --summary` | Pass: complete snapshot, 3 records read, 1 MCP config, 1 MCP server |
 | `GOPROXY=direct go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@1ad95e3ba9a0ab168dd78d4153dd568b16e7e4b2` | Pass: installed binary ran `boundary selftest` successfully |
 
 ## README First-Run Status
@@ -93,7 +93,7 @@ boundary demo github-lethal-trifecta
 | `boundary demo github-lethal-trifecta` | delivered | Fixture-only demo of write-after-taint denial before upstream GitHub mutation. |
 | Inventory JSON/Markdown/SARIF | delivered | Local MCP inventory reporting surfaces. |
 | Inventory NDJSON | delivered | Versioned record stream for tool ingestion. |
-| External inventory ingest | delivered | Boundary, generic, and fixture-proven Bumblebee-style NDJSON mapping. |
+| External inventory ingest | delivered | Boundary, generic, and external MCP inventory NDJSON mapping. |
 | GitHub Action MCP audit | delivered | Repo-local MCP config audit with Markdown and optional SARIF. |
 | Install/release workflow | delivered | `make selftest`, `make demo-github`, `make release-check`, and `docs/INSTALL.md`. |
 | Local dashboard | delivered | Local-only artifact view. |
@@ -128,18 +128,18 @@ No Homebrew, package-manager, or hosted distribution channel is claimed.
 
 ## External Inventory Ingest Status
 
-External ingest maps Boundary, generic, and fixture-proven Bumblebee-style MCP
-inventory NDJSON into Boundary inventory records. The `bumblebee` source name
-selects a tested mapping mode for the local fixture:
+External ingest maps Boundary, generic, and external MCP inventory NDJSON into
+Boundary inventory records. The `external-mcp` source name selects a tested
+mapping mode for the local fixture:
 
 ```bash
 go run ./cmd/boundary inventory ingest \
-  --file fixtures/external-inventory/bumblebee-style-mcp.ndjson \
-  --source bumblebee --summary
+  --file fixtures/external-inventory/external-mcp-inventory.ndjson \
+  --source external-mcp --summary
 ```
 
-Boundary does not shell out to Bumblebee, import Bumblebee packages, depend on
-Bumblebee, or claim official Bumblebee integration.
+Boundary does not shell out to, import, depend on, endorse, or claim
+compatibility with any named third-party scanner.
 
 ## Remaining Preview Or Partial Work
 
@@ -173,7 +173,7 @@ Do not use these as public capability claims:
 
 - Do not claim universal prompt-injection prevention.
 - Do not claim production Secure GitHub.
-- Do not claim official Bumblebee integration.
+- Do not claim official named third-party scanner integration or compatibility.
 - Do not claim all adapters production.
 - Do not claim generated policies are production-complete.
 - Do not claim dashboard monitoring.

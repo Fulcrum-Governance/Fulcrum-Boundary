@@ -14,7 +14,7 @@ import (
 func runFirewallInventoryIngest(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("boundary inventory ingest", stderr)
 	file := fs.String("file", "", "NDJSON inventory file to ingest")
-	source := fs.String("source", "boundary", "inventory source: boundary, generic, or bumblebee")
+	source := fs.String("source", "boundary", "inventory source: boundary, generic, or external-mcp")
 	format := fs.String("format", "json", "ingest report format: json")
 	out := fs.String("out", "", "write ingest report to a file instead of stdout")
 	summary := fs.Bool("summary", false, "print a human-readable ingest summary")

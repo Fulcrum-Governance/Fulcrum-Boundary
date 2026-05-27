@@ -115,23 +115,23 @@ func TestExternalInventoryIngestMarksMixedEndpointSnapshotPartial(t *testing.T) 
 	}
 }
 
-func TestExternalInventoryIngestMapsBumblebeeStyleFixture(t *testing.T) {
-	result, _ := runInventoryIngest(t, externalInventoryFixture("bumblebee-style-mcp.ndjson"), "bumblebee")
-	if !result.Complete || result.Source != "bumblebee" {
-		t.Fatalf("bumblebee-style ingest mismatch: complete=%t source=%s warnings=%v", result.Complete, result.Source, result.Warnings)
+func TestExternalInventoryIngestMapsExternalMCPFixture(t *testing.T) {
+	result, _ := runInventoryIngest(t, externalInventoryFixture("external-mcp-inventory.ndjson"), "external-mcp")
+	if !result.Complete || result.Source != "external-mcp" {
+		t.Fatalf("external MCP ingest mismatch: complete=%t source=%s warnings=%v", result.Complete, result.Source, result.Warnings)
 	}
 	github := findIngestedServer(t, result, "github")
 	if github.Command != "npx" {
-		t.Fatalf("bumblebee-style github command = %q, want npx", github.Command)
+		t.Fatalf("external MCP github command = %q, want npx", github.Command)
 	}
 	if !containsString(github.DescriptorTools, "merge_pull_request") {
-		t.Fatalf("bumblebee-style tools missing merge_pull_request: %+v", github.DescriptorTools)
+		t.Fatalf("external MCP tools missing merge_pull_request: %+v", github.DescriptorTools)
 	}
 	if result.Summary.ExternalInventoryComponents != 1 {
-		t.Fatalf("bumblebee-style component count = %d, want 1", result.Summary.ExternalInventoryComponents)
+		t.Fatalf("external MCP component count = %d, want 1", result.Summary.ExternalInventoryComponents)
 	}
 	if len(result.ExternalInventoryComponents) == 0 || result.ExternalInventoryComponents[0].Kind != "external_inventory_component" {
-		t.Fatalf("bumblebee-style component not report-only external component: %+v", result.ExternalInventoryComponents)
+		t.Fatalf("external MCP component not report-only external component: %+v", result.ExternalInventoryComponents)
 	}
 }
 
