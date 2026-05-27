@@ -1,5 +1,40 @@
 # CODEX Session Log
 
+## 2026-05-27 - Firewall Install, Uninstall, And Descriptor Lock
+
+### Context
+
+- Parent goal: Firewall + Secure GitHub MCP release train.
+- Subgoal: `Subgoal 5 - Firewall Install, Uninstall, And Descriptor Lock`.
+- Branch: `codex/2026-05-27-firewall-install-lock`
+- Scope: reversible MCP config route install/uninstall, descriptor lock hashing and verification, docs, tests, and claim entry.
+
+### What changed
+
+- Added `boundary install` with explicit config/client selection, server filtering, dry-run mode, byte-for-byte backups, install receipts, and Boundary route rewrites.
+- Added `boundary uninstall` to restore the exact backup bytes recorded by an install receipt.
+- Added `boundary lock` and `boundary verify-lock` for local MCP descriptor hash creation and drift checks.
+- Added fail-closed `boundary mcp proxy` preview entrypoint for generic installed routes so no generic route silently passes through as protected.
+- Tightened uninstall safety so post-install user edits are not clobbered without explicit `--force`.
+- Tightened descriptor hashes to include available tool descriptions, input schemas, and output schemas.
+- Added `.boundary/` to `.gitignore` because install backups may contain exact secret-bearing MCP config bytes.
+- Added `docs/firewall/INSTALL_LOCK.md`.
+- Added delivered claim `BND-CLAIM-013` for reversible install/uninstall and descriptor lock verification.
+
+### Verification
+
+- `go test ./internal/firewall/... -count=1 -timeout 5m`: pass
+- `go test ./tests/firewall/... -count=1 -timeout 5m`: pass
+- `go test ./claims/... -count=1`: pass
+- `go test ./internal/boundarycli/... -count=1 -timeout 5m`: pass
+- `go test ./... -short -count=1 -timeout 5m`: pass
+- `go vet ./...`: pass
+- `git diff --check`: pass
+
+### Notes For Next Step
+
+- If merged, start the redteam fixture framework and GitHub lethal-trifecta fixture from clean `main`.
+
 ## 2026-05-27 - Firewall Risk Graph And Policy Generation
 
 ### Context

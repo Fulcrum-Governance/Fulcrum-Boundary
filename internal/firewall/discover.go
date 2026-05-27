@@ -23,7 +23,12 @@ type rawServer struct {
 }
 
 type rawTool struct {
-	Name string `json:"name"`
+	Name              string          `json:"name"`
+	Description       string          `json:"description"`
+	InputSchema       json.RawMessage `json:"inputSchema"`
+	OutputSchema      json.RawMessage `json:"outputSchema"`
+	InputSchemaSnake  json.RawMessage `json:"input_schema"`
+	OutputSchemaSnake json.RawMessage `json:"output_schema"`
 }
 
 func BuildInventory(options DiscoverOptions) (Inventory, error) {
@@ -190,7 +195,7 @@ func toolNames(tools []rawTool) []string {
 
 func redactArgs(args []string) []string {
 	redacted := append([]string(nil), args...)
-	for i, arg := range redacted {
+	for i, arg := range args {
 		lower := strings.ToLower(arg)
 		if strings.Contains(lower, "token") || strings.Contains(lower, "secret") ||
 			strings.Contains(lower, "password") || strings.Contains(lower, "api_key") ||
@@ -199,7 +204,7 @@ func redactArgs(args []string) []string {
 			continue
 		}
 		if i > 0 {
-			prev := strings.ToLower(redacted[i-1])
+			prev := strings.ToLower(args[i-1])
 			if prev == "--token" || prev == "--password" || prev == "--api-key" || prev == "--secret" {
 				redacted[i] = "[redacted]"
 			}

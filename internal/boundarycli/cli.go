@@ -41,8 +41,18 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runFirewallInventory(args[1:], stdout, stderr)
 	case "graph":
 		return runFirewallGraph(args[1:], stdout, stderr)
+	case "install":
+		return runFirewallInstall(args[1:], stdout, stderr)
+	case "uninstall":
+		return runFirewallUninstall(args[1:], stdout, stderr)
+	case "lock":
+		return runFirewallLock(args[1:], stdout, stderr)
+	case "verify-lock":
+		return runFirewallVerifyLock(args[1:], stdout, stderr)
 	case "policy":
 		return runFirewallPolicy(args[1:], stdout, stderr)
+	case "mcp":
+		return runFirewallMCP(args[1:], stdout, stderr)
 	case "serve":
 		return runServe(args[1:], stdout, stderr)
 	case "demo":
@@ -74,7 +84,12 @@ Commands:
   init            Initialize a Boundary firewall workspace
   inventory       Discover MCP configs and inventory server capabilities
   graph           Render inventory-derived MCP risk paths
+  install         Rewrite selected MCP configs through a Boundary route
+  uninstall       Restore an MCP config from a Boundary install receipt
+  lock            Create a descriptor lockfile for MCP server descriptors
+  verify-lock     Verify MCP server descriptors against a lockfile
   policy generate Generate starter Boundary firewall policies
+  mcp proxy       Fail-closed generic MCP proxy entrypoint for installed routes
   serve           Start the Boundary gateway
   demo postgres   Run the Postgres safety demo against a running gateway
   verify          Validate YAML policy files
