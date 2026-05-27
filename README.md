@@ -9,7 +9,7 @@
 
 ## What is Fulcrum Boundary?
 
-Fulcrum Boundary is the out-of-process action boundary for production AI agents. As a Go library and gateway binary, it evaluates tool calls against trust state, static policies, domain interceptors, and a portable policy engine before those calls reach the underlying tool.
+Fulcrum Boundary is the out-of-process action boundary for AI agents using privileged tools. As a Go library and gateway binary, it evaluates tool calls against trust state, static policies, domain interceptors, and a portable policy engine before those calls reach the underlying tool.
 
 The first packaged release is the **MCP Safety Gateway**: route a Postgres tool call through Boundary, allow a safe `SELECT`, block a destructive `DROP TABLE`, demonstrate that the demo agent cannot bypass the gateway network path, and inspect the structured decision record.
 

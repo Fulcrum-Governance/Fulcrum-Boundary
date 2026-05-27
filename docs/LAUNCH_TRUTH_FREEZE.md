@@ -84,6 +84,34 @@ The current repo does not record user adoption or customer deployment evidence.
 Release language should describe implemented capabilities and operator
 deployment requirements, not production adoption.
 
+## 2026-05-27: Firewall + Secure GitHub Release Train
+
+The Firewall + Secure GitHub release train adds a claim-gated local MCP
+Firewall surface and a preview Secure GitHub MCP profile without changing the
+production adapter boundary:
+
+- MCP remains the only production adapter.
+- MCP Firewall inventory is read-only and does not mutate MCP client configs.
+- MCP Firewall risk graphs and generated policies are starter/operator-review
+  surfaces.
+- MCP Firewall install/uninstall is local, explicit, reversible, and does not
+  claim protection by itself.
+- Descriptor locks verify local descriptor drift. They do not prove an upstream
+  MCP server is safe.
+- Redteam packs are safe fixture attacks with no real secrets and no live system
+  mutation.
+- Secure GitHub is a preview fixture profile for write-after-taint denial before
+  upstream GitHub mutation.
+- Secure GitHub does not claim live GitHub App conformance or production bypass
+  resistance.
+- The dashboard is local-only visibility over local artifacts. It is not hosted
+  monitoring and not runtime protection by itself.
+
+Release-facing demo language should lead with the concrete poisoned GitHub
+issue to private-repo mutation attempt, then state the proof boundary: fixture
+write-after-taint denial before upstream, with production Secure GitHub gated on
+live GitHub App conformance and deployment bypass evidence.
+
 ## Verified Release Surface
 
 | Surface | Status |
