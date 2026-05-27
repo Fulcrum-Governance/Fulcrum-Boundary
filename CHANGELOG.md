@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Adapter readiness matrix and release checklist linking claims and readiness gates.
 - Production MCP JSON-RPC proxy path with governed forwarding, response metadata, tools/list filtering, batch handling, and lifecycle tests.
 - Preview Managed Agents adapter with policy-driven tool confirmations, per-thread budget and trust tracking, and credential-bound bypass proofing docs.
+- Preview A2A governed lifecycle adapter with protocol snapshot, denial shaping, governed forwarding, response inspection, governance metadata, and fail-closed handling for malformed or unsupported mandatory fields.
 - Policy schema v1 validation, richer PolicyEval request projection, and a Postgres AST guard with a 30+ case evasion corpus.
 - Standalone trust integration with adaptive termination, trust transition audit events, and `boundary trust show`.
 - Standalone and kernel integration contracts with runtime config validation and proof-correspondence documentation.
@@ -20,7 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 
 - Renamed repo and module path from `boundary` to `fulcrum-boundary` for naming consistency across the Fulcrum repo family.
-- README transport adapter documentation now separates production, preview, and experimental maturity.
+- README transport adapter documentation now separates adapter maturity.
 
 ## [0.2.0] - 2026-05-26
 

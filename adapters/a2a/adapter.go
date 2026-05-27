@@ -1,8 +1,5 @@
-// Package a2a provides a TransportAdapter for Google's Agent-to-Agent
-// (A2A) protocol. The protocol is still evolving; this adapter parses
-// task messages into a canonical GovernanceRequest using a minimal local
-// schema. Forwarding remains the caller's responsibility — the adapter
-// only governs the decision step.
+// Package a2a provides a preview TransportAdapter for governed
+// Agent-to-Agent (A2A) task/message envelopes.
 package a2a
 
 import (
@@ -10,93 +7,153 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/fulcrum-governance/fulcrum-boundary/governance"
 )
 
-// TaskMessage is a minimal local schema for an A2A task message,
-// modeled on the public Agent-to-Agent protocol shape.
-type TaskMessage struct {
-	TaskID    string         `json:"task_id"`
-	AgentCard AgentCard      `json:"agent_card"`
-	Action    string         `json:"action"`
-	Input     map[string]any `json:"input"`
-}
-
-// AgentCard identifies an A2A participant.
-type AgentCard struct {
-	AgentID  string `json:"agent_id"`
-	Name     string `json:"name"`
-	Endpoint string `json:"endpoint"`
-}
-
 // Adapter implements governance.TransportAdapter for A2A messages.
 type Adapter struct {
-	// TenantID is applied to every parsed request when the inbound
-	// message does not carry tenant information of its own.
+	// TenantID is applied to every parsed request when the inbound message
+	// does not carry tenant information of its own.
 	TenantID string
+
+	forwarder Forwarder
 }
+
+var _ governance.TransportAdapter = (*Adapter)(nil)
 
 // NewAdapter returns an A2A adapter scoped to a tenant.
 func NewAdapter(tenantID string) *Adapter {
 	return &Adapter{TenantID: tenantID}
 }
 
+// NewForwardingAdapter returns an A2A adapter that owns governed forwarding.
+func NewForwardingAdapter(tenantID string, forwarder Forwarder) *Adapter {
+	return &Adapter{TenantID: tenantID, forwarder: forwarder}
+}
+
 // Type returns TransportA2A.
 func (a *Adapter) Type() governance.TransportType { return governance.TransportA2A }
 
-// ParseRequest accepts *TaskMessage, TaskMessage, or a JSON byte slice.
-// It returns an error for any other input shape or for missing required fields.
+// ParseRequest converts supported A2A envelopes into a GovernanceRequest.
 func (a *Adapter) ParseRequest(_ context.Context, raw any) (*governance.GovernanceRequest, error) {
-	var msg *TaskMessage
-	switch v := raw.(type) {
-	case *TaskMessage:
-		msg = v
-	case TaskMessage:
-		msg = &v
-	case json.RawMessage:
-		msg = &TaskMessage{}
-		if err := json.Unmarshal(v, msg); err != nil {
-			return nil, governance.NewParseError(governance.TransportA2A, "unmarshal task message", err)
-		}
-	case []byte:
-		msg = &TaskMessage{}
-		if err := json.Unmarshal(v, msg); err != nil {
-			return nil, governance.NewParseError(governance.TransportA2A, "unmarshal task message", err)
-		}
-	default:
-		return nil, governance.NewParseError(governance.TransportA2A, fmt.Sprintf("unsupported raw type %T", raw), nil)
+	envelope, rawPayload, err := ParseTaskEnvelope(raw)
+	if err != nil {
+		return nil, err
 	}
-	if msg == nil || msg.Action == "" {
-		return nil, governance.NewParseError(governance.TransportA2A, "TaskMessage.Action is required", nil)
+	return GovernanceRequestFromEnvelope(envelope, rawPayload, a.TenantID)
+}
+
+// ForwardGoverned forwards allowed A2A tasks through the configured forwarder
+// and returns a transport-shaped denial when governance denies the request.
+func (a *Adapter) ForwardGoverned(ctx context.Context, req *governance.GovernanceRequest, decision *governance.GovernanceDecision) (*governance.ToolResponse, error) {
+	if req == nil {
+		return nil, fmt.Errorf("a2a request is required")
 	}
-
-	traceID := msg.TaskID
-	return &governance.GovernanceRequest{
-		RequestID: uuid.New().String(),
-		Transport: governance.TransportA2A,
-		AgentID:   msg.AgentCard.AgentID,
-		TenantID:  a.TenantID,
-		ToolName:  msg.Action,
-		Action:    "a2a/task",
-		Arguments: msg.Input,
-		TraceID:   traceID,
-	}, nil
+	envelope := envelopeFromRequest(req)
+	if decision == nil || !decision.Allowed() {
+		return toolResponseFromTaskResponse(DeniedTaskResponse(envelope, decision))
+	}
+	if a.forwarder == nil {
+		return nil, fmt.Errorf("a2a forwarding requires a configured forwarder")
+	}
+	response, err := a.forwarder.ForwardTask(ctx, envelope)
+	if err != nil {
+		return nil, err
+	}
+	AttachGovernanceMetadata(response, decision)
+	return toolResponseFromTaskResponse(response)
 }
 
-// ForwardGoverned is a no-op. A2A forwarding is the caller's job; this
-// adapter only governs the decision.
-func (a *Adapter) ForwardGoverned(_ context.Context, _ *governance.GovernanceRequest, _ *governance.GovernanceDecision) (*governance.ToolResponse, error) {
-	return nil, nil
+// InspectResponse examines downstream A2A output for policy-relevant signals.
+func (a *Adapter) InspectResponse(_ context.Context, resp *governance.ToolResponse) (*governance.ResponseInspection, error) {
+	return InspectResponse(resp), nil
 }
 
-// InspectResponse is a no-op for A2A.
-func (a *Adapter) InspectResponse(_ context.Context, _ *governance.ToolResponse) (*governance.ResponseInspection, error) {
-	return nil, nil
-}
-
-// EmitGovernanceMetadata is a no-op for A2A.
-func (a *Adapter) EmitGovernanceMetadata(_ context.Context, _ *governance.ToolResponse, _ *governance.GovernanceDecision) error {
+// EmitGovernanceMetadata attaches governance metadata to a ToolResponse.
+func (a *Adapter) EmitGovernanceMetadata(_ context.Context, resp *governance.ToolResponse, decision *governance.GovernanceDecision) error {
+	if resp == nil || decision == nil {
+		return nil
+	}
+	if resp.Metadata == nil {
+		resp.Metadata = map[string]string{}
+	}
+	resp.Metadata["x-fulcrum-action"] = decision.Action
+	resp.Metadata["x-fulcrum-envelope-id"] = decision.EnvelopeID
+	resp.Metadata["x-fulcrum-request-id"] = decision.RequestID
+	if decision.MatchedRule != "" {
+		resp.Metadata["x-fulcrum-rule"] = decision.MatchedRule
+	}
 	return nil
+}
+
+// GovernTask runs the complete preview A2A lifecycle: parse, evaluate, deny or
+// forward, inspect, attach metadata, and return a transport-shaped response.
+func (a *Adapter) GovernTask(ctx context.Context, raw any, pipeline *governance.Pipeline) (*TaskResponse, error) {
+	envelope, rawPayload, err := ParseTaskEnvelope(raw)
+	if err != nil {
+		return UnsupportedTaskResponse("", err), nil
+	}
+	req, err := GovernanceRequestFromEnvelope(envelope, rawPayload, a.TenantID)
+	if err != nil {
+		return UnsupportedTaskResponse(envelope.TaskID, err), nil
+	}
+	if pipeline == nil {
+		decision := &governance.GovernanceDecision{
+			RequestID:  req.RequestID,
+			Action:     "deny",
+			Reason:     "governance pipeline is required",
+			EnvelopeID: req.EnvelopeID,
+		}
+		return DeniedTaskResponse(*envelope, decision), nil
+	}
+	decision, err := pipeline.Evaluate(ctx, req)
+	if err != nil {
+		decision = &governance.GovernanceDecision{
+			RequestID:  req.RequestID,
+			Action:     "deny",
+			Reason:     fmt.Sprintf("governance pipeline error: %v", err),
+			EnvelopeID: req.EnvelopeID,
+		}
+	}
+	if decision == nil || !decision.Allowed() {
+		return DeniedTaskResponse(*envelope, decision), nil
+	}
+	if a.forwarder == nil {
+		return ErrorTaskResponse(*envelope, "forwarding_error", "a2a forwarding requires a configured forwarder"), nil
+	}
+	response, err := a.forwarder.ForwardTask(ctx, *envelope)
+	if err != nil {
+		return ErrorTaskResponse(*envelope, "forwarding_error", err.Error()), nil
+	}
+	AttachGovernanceMetadata(response, decision)
+	toolResp, err := toolResponseFromTaskResponse(response)
+	if err != nil {
+		return ErrorTaskResponse(*envelope, "response_error", err.Error()), nil
+	}
+	inspection := InspectResponse(toolResp)
+	if inspection != nil && !inspection.Safe {
+		if response.Governance == nil {
+			response.Governance = MetadataFromDecision(decision)
+		}
+		response.Governance.InspectionConcerns = append(response.Governance.InspectionConcerns, inspection.Concerns...)
+	}
+	return response, nil
+}
+
+func toolResponseFromTaskResponse(response *TaskResponse) (*governance.ToolResponse, error) {
+	if response == nil {
+		response = &TaskResponse{Status: StatusError}
+	}
+	body, err := json.Marshal(response)
+	if err != nil {
+		return nil, err
+	}
+	return &governance.ToolResponse{
+		Content:     body,
+		ContentType: "application/json",
+		Metadata: map[string]string{
+			"a2a_status":  response.Status,
+			"a2a_task_id": response.TaskID,
+		},
+	}, nil
 }

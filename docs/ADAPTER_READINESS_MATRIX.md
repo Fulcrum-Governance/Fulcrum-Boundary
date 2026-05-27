@@ -45,8 +45,9 @@ Step states are `implemented`, `delegated`, `not_applicable`, or `stub`.
 | grpc | preview | production | implemented | implemented | implemented | implemented | delegated | stub | delegated | delegated | stub | delegated | BND-GRPC-001: metadata/trailer conformance, response policy, and bypass proof. |
 | managedagents | preview | production | implemented | implemented | implemented | implemented | implemented | implemented | implemented | delegated | delegated | implemented | BND-MAPROD-001: live upstream Managed Agents conformance run with operator-owned credentials. |
 | webhook | preview | preview | implemented | implemented | implemented | implemented | delegated | implemented | delegated | delegated | stub | delegated | BND-WEB-001: explicit mode split between informational and execution forwarding. |
-| a2a | experimental | preview | implemented | implemented | delegated | stub | stub | stub | stub | delegated | stub | stub | BND-A2A-001: real A2A protocol control instead of no-op lifecycle methods. |
+| a2a | preview | preview | implemented | implemented | delegated | implemented | implemented | implemented | implemented | delegated | delegated | implemented | BND-A2A-002: live protocol conformance and deployment bypass evidence before production. |
 
 MCP is the first production adapter. Managed Agents now has a preview proxy
-path. Other adapters remain below production
-until an adapter-specific spec proves their full lifecycle.
+path. A2A now has a preview governed lifecycle against a documented protocol
+snapshot. Other adapters remain below production until an adapter-specific spec
+proves their full lifecycle.

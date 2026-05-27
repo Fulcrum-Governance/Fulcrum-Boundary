@@ -71,8 +71,10 @@ evidence.
 
 ## Partial Claims and Live Evidence
 
-BND-CLAIM-003 remains partial because A2A is still experimental and Managed
-Agents production status requires live upstream conformance evidence.
+At the audited commit, BND-CLAIM-003 remained partial because A2A was still
+experimental and Managed Agents production status required live upstream
+conformance evidence. Later adapter PRs may update the live readiness matrix;
+this report records the Step 2 audit state.
 
 BND-CLAIM-007 remains partial because Managed Agents is preview until a live
 upstream Anthropic Managed Agents conformance run is recorded with

@@ -20,6 +20,7 @@ import (
 //   - TransportManagedAgents — hosted agent tool confirmations.
 //   - TransportCodeExec — arbitrary code execution.
 //   - TransportGRPC — internal service surface for control-plane calls.
+//   - TransportA2A — agent-to-agent tasks crossing a governed boundary.
 //
 // Operators who want different defaults must set
 // PipelineConfig.FailClosedTransports explicitly. An explicit (non-nil) empty
@@ -29,6 +30,7 @@ var DefaultFailClosedTransports = []TransportType{
 	TransportManagedAgents,
 	TransportCodeExec,
 	TransportGRPC,
+	TransportA2A,
 }
 
 // PipelineConfig holds configuration for the governance pipeline.

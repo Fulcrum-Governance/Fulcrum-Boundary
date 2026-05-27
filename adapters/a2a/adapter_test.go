@@ -3,6 +3,7 @@ package a2a
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/fulcrum-governance/fulcrum-boundary/governance"
@@ -103,15 +104,130 @@ func TestAdapter_ParseRequest_Errors(t *testing.T) {
 	}
 }
 
-func TestAdapter_NoOpMethods(t *testing.T) {
+func TestAdapter_ParseRequest_FromTaskEnvelopeJSON(t *testing.T) {
+	a := NewAdapter("tenant-Z")
+	body := []byte(`{
+		"task_id":"task-z",
+		"sender_agent_id":"agent-z",
+		"receiver":"worker-z",
+		"action":"summarize",
+		"input":{"text":"hello"},
+		"required_fields":["task_id","sender_agent_id","action"]
+	}`)
+	req, err := a.ParseRequest(context.Background(), body)
+	if err != nil {
+		t.Fatalf("ParseRequest: %v", err)
+	}
+	if req.ToolName != "summarize" || req.AgentID != "agent-z" || req.TraceID != "task-z" {
+		t.Fatalf("TaskEnvelope JSON path produced wrong fields: %+v", req)
+	}
+}
+
+func TestAdapter_ParseRequest_FromJSONRPCMessageSend(t *testing.T) {
+	a := NewAdapter("tenant-jsonrpc")
+	body := []byte(`{
+		"jsonrpc":"2.0",
+		"id":"1",
+		"method":"message/send",
+		"params":{
+			"message":{"taskId":"task-9","messageId":"msg-1","parts":[{"kind":"text","text":"run report"}]},
+			"metadata":{"sender_agent_id":"agent-json","receiver":"agent-worker","action":"report.generate"}
+		}
+	}`)
+	req, err := a.ParseRequest(context.Background(), body)
+	if err != nil {
+		t.Fatalf("ParseRequest: %v", err)
+	}
+	if req.ToolName != "report.generate" || req.AgentID != "agent-json" {
+		t.Fatalf("JSON-RPC path produced wrong fields: %+v", req)
+	}
+	if got, _ := req.Arguments["text"].(string); got != "run report" {
+		t.Fatalf("JSON-RPC text part did not propagate: %+v", req.Arguments)
+	}
+}
+
+func TestAdapter_ParseRequest_UnknownRequiredFieldFailsClosed(t *testing.T) {
+	a := NewAdapter("tenant-Z")
+	body := []byte(`{
+		"task_id":"task-z",
+		"sender_agent_id":"agent-z",
+		"action":"summarize",
+		"required_fields":["future_mandatory_field"]
+	}`)
+	_, err := a.ParseRequest(context.Background(), body)
+	if err == nil || !strings.Contains(err.Error(), "unsupported required field") {
+		t.Fatalf("expected unsupported required field error, got %v", err)
+	}
+}
+
+func TestAdapter_ForwardGoverned_DenialDoesNotForward(t *testing.T) {
+	forwarder := &MemoryForwarder{}
+	a := NewForwardingAdapter("t", forwarder)
+	req := &governance.GovernanceRequest{
+		Transport: governance.TransportA2A,
+		AgentID:   "agent-1",
+		ToolName:  "send",
+		Arguments: map[string]any{"task_id": "task-denied"},
+	}
+	resp, err := a.ForwardGoverned(context.Background(), req, &governance.GovernanceDecision{Action: "deny", Reason: "blocked"})
+	if err != nil {
+		t.Fatalf("ForwardGoverned: %v", err)
+	}
+	if len(forwarder.Snapshot()) != 0 {
+		t.Fatal("denied task reached downstream forwarder")
+	}
+	if !strings.Contains(string(resp.Content), `"status":"denied"`) {
+		t.Fatalf("expected transport-shaped denial, got %s", string(resp.Content))
+	}
+}
+
+func TestAdapter_ForwardGoverned_AllowedForwardsAndAddsMetadata(t *testing.T) {
+	forwarder := &MemoryForwarder{}
+	a := NewForwardingAdapter("t", forwarder)
+	req := &governance.GovernanceRequest{
+		Transport: governance.TransportA2A,
+		AgentID:   "agent-1",
+		ToolName:  "send",
+		Arguments: map[string]any{"task_id": "task-allowed", "payload": "ok"},
+	}
+	resp, err := a.ForwardGoverned(context.Background(), req, &governance.GovernanceDecision{Action: "allow", RequestID: "req-1", EnvelopeID: "env-1", MatchedRule: "allow-send"})
+	if err != nil {
+		t.Fatalf("ForwardGoverned: %v", err)
+	}
+	if len(forwarder.Snapshot()) != 1 {
+		t.Fatal("allowed task was not forwarded exactly once")
+	}
+	if !strings.Contains(string(resp.Content), `"matched_rule":"allow-send"`) {
+		t.Fatalf("expected governance metadata in response, got %s", string(resp.Content))
+	}
+}
+
+func TestAdapter_InspectResponse_FlagsPolicySignals(t *testing.T) {
 	a := NewAdapter("t")
-	if resp, err := a.ForwardGoverned(context.Background(), nil, nil); resp != nil || err != nil {
-		t.Errorf("ForwardGoverned: expected nil,nil got %v,%v", resp, err)
+	insp, err := a.InspectResponse(context.Background(), &governance.ToolResponse{
+		Content: []byte(`{"output":{"message":"secret token leaked"}}`),
+	})
+	if err != nil {
+		t.Fatalf("InspectResponse: %v", err)
 	}
-	if insp, err := a.InspectResponse(context.Background(), nil); insp != nil || err != nil {
-		t.Errorf("InspectResponse: expected nil,nil got %v,%v", insp, err)
+	if insp == nil || insp.Safe {
+		t.Fatalf("expected unsafe inspection, got %+v", insp)
 	}
-	if err := a.EmitGovernanceMetadata(context.Background(), nil, nil); err != nil {
-		t.Errorf("EmitGovernanceMetadata: %v", err)
+}
+
+func TestAdapter_EmitGovernanceMetadata(t *testing.T) {
+	a := NewAdapter("t")
+	resp := &governance.ToolResponse{}
+	err := a.EmitGovernanceMetadata(context.Background(), resp, &governance.GovernanceDecision{
+		Action:      "allow",
+		RequestID:   "req-1",
+		EnvelopeID:  "env-1",
+		MatchedRule: "allow-send",
+	})
+	if err != nil {
+		t.Fatalf("EmitGovernanceMetadata: %v", err)
+	}
+	if resp.Metadata["x-fulcrum-rule"] != "allow-send" {
+		t.Fatalf("metadata not attached: %+v", resp.Metadata)
 	}
 }

@@ -63,7 +63,9 @@ claims:
         - path: adapters/webhook/adapter_test.go
           assertion: "Webhook handler allow/deny behavior is covered"
         - path: adapters/a2a/adapter_test.go
-          assertion: "A2A request parsing is covered"
+          assertion: "A2A request parsing, denial, forwarding, metadata, inspection, and fail-closed behavior are covered"
+        - path: tests/adapters/a2a_lifecycle_test.go
+          assertion: "A2A governed lifecycle denies before forwarding, forwards allowed tasks, emits records, and fails closed on malformed requests and pipeline errors"
       docs:
         - path: docs/ADAPTER_READINESS_MATRIX.md
           section: "Readiness Matrix"
@@ -74,14 +76,10 @@ claims:
         - "six production adapters"
         - "supports all major agent transports"
     gaps:
-      - id: BND-A2A-001
-        description: "A2A remains stub-level until real protocol forwarding, metadata, and fail-closed behavior are implemented."
-        spec: "SPEC 4"
       - id: BND-MAPROD-001
         description: "Managed Agents remains preview until a live upstream conformance run is recorded with operator-owned credentials."
         spec: "SPEC 4"
     depends_on:
-      - BND-A2A-001
       - BND-MAPROD-001
 
   - id: BND-CLAIM-006
