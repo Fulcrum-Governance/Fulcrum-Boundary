@@ -95,11 +95,12 @@ Seven fault classes × seven transports. Each cell is one of:
   own HTTP/gRPC handlers (`adapters/mcp/gateway.go`,
   `adapters/grpc/adapter.go:131-157`, `adapters/webhook/adapter.go:128-177`),
   which is why they can map parse errors to protocol-level fail-closed responses
-  (JSON-RPC error, `codes.Internal`, HTTP 400). CLI and CodeExec adapters only
-  provide parsing, so the embedding runtime (agent runtime or sandbox runtime)
-  is responsible for translating a parse error into a protocol response. The
-  A2A preview adapter also exposes `GovernTask`, which maps malformed or
-  unsupported requests to A2A-shaped unsupported responses without forwarding.
+  (JSON-RPC error, `codes.Internal`, HTTP 400). CLI exposes `GovernCommand`
+  and CodeExec exposes `GovernCode`, but parse errors still happen before the
+  shared pipeline emits a decision record; embedding runtimes are responsible
+  for translating those errors into their protocol response. The A2A preview
+  adapter also exposes `GovernTask`, which maps malformed or unsupported
+  requests to A2A-shaped unsupported responses without forwarding.
 
 - **PolicyEval error (fail-open row)** is the only cell in the entire matrix
   where the Boundary default behavior is ALLOW on error. This is why
@@ -107,9 +108,10 @@ Seven fault classes × seven transports. Each cell is one of:
   per security-critical transport.
 
 - **Downstream tool error (PASS row)**: the MCP proxy now forwards allowed
-  JSON-RPC requests itself and inspects upstream errors. Other adapters still
-  delegate forwarding to the surrounding runtime (agent runtime, sandbox
-  runtime, gRPC interceptor chain, webhook `Handler()`). The governance
+  JSON-RPC requests itself and inspects upstream errors. CLI and CodeExec now
+  forward through configured executors after an allow decision. Other adapters
+  still delegate forwarding to the surrounding runtime (gRPC interceptor chain,
+  webhook `Handler()`). The governance
   decision is emitted before forwarding happens, so downstream 5xx or non-zero
   exit does not retroactively change the action in the audit event.
 

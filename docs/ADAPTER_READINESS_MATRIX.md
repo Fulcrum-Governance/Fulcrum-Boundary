@@ -41,7 +41,7 @@ Step states are `implemented`, `delegated`, `not_applicable`, or `stub`.
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | mcp | production | production | implemented | implemented | implemented | implemented | implemented | implemented | implemented | delegated | delegated | implemented | Production proxy path ships with lifecycle tests; bypass proof remains a deployment topology contract. |
 | cli | preview | preview | implemented | implemented | delegated | implemented | implemented | implemented | implemented | delegated | delegated | implemented | BND-CLI-002: production requires deployment evidence that the Boundary wrapper is the sole command path. |
-| codeexec | preview | production | implemented | implemented | delegated | delegated | delegated | implemented | implemented | delegated | stub | delegated | BND-CODE-001: sandbox lifecycle integration tests and bypass proof. |
+| codeexec | preview | preview | implemented | implemented | delegated | implemented | implemented | implemented | implemented | delegated | delegated | implemented | BND-CODE-001: production requires a real named sandbox boundary with integration tests and bypass proof. |
 | grpc | preview | production | implemented | implemented | implemented | implemented | delegated | stub | delegated | delegated | stub | delegated | BND-GRPC-001: metadata/trailer conformance, response policy, and bypass proof. |
 | managedagents | preview | production | implemented | implemented | implemented | implemented | implemented | implemented | implemented | delegated | delegated | implemented | BND-MAPROD-001: live upstream Managed Agents conformance run with operator-owned credentials. |
 | webhook | preview | preview | implemented | implemented | implemented | implemented | delegated | implemented | delegated | delegated | stub | delegated | BND-WEB-001: explicit mode split between informational and execution forwarding. |
@@ -49,5 +49,7 @@ Step states are `implemented`, `delegated`, `not_applicable`, or `stub`.
 
 MCP is the first production adapter. Managed Agents now has a preview proxy
 path. A2A now has a preview governed lifecycle against a documented protocol
-snapshot. Other adapters remain below production until an adapter-specific spec
-proves their full lifecycle.
+snapshot. CodeExec now has a preview governed lifecycle, but remains below
+production until a real named sandbox boundary is tested and documented. Other
+adapters remain below production until an adapter-specific spec proves their
+full lifecycle.

@@ -1,33 +1,27 @@
 adapter: codeexec
 status: preview
-target_status: production
+target_status: preview
 lifecycle:
   parse: implemented
   identify: implemented
   evaluate: delegated
-  deny: delegated
-  forward: delegated
+  deny: implemented
+  forward: implemented
   inspect: implemented
   metadata: implemented
   record: delegated
-  bypass_proof: stub
-  fail_closed: delegated
+  bypass_proof: delegated
+  fail_closed: implemented
 delegated_steps:
   - step: evaluate
     owner: governance.Pipeline
     contract: docs/ADAPTER_CONTRACT.md
-  - step: deny
-    owner: sandbox runtime
-    contract: docs/ADAPTER_CONTRACT.md
-  - step: forward
-    owner: sandbox runtime
-    contract: docs/ADAPTER_CONTRACT.md
   - step: record
     owner: governance.AuditPublisher
     contract: docs/DECISION_RECORDS.md
-  - step: fail_closed
-    owner: sandbox runtime
-    contract: docs/security/FAIL_MODE_MATRIX.md
+  - step: bypass_proof
+    owner: deployment topology
+    contract: docs/adapters/CODEEXEC.md
 bypass_model: runtime
 fail_closed_transports:
   - code_exec
@@ -36,10 +30,13 @@ evidence:
     - adapters/codeexec/adapter_test.go
     - adapters/codeexec/adversarial_test.go
     - adapters/codeexec/sandbox_test.go
+    - tests/adapters/codeexec_lifecycle_test.go
+    - tests/adapter_conformance/codeexec_conformance_test.go
   docs:
+    - docs/adapters/CODEEXEC.md
     - docs/ADAPTER_CONTRACT.md
     - docs/ADAPTER_READINESS_MATRIX.md
 gaps:
   - id: BND-CODE-001
-    description: "Production status requires sandbox lifecycle integration tests, bypass proof, and fail-mode tests around execution."
+    description: "Production status requires a real named sandbox boundary such as container, WASM, microVM, or OS sandbox, with integration tests and bypass proof."
     spec: "SPEC 2"

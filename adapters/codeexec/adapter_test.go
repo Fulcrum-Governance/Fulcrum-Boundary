@@ -326,8 +326,112 @@ func TestAdapter_EmitGovernanceMetadata(t *testing.T) {
 
 func TestAdapter_ForwardGoverned_Stub(t *testing.T) {
 	a := NewAdapter("default-tenant")
-	_, err := a.ForwardGoverned(context.Background(), nil, nil)
-	if err == nil {
-		t.Error("expected error from stub ForwardGoverned")
+	req, err := a.ParseRequest(context.Background(), &CodeExecInput{
+		Code:     "print('ok')",
+		Language: "python",
+	})
+	if err != nil {
+		t.Fatalf("ParseRequest: %v", err)
 	}
+	_, err = a.ForwardGoverned(context.Background(), req, &governance.GovernanceDecision{Action: "allow"})
+	if err == nil {
+		t.Error("expected error from unconfigured executor")
+	}
+}
+
+func TestAdapter_ForwardGoverned_DeniedDoesNotExecute(t *testing.T) {
+	executor := &recordingExecutor{}
+	a := NewAdapterWithExecutor("default-tenant", executor, LocalProcessBoundary("test-boundary"))
+	req, err := a.ParseRequest(context.Background(), &CodeExecInput{
+		Code:     "print('ok')",
+		Language: "python",
+	})
+	if err != nil {
+		t.Fatalf("ParseRequest: %v", err)
+	}
+	resp, err := a.ForwardGoverned(context.Background(), req, &governance.GovernanceDecision{
+		Action:    "deny",
+		Reason:    "blocked",
+		RequestID: req.RequestID,
+	})
+	if err != nil {
+		t.Fatalf("ForwardGoverned: %v", err)
+	}
+	if executor.calls != 0 {
+		t.Fatal("denied code reached executor")
+	}
+	if resp.ExitCode != 126 || resp.Metadata["codeexec_denied"] != "true" {
+		t.Fatalf("expected denied response, got %+v", resp)
+	}
+}
+
+func TestAdapter_ForwardGoverned_AllowedExecutesWithMetadata(t *testing.T) {
+	executor := &recordingExecutor{}
+	a := NewAdapterWithExecutor("default-tenant", executor, LocalProcessBoundary("test-boundary"))
+	req, err := a.ParseRequest(context.Background(), &CodeExecInput{
+		Code:     "print('ok')",
+		Language: "python",
+	})
+	if err != nil {
+		t.Fatalf("ParseRequest: %v", err)
+	}
+	resp, err := a.ForwardGoverned(context.Background(), req, &governance.GovernanceDecision{
+		Action:     "allow",
+		RequestID:  req.RequestID,
+		EnvelopeID: "env-1",
+	})
+	if err != nil {
+		t.Fatalf("ForwardGoverned: %v", err)
+	}
+	if executor.calls != 1 {
+		t.Fatalf("executor calls = %d, want 1", executor.calls)
+	}
+	if resp.Metadata["codeexec_boundary_kind"] != "local_process" {
+		t.Fatalf("boundary metadata missing: %+v", resp.Metadata)
+	}
+	if resp.Metadata["x-fulcrum-action"] != "allow" {
+		t.Fatalf("governance metadata missing: %+v", resp.Metadata)
+	}
+}
+
+func TestAdapter_ForwardGoverned_SandboxPolicyDeniesBeforeExecute(t *testing.T) {
+	executor := &recordingExecutor{}
+	a := NewAdapterWithExecutor("default-tenant", executor, LocalProcessBoundary("test-boundary"))
+	req, err := a.ParseRequest(context.Background(), &CodeExecInput{
+		Code:     "import requests\nrequests.get('https://example.com')",
+		Language: "python",
+	})
+	if err != nil {
+		t.Fatalf("ParseRequest: %v", err)
+	}
+	resp, err := a.ForwardGoverned(context.Background(), req, &governance.GovernanceDecision{
+		Action:    "allow",
+		RequestID: req.RequestID,
+	})
+	if err != nil {
+		t.Fatalf("ForwardGoverned: %v", err)
+	}
+	if executor.calls != 0 {
+		t.Fatal("sandbox-policy-denied code reached executor")
+	}
+	if resp.ExitCode != 126 || !strings.Contains(string(resp.Content), "network") {
+		t.Fatalf("expected sandbox denial, got %+v", resp)
+	}
+}
+
+type recordingExecutor struct {
+	calls int
+}
+
+func (e *recordingExecutor) Execute(_ context.Context, _ *governance.GovernanceRequest) (*governance.ToolResponse, error) {
+	e.calls++
+	return &governance.ToolResponse{
+		Content:     []byte("stdout\n"),
+		ContentType: "text/plain",
+		ExitCode:    0,
+		Metadata: map[string]string{
+			"stderr":  "",
+			"timeout": "false",
+		},
+	}, nil
 }

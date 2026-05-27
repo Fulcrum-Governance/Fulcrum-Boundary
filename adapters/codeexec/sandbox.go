@@ -46,7 +46,33 @@ var operationCapability = map[string]Capability{
 	"system_call":       CapabilitySubprocess,
 	"restricted_import": CapabilitySubprocess,
 	"obfuscated_exec":   CapabilitySubprocess,
+	"eval_delegation":   CapabilitySubprocess,
 	"env_access":        CapabilityEnvAccess,
+}
+
+func normalizeSandboxPolicy(policy SandboxPolicy) SandboxPolicy {
+	defaults := DefaultSandboxPolicy()
+	if policy.AllowedCapabilities == nil {
+		policy.AllowedCapabilities = defaults.AllowedCapabilities
+	}
+	if policy.MaxOutputSize == 0 {
+		policy.MaxOutputSize = defaults.MaxOutputSize
+	}
+	if len(policy.AllowedLanguages) == 0 {
+		policy.AllowedLanguages = defaults.AllowedLanguages
+	}
+	return policy
+}
+
+// LanguageAllowed reports whether a requested language is permitted.
+func (p SandboxPolicy) LanguageAllowed(language string) bool {
+	p = normalizeSandboxPolicy(p)
+	for _, allowed := range p.AllowedLanguages {
+		if allowed == language {
+			return true
+		}
+	}
+	return false
 }
 
 // EnforcePolicy evaluates a list of detected operations against a sandbox
