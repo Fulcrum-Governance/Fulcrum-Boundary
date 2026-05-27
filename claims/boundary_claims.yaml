@@ -61,7 +61,9 @@ claims:
         - path: tests/adapters/codeexec_lifecycle_test.go
           assertion: "CodeExec governed lifecycle denies before execution, executes allowed code through a configured boundary, records decisions, fails closed on pipeline errors, and documents direct execution bypass"
         - path: adapters/grpc/adapter_test.go
-          assertion: "gRPC interceptor behavior is covered in its module"
+          assertion: "gRPC unary interceptor behavior, trailer metadata, response inspection, and fail-closed behavior are covered in its module"
+        - path: tests/adapter_conformance/grpc_conformance_test.go
+          assertion: "gRPC readiness remains preview and documents streaming limitations and bypass requirements"
         - path: tests/integration/managed_agents_lifecycle_test.go
           assertion: "Managed Agents proxy auto-resolves tool confirmations by policy"
         - path: adapters/webhook/adapter_test.go

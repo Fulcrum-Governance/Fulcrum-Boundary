@@ -35,7 +35,7 @@ type TransportAdapter interface {
 |---|---|---|
 | `Type()` | **required** | Return one of the `TransportType` constants in [`governance/request.go`](../governance/request.go). Must be stable across calls. |
 | `ParseRequest` | **required (real work)** | Convert protocol-specific input into a `GovernanceRequest`. Failure must return a `governance.ParseError` (use `governance.NewParseError`). See "ParseRequest contract" below. |
-| `ForwardGoverned` | **optional / often a stub** | Forward the governed call to the downstream tool *only* if your adapter owns the transport. MCP owns this in proxy mode through `adapters/mcp.Gateway`; CLI and CodeExec forward only through configured executors after an allow decision; Managed Agents owns upstream tool confirmations through `adapters/managedagents.SessionProxy`; adapters whose forwarding is handled elsewhere return `nil, nil` (webhook, gRPC). Do not perform side effects that the caller did not ask for. |
+| `ForwardGoverned` | **optional / often a stub** | Forward the governed call to the downstream tool *only* if your adapter owns the transport. MCP owns this in proxy mode through `adapters/mcp.Gateway`; CLI and CodeExec forward only through configured executors after an allow decision; Managed Agents owns upstream tool confirmations through `adapters/managedagents.SessionProxy`; adapters whose forwarding is handled elsewhere return `nil, nil` (webhook, gRPC). For gRPC, the unary server interceptor owns handler invocation after an allow decision. Do not perform side effects that the caller did not ask for. |
 | `InspectResponse` | **optional** | Examine `ToolResponse.Content` for governance concerns (size limits, sensitive-data patterns, exit codes). Adapters with no opinion return `&ResponseInspection{Safe: true}, nil`. |
 | `EmitGovernanceMetadata` | **optional** | Attach the governance decision's `Action`, `EnvelopeID`, and `RequestID` to the response so callers can read the verdict without parsing the body. Adapters whose host (e.g. an HTTP handler) writes governance headers directly may return `nil`. |
 
@@ -191,6 +191,14 @@ return ok(resp)
 The shipped [`webhook.Handler`](../adapters/webhook/adapter.go) and
 [`grpc.UnaryInterceptor`](../adapters/grpc/adapter.go) collapse this
 pattern into a single function.
+
+For gRPC unary calls, governance metadata is emitted through response trailers:
+`governance-action`, `governance-rule`, `governance-mode`,
+`governance-trust`, `governance-request-id`, and
+`governance-envelope-id`. Unary response inspection also emits
+`governance-response-safe` and `governance-response-concerns` when available.
+Streaming RPC messages are not individually governed unless a deployment adds a
+per-message interceptor and tests it.
 
 ## Adding a new adapter
 

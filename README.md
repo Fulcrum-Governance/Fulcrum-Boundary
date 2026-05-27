@@ -141,7 +141,7 @@ per-adapter `readiness.yaml` files for the ten-step lifecycle behind each row.
 |---|---|---|
 | CLI | `adapters/cli` | Shell commands including pipe chains, with wrapper-owned governed execution through `os/exec`; direct shell access remains outside Boundary unless deployment topology makes the wrapper the sole command path |
 | Code exec | `adapters/codeexec` | Python, JavaScript, and TypeScript source submitted through a governed execution lifecycle with language, resource, filesystem, network, subprocess, and obfuscation checks; execution requires a configured boundary and is not described as secure sandboxing unless that boundary is real, named, tested, and documented |
-| gRPC | `adapters/grpc` | gRPC unary calls via a server interceptor in a separate module |
+| gRPC | `adapters/grpc` | gRPC unary calls via a server interceptor in a separate module, with governance trailers, response inspection, and explicit streaming limitations |
 | Managed Agents | `adapters/managedagents` | Managed Agents session streams in preview proxy mode, with policy-driven tool confirmations, thread budget tracking, and a documented credential-bound bypass model; production status requires a live upstream conformance run |
 | Webhook | `adapters/webhook` | HTTP webhook tool-call payloads, with handler-owned allow/deny response shaping |
 | A2A | `adapters/a2a` | Agent-to-agent task/message envelopes in preview mode, with a documented protocol snapshot, governed forwarding, denial shaping, response inspection, governance metadata, and fail-closed handling for malformed or unsupported mandatory fields |
