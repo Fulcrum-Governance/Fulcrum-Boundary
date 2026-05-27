@@ -1,5 +1,35 @@
 # CODEX Session Log
 
+## 2026-05-27 - v0.3 Publication Implementation Plan
+
+### Context
+
+- Parent goal: execute the v0.3 publication plus v0.4 Command Boundary sequence.
+- Subgoal: plan the v0.3.0 publication materials branch from the merged design
+  spec.
+- Branch: `codex/2026-05-27-v030-publication-plan`
+- Scope: planning artifact only. No product behavior, release claims, or
+  Command Boundary implementation changed.
+
+### What changed
+
+- Added
+  `docs/superpowers/plans/2026-05-27-v030-publication-materials.md`.
+- Decomposed the v0.3.0 publication materials work into bite-sized tasks with
+  exact files, content, commands, and commit checkpoints.
+
+### Verification
+
+- Plan self-review: pass; no placeholder patterns or markdown fence issues
+  remain in the plan.
+- `git diff --check`: pass.
+
+### Notes For Next Step
+
+- Execute the plan on `codex/2026-05-27-v030-publication-materials` from a clean
+  `main`.
+- Keep Command Boundary out of this v0.3.0 publication branch.
+
 ## 2026-05-27 - v0.3 Publication + Command Boundary v0.4 Design
 
 ### Context
