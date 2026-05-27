@@ -1,5 +1,45 @@
 # CODEX Session Log
 
+## 2026-05-27 - No-Vendor Repo Polish Reconciliation
+
+### Context
+
+- Parent goal: Final public Boundary release polish.
+- Subgoal: `PR 6 - Final No-Vendor + Presentation Truth Reconciliation`.
+- Branch: `release/no-vendor-public-truth`
+- Scope: reconcile the final public repo surface after vendor-neutral cleanup
+  and repository presentation polish.
+
+### What changed
+
+- Added `docs/RELEASE_TRUTH_REPO_POLISH.md`.
+- Updated public install examples from `@latest` to `@main` because `@latest`
+  currently resolves to stale `v0.2.0`, which still declares the old module
+  path.
+- Recorded the post-rename release tag as remaining work before public install
+  copy moves back to `@latest`.
+
+### Verification
+
+- Legacy named-vendor codename grep: pass.
+- Legacy named-vendor spaced-codename grep: pass.
+- `./scripts/assert-no-public-vendor-refs.sh`: pass.
+- `./scripts/docs-build.sh`: pass.
+- `make release-check`: pass.
+- `go test ./claims/... -count=1`: pass.
+- `go test ./... -count=1 -timeout 5m`: pass.
+- `GOPROXY=direct GOBIN="$tmp/bin" go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@latest`:
+  expected fail until a post-rename tag supersedes `v0.2.0`.
+- `GOPROXY=direct GOBIN="$tmp/bin" go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@main`:
+  pass.
+- Installed `boundary selftest`: pass.
+- Installed `boundary demo github-lethal-trifecta`: pass.
+
+### Notes For Next Step
+
+- The next release task should decide whether to cut a post-rename release tag
+  before changing public install copy back to `@latest`.
+
 ## 2026-05-27 - Repo Metadata Polish
 
 ### Context

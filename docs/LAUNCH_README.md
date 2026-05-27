@@ -34,7 +34,7 @@ and deployment bypass evidence are recorded.
 Installed binary:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@latest
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@main
 boundary --help
 ```
 
@@ -167,4 +167,3 @@ The dashboard is local-only. It reads local files and does not upload telemetry.
 go test ./claims/... -count=1
 go test ./... -short -count=1 -timeout 5m
 ```
-
