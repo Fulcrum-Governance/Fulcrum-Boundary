@@ -184,6 +184,21 @@ boundary redteam --pack github-lethal-trifecta
 This path is fixture-backed. Live GitHub App conformance and deployment bypass
 proof are required before production status.
 
+## Command Boundary Preview
+
+Boundary can also govern project-local command paths when commands route through
+`boundary command run`, `boundary shell`, or project-local shims.
+
+```bash
+boundary command classify -- git push origin main
+boundary command run -- git status
+boundary shell
+```
+
+This is preview. Direct shell access is outside Boundary unless the environment
+routes commands through the wrapper or shims. See
+[docs/command-boundary/DEMO.md](./docs/command-boundary/DEMO.md).
+
 ## GitHub Action
 
 Boundary includes a repo-local MCP audit action for CI visibility:
@@ -500,6 +515,7 @@ Standalone and kernel integration seams are documented in
 | MCP Firewall | [docs/firewall/DISCOVERY_INVENTORY.md](./docs/firewall/DISCOVERY_INVENTORY.md) |
 | External Inventory Ingest | [docs/firewall/EXTERNAL_INVENTORY_INGEST.md](./docs/firewall/EXTERNAL_INVENTORY_INGEST.md) |
 | Secure GitHub | [docs/secure-mcp/GITHUB.md](./docs/secure-mcp/GITHUB.md) |
+| Command Boundary Preview | [docs/command-boundary/README.md](./docs/command-boundary/README.md) |
 | Claims Ledger | [docs/CLAIMS_LEDGER.md](./docs/CLAIMS_LEDGER.md) |
 | Release Truth | [docs/RELEASE_TRUTH_PUBLIC.md](./docs/RELEASE_TRUTH_PUBLIC.md) |
 | Language System | [docs/LANGUAGE_SYSTEM.md](./docs/LANGUAGE_SYSTEM.md) |

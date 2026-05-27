@@ -11,7 +11,7 @@ Required public wording:
 
 ## Governed Routes
 
-The planned governed routes are:
+The preview governed routes are:
 
 | Route | Example | Governed condition |
 |---|---|---|

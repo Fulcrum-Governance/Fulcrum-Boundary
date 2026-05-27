@@ -1758,3 +1758,29 @@
 
 - `command-repo-mutation` uses `require_approval` for repository and package lifecycle mutation under the preview policy; infrastructure mutation remains `deny`.
 - Fixture commands are not executed. They are classified and evaluated through the shared governance pipeline to preserve the "decide before execution" boundary.
+
+## 2026-05-27 — Command Boundary Demo And Docs
+
+### Context
+
+- Branch: `codex/2026-05-27-command-boundary-demo`, cut from `main` after PR #75 landed as `c9d42b9`.
+- Scope: expose Command Boundary as a post-v0.3.0 preview surface in README, docs, and docs-site navigation without changing v0.3.0 release truth or claiming direct-shell coverage.
+
+### Built
+
+- Added a README Command Boundary Preview section below MCP Firewall and Secure GitHub.
+- Added `docs/command-boundary/DEMO.md` with the routed command demo, what it proves, and what it does not prove.
+- Added docs-site Command Boundary overview and demo pages plus MkDocs navigation.
+- Updated Command Boundary overview, preview-claims, design, classify, and bypass docs from planned-only language to current preview/routed-path language.
+- Moved `BND-CLAIM-CMD-001` from planned to partial with implementation evidence and an explicit final truth-reconciliation gap.
+
+### Verification
+
+- `make docs-build`: pass.
+- `go test ./claims/... -count=1`: pass.
+- `go test ./... -short -count=1 -timeout 5m`: pass.
+
+### Notes
+
+- Command Boundary remains preview and routed-path-only.
+- Production command governance still requires deployment evidence that Boundary is the relevant command path for the protected project or workflow.
