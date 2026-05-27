@@ -35,8 +35,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- Raised the root module and CI baseline to Go 1.25 to consume patched dependency releases.
 - Renamed repo and module path from `boundary` to `fulcrum-boundary` for naming consistency across the Fulcrum repo family.
 - README transport adapter documentation now separates adapter maturity.
+
+### Fixed
+
+- Resolved active Dependabot alerts by upgrading `github.com/jackc/pgx/v5` to `v5.9.2` and removing the stale indirect `golang.org/x/crypto` dependency from the root module graph.
 
 ## [0.2.0] - 2026-05-26
 
