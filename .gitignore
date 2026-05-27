@@ -20,6 +20,7 @@ coverage.html
 # Local tooling
 /bin/
 /dist/
+.boundary/
 
 # Managed Agents conformance transcripts
 tests/conformance/managed_agents/transcript/*.raw

@@ -90,6 +90,7 @@ Evidence target:
 - `boundary lock`
 - `boundary verify-lock`
 - Descriptor hash tests
+- [`docs/firewall/INSTALL_LOCK.md`](./firewall/INSTALL_LOCK.md)
 
 Claim boundary:
 

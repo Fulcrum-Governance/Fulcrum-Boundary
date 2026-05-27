@@ -85,11 +85,13 @@ findings.
 
 Inventory reports include environment variable names, but they do not include
 environment variable values. CLI args that look like token, key, password, or
-secret values are redacted.
+secret values are redacted, including opaque values that follow secret-bearing
+flags such as `--token` or `--api-key`.
 
 ## Claim Boundary
 
 This release proves local discovery and inventory classification from config
-files and fixtures. It does not install Boundary into any client config and does
-not prove that discovered MCP servers are protected. Protection begins only when
-future install or serve commands route tool calls through Boundary.
+files and fixtures. Discovery still does not mutate client configs. Install and
+descriptor lock behavior is documented separately in
+[`docs/firewall/INSTALL_LOCK.md`](./INSTALL_LOCK.md). Runtime protection begins
+only when tool calls route through a governed profile with reviewed policies.

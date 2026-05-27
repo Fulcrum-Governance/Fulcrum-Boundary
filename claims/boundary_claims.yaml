@@ -263,6 +263,29 @@ claims:
     gaps: []
     depends_on: []
 
+  - id: BND-CLAIM-013
+    claim: "Boundary installs reversible MCP config routes and verifies descriptor lockfiles for local MCP server descriptors"
+    status: delivered
+    evidence:
+      tests:
+        - path: internal/firewall/install_lock_test.go
+          assertion: "Install dry-run changes nothing, install writes a backup and receipt, uninstall restores the exact original bytes, and descriptor lock verification detects drift"
+        - path: tests/firewall/inventory_cli_test.go
+          assertion: "boundary install, uninstall, lock, and verify-lock cover dry-run, byte-for-byte restore, receipt creation, and deny-on-drift CLI behavior"
+      docs:
+        - path: docs/firewall/INSTALL_LOCK.md
+          section: "MCP Firewall Install And Descriptor Lock"
+    public_language:
+      allowed:
+        - "Boundary installs reversible MCP config routes and verifies descriptor lockfiles for local MCP server descriptors."
+        - "Install supports dry-run, install receipts, and byte-for-byte backup restore."
+      forbidden:
+        - "Boundary install protects MCP servers by itself"
+        - "Descriptor lock proves an upstream MCP server is safe"
+        - "Generic install provides live runtime protection without a governed profile"
+    gaps: []
+    depends_on: []
+
   - id: BND-CLAIM-004
     claim: "Boundary is a SQL firewall"
     status: "false"
