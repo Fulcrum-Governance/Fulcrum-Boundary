@@ -11,8 +11,6 @@
 
 Fulcrum Boundary is the out-of-process action boundary for AI agents using privileged tools. As a Go library and gateway binary, it evaluates tool calls against trust state, static policies, domain interceptors, and a portable policy engine before those calls reach the underlying tool.
 
-The first packaged release is the **MCP Safety Gateway**: route a Postgres tool call through Boundary, allow a safe `SELECT`, block a destructive `DROP TABLE`, demonstrate that the demo agent cannot bypass the gateway network path, and inspect the structured decision record.
-
 Boundary includes a production MCP adapter plus CLI, CodeExec, gRPC, Managed Agents, Webhook, A2A, and Secure GitHub preview adapter packages with maturity tracked per adapter. Direct tool calls are governed only when routed through Boundary and when the deployment topology prevents the agent from reaching the privileged tool directly.
 
 Public language follows the Boundary lexicon and claim rules in
@@ -20,7 +18,106 @@ Public language follows the Boundary lexicon and claim rules in
 [`docs/LEXICON.md`](./docs/LEXICON.md), and
 [`docs/COPY_RULES.md`](./docs/COPY_RULES.md).
 
-## MCP Safety Gateway Quick Start
+## Install
+
+Install the `boundary` CLI with Go:
+
+```bash
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@latest
+boundary --help
+```
+
+Or run from a clean source checkout:
+
+```bash
+git clone https://github.com/Fulcrum-Governance/Fulcrum-Boundary.git
+cd Fulcrum-Boundary
+go run ./cmd/boundary --help
+```
+
+## Five-Minute Demo
+
+This no-credential local path inventories a fixture MCP config, renders the
+dangerous GitHub write-after-taint path, generates starter policies, verifies
+those policies, runs the Secure GitHub fixture profile, red-teams the risky
+flow, and writes a local dashboard artifact:
+
+```bash
+tmp=$(mktemp -d)
+cp docs/firewall/fixtures/claude_desktop_config.json "$tmp/mcp.json"
+
+boundary inventory --config "$tmp/mcp.json" --format markdown
+boundary graph --config "$tmp/mcp.json" --format mermaid
+boundary policy generate --out "$tmp/boundary-firewall-policies"
+boundary verify --policies "$tmp/boundary-firewall-policies"
+
+boundary secure github setup --out "$tmp/secure-github"
+boundary secure github serve --fixture --dry-run
+boundary redteam --pack github-lethal-trifecta
+boundary dashboard --format html --out "$tmp/dashboard.html" \
+  --config "$tmp/mcp.json" \
+  --policies "$tmp/boundary-firewall-policies"
+```
+
+The flagship path starts with a poisoned GitHub issue fixture and ends with a
+private-repo mutation denied before any upstream GitHub call. See
+[`docs/DEMO_SCRIPT.md`](./docs/DEMO_SCRIPT.md) and
+[`docs/YC_DEMO_NARRATIVE.md`](./docs/YC_DEMO_NARRATIVE.md).
+
+## What This Proves
+
+| Scope | What the demo shows |
+|---|---|
+| Inventory | Boundary can read fixture MCP client config and list reachable tools. |
+| Risk graph | Boundary can connect untrusted GitHub context to a private-repo mutation path. |
+| Starter policy | Boundary can generate verifiable local starter policies for reviewed use. |
+| Secure GitHub preview | Boundary can deny the tested write-after-taint fixture before GitHub is touched. |
+| Decision record | Boundary records the verdict and reason for the governed route. |
+
+## What This Does Not Prove
+
+| Limit | Why it matters |
+|---|---|
+| Universal prompt-injection defense | The fixture covers the tested write-after-taint path, not every possible malicious issue or agent behavior. |
+| Production GitHub security | Secure GitHub remains preview until live GitHub App conformance and deployment bypass evidence are recorded. |
+| Protection for direct tool calls | Boundary governs routed tools. Direct access to the same tool is a bypass path unless deployment topology blocks it. |
+| Complete production policy | Generated policies are starter policies for operator review. |
+| Hosted monitoring | The dashboard reads local artifacts only. |
+
+## MCP Firewall Local Visibility
+
+Boundary can inventory local MCP client configs, render risk paths, generate
+starter policies, install reversible Boundary routes, verify descriptor locks,
+and show those local artifacts in a local-only dashboard:
+
+```bash
+boundary inventory --format markdown
+boundary graph --format mermaid
+boundary policy generate --out boundary-firewall-policies
+boundary dashboard --format html --out .boundary/firewall/dashboard.html
+```
+
+See [docs/firewall/DASHBOARD.md](./docs/firewall/DASHBOARD.md). The dashboard
+reads local files only; it is not hosted monitoring and does not protect MCP
+servers by itself.
+
+## Secure GitHub Preview
+
+Secure GitHub is a preview Secure MCP profile for the write-after-taint demo.
+It tracks fixture taint sources, classifies GitHub read and mutation tools, and
+denies W1/W2 private-repo mutations after untrusted GitHub content enters the
+agent context.
+
+```bash
+boundary secure github setup --out secure-github-fixture
+boundary secure github serve --fixture --dry-run
+boundary redteam --pack github-lethal-trifecta
+```
+
+This path is fixture-backed. Live GitHub App conformance and deployment bypass
+proof are required before production status.
+
+## MCP Safety Gateway / Postgres Demo
 
 Run the launch demo from a clean clone:
 
@@ -50,55 +147,9 @@ BYPASS BLOCKED ...
 For a local binary:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@latest
 boundary --help
 boundary verify --policies examples/mcp-postgres-gateway/policies
 ```
-
-## MCP Firewall Local Visibility
-
-Boundary can inventory local MCP client configs, render risk paths, generate
-starter policies, install reversible Boundary routes, verify descriptor locks,
-and show those local artifacts in a local-only dashboard:
-
-```bash
-boundary inventory --format markdown
-boundary graph --format mermaid
-boundary policy generate --out boundary-firewall-policies
-boundary dashboard --format html --out .boundary/firewall/dashboard.html
-```
-
-See [docs/firewall/DASHBOARD.md](./docs/firewall/DASHBOARD.md). The dashboard
-reads local files only; it is not hosted monitoring and does not protect MCP
-servers by itself.
-
-## Firewall + Secure GitHub Demo Quick Start
-
-The launch demo starts with a poisoned GitHub issue fixture and ends with a
-private-repo mutation denied before any upstream GitHub call:
-
-```bash
-tmp=$(mktemp -d)
-cp docs/firewall/fixtures/claude_desktop_config.json "$tmp/mcp.json"
-
-boundary inventory --config "$tmp/mcp.json" --format markdown
-boundary graph --config "$tmp/mcp.json" --format mermaid
-boundary policy generate --out "$tmp/boundary-firewall-policies"
-boundary verify --policies "$tmp/boundary-firewall-policies"
-
-boundary secure github setup --out "$tmp/secure-github"
-boundary secure github serve --fixture --dry-run
-boundary redteam --pack github-lethal-trifecta
-boundary dashboard --format html --out "$tmp/dashboard.html" \
-  --config "$tmp/mcp.json" \
-  --policies "$tmp/boundary-firewall-policies"
-```
-
-The Secure GitHub path is preview and fixture-backed. It proves the tested
-write-after-taint denial path only; live GitHub App conformance and deployment
-bypass proof are required before production status. See
-[docs/DEMO_SCRIPT.md](./docs/DEMO_SCRIPT.md) and
-[docs/YC_DEMO_NARRATIVE.md](./docs/YC_DEMO_NARRATIVE.md).
 
 ## Library Quick Start
 
