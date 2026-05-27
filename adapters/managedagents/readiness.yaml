@@ -1,0 +1,36 @@
+adapter: managedagents
+status: preview
+target_status: production
+lifecycle:
+  parse: implemented
+  identify: implemented
+  evaluate: implemented
+  deny: implemented
+  forward: implemented
+  inspect: implemented
+  metadata: implemented
+  record: delegated
+  bypass_proof: delegated
+  fail_closed: implemented
+delegated_steps:
+  - step: record
+    owner: governance.AuditPublisher
+    contract: docs/DECISION_RECORDS.md
+  - step: bypass_proof
+    owner: deployment credential boundary
+    contract: docs/deployment/managed-agents-bypass-proofing.md
+bypass_model: credential
+fail_closed_transports:
+  - managed_agents
+evidence:
+  tests:
+    - tests/integration/managed_agents_lifecycle_test.go
+    - tests/integration/managed_agents_multiagent_test.go
+  docs:
+    - docs/adapters/MANAGED_AGENTS.md
+    - docs/deployment/managed-agents-bypass-proofing.md
+    - docs/ADAPTER_READINESS_MATRIX.md
+gaps:
+  - id: BND-MAPROD-001
+    description: "Production status requires a live upstream Anthropic Managed Agents conformance run with operator-owned credentials."
+    spec: "SPEC 4"

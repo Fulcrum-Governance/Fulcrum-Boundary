@@ -21,7 +21,9 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 
+	"github.com/fulcrum-governance/boundary/adapters/mcp"
 	"github.com/fulcrum-governance/boundary/governance"
+	sqlguard "github.com/fulcrum-governance/boundary/interceptors/sql"
 )
 
 var Version = "0.2.0-dev"
@@ -39,10 +41,14 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runDemo(args[1:], stdout, stderr)
 	case "verify":
 		return runVerify(args[1:], stdout, stderr)
+	case "verify-record":
+		return runVerifyRecord(args[1:], stdout, stderr)
 	case "doctor":
 		return runDoctor(args[1:], stdout, stderr)
 	case "audit":
 		return runAudit(args[1:], os.Stdin, stdout, stderr)
+	case "trust":
+		return runTrust(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "unknown command %q\n\n", args[0])
 		printRootHelp(stderr)
@@ -57,11 +63,13 @@ Usage:
   boundary <command> [flags]
 
 Commands:
-  serve           Start the MCP Safety Gateway
+  serve           Start the Boundary gateway
   demo postgres   Run the Postgres safety demo against a running gateway
   verify          Validate YAML policy files
+  verify-record   Verify a receipt-grade decision record
   doctor          Check local gateway prerequisites
   audit           Pretty-print structured decision records
+  trust           Inspect or reset trust state
 
 Use "boundary <command> --help" for command flags.
 `)
@@ -75,41 +83,120 @@ func newFlagSet(name string, stderr io.Writer) *flag.FlagSet {
 
 func runServe(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("boundary serve", stderr)
+	configPath := fs.String("config", "", "Boundary runtime config file")
 	listen := fs.String("listen", ":8080", "HTTP listen address")
 	policyDir := fs.String("policies", "./policies/", "directory containing YAML policy files")
-	upstream := fs.String("upstream", "postgres://demo:demo@localhost:5432/demo?sslmode=disable", "Postgres upstream DSN")
+	upstream := fs.String("upstream", "postgres://demo:demo@localhost:5432/demo?sslmode=disable", "upstream MCP HTTP URL or Postgres demo DSN")
+	trustMode := fs.String("trust-mode", "disabled", "trust mode: disabled, standalone, or kernel")
+	trustRedisURL := fs.String("trust-redis-url", "redis://localhost:6379", "Redis URL for kernel trust mode")
+	requireAgentID := fs.Bool("require-agent-id", false, "deny protected adapter requests without agent identity")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return 0
 		}
 		return 1
 	}
+	if *configPath != "" {
+		cfg, err := LoadRuntimeConfig(*configPath)
+		if err != nil {
+			fmt.Fprintf(stderr, "config: %v\n", err)
+			return 1
+		}
+		if cfg.Server.Listen != "" {
+			*listen = cfg.Server.Listen
+		}
+		if cfg.Server.Upstream != "" {
+			*upstream = cfg.Server.Upstream
+		}
+		switch cfg.Mode {
+		case "standalone":
+			*trustMode = string(governance.TrustModeStandalone)
+			*policyDir = cfg.Standalone.PolicyDir
+		case "kernel":
+			*trustMode = string(governance.TrustModeKernel)
+			*trustRedisURL = cfg.Kernel.Trust.RedisURL
+			*policyDir = "./policies/"
+		}
+		if cfg.Security.RequireAgentID {
+			*requireAgentID = true
+		}
+	}
 
-	rules, err := governance.LoadStaticPoliciesFromDir(*policyDir)
+	policyResult, err := governance.LoadStaticPolicyFiles(*policyDir)
 	if err != nil {
 		fmt.Fprintf(stderr, "load policies: %v\n", err)
 		return 1
 	}
-
-	db, err := sql.Open("pgx", *upstream)
+	policyHash, err := governance.PolicyBundleHashFromDir(*policyDir)
 	if err != nil {
-		fmt.Fprintf(stderr, "open upstream: %v\n", err)
-		return 1
-	}
-	defer db.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	if err := db.PingContext(ctx); err != nil {
-		fmt.Fprintf(stderr, "upstream ping failed: %v\n", err)
+		fmt.Fprintf(stderr, "hash policies: %v\n", err)
 		return 1
 	}
 
 	logger := slog.New(slog.NewJSONHandler(stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	trustBackend, err := governance.NewProductionTrustBackend(governance.ProductionTrustConfig{
+		Mode: governance.TrustMode(*trustMode),
+		Kernel: governance.KernelTrustConfig{
+			RedisURL:   *trustRedisURL,
+			IPCPrefix:  "agent:",
+			TimeoutMS:  100,
+			FailClosed: true,
+		},
+	})
+	if err != nil {
+		fmt.Fprintf(stderr, "trust backend: %v\n", err)
+		return 1
+	}
 	pipeline := governance.NewPipeline(governance.PipelineConfig{
-		StaticPolicies: rules,
-		GatewayVersion: Version,
-	}, nil, nil, governance.NewSlogAuditPublisher(logger))
+		StaticPolicies:   policyResult.Rules,
+		GatewayVersion:   Version,
+		PolicyBundleHash: policyHash,
+		RequireAgentID:   *requireAgentID,
+	}, trustBackend, nil, governance.NewSlogAuditPublisher(logger))
+	pipeline.RegisterInterceptor("query", sqlguard.NewPostgresInterceptor())
+
+	handler, mode, closeUpstream, err := serveHandler(*upstream, pipeline)
+	if err != nil {
+		fmt.Fprintf(stderr, "upstream setup failed: %v\n", err)
+		return 1
+	}
+	if closeUpstream != nil {
+		defer func() {
+			if err := closeUpstream(); err != nil {
+				fmt.Fprintf(stderr, "upstream close failed: %v\n", err)
+			}
+		}()
+	}
+
+	fmt.Fprintf(stderr, "boundary serve listening on %s in %s mode with %d static policy rules\n", *listen, mode, len(policyResult.Rules))
+	srv := &http.Server{
+		Addr:              *listen,
+		Handler:           handler,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		fmt.Fprintf(stderr, "server error: %v\n", err)
+		return 1
+	}
+	return 0
+}
+
+func serveHandler(upstream string, pipeline *governance.Pipeline) (handler http.Handler, mode string, closeFn func() error, err error) {
+	parsed, err := url.Parse(upstream)
+	if err == nil && (parsed.Scheme == "http" || parsed.Scheme == "https") {
+		return mcp.NewGateway(pipeline, mcp.NewHTTPForwarder(upstream), "default"), "mcp-proxy", nil, nil
+	}
+
+	db, err := sql.Open("pgx", upstream)
+	if err != nil {
+		return nil, "", nil, fmt.Errorf("open postgres demo upstream: %w", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := db.PingContext(ctx); err != nil {
+		_ = db.Close()
+		return nil, "", nil, fmt.Errorf("postgres demo ping: %w", err)
+	}
 
 	downstream := postgresHandler(db)
 	middleware := governance.NewMiddleware(pipeline, downstream, governance.MiddlewareConfig{
@@ -120,24 +207,17 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		TenantIDHeader:   governance.HeaderGovernanceTenantID,
 		ToolNameFromPath: true,
 	})
-
-	fmt.Fprintf(stderr, "boundary serve listening on %s with %d static policy rules\n", *listen, len(rules))
-	srv := &http.Server{
-		Addr:              *listen,
-		Handler:           middleware,
-		ReadHeaderTimeout: 5 * time.Second,
-	}
-	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		fmt.Fprintf(stderr, "server error: %v\n", err)
-		return 1
-	}
-	return 0
+	return middleware, "postgres-demo", db.Close, nil
 }
 
 func runDemo(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" {
 		fmt.Fprintln(stdout, "Usage: boundary demo postgres [--gateway URL] [--bypass-host HOST] [--bypass-port PORT]")
+		fmt.Fprintln(stdout, "       boundary demo trust-degradation")
 		return 0
+	}
+	if args[0] == "trust-degradation" {
+		return runTrustDegradationDemo(stdout, stderr)
 	}
 	if args[0] != "postgres" {
 		fmt.Fprintf(stderr, "unknown demo %q\n", args[0])
@@ -242,6 +322,51 @@ func runVerify(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
+func runVerifyRecord(args []string, stdout, stderr io.Writer) int {
+	fs := newFlagSet("boundary verify-record", stderr)
+	requestPath := fs.String("request", "", "request JSON body used to verify request_hash")
+	policyDir := fs.String("policies", "", "policy directory used to verify policy_bundle_hash")
+	binaryDigest := fs.String("binary-digest", "", "expected boundary build digest")
+	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
+		return 1
+	}
+	if fs.NArg() != 1 {
+		fmt.Fprintln(stderr, "usage: boundary verify-record [--request request.json] [--policies dir] [--binary-digest sha256:...] record.json")
+		return 1
+	}
+
+	body, err := os.ReadFile(fs.Arg(0))
+	if err != nil {
+		fmt.Fprintf(stderr, "read record: %v\n", err)
+		return 1
+	}
+	var record governance.DecisionRecordV1
+	if err := json.Unmarshal(body, &record); err != nil {
+		fmt.Fprintf(stderr, "parse record: %v\n", err)
+		return 1
+	}
+
+	var rawRequest []byte
+	if *requestPath != "" {
+		rawRequest, err = os.ReadFile(*requestPath)
+		if err != nil {
+			fmt.Fprintf(stderr, "read request: %v\n", err)
+			return 1
+		}
+	}
+
+	if err := governance.VerifyDecisionRecord(record, rawRequest, *policyDir, *binaryDigest); err != nil {
+		fmt.Fprintf(stderr, "record verification failed: %v\n", err)
+		return 1
+	}
+	fmt.Fprintln(stdout, "record verification: ok")
+	fmt.Fprintf(stdout, "record_id: %s\n", record.RecordID)
+	return 0
+}
+
 func runDoctor(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("boundary doctor", stderr)
 	listen := fs.String("listen", ":8080", "HTTP listen address")
@@ -328,6 +453,150 @@ func runAudit(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "read log: %v\n", err)
 		return 1
 	}
+	return 0
+}
+
+func runTrust(args []string, stdout, stderr io.Writer) int {
+	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" {
+		fmt.Fprintln(stdout, "Usage: boundary trust show [--redis-url URL] [--ipc-prefix PREFIX] <agent-id>")
+		fmt.Fprintln(stdout, "       boundary trust reset <agent-id>")
+		return 0
+	}
+	switch args[0] {
+	case "show":
+		return runTrustShow(args[1:], stdout, stderr)
+	case "reset":
+		if len(args) != 2 {
+			fmt.Fprintln(stderr, "usage: boundary trust reset <agent-id>")
+			return 1
+		}
+		backend := governance.NewStandaloneTrustBackend(governance.StandaloneTrustConfig{})
+		snapshot, err := backend.ResetAgentTrust(context.Background(), args[1])
+		if err != nil {
+			fmt.Fprintf(stderr, "trust reset failed: %v\n", err)
+			return 1
+		}
+		printTrustSnapshot(stdout, snapshot)
+		return 0
+	default:
+		fmt.Fprintf(stderr, "unknown trust command %q\n", args[0])
+		return 1
+	}
+}
+
+func runTrustShow(args []string, stdout, stderr io.Writer) int {
+	fs := newFlagSet("boundary trust show", stderr)
+	redisURL := fs.String("redis-url", "", "Redis URL for kernel-connected trust state")
+	ipcPrefix := fs.String("ipc-prefix", "agent:", "Redis IPC key prefix")
+	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
+		return 1
+	}
+	if fs.NArg() != 1 {
+		fmt.Fprintln(stderr, "usage: boundary trust show [--redis-url URL] [--ipc-prefix PREFIX] <agent-id>")
+		return 1
+	}
+	var backend governance.TrustBackend
+	var err error
+	if *redisURL != "" {
+		backend, err = governance.NewProductionTrustBackend(governance.ProductionTrustConfig{
+			Mode: governance.TrustModeKernel,
+			Kernel: governance.KernelTrustConfig{
+				RedisURL:   *redisURL,
+				IPCPrefix:  *ipcPrefix,
+				TimeoutMS:  100,
+				FailClosed: true,
+			},
+		})
+		if err != nil {
+			fmt.Fprintf(stderr, "trust backend failed: %v\n", err)
+			return 1
+		}
+	} else {
+		backend = governance.NewStandaloneTrustBackend(governance.StandaloneTrustConfig{})
+	}
+	snapshot, err := backend.GetAgentTrust(context.Background(), fs.Arg(0))
+	if err != nil {
+		fmt.Fprintf(stderr, "trust show failed: %v\n", err)
+		return 1
+	}
+	printTrustSnapshot(stdout, snapshot)
+	return 0
+}
+
+func printTrustSnapshot(w io.Writer, snapshot governance.TrustSnapshot) {
+	fmt.Fprintf(w, "agent_id: %s\n", snapshot.AgentID)
+	fmt.Fprintf(w, "state: %s\n", snapshot.State)
+	fmt.Fprintf(w, "score: %.3f\n", snapshot.Score)
+	if snapshot.Known {
+		fmt.Fprintf(w, "alpha: %.3f\n", snapshot.Alpha)
+		fmt.Fprintf(w, "beta: %.3f\n", snapshot.Beta)
+		fmt.Fprintf(w, "interactions: %d\n", snapshot.InteractionCount)
+	} else {
+		fmt.Fprintln(w, "known: false")
+	}
+}
+
+func runTrustDegradationDemo(stdout, stderr io.Writer) int {
+	auditor := governance.NewSlogAuditPublisher(slog.New(slog.NewJSONHandler(stdout, &slog.HandlerOptions{Level: slog.LevelInfo})))
+	trust := governance.NewStandaloneTrustBackend(governance.StandaloneTrustConfig{
+		InitialAlpha: 5,
+		InitialBeta:  1,
+	})
+	pipeline := governance.NewPipeline(governance.PipelineConfig{
+		StaticPolicies: []governance.StaticPolicyRule{
+			{
+				Name:   "block-drop-table",
+				Tool:   "query",
+				Action: "deny",
+				Reason: "destructive SQL",
+				Match: &governance.StaticPolicyMatch{
+					Field:           "arguments.sql",
+					Contains:        "DROP TABLE",
+					CaseInsensitive: true,
+				},
+			},
+		},
+		GatewayVersion: Version,
+		RequireAgentID: true,
+	}, trust, nil, auditor)
+	ctx := context.Background()
+	agentID := "demo-agent"
+	queries := []string{
+		"SELECT 1",
+		"DROP TABLE users",
+		"DROP TABLE users",
+		"DROP TABLE users",
+		"DROP TABLE users",
+		"DROP TABLE users",
+		"DROP TABLE users",
+		"DROP TABLE users",
+		"DROP TABLE users",
+		"DROP TABLE users",
+		"SELECT 2",
+	}
+	for _, sqlText := range queries {
+		req := &governance.GovernanceRequest{
+			Transport: governance.TransportMCP,
+			AgentID:   agentID,
+			TenantID:  "demo",
+			ToolName:  "query",
+			Action:    "tools/call",
+			Arguments: map[string]any{"sql": sqlText},
+		}
+		decision, err := pipeline.Evaluate(ctx, req)
+		if err != nil {
+			fmt.Fprintf(stderr, "trust demo failed: %v\n", err)
+			return 1
+		}
+		snapshot, _ := trust.GetAgentTrust(ctx, agentID)
+		fmt.Fprintf(stdout, "query=%q action=%s trust=%.2f state=%s reason=%s\n", sqlText, decision.Action, snapshot.Score, snapshot.State, decision.Reason)
+	}
+	snapshot, _ := trust.GetAgentTrust(ctx, agentID)
+	fmt.Fprintln(stdout, "\nCurrent trust:")
+	printTrustSnapshot(stdout, snapshot)
 	return 0
 }
 

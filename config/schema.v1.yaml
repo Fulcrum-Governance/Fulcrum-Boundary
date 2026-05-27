@@ -1,0 +1,48 @@
+schema_version: boundary.config.v1
+required:
+  - mode
+mode:
+  enum:
+    - standalone
+    - kernel
+server:
+  listen: string
+  upstream: string
+standalone:
+  required_when:
+    mode: standalone
+  policy_dir: string
+kernel:
+  required_when:
+    mode: kernel
+  policy_engine:
+    type:
+      const: redis
+    redis_url: string
+    key_prefix: string
+  trust:
+    type:
+      const: redis_ipc
+    redis_url: string
+    key_prefix: string
+  budget:
+    type:
+      const: api
+    endpoint: string
+  escalation:
+    type:
+      const: nats
+    nats_url: string
+    subject: string
+  audit:
+    type:
+      const: nats
+    nats_url: string
+    subject: string
+  envelope:
+    type:
+      const: nats
+    nats_url: string
+    subject: string
+security:
+  require_agent_id: bool

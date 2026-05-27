@@ -40,6 +40,7 @@ The MCP Safety Gateway demo proves:
 - destructive demo queries are blocked by policy
 - direct bypass fails by network design
 - decision records are emitted for every verdict
+- repeated protected-tool violations can degrade agent trust and isolate the agent before execution
 
 ## What The Demo Does Not Prove
 
@@ -47,7 +48,6 @@ The MCP Safety Gateway demo does not prove:
 
 - resistance to sophisticated SQL obfuscation
 - multi-agent coordination governance
-- trust-based adaptive termination
 - receipt verification
 
-Those capabilities are outside v0.2.0. They remain roadmap items in the adapter ladder described by the launch plan.
+Those properties are outside the narrow MCP Safety Gateway demo proof. Receipt verification and adaptive termination are covered by separate CLI, schema, and trust-integration tests.

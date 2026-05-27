@@ -6,12 +6,13 @@ import "time"
 type TransportType string
 
 const (
-	TransportMCP      TransportType = "mcp"
-	TransportCLI      TransportType = "cli"
-	TransportCodeExec TransportType = "code_exec"
-	TransportGRPC     TransportType = "grpc"
-	TransportA2A      TransportType = "a2a"
-	TransportWebhook  TransportType = "webhook"
+	TransportMCP           TransportType = "mcp"
+	TransportCLI           TransportType = "cli"
+	TransportCodeExec      TransportType = "code_exec"
+	TransportGRPC          TransportType = "grpc"
+	TransportA2A           TransportType = "a2a"
+	TransportWebhook       TransportType = "webhook"
+	TransportManagedAgents TransportType = "managed_agents"
 )
 
 // GovernanceRequest is the canonical, protocol-independent representation
@@ -81,6 +82,7 @@ type GovernanceDecision struct {
 	PolicyFile     string        `json:"policy_file,omitempty"`
 	GatewayVersion string        `json:"gateway_version,omitempty"`
 	TrustScore     float64       `json:"trust_score"`
+	TrustState     string        `json:"trust_state,omitempty"`
 	EnvelopeID     string        `json:"envelope_id"`
 	DryRun         bool          `json:"dry_run"`
 	CostEstimate   float64       `json:"cost_estimate,omitempty"`

@@ -98,6 +98,45 @@ type EvaluationRequest struct {
 	// ToolNames are the tools being invoked.
 	ToolNames []string
 
+	// AgentID is the agent identity from the transport adapter, when known.
+	AgentID string
+
+	// Transport is the Boundary transport surface that produced the request.
+	Transport string
+
+	// ToolName is the primary tool being invoked. It mirrors ToolNames[0] for
+	// consumers that need one canonical value.
+	ToolName string
+
+	// Action is the transport-level action, for example tools/call.
+	Action string
+
+	// Arguments are the structured tool arguments received by Boundary.
+	Arguments map[string]any
+
+	// TrustScore is the current trust score, if the caller has one.
+	TrustScore *float64
+
+	// TrustState is the current trust/circuit-breaker state, if known.
+	TrustState string
+
+	// RiskClass carries adapter or interceptor classification such as SQL AST
+	// class or CLI pipe risk.
+	RiskClass string
+
+	// ResourceIDs are resource identifiers derived from the request arguments.
+	ResourceIDs []string
+
+	// RequestHash is a canonical hash of the request context used for records
+	// and later receipt verification.
+	RequestHash string
+
+	// PolicyVersion identifies the policy bundle used for this evaluation.
+	PolicyVersion string
+
+	// Provenance captures where the evaluation context came from.
+	Provenance RequestProvenance
+
 	// InputText is the input being processed (for content policies).
 	InputText string
 
@@ -110,6 +149,56 @@ type EvaluationRequest struct {
 
 // ToProtoContext converts an EvaluationRequest to the protobuf EvaluationContext.
 func (r *EvaluationRequest) ToProtoContext() *EvaluationContext {
+	attributes := cloneAttributes(r.Attributes)
+	if attributes == nil {
+		attributes = map[string]string{}
+	}
+	if r.AgentID != "" {
+		attributes["agent.id"] = r.AgentID
+	}
+	if r.Transport != "" {
+		attributes["transport"] = r.Transport
+	}
+	if r.ToolName != "" {
+		attributes["tool.name"] = r.ToolName
+	}
+	if r.Action != "" {
+		attributes["action"] = r.Action
+	}
+	if r.TrustScore != nil {
+		attributes["trust.score"] = formatFloat(*r.TrustScore)
+	}
+	if r.TrustState != "" {
+		attributes["trust.state"] = r.TrustState
+	}
+	if r.RiskClass != "" {
+		attributes["risk.class"] = r.RiskClass
+	}
+	if r.RequestHash != "" {
+		attributes["request.hash"] = r.RequestHash
+	}
+	if r.PolicyVersion != "" {
+		attributes["policy.version"] = r.PolicyVersion
+	}
+	for i, resourceID := range r.ResourceIDs {
+		attributes["resource."+itoa(i)+".id"] = resourceID
+	}
+	for key, value := range r.Arguments {
+		attributes["argument."+key] = stringifyArgument(value)
+	}
+	if r.Provenance.Source != "" {
+		attributes["provenance.source"] = r.Provenance.Source
+	}
+	if r.Provenance.Adapter != "" {
+		attributes["provenance.adapter"] = r.Provenance.Adapter
+	}
+	if r.Provenance.TraceID != "" {
+		attributes["trace.id"] = r.Provenance.TraceID
+	}
+	if len(attributes) == 0 {
+		attributes = nil
+	}
+
 	return &EvaluationContext{
 		TenantId:   r.TenantID,
 		UserId:     r.UserID,
@@ -121,7 +210,7 @@ func (r *EvaluationRequest) ToProtoContext() *EvaluationContext {
 		ToolNames:  r.ToolNames,
 		InputText:  r.InputText,
 		OutputText: r.OutputText,
-		Attributes: r.Attributes,
+		Attributes: attributes,
 	}
 }
 

@@ -2,6 +2,7 @@ package boundarycli
 
 import (
 	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -18,7 +19,7 @@ func TestRun_HelpListsCommands(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("expected exit 0, got %d", code)
 	}
-	for _, want := range []string{"serve", "demo postgres", "verify", "doctor", "audit"} {
+	for _, want := range []string{"serve", "demo postgres", "verify", "verify-record", "doctor", "audit"} {
 		if !strings.Contains(stdout.String(), want) {
 			t.Fatalf("help output missing %q: %s", want, stdout.String())
 		}
@@ -64,6 +65,83 @@ func TestRun_VerifyPolicyDirectory(t *testing.T) {
 	}
 	if !strings.Contains(stdout.String(), "rules: 1") {
 		t.Fatalf("verify output missing rule count: %s", stdout.String())
+	}
+}
+
+func TestRun_VerifyPolicyDirectoryRejectsInvalidV1(t *testing.T) {
+	dir := t.TempDir()
+	policy := []byte(`schema_version: "1"
+policy:
+  name: broken
+  version: "1.0.0"
+  rules:
+    - name: invalid
+      tool: query
+      action: deny
+      conditions:
+        - type: regex
+          field: arguments.sql
+          regex: "["
+`)
+	if err := os.WriteFile(filepath.Join(dir, "broken.yaml"), policy, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var stderr bytes.Buffer
+	code := Run([]string{"verify", "--policies", dir}, &bytes.Buffer{}, &stderr)
+	if code == 0 {
+		t.Fatalf("expected invalid v1 policy to fail verification")
+	}
+	if !strings.Contains(stderr.String(), "invalid regex") {
+		t.Fatalf("expected schema error, got %s", stderr.String())
+	}
+}
+
+func TestRun_VerifyRecordAcceptsValidAndRejectsTampered(t *testing.T) {
+	dir := t.TempDir()
+	writeTestPolicy(t, dir)
+	requestBody := []byte(`{"agent_id":"agent-1","arguments":{"sql":"SELECT 1"},"tenant_id":"tenant-1","tool_name":"query"}`)
+	requestHash, err := governance.ComputeRawRequestHash(requestBody)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policyHash, err := governance.PolicyBundleHashFromDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record := governance.BuildDecisionRecord(governance.AuditEvent{
+		Transport:           governance.TransportMCP,
+		ToolName:            "query",
+		Action:              "allow",
+		PolicyBundleHash:    policyHash,
+		RequestHash:         requestHash,
+		BoundaryBuildDigest: "sha256:test-build",
+		TrustScore:          1,
+		TrustState:          governance.TrustStateTrusted.String(),
+	})
+
+	requestPath := filepath.Join(dir, "request.json")
+	recordPath := filepath.Join(dir, "record.json")
+	writeJSONFile(t, requestPath, requestBody)
+	writeRecordFile(t, recordPath, record)
+
+	var stdout bytes.Buffer
+	code := Run([]string{"verify-record", "--request", requestPath, "--policies", dir, "--binary-digest", "sha256:test-build", recordPath}, &stdout, &bytes.Buffer{})
+	if code != 0 {
+		t.Fatalf("expected valid record to verify")
+	}
+	if !strings.Contains(stdout.String(), "record verification: ok") {
+		t.Fatalf("missing success output: %s", stdout.String())
+	}
+
+	record.Action = "deny"
+	writeRecordFile(t, recordPath, record)
+	var stderr bytes.Buffer
+	code = Run([]string{"verify-record", "--request", requestPath, "--policies", dir, "--binary-digest", "sha256:test-build", recordPath}, &bytes.Buffer{}, &stderr)
+	if code == 0 {
+		t.Fatalf("expected tampered record to fail verification")
+	}
+	if !strings.Contains(stderr.String(), "decision_hash mismatch") {
+		t.Fatalf("expected decision hash failure, got %s", stderr.String())
 	}
 }
 
@@ -117,4 +195,20 @@ func TestGatewayMiddleware_AllowsSelectAndBlocksDrop(t *testing.T) {
 	if downstreamCalls != 1 {
 		t.Fatalf("expected downstream to be called once, got %d", downstreamCalls)
 	}
+}
+
+func writeJSONFile(t *testing.T, path string, body []byte) {
+	t.Helper()
+	if err := os.WriteFile(path, body, 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func writeRecordFile(t *testing.T, path string, record governance.DecisionRecordV1) {
+	t.Helper()
+	body, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeJSONFile(t, path, body)
 }

@@ -1,0 +1,45 @@
+adapter: codeexec
+status: preview
+target_status: production
+lifecycle:
+  parse: implemented
+  identify: implemented
+  evaluate: delegated
+  deny: delegated
+  forward: delegated
+  inspect: implemented
+  metadata: implemented
+  record: delegated
+  bypass_proof: stub
+  fail_closed: delegated
+delegated_steps:
+  - step: evaluate
+    owner: governance.Pipeline
+    contract: docs/ADAPTER_CONTRACT.md
+  - step: deny
+    owner: sandbox runtime
+    contract: docs/ADAPTER_CONTRACT.md
+  - step: forward
+    owner: sandbox runtime
+    contract: docs/ADAPTER_CONTRACT.md
+  - step: record
+    owner: governance.AuditPublisher
+    contract: docs/DECISION_RECORDS.md
+  - step: fail_closed
+    owner: sandbox runtime
+    contract: docs/security/FAIL_MODE_MATRIX.md
+bypass_model: runtime
+fail_closed_transports:
+  - code_exec
+evidence:
+  tests:
+    - adapters/codeexec/adapter_test.go
+    - adapters/codeexec/adversarial_test.go
+    - adapters/codeexec/sandbox_test.go
+  docs:
+    - docs/ADAPTER_CONTRACT.md
+    - docs/ADAPTER_READINESS_MATRIX.md
+gaps:
+  - id: BND-CODE-001
+    description: "Production status requires sandbox lifecycle integration tests, bypass proof, and fail-mode tests around execution."
+    spec: "SPEC 2"

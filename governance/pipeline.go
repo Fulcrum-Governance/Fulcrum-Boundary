@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,6 +17,7 @@ import (
 // allowing an ungoverned action has real security consequences:
 //
 //   - TransportMCP — model-facing tool surface; the primary governance wedge.
+//   - TransportManagedAgents — hosted agent tool confirmations.
 //   - TransportCodeExec — arbitrary code execution.
 //   - TransportGRPC — internal service surface for control-plane calls.
 //
@@ -24,6 +26,7 @@ import (
 // slice opts out of every transport being fail-closed.
 var DefaultFailClosedTransports = []TransportType{
 	TransportMCP,
+	TransportManagedAgents,
 	TransportCodeExec,
 	TransportGRPC,
 }
@@ -36,6 +39,16 @@ type PipelineConfig struct {
 	// GatewayVersion is copied into decisions and audit records so operators
 	// can tie runtime verdicts to the released boundary build.
 	GatewayVersion string
+
+	// PolicyBundleHash is copied into receipt-grade decision records.
+	PolicyBundleHash string
+
+	// BuildDigest identifies the Boundary binary or image that emitted the record.
+	BuildDigest string
+
+	// RequireAgentID denies protected adapter requests that do not carry an
+	// agent identity. This is intended for production trust-aware deployments.
+	RequireAgentID bool
 
 	// FailClosedTransports are transports that deny on pipeline errors.
 	// All other transports fail-open on pipeline errors.
@@ -72,14 +85,17 @@ type PolicyEvaluator interface {
 //
 // This is the shared core of Boundary: all transport adapters call Pipeline.Evaluate().
 type Pipeline struct {
-	trustChecker   TrustChecker
-	interceptors   *InterceptorRegistry
-	evaluator      PolicyEvaluator
-	auditor        AuditPublisher
-	staticPolicies []StaticPolicyRule
-	gatewayVersion string
-	failClosed     map[TransportType]bool
-	dryRun         bool
+	trustChecker     TrustChecker
+	interceptors     *InterceptorRegistry
+	evaluator        PolicyEvaluator
+	auditor          AuditPublisher
+	staticPolicies   []StaticPolicyRule
+	gatewayVersion   string
+	policyBundleHash string
+	buildDigest      string
+	requireAgentID   bool
+	failClosed       map[TransportType]bool
+	dryRun           bool
 }
 
 // NewPipeline creates a governance pipeline.
@@ -104,14 +120,17 @@ func NewPipeline(cfg PipelineConfig, trust TrustChecker, evaluator PolicyEvaluat
 	}
 
 	return &Pipeline{
-		trustChecker:   trust,
-		interceptors:   NewInterceptorRegistry(),
-		evaluator:      evaluator,
-		auditor:        auditor,
-		staticPolicies: cfg.StaticPolicies,
-		gatewayVersion: cfg.GatewayVersion,
-		failClosed:     fc,
-		dryRun:         cfg.DryRun,
+		trustChecker:     trust,
+		interceptors:     NewInterceptorRegistry(),
+		evaluator:        evaluator,
+		auditor:          auditor,
+		staticPolicies:   cfg.StaticPolicies,
+		gatewayVersion:   cfg.GatewayVersion,
+		policyBundleHash: cfg.PolicyBundleHash,
+		buildDigest:      cfg.BuildDigest,
+		requireAgentID:   cfg.RequireAgentID,
+		failClosed:       fc,
+		dryRun:           cfg.DryRun,
 	}
 }
 
@@ -166,11 +185,34 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 		// The PRD-002 taxonomy reserves "proved" and "human_approved" for
 		// upstream Foundry decisions that never originate here.
 		DecisionMode: DecisionModeDeterministic,
+		TrustState:   TrustStateTrusted.String(),
 	}
+	trustState := TrustStateTrusted
+	var trustUpdate *TrustDecisionUpdate
 
 	defer func() {
 		decision.Duration = time.Since(start)
+		if update, err := p.recordTrustDecision(ctx, req, decision); err == nil && update != nil {
+			trustUpdate = update
+			decision.TrustScore = update.After.Score
+			decision.TrustState = update.After.State.String()
+			if update.After.State == TrustStateIsolated && decision.Allowed() {
+				decision.Action = "deny"
+				decision.Reason = fmt.Sprintf("agent %s is ISOLATED", req.AgentID)
+			} else if update.After.State == TrustStateEvaluating && decision.Allowed() {
+				decision.Action = "require_approval"
+				decision.Reason = fmt.Sprintf("agent %s is degraded", req.AgentID)
+			}
+		} else if err != nil && decision.Allowed() && p.failClosed[req.Transport] {
+			decision.Action = "deny"
+			decision.Reason = fmt.Sprintf("trust update failed: %v", err)
+			decision.TrustScore = 0.0
+			decision.TrustState = TrustStateIsolated.String()
+		}
 		p.emitAudit(ctx, req, decision)
+		if trustUpdate != nil && trustUpdate.Transition {
+			p.emitTrustTransition(ctx, req, decision, *trustUpdate)
+		}
 		if p.dryRun && decision.Action == "deny" {
 			original := decision.Reason
 			if original == "" {
@@ -183,6 +225,13 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 	}()
 
 	// Stage 1: Trust Check
+	if p.requireAgentID && p.failClosed[req.Transport] && req.AgentID == "" {
+		decision.Action = "deny"
+		decision.Reason = "agent identity is required for protected adapter"
+		decision.TrustScore = 0.0
+		decision.TrustState = TrustStateIsolated.String()
+		return decision, nil
+	}
 	if p.trustChecker != nil && req.AgentID != "" {
 		state, err := p.trustChecker.CheckAgentState(ctx, req.AgentID)
 		if err != nil {
@@ -191,14 +240,18 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 			decision.TrustScore = 0.0
 			return decision, nil
 		}
+		trustState = state
+		decision.TrustState = state.String()
 		if state.Blocked() {
 			decision.Action = "deny"
 			decision.Reason = fmt.Sprintf("agent %s is %s", req.AgentID, state)
 			decision.TrustScore = 0.0
+			decision.TrustState = state.String()
 			return decision, nil
 		}
 		if state == TrustStateEvaluating {
 			decision.TrustScore = 0.5
+			decision.TrustState = state.String()
 		}
 	}
 
@@ -210,6 +263,9 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 		decision.PolicyID = rule.Name
 		decision.MatchedRule = rule.Name
 		decision.PolicyFile = rule.PolicyFile
+		if rule.DecisionMode != "" {
+			decision.DecisionMode = rule.DecisionMode
+		}
 		if rule.Action == "deny" {
 			decision.Action = "deny"
 			decision.Reason = rule.Reason
@@ -220,6 +276,17 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 		}
 		if rule.Action == "warn" || rule.Action == "audit" {
 			decision.Action = "warn"
+			decision.Reason = rule.Reason
+			return decision, nil
+		}
+		if rule.Action == "escalate" {
+			decision.Action = "escalate"
+			decision.Reason = rule.Reason
+			decision.DecisionMode = DecisionModeClassified
+			return decision, nil
+		}
+		if rule.Action == "require_approval" {
+			decision.Action = "require_approval"
 			decision.Reason = rule.Reason
 			return decision, nil
 		}
@@ -242,10 +309,7 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 	}
 
 	// Stage 4: PolicyEval Engine
-	evalReq := &policyeval.EvaluationRequest{
-		TenantID:  req.TenantID,
-		ToolNames: []string{req.ToolName},
-	}
+	evalReq := ProjectPolicyEvalRequest(req, &decision.TrustScore, trustState, p.gatewayVersion)
 	evalDecision, err := p.evaluator.Evaluate(ctx, evalReq)
 	if err != nil {
 		if p.failClosed[req.Transport] {
@@ -285,20 +349,72 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 
 func (p *Pipeline) emitAudit(ctx context.Context, req *GovernanceRequest, decision *GovernanceDecision) {
 	p.auditor.Publish(ctx, AuditEvent{
-		RequestID:      req.RequestID,
-		Transport:      req.Transport,
-		ToolName:       req.ToolName,
-		Action:         decision.Action,
-		Reason:         decision.Reason,
-		TrustScore:     decision.TrustScore,
-		EnvelopeID:     decision.EnvelopeID,
-		AgentID:        req.AgentID,
-		TenantID:       req.TenantID,
-		Timestamp:      time.Now(),
-		DecisionMode:   decision.DecisionMode,
-		MatchedRule:    decision.MatchedRule,
-		PolicyFile:     decision.PolicyFile,
-		GatewayVersion: decision.GatewayVersion,
-		TraceID:        req.TraceID,
+		RequestID:           req.RequestID,
+		Transport:           req.Transport,
+		ToolName:            req.ToolName,
+		Action:              decision.Action,
+		Reason:              decision.Reason,
+		TrustScore:          decision.TrustScore,
+		EnvelopeID:          decision.EnvelopeID,
+		AgentID:             req.AgentID,
+		TenantID:            req.TenantID,
+		Timestamp:           time.Now(),
+		PolicyBundleHash:    p.policyBundleHash,
+		BoundaryBuildDigest: p.buildDigest,
+		RequestHash:         ComputeRequestHash(req),
+		TrustState:          decision.TrustState,
+		DecisionMode:        decision.DecisionMode,
+		MatchedRule:         decision.MatchedRule,
+		PolicyFile:          decision.PolicyFile,
+		GatewayVersion:      decision.GatewayVersion,
+		TraceID:             req.TraceID,
+	})
+}
+
+func (p *Pipeline) recordTrustDecision(ctx context.Context, req *GovernanceRequest, decision *GovernanceDecision) (*TrustDecisionUpdate, error) {
+	if req == nil || req.AgentID == "" {
+		return nil, nil
+	}
+	backend, ok := p.trustChecker.(TrustBackend)
+	if !ok {
+		return nil, nil
+	}
+	if decision == nil || strings.HasPrefix(decision.Reason, "trust check failed") || strings.Contains(decision.Reason, " is ISOLATED") || strings.Contains(decision.Reason, " is TERMINATED") {
+		return nil, nil
+	}
+	update, err := backend.RecordDecision(ctx, req, decision)
+	if err != nil {
+		return nil, err
+	}
+	return &update, nil
+}
+
+func (p *Pipeline) emitTrustTransition(ctx context.Context, req *GovernanceRequest, decision *GovernanceDecision, update TrustDecisionUpdate) {
+	p.auditor.Publish(ctx, AuditEvent{
+		EventType:           "trust_transition",
+		RequestID:           req.RequestID,
+		Transport:           req.Transport,
+		ToolName:            req.ToolName,
+		Action:              decision.Action,
+		Reason:              fmt.Sprintf("trust %s -> %s after %s", update.Before.State, update.After.State, update.Outcome),
+		TrustScore:          update.After.Score,
+		EnvelopeID:          decision.EnvelopeID,
+		AgentID:             req.AgentID,
+		TenantID:            req.TenantID,
+		Timestamp:           time.Now(),
+		PolicyBundleHash:    p.policyBundleHash,
+		BoundaryBuildDigest: p.buildDigest,
+		RequestHash:         ComputeRequestHash(req),
+		TrustState:          update.After.State.String(),
+		DecisionMode:        DecisionModeDeterministic,
+		MatchedRule:         decision.MatchedRule,
+		PolicyFile:          decision.PolicyFile,
+		GatewayVersion:      decision.GatewayVersion,
+		TraceID:             req.TraceID,
+		Metadata: map[string]interface{}{
+			"trust_before": update.Before.State.String(),
+			"trust_after":  update.After.State.String(),
+			"outcome":      string(update.Outcome),
+		},
 	})
 }

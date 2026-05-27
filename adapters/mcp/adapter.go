@@ -21,16 +21,28 @@ type ToolCallInput struct {
 	AgentID   string         `json:"agent_id,omitempty"`
 	TenantID  string         `json:"tenant_id,omitempty"`
 	TraceID   string         `json:"trace_id,omitempty"`
+	Method    string         `json:"method,omitempty"`
+	Params    struct {
+		Name      string         `json:"name,omitempty"`
+		Arguments map[string]any `json:"arguments,omitempty"`
+	} `json:"params,omitempty"`
 }
 
 // Adapter implements governance.TransportAdapter for MCP JSON-RPC.
 type Adapter struct {
 	defaultTenantID string
+	forwarder       Forwarder
 }
 
 // NewAdapter creates an MCP transport adapter.
 func NewAdapter(defaultTenantID string) *Adapter {
 	return &Adapter{defaultTenantID: defaultTenantID}
+}
+
+// NewProxyAdapter creates an MCP adapter that can forward allowed JSON-RPC
+// requests through the supplied forwarder.
+func NewProxyAdapter(defaultTenantID string, forwarder Forwarder) *Adapter {
+	return &Adapter{defaultTenantID: defaultTenantID, forwarder: forwarder}
 }
 
 // Type returns TransportMCP.
@@ -63,6 +75,19 @@ func (a *Adapter) ParseRequest(_ context.Context, raw any) (*governance.Governan
 		return nil, governance.NewParseError(governance.TransportMCP, fmt.Sprintf("unsupported raw type %T", raw), nil)
 	}
 
+	toolName := input.ToolName
+	if toolName == "" {
+		toolName = input.Params.Name
+	}
+	args := input.Arguments
+	if len(args) == 0 {
+		args = input.Params.Arguments
+	}
+	method := input.Method
+	if method == "" {
+		method = "tools/call"
+	}
+
 	tenantID := input.TenantID
 	if tenantID == "" {
 		tenantID = a.defaultTenantID
@@ -73,18 +98,22 @@ func (a *Adapter) ParseRequest(_ context.Context, raw any) (*governance.Governan
 		Transport: governance.TransportMCP,
 		AgentID:   input.AgentID,
 		TenantID:  tenantID,
-		ToolName:  input.ToolName,
-		Action:    "tools/call",
-		Arguments: input.Arguments,
+		ToolName:  toolName,
+		Action:    method,
+		Arguments: args,
 		TraceID:   input.TraceID,
 	}, nil
 }
 
 // ForwardGoverned forwards the governed request to the upstream MCP server.
-// This is a stub — the actual forwarding is handled by the existing mcpproxy
-// or securemcp server code. The adapter only provides the parsing layer.
-func (a *Adapter) ForwardGoverned(_ context.Context, _ *governance.GovernanceRequest, _ *governance.GovernanceDecision) (*governance.ToolResponse, error) {
-	return nil, fmt.Errorf("MCP forwarding is handled by the existing mcpproxy/securemcp server")
+func (a *Adapter) ForwardGoverned(ctx context.Context, req *governance.GovernanceRequest, decision *governance.GovernanceDecision) (*governance.ToolResponse, error) {
+	if decision == nil || !decision.Allowed() {
+		return nil, fmt.Errorf("MCP request was not allowed by governance")
+	}
+	if a.forwarder == nil {
+		return nil, fmt.Errorf("MCP forwarding requires a configured forwarder")
+	}
+	return a.forwarder.Forward(ctx, req.RawPayload)
 }
 
 // InspectResponse checks MCP tool output for governance concerns.
@@ -92,10 +121,7 @@ func (a *Adapter) InspectResponse(_ context.Context, resp *governance.ToolRespon
 	if resp == nil {
 		return &governance.ResponseInspection{Safe: true}, nil
 	}
-	return &governance.ResponseInspection{
-		Safe:          true,
-		InjectionRisk: 0.0,
-	}, nil
+	return InspectJSONRPCResponse(resp)
 }
 
 // EmitGovernanceMetadata attaches governance headers to the MCP response.

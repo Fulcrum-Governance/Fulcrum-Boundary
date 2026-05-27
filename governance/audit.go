@@ -8,21 +8,30 @@ import (
 // AuditEvent represents a governance audit record emitted after every
 // pipeline evaluation, regardless of outcome.
 type AuditEvent struct {
-	RequestID      string                 `json:"request_id"`
-	Transport      TransportType          `json:"transport"`
-	ToolName       string                 `json:"tool_name"`
-	Action         string                 `json:"action"`
-	Reason         string                 `json:"reason,omitempty"`
-	MatchedRule    string                 `json:"matched_rule,omitempty"`
-	PolicyFile     string                 `json:"policy_file,omitempty"`
-	GatewayVersion string                 `json:"gateway_version,omitempty"`
-	TraceID        string                 `json:"trace_id,omitempty"`
-	TrustScore     float64                `json:"trust_score"`
-	EnvelopeID     string                 `json:"envelope_id"`
-	AgentID        string                 `json:"agent_id,omitempty"`
-	TenantID       string                 `json:"tenant_id,omitempty"`
-	Metadata       map[string]interface{} `json:"metadata,omitempty"`
-	Timestamp      time.Time              `json:"timestamp"`
+	EventType           string                 `json:"event_type,omitempty"`
+	RequestID           string                 `json:"request_id"`
+	Transport           TransportType          `json:"transport"`
+	ToolName            string                 `json:"tool_name"`
+	Action              string                 `json:"action"`
+	Reason              string                 `json:"reason,omitempty"`
+	MatchedRule         string                 `json:"matched_rule,omitempty"`
+	PolicyFile          string                 `json:"policy_file,omitempty"`
+	PolicyBundleHash    string                 `json:"policy_bundle_hash,omitempty"`
+	GatewayVersion      string                 `json:"gateway_version,omitempty"`
+	BoundaryBuildDigest string                 `json:"boundary_build_digest,omitempty"`
+	RequestHash         string                 `json:"request_hash,omitempty"`
+	RawShapeHash        string                 `json:"raw_shape_hash,omitempty"`
+	DecisionHash        string                 `json:"decision_hash,omitempty"`
+	TrustState          string                 `json:"trust_state,omitempty"`
+	Signature           string                 `json:"signature,omitempty"`
+	SignatureKeyID      string                 `json:"signature_key_id,omitempty"`
+	TraceID             string                 `json:"trace_id,omitempty"`
+	TrustScore          float64                `json:"trust_score"`
+	EnvelopeID          string                 `json:"envelope_id"`
+	AgentID             string                 `json:"agent_id,omitempty"`
+	TenantID            string                 `json:"tenant_id,omitempty"`
+	Metadata            map[string]interface{} `json:"metadata,omitempty"`
+	Timestamp           time.Time              `json:"timestamp"`
 	// DecisionMode mirrors GovernanceDecision.DecisionMode so audit sinks
 	// can filter or aggregate by epistemic confidence level.
 	DecisionMode DecisionMode `json:"decision_mode,omitempty"`

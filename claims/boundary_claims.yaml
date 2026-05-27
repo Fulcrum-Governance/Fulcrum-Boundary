@@ -1,0 +1,245 @@
+claims:
+  - id: BND-CLAIM-001
+    claim: "Boundary governs MCP Safety Gateway requests before execution when the tool route passes through Boundary"
+    status: delivered
+    adapter: mcp
+    evidence:
+      tests:
+        - path: internal/boundarycli/cli_test.go
+          assertion: "DROP TABLE requests are denied before the downstream handler runs"
+      docs:
+        - path: docs/BOUNDARY_CONDITIONS.md
+          section: "Protected condition"
+        - path: docs/LAUNCH_TRUTH_FREEZE.md
+          section: "What v0.2.0 Proves"
+    public_language:
+      allowed:
+        - "Boundary evaluates an agent action before it reaches the privileged tool when the deployment routes that action through Boundary."
+        - "MCP Safety Gateway"
+      forbidden:
+        - "Boundary prevents all SQL injection"
+        - "Boundary is a SQL firewall"
+    gaps: []
+    depends_on: []
+
+  - id: BND-CLAIM-002
+    claim: "Boundary emits structured decision records for every governed verdict"
+    status: delivered
+    evidence:
+      tests:
+        - path: governance/slog_audit_test.go
+          assertion: "Pipeline decisions emit structured audit events"
+      docs:
+        - path: docs/DECISION_RECORDS.md
+          section: "Decision Records"
+    public_language:
+      allowed:
+        - "Every governed verdict produces a structured decision record."
+        - "Decision records include stable request, policy bundle, and decision hashes."
+      forbidden:
+        - "cryptographic proof of verdict"
+    gaps: []
+    depends_on: []
+
+  - id: BND-CLAIM-003
+    claim: "Boundary ships one production MCP adapter and six lower-maturity transport adapter packages"
+    status: partial
+    evidence:
+      tests:
+        - path: adapters/mcp/adapter_test.go
+          assertion: "MCP request parsing is covered"
+        - path: adapters/cli/adapter_test.go
+          assertion: "CLI adapter parsing and metadata are covered"
+        - path: adapters/codeexec/adapter_test.go
+          assertion: "Code execution adapter parsing is covered"
+        - path: adapters/grpc/adapter_test.go
+          assertion: "gRPC interceptor behavior is covered in its module"
+        - path: tests/integration/managed_agents_lifecycle_test.go
+          assertion: "Managed Agents proxy auto-resolves tool confirmations by policy"
+        - path: adapters/webhook/adapter_test.go
+          assertion: "Webhook handler allow/deny behavior is covered"
+        - path: adapters/a2a/adapter_test.go
+          assertion: "A2A request parsing is covered"
+      docs:
+        - path: docs/ADAPTER_READINESS_MATRIX.md
+          section: "Readiness Matrix"
+    public_language:
+      allowed:
+        - "Boundary includes a production MCP adapter plus CLI, CodeExec, gRPC, Managed Agents, Webhook, and A2A adapters with maturity tracked per adapter."
+      forbidden:
+        - "six production adapters"
+        - "supports all major agent transports"
+    gaps:
+      - id: BND-A2A-001
+        description: "A2A remains stub-level until real protocol forwarding, metadata, and fail-closed behavior are implemented."
+        spec: "SPEC 4"
+      - id: BND-MAPROD-001
+        description: "Managed Agents remains preview until a live upstream conformance run is recorded with operator-owned credentials."
+        spec: "SPEC 4"
+    depends_on:
+      - BND-A2A-001
+      - BND-MAPROD-001
+
+  - id: BND-CLAIM-006
+    claim: "Boundary provides a production MCP JSON-RPC proxy adapter"
+    status: delivered
+    adapter: mcp
+    evidence:
+      tests:
+        - path: tests/integration/mcp_gateway_lifecycle_test.go
+          assertion: "MCP gateway governs, forwards, filters, preserves ids, and fails closed"
+      docs:
+        - path: docs/adapters/MCP.md
+          section: "Lifecycle"
+        - path: docs/ADAPTER_READINESS_MATRIX.md
+          section: "Readiness Matrix"
+    public_language:
+      allowed:
+        - "Boundary provides a production MCP JSON-RPC proxy adapter."
+      forbidden:
+        - "Boundary production-protects MCP tools without deployment isolation"
+    gaps: []
+    depends_on: []
+
+  - id: BND-CLAIM-007
+    claim: "Boundary provides a preview Managed Agents proxy adapter"
+    status: partial
+    adapter: managedagents
+    evidence:
+      tests:
+        - path: tests/integration/managed_agents_lifecycle_test.go
+          assertion: "Managed Agents tool events are governed and auto-resolved as allow or deny confirmations"
+        - path: tests/integration/managed_agents_multiagent_test.go
+          assertion: "Managed Agents thread budgets and trust state affect confirmations"
+      docs:
+        - path: docs/adapters/MANAGED_AGENTS.md
+          section: "Lifecycle"
+        - path: docs/deployment/managed-agents-bypass-proofing.md
+          section: "Required Controls"
+    public_language:
+      allowed:
+        - "Boundary provides a preview Managed Agents proxy adapter for policy-driven tool confirmations."
+      forbidden:
+        - "Boundary production-protects Managed Agents without a live upstream conformance run"
+        - "Boundary controls Managed Agents sessions when customer apps can send confirmations directly"
+    gaps:
+      - id: BND-MAPROD-001
+        description: "Production status requires a live upstream Anthropic Managed Agents conformance run with operator-owned credentials."
+        spec: "SPEC 4"
+    depends_on:
+      - BND-MAPROD-001
+
+  - id: BND-CLAIM-008
+    claim: "Boundary includes a Postgres AST guard for classifying SQL statements before PolicyEval"
+    status: delivered
+    evidence:
+      tests:
+        - path: tests/interceptors/sql_postgres_test.go
+          assertion: "Postgres SQL is classified by parser AST class and destructive or unknown SQL fails closed"
+        - path: tests/interceptors/sql_evasion_test.go
+          assertion: "The SQL evasion corpus contains at least 30 cases and verifies expected classes"
+      docs:
+        - path: docs/policies/POSTGRES.md
+          section: "Postgres AST Guard"
+        - path: docs/POLICY_SCHEMA.md
+          section: "Request Context"
+    public_language:
+      allowed:
+        - "Boundary includes a Postgres AST guard that classifies statements before PolicyEval."
+      forbidden:
+        - "Boundary is a SQL firewall"
+        - "Boundary prevents all SQL injection"
+    gaps: []
+    depends_on: []
+
+  - id: BND-CLAIM-009
+    claim: "Boundary provides standalone trust integration and adaptive termination for protected adapters"
+    status: delivered
+    evidence:
+      tests:
+        - path: tests/adaptive_termination_test.go
+          assertion: "Repeated protected-tool violations isolate an agent before later protected requests execute"
+        - path: tests/integration/trust_production_test.go
+          assertion: "Trust state updates are emitted in decision records and exposed by boundary trust show"
+        - path: tests/integration/trust_fail_closed_test.go
+          assertion: "Kernel trust errors fail closed before protected requests reach downstream execution"
+      docs:
+        - path: docs/TRUST_INTEGRATION.md
+          section: "Modes"
+        - path: docs/ADAPTIVE_TERMINATION.md
+          section: "State Transitions"
+    public_language:
+      allowed:
+        - "Boundary provides standalone trust integration and adaptive termination for protected adapters."
+        - "Repeated protected-tool violations can isolate an agent before later protected calls execute."
+      forbidden:
+        - "Boundary guarantees universal agent safety"
+        - "Boundary replaces deployment isolation"
+        - "Boundary owns Fulcrum's canonical trust model"
+    gaps: []
+    depends_on: []
+
+  - id: BND-CLAIM-010
+    claim: "Boundary defines standalone and kernel integration contracts for the Fulcrum control plane"
+    status: delivered
+    evidence:
+      tests:
+        - path: tests/integration/standalone_test.go
+          assertion: "Standalone mode boots with local policies, in-process trust, budget, envelope, and proof correspondence"
+        - path: tests/integration/kernel_test.go
+          assertion: "Kernel bridge contracts load policy, read trust, call budget, publish escalation, audit, and envelope events"
+      docs:
+        - path: docs/INTEGRATION.md
+          section: "Interface Contracts"
+        - path: docs/STANDALONE_VS_KERNEL.md
+          section: "Standalone vs Kernel"
+        - path: docs/PROOF_BOUNDARY.md
+          section: "Proof Boundary"
+    public_language:
+      allowed:
+        - "Boundary defines standalone and kernel integration contracts for the Fulcrum control plane."
+        - "Kernel mode names the policy, trust, budget, escalation, audit, and envelope seams explicitly."
+      forbidden:
+        - "Boundary mechanically extracts runtime code from Lean proofs"
+        - "Boundary emits proved decisions"
+        - "Boundary production-connects to every Fulcrum service without operator configuration"
+    gaps: []
+    depends_on: []
+
+  - id: BND-CLAIM-004
+    claim: "Boundary is a SQL firewall"
+    status: false
+    evidence:
+      tests: []
+      docs:
+        - path: docs/LAUNCH_TRUTH_FREEZE.md
+          section: "What v0.2.0 Does Not Claim"
+    public_language:
+      allowed:
+        - "Boundary includes a Postgres AST guard for statement classification, but it is not a general SQL firewall."
+      forbidden:
+        - "Boundary is a SQL firewall"
+        - "Boundary prevents all SQL injection"
+    gaps: []
+    depends_on: []
+
+  - id: BND-CLAIM-005
+    claim: "Boundary produces receipt-grade decision records"
+    status: delivered
+    evidence:
+      tests:
+        - path: tests/receipt_verification_test.go
+          assertion: "Decision records verify against canonical request and policy hashes and fail after tampering"
+        - path: internal/boundarycli/cli_test.go
+          assertion: "boundary verify-record succeeds for valid records and fails for tampered records"
+      docs:
+        - path: docs/RECEIPTS.md
+          section: "Verification"
+    public_language:
+      allowed:
+        - "Boundary produces receipt-grade decision records with request, policy bundle, and decision hashes."
+      forbidden:
+        - "cryptographic proof of verdict"
+        - "signed receipt by default"
+    gaps: []
+    depends_on: []

@@ -125,17 +125,36 @@ of outcome.
 
 ## Transport Adapters
 
+Boundary tracks adapter maturity explicitly. See
+[`docs/ADAPTER_READINESS_MATRIX.md`](./docs/ADAPTER_READINESS_MATRIX.md) and the
+per-adapter `readiness.yaml` files for the ten-step lifecycle behind each row.
+
+### Production
+
 | Adapter | Package | Handles |
 |---|---|---|
-| MCP | `adapters/mcp` | JSON-RPC `tools/call` requests from Model Context Protocol servers |
-| CLI | `adapters/cli` | Shell commands including pipe chains, with a risk classifier |
-| Code exec | `adapters/codeexec` | Python and JavaScript source submitted to a sandbox, with obfuscation analysis |
-| gRPC | `adapters/grpc` | gRPC unary calls via a server interceptor (separate module) |
-| A2A *(experimental)* | `adapters/a2a` | Google Agent-to-Agent protocol task messages — adapter governs the decision only; `ForwardGoverned`, `InspectResponse`, and `EmitGovernanceMetadata` are no-ops in the current implementation, so the full transport lifecycle is not yet at parity with MCP/CLI/CodeExec |
-| Webhook | `adapters/webhook` | HTTP webhook tool-call payloads |
+| MCP | `adapters/mcp` | HTTP JSON-RPC MCP proxying for `tools/call` and `tools/list`; allowed requests forward to an upstream MCP server, denied requests never reach upstream, and responses carry governance metadata |
+
+### Preview
+
+| Adapter | Package | Handles |
+|---|---|---|
+| CLI | `adapters/cli` | Shell commands including pipe chains, with a risk classifier; execution control is delegated to the host command wrapper |
+| Code exec | `adapters/codeexec` | Python and JavaScript source submitted to a sandbox, with obfuscation analysis; execution is delegated to the sandbox runtime |
+| gRPC | `adapters/grpc` | gRPC unary calls via a server interceptor in a separate module |
+| Managed Agents | `adapters/managedagents` | Managed Agents session streams in proxy mode, with policy-driven tool confirmations, thread budget tracking, and credential-bound bypass controls |
+| Webhook | `adapters/webhook` | HTTP webhook tool-call payloads, with handler-owned allow/deny response shaping |
+
+### Experimental
+
+| Adapter | Package | Handles |
+|---|---|---|
+| A2A | `adapters/a2a` | Minimal Google Agent-to-Agent task parsing; forwarding, inspection, metadata, bypass proof, and fail-closed behavior are stub-level today |
 
 Each adapter implements the `governance.TransportAdapter` interface. Adding a
-new transport is a matter of satisfying that interface — see
+new transport is a matter of satisfying that interface and declaring lifecycle
+readiness — see
+[`docs/ADAPTER_CONTRACT.md`](./docs/ADAPTER_CONTRACT.md) and
 [ARCHITECTURE.md](./ARCHITECTURE.md#adding-a-new-transport-adapter).
 
 The gRPC adapter lives in its own Go module under `adapters/grpc/` so that
@@ -230,6 +249,19 @@ pipeline.
 {Name: "deny-all-db-writes", Tool: "database_*", Action: "deny", Reason: "writes routed through approval"}
 ```
 
+## Policy Schema And SQL Guard
+
+`boundary verify --policies ./policies` validates both legacy v0.2.0 static
+YAML and schema v1 policy files. Schema v1 adds an explicit
+`schema_version: "1"` envelope, condition validation, tenant and agent scopes,
+and richer request projection into PolicyEval. See
+[`docs/POLICY_SCHEMA.md`](./docs/POLICY_SCHEMA.md).
+
+The Postgres interceptor classifies SQL with the PostgreSQL parser AST and
+annotates requests with `sql_class` before PolicyEval. Unknown or unparsable
+SQL fails closed; destructive SQL is denied; administrative SQL escalates. See
+[`docs/policies/POSTGRES.md`](./docs/policies/POSTGRES.md).
+
 ## Examples
 
 | Directory | What it shows |
@@ -256,8 +288,8 @@ The router is a deployment pattern. The boundary is the product.
 
 ## Interfaces
 
-The governance package exports four interfaces that define every extension
-point:
+The governance package exports the core interfaces that define Boundary's
+extension points:
 
 - **`TrustChecker`** — returns the current trust state for an agent. Implement
   this to wire Boundary to your circuit-breaker or reputation system. `nil` is
@@ -278,6 +310,9 @@ point:
   this to NATS, Kafka, or a log sink.
 
 Full signatures live in [`governance/`](./governance/).
+Standalone and kernel integration seams are documented in
+[docs/INTEGRATION.md](./docs/INTEGRATION.md) and
+[docs/STANDALONE_VS_KERNEL.md](./docs/STANDALONE_VS_KERNEL.md).
 
 ## Part of the Fulcrum Architecture
 
@@ -295,7 +330,7 @@ reputation; and the formal core publishes machine-checkable proof artifacts.
 
 Project docs: [Contributing](./CONTRIBUTING.md) · [Security](./SECURITY.md) · [Changelog](./CHANGELOG.md) · [Code of Conduct](./CODE_OF_CONDUCT.md) · [Citation](./CITATION.cff)
 
-Boundary is the open-source enforcement layer. The full kernel pairs it with upstream Lean 4 proofs of bounded policy invariants in `Fulcrum-Proofs`; Boundary consumes those proof-backed contracts through documented correspondence and decision-mode boundaries rather than emitting `proved` decisions itself. The full kernel also adds Bayesian trust scoring with Beta distributions, per-tenant cost modelling, multi-agent workflow orchestration, and managed multi-tenant infrastructure.
+Boundary is the open-source enforcement layer. The full kernel pairs it with upstream Lean 4 proofs of bounded policy invariants in `Fulcrum-Proofs`; Boundary consumes those proof-backed contracts through documented correspondence and decision-mode boundaries rather than emitting `proved` decisions itself. See [docs/PROOF_BOUNDARY.md](./docs/PROOF_BOUNDARY.md) for the correspondence map. The full kernel also adds Bayesian trust scoring with Beta distributions, per-tenant cost modelling, multi-agent workflow orchestration, and managed multi-tenant infrastructure.
 
 - Website: [fulcrumlayer.io](https://fulcrumlayer.io)
 - Companion paper: tracked separately from this repository; cite Boundary as software until a public paper citation is issued
