@@ -1,5 +1,42 @@
 # CODEX Session Log
 
+## 2026-05-27 - Command Boundary Classifier
+
+### Context
+
+- Parent goal: execute the v0.3 publication plus v0.4 Command Boundary sequence.
+- Subgoal: implement `boundary command classify` without execution.
+- Branch: `codex/2026-05-27-command-classifier`
+- Scope: command classification only. No command runner, policy enforcement,
+  shell shims, subshell launcher, decision-record writer, README promotion, or
+  release truth change.
+
+### What changed
+
+- Added `internal/commandboundary/` with command classes, risk posture,
+  classifier rules, and redaction helpers.
+- Added `boundary command classify [--json] -- <command> [args...]`.
+- Added `docs/command-boundary/CLASSIFY.md`.
+- Added internal classifier tests and CLI integration tests under
+  `tests/commandboundary/`.
+
+### Verification
+
+- `go test ./internal/commandboundary/... -count=1 -timeout 5m`: pass.
+- `go test ./tests/commandboundary/... -count=1 -timeout 5m`: pass.
+- `go test ./claims/... -count=1`: pass.
+- `go test ./... -short -count=1 -timeout 5m`: pass.
+- `git diff --check`: pass.
+- `go run ./cmd/boundary command classify -- git push origin main`: pass.
+- `go run ./cmd/boundary command classify --json -- cat .env`: pass.
+
+### Notes For Next Step
+
+- The next branch can add `boundary command run` with pre-execution policy
+  evaluation and decision records.
+- Keep the runner separate from project shell/shim work so direct execution
+  semantics stay testable.
+
 ## 2026-05-27 - Command Boundary Design Docs
 
 ### Context
