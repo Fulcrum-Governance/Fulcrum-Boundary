@@ -6,6 +6,10 @@ Audited commit: `5cda5d4b17202c00216081812a3baf2ea1981b94`
 
 Branch: `audit/claims-evidence`
 
+Note: This report records the Step 2 claims audit state. For the final
+post-adapter release truth, see
+[`docs/RELEASE_TRUTH_RECONCILIATION.md`](./RELEASE_TRUTH_RECONCILIATION.md).
+
 ## Summary
 
 The evidence audit found no missing cited evidence paths and no unsupported
