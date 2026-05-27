@@ -37,7 +37,7 @@ Step states are `implemented`, `delegated`, `not_applicable`, or `stub`.
 
 ## Readiness Matrix
 
-| Adapter | Status | Target | parse | identify | evaluate | deny | forward | inspect | metadata | record | bypass_proof | fail_closed | Key gap |
+| Adapter/Profile | Status | Target | parse | identify | evaluate | deny | forward | inspect | metadata | record | bypass_proof | fail_closed | Key gap |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | mcp | production | production | implemented | implemented | implemented | implemented | implemented | implemented | implemented | delegated | delegated | implemented | Production proxy path ships with lifecycle tests; bypass proof remains a deployment topology contract. |
 | cli | preview | preview | implemented | implemented | delegated | implemented | implemented | implemented | implemented | delegated | delegated | implemented | BND-CLI-002: production requires deployment evidence that the Boundary wrapper is the sole command path. |
@@ -46,8 +46,11 @@ Step states are `implemented`, `delegated`, `not_applicable`, or `stub`.
 | managedagents | preview | production | implemented | implemented | implemented | implemented | implemented | implemented | implemented | delegated | delegated | implemented | BND-MAPROD-001: live upstream Managed Agents conformance run with operator-owned credentials. |
 | webhook | preview | preview | implemented | implemented | implemented | implemented | delegated | implemented | delegated | delegated | delegated | implemented | BND-WEB-001: production requires deployment evidence that execution webhooks are the sole downstream action path; informational webhooks remain post-execution audit only. |
 | a2a | preview | preview | implemented | implemented | delegated | implemented | implemented | implemented | implemented | delegated | delegated | implemented | BND-A2A-002: live protocol conformance and deployment bypass evidence before production. |
+| securegithub | preview | preview | implemented | implemented | delegated | implemented | implemented | implemented | implemented | delegated | delegated | implemented | BND-GH-001: live GitHub App conformance and deployment bypass evidence before production. |
 
-MCP is the first production adapter. Managed Agents now has a preview proxy
+MCP is the first production adapter. Secure GitHub is a Secure MCP profile, not
+a standalone transport, but it declares the same lifecycle so its preview
+claims can be tested with the rest of the adapter surface. Managed Agents now has a preview proxy
 path. A2A now has a preview governed lifecycle against a documented protocol
 snapshot. CodeExec now has a preview governed lifecycle, but remains below
 production until a real named sandbox boundary is tested and documented. gRPC
@@ -55,5 +58,8 @@ now has a preview unary lifecycle with governance trailers and response
 inspection; streaming workloads remain below production until per-message
 governance is implemented and tested. Webhook now separates informational
 post-execution audit mode from execution pre-approval mode, but remains below
-production until deployment bypass evidence exists. Other adapters remain below
-production until an adapter-specific spec proves their full lifecycle.
+production until deployment bypass evidence exists. Secure GitHub now has a
+preview fixture profile for write-after-taint denial, but remains below
+production until live GitHub App conformance and bypass evidence exist. Other
+adapters remain below production until an adapter-specific spec proves their
+full lifecycle.

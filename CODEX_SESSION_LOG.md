@@ -1,5 +1,48 @@
 # CODEX Session Log
 
+## 2026-05-27 - Secure GitHub MCP Preview Profile
+
+### Context
+
+- Parent goal: Firewall + Secure GitHub MCP release train.
+- Subgoal: `Subgoal 7 - Secure GitHub MCP Preview Profile`.
+- Branch: `codex/2026-05-27-secure-github-mcp`
+- Scope: fixture-first Secure GitHub MCP profile, CLI setup/serve commands, docs, tests, readiness, and claim entry.
+
+### What changed
+
+- Added `adapters/securegithub` as a preview Secure MCP profile for GitHub fixture governance.
+- Added GitHub tool classification for the MVP tool set: `R0`, `W0`, `W1`, and `W2`.
+- Added session taint tracking, one-repo-per-session binding, fixture collaborator handling, and MCP-shaped denial responses.
+- Added default policy rules for one-repo scope violations and W1/W2 private-repo writes after external GitHub taint.
+- Added `boundary secure github setup` and `boundary secure github serve` with fixture-only behavior and live-mode fail-closed handling.
+- Routed the existing GitHub lethal-trifecta redteam fixture through the shared Secure GitHub policy rules.
+- Added Secure GitHub docs, redteam docs, bypass-proofing docs, readiness declaration, and delivered claim `BND-CLAIM-015`.
+- Updated adapter/profile maturity language so Secure GitHub is preview and not described as production or live GitHub App conformance evidence.
+
+### Verification
+
+- `go test ./adapters/securegithub/... -count=1 -timeout 5m`: pass
+- `go test ./tests/securegithub/... -count=1 -timeout 5m`: pass
+- `go test ./tests/redteam/... -run GitHub -count=1 -timeout 5m`: pass
+- `go test ./claims/... -count=1`: pass
+- `go test ./internal/boundarycli/... -count=1 -timeout 5m`: pass
+- `go test ./tests/adapter_conformance/... -count=1 -timeout 5m`: pass
+- `go test ./... -short -count=1 -timeout 5m`: pass
+- `go vet ./...`: pass
+- `git ls-files '*.go' | xargs gofmt -l`: pass, empty
+- `golangci-lint run --timeout=5m`: pass, `0 issues`
+- `gosec ./adapters/securegithub/... ./internal/boundarycli/... ./internal/redteam/... ./tests/securegithub/... ./tests/redteam/...`: pass, `Issues: 0`
+- `git diff --check`: pass
+- `go run ./cmd/boundary secure github setup --out "$tmp/secure-github"`: pass
+- `go run ./cmd/boundary secure github serve --dry-run`: pass
+- `go run ./cmd/boundary redteam --format json --pack github-lethal-trifecta`: pass
+
+### Notes For Next Step
+
+- If merged, start demo and YC launch surface from clean `main`.
+- Secure GitHub remains preview until live GitHub App conformance and deployment bypass evidence are recorded.
+
 ## 2026-05-27 - Redteam Framework And GitHub Lethal-Trifecta Fixture
 
 ### Context

@@ -13,7 +13,7 @@ Fulcrum Boundary is the out-of-process action boundary for production AI agents.
 
 The first packaged release is the **MCP Safety Gateway**: route a Postgres tool call through Boundary, allow a safe `SELECT`, block a destructive `DROP TABLE`, demonstrate that the demo agent cannot bypass the gateway network path, and inspect the structured decision record.
 
-Boundary includes a production MCP adapter plus CLI, CodeExec, gRPC, Managed Agents, Webhook, and A2A adapter packages with maturity tracked per adapter. Direct tool calls are governed only when routed through Boundary and when the deployment topology prevents the agent from reaching the privileged tool directly.
+Boundary includes a production MCP adapter plus CLI, CodeExec, gRPC, Managed Agents, Webhook, A2A, and Secure GitHub preview adapter packages with maturity tracked per adapter. Direct tool calls are governed only when routed through Boundary and when the deployment topology prevents the agent from reaching the privileged tool directly.
 
 Public language follows the Boundary lexicon and claim rules in
 [`docs/LANGUAGE_SYSTEM.md`](./docs/LANGUAGE_SYSTEM.md),
@@ -128,9 +128,9 @@ Agent Request
 Every stage returns early on a terminal decision. Audit events fire regardless
 of outcome.
 
-## Transport Adapters
+## Adapters And Profiles
 
-Boundary tracks adapter maturity explicitly. See
+Boundary tracks adapter and profile maturity explicitly. See
 [`docs/ADAPTER_READINESS_MATRIX.md`](./docs/ADAPTER_READINESS_MATRIX.md) and the
 per-adapter `readiness.yaml` files for the ten-step lifecycle behind each row.
 
@@ -150,6 +150,7 @@ per-adapter `readiness.yaml` files for the ten-step lifecycle behind each row.
 | Managed Agents | `adapters/managedagents` | Managed Agents session streams in preview proxy mode, with policy-driven tool confirmations, thread budget tracking, and a documented credential-bound bypass model; production status requires a live upstream conformance run |
 | Webhook | `adapters/webhook` | HTTP webhook payloads in explicit informational audit mode or execution pre-approval mode; only execution mode can deny before forwarding |
 | A2A | `adapters/a2a` | Agent-to-agent task/message envelopes in preview mode, with a documented protocol snapshot, governed forwarding, denial shaping, response inspection, governance metadata, and fail-closed handling for malformed or unsupported mandatory fields |
+| Secure GitHub | `adapters/securegithub` | Secure MCP preview profile for fixture GitHub write-after-taint denial; live GitHub App conformance and bypass proof are required before production status |
 
 Each adapter implements the `governance.TransportAdapter` interface. Adding a
 new transport is a matter of satisfying that interface and declaring lifecycle
