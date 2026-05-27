@@ -1,5 +1,28 @@
 # CODEX Session Log
 
+## 2026-05-27 - Command Boundary Classifier CI Lint Fix
+
+### Context
+
+- PR #72 CI found `gocritic` `unnamedResult` findings in
+  `internal/commandboundary/classifier.go`.
+- Scope: lint-only classifier helper signature cleanup. No classifier behavior,
+  command taxonomy, redaction semantics, CLI output, or claim status changed.
+
+### What changed
+
+- Added named return values to command classifier helper functions so
+  `golangci-lint` passes under the repository lint profile.
+
+### Verification
+
+- `go test ./internal/commandboundary/... -count=1 -timeout 5m`: pass.
+- `go test ./tests/commandboundary/... -count=1 -timeout 5m`: pass.
+- `go test ./claims/... -count=1`: pass.
+- `go test ./... -short -count=1 -timeout 5m`: pass.
+- `golangci-lint run --timeout=5m`: pass, `0 issues`.
+- `git diff --check`: pass.
+
 ## 2026-05-27 - Command Boundary Classifier
 
 ### Context

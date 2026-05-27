@@ -25,7 +25,7 @@ func Classify(argv []string) (Classification, error) {
 	}, nil
 }
 
-func classifyCommand(command string, args []string) (Class, string) {
+func classifyCommand(command string, args []string) (class Class, reason string) {
 	name := strings.ToLower(command)
 	if hasSecretArgument(args) {
 		return ClassCredentialAccess, "credential or secret access"
@@ -85,7 +85,7 @@ func classifyCommand(command string, args []string) (Class, string) {
 	}
 }
 
-func classifyGit(args []string) (Class, string) {
+func classifyGit(args []string) (class Class, reason string) {
 	if len(args) == 0 {
 		return ClassObserveRead, "git help or status"
 	}
@@ -105,7 +105,7 @@ func classifyGit(args []string) (Class, string) {
 	}
 }
 
-func classifyGH(args []string) (Class, string) {
+func classifyGH(args []string) (class Class, reason string) {
 	if len(args) == 0 {
 		return ClassObserveRead, "GitHub CLI help or status"
 	}
@@ -127,7 +127,7 @@ func classifyGH(args []string) (Class, string) {
 	}
 }
 
-func classifyGHPR(args []string) (Class, string) {
+func classifyGHPR(args []string) (class Class, reason string) {
 	if len(args) == 0 || isObserveSubcommand(args[0]) {
 		return ClassObserveRead, "pull request observation"
 	}
@@ -144,7 +144,7 @@ func classifyGHPR(args []string) (Class, string) {
 	}
 }
 
-func classifyPackageManager(name string, args []string) (Class, string) {
+func classifyPackageManager(name string, args []string) (class Class, reason string) {
 	if hasSecretArgument(args) {
 		return ClassCredentialAccess, "credential or secret access"
 	}
@@ -168,7 +168,7 @@ func classifyPackageManager(name string, args []string) (Class, string) {
 	return ClassPackageLifecycle, "package lifecycle command"
 }
 
-func classifyDocker(args []string) (Class, string) {
+func classifyDocker(args []string) (class Class, reason string) {
 	if hasSecretArgument(args) {
 		return ClassCredentialAccess, "credential or secret access"
 	}
@@ -178,7 +178,7 @@ func classifyDocker(args []string) (Class, string) {
 	return ClassInfrastructureMutation, "runtime mutation"
 }
 
-func classifyInfrastructure(name string, args []string) (Class, string) {
+func classifyInfrastructure(name string, args []string) (class Class, reason string) {
 	if hasSecretArgument(args) {
 		return ClassCredentialAccess, "credential or secret access"
 	}
