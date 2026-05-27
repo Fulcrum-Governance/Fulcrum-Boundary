@@ -144,7 +144,7 @@ func parseConfig(path string, client ClientType, body []byte) ([]Server, error) 
 	if err := json.Unmarshal(body, &config); err != nil {
 		return nil, err
 	}
-	servers := make([]Server, 0, len(config.MCPServers)+len(config.Servers))
+	servers := make([]Server, 0, len(config.MCPServers))
 	appendServers := func(entries map[string]rawServer) {
 		names := make([]string, 0, len(entries))
 		for name := range entries {

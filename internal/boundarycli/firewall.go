@@ -101,6 +101,14 @@ func runFirewallInit(args []string, stdout, stderr io.Writer) int {
 }
 
 func runFirewallInventory(args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 {
+		switch args[0] {
+		case "ingest":
+			return runFirewallInventoryIngest(args[1:], stdout, stderr)
+		case "help":
+			args = []string{"--help"}
+		}
+	}
 	fs := newFlagSet("boundary inventory", stderr)
 	root := fs.String("root", ".", "project root to inspect for repo-local MCP configs")
 	home := fs.String("home", "", "home directory to inspect for user MCP configs")

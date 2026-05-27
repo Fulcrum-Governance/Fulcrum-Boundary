@@ -90,7 +90,7 @@ Usage:
 
 Commands:
   init            Initialize a Boundary firewall workspace
-  inventory       Discover MCP configs and inventory server capabilities
+  inventory       Discover MCP configs or ingest inventory records
   graph           Render inventory-derived MCP risk paths
   dashboard       Render a local-only firewall dashboard
   install         Rewrite selected MCP configs through a Boundary route
