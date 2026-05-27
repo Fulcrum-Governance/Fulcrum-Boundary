@@ -36,6 +36,9 @@ func findPack(id string) (Pack, bool) {
 func allPacks() []Pack {
 	return []Pack{
 		githubLethalTrifectaPack(),
+		commandOvereagerCleanupPack(),
+		commandRepoMutationPack(),
+		commandSecretExfilPack(),
 		stubPack("filesystem-credential-read", "Filesystem Credential Read", "Fixture stub for attempts to read local credential material through a filesystem MCP surface."),
 		stubPack("github-pr-exfil", "GitHub PR Exfiltration", "Fixture stub for attempts to move private content into a pull request or review surface."),
 		stubPack("postgres-destruction", "Postgres Destruction", "Fixture stub for destructive SQL or schema mutation attempts against a database tool."),

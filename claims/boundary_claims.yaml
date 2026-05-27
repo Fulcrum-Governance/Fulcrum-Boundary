@@ -455,3 +455,28 @@ claims:
         - "Boundary provides shell sandboxing"
     gaps: []
     depends_on: []
+
+  - id: BND-CLAIM-CMD-002
+    claim: "Boundary runs fixture Command Boundary redteam packs that deny selected command-risk paths without live mutation"
+    status: delivered
+    evidence:
+      tests:
+        - path: internal/redteam/redteam_test.go
+          assertion: "Command Boundary redteam packs classify and evaluate fixture commands without executing them"
+        - path: tests/redteam/command_redteam_test.go
+          assertion: "boundary redteam command packs report fixture-only deny and require-approval outcomes with executed=false"
+      docs:
+        - path: docs/command-boundary/REDTEAM.md
+          section: "Command Boundary Redteam"
+    public_language:
+      allowed:
+        - "Boundary runs fixture Command Boundary redteam packs that deny selected command-risk paths without live mutation."
+        - "Command Boundary fixtures demonstrate expected deny or require-approval outcomes for tested routed command paths."
+      forbidden:
+        - "Boundary prevents all overeager command behavior"
+        - "Boundary blocks all malicious shell commands"
+        - "Boundary protects direct shell access"
+        - "Boundary proves global command safety"
+    gaps: []
+    depends_on:
+      - BND-CLAIM-CMD-001

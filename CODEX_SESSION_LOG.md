@@ -1726,3 +1726,35 @@
 
 - Branch: `codex/2026-05-26-boundary-phase1-foundation`.
 - All phases in `.claude/sprint/BOUNDARY_SPEC_SERIES.md` have been implemented, validated, and committed in sequence.
+
+## 2026-05-27 — Command Boundary Redteam Fixtures
+
+### Context
+
+- Branch: `codex/2026-05-27-command-redteam-fixtures`, cut from `main` after PR #74 landed as `5013497`.
+- Scope: Command Boundary preview redteam packs only. Keep fixtures no-credential, no-network, and no-mutation; do not change v0.3.0 release truth.
+
+### Built
+
+- Added implemented command redteam packs: `command-overeager-cleanup`, `command-secret-exfil`, and `command-repo-mutation`.
+- Extended the existing redteam harness so command scenarios classify argv, evaluate the Command Boundary preview policy, emit decision records, and always report `executed=false`.
+- Added command metadata to redteam text/JSON output: redacted command line, command class, risk, and execution status.
+- Added command redteam tests for CLI output, JSON output, pack listing, expected deny/require-approval outcomes, and fixture-only safety.
+- Added `docs/command-boundary/REDTEAM.md`, refreshed `docs/command-boundary/REDTEAM_FIXTURES.md`, and added delivered claim `BND-CLAIM-CMD-002`.
+
+### Verification
+
+- `go test ./internal/redteam/... -count=1 -timeout 5m`: pass.
+- `go test ./tests/redteam/... -run Command -count=1 -timeout 5m`: pass.
+- `go test ./claims/... -count=1`: pass.
+- `go test ./... -short -count=1 -timeout 5m`: pass.
+- `./scripts/docs-build.sh`: pass.
+- `git diff --check`: pass.
+- `git ls-files '*.go' | xargs gofmt -l`: pass.
+- `golangci-lint run --timeout=5m`: pass.
+- `make release-check`: pass.
+
+### Notes
+
+- `command-repo-mutation` uses `require_approval` for repository and package lifecycle mutation under the preview policy; infrastructure mutation remains `deny`.
+- Fixture commands are not executed. They are classified and evaluated through the shared governance pipeline to preserve the "decide before execution" boundary.
