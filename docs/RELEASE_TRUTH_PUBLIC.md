@@ -2,9 +2,11 @@
 
 Date: 2026-05-27
 
-Audited code commit SHA: `1ad95e3ba9a0ab168dd78d4153dd568b16e7e4b2`
+Audited code commit SHA: `00ee273582aa7d275d04c37d78e40e6fc25cf117`
 
-Branch: `codex/2026-05-27-final-public-truth`
+Branch: `main`
+
+Release tag: `v0.3.0`
 
 ## Summary
 
@@ -28,7 +30,9 @@ The final public truth is:
 - Boundary governs routed tools. Tools that bypass Boundary are outside the
   governed route.
 - The public Go install path requires Go 1.25+.
-- Public action examples use `@main` until a post-rename action tag exists.
+- Public install examples use the repeatable `@v0.3.0` release tag; `@latest`
+  resolves to `v0.3.0`.
+- Public action examples use `@v0.3.0` for repeatable CI behavior.
 
 ## Test Commands
 
@@ -40,15 +44,16 @@ The final public truth is:
 | `go run ./cmd/boundary selftest` | Pass: all ten selftest checks passed without credentials, network mutation, or live mutation |
 | `go run ./cmd/boundary demo github-lethal-trifecta` | Pass: `actual action: DENY`, `reason: lethal_trifecta_detected`, `upstream_called=false` |
 | `go run ./cmd/boundary inventory ingest --file fixtures/external-inventory/external-mcp-inventory.ndjson --source external-mcp --summary` | Pass: complete snapshot, 3 records read, 1 MCP config, 1 MCP server |
-| `GOPROXY=direct go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@1ad95e3ba9a0ab168dd78d4153dd568b16e7e4b2` | Pass: installed binary ran `boundary selftest` successfully |
-| `GOPROXY=direct go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@latest` | Fails until a post-rename release tag supersedes `v0.2.0`, which still declares the old module path. Public install examples use `@main` until that tag exists. |
+| `GOPROXY=direct GOBIN="$tmp/bin" go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.3.0` | Pass: installed binary ran `boundary selftest` and `boundary demo github-lethal-trifecta` successfully |
+| `GOPROXY=https://proxy.golang.org,direct go list -m -json github.com/fulcrum-governance/fulcrum-boundary@latest` | Pass: `@latest` resolves to `v0.3.0` |
+| `GOPROXY=https://proxy.golang.org,direct GOBIN="$tmp/bin" go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@latest` | Pass: installed binary ran `boundary selftest` successfully |
 
 ## README First-Run Status
 
 README presents the first-run path before architecture:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@main
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.3.0
 boundary selftest
 ```
 
@@ -116,18 +121,17 @@ boundary demo github-lethal-trifecta
 
 ## User-Install Status
 
-The documented install path is:
+The documented repeatable install path is:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@main
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.3.0
 ```
 
 Requires Go 1.25+.
 
-`@main` follows the current public default branch while the first post-rename
-release tag is pending. `@latest` currently resolves to `v0.2.0`, which still
-declares the old module path, so `@latest` must not be used in public first-run
-copy until a post-rename tag is cut.
+`@latest` has been verified through `proxy.golang.org` and resolves to
+`v0.3.0`. README keeps `@v0.3.0` as the primary copy/paste command for
+repeatability.
 
 No Homebrew, package-manager, or hosted distribution channel is claimed.
 
@@ -136,10 +140,10 @@ No Homebrew, package-manager, or hosted distribution channel is claimed.
 The MCP audit action examples use:
 
 ```yaml
-- uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@main
+- uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.3.0
 ```
 
-Use `@main` until a post-rename action tag exists. SARIF upload examples must
+Use the release tag for repeatable CI behavior. SARIF upload examples must
 include `contents: read` and `security-events: write` permissions.
 
 ## External Inventory Ingest Status
