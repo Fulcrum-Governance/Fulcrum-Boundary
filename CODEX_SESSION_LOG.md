@@ -1,5 +1,32 @@
 # CODEX Session Log
 
+## 2026-05-27 - Secure MCP Contract
+
+### Context
+
+- Parent goal: Firewall + Secure GitHub MCP release train.
+- Subgoal: `Subgoal 2 - Secure MCP Contract`.
+- Branch: `codex/2026-05-27-secure-mcp-contract`
+- Scope: docs and changelog only; no runtime or claim-status changes.
+
+### What changed
+
+- Added `docs/SECURE_MCP_CONTRACT.md`.
+- Added `docs/SECURE_MCP_SERVER_TEMPLATE.md`.
+- Added `docs/SECURE_MCP_TOOL_TAXONOMY.md`.
+- Added `docs/secure-mcp/README.md`.
+- Updated `CHANGELOG.md` with the Secure MCP contract entry.
+
+### Verification
+
+- `go test ./claims/... -count=1`: pass
+- `go test ./... -short -count=1 -timeout 5m`: pass
+- `git diff --check`: pass
+
+### Notes For Next Step
+
+- If merged, start Firewall discovery and inventory from clean `main`.
+
 ## 2026-05-27 - Language System Lock
 
 ### Context
