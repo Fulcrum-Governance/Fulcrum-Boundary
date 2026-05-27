@@ -286,6 +286,30 @@ claims:
     gaps: []
     depends_on: []
 
+  - id: BND-CLAIM-014
+    claim: "Boundary runs fixture redteam packs that demonstrate expected deny outcomes without real secrets or live system mutation"
+    status: delivered
+    evidence:
+      tests:
+        - path: internal/redteam/redteam_test.go
+          assertion: "Default GitHub lethal-trifecta fixture denies write-after-taint, emits a decision record, and uses no real secrets or live mutation"
+        - path: tests/redteam/redteam_cli_test.go
+          assertion: "boundary redteam reports expected DENY, actual DENY, reason, decision record output, fixture-only safety, and stub pack listing"
+      docs:
+        - path: docs/firewall/REDTEAM.md
+          section: "MCP Firewall Redteam Fixtures"
+    public_language:
+      allowed:
+        - "Boundary runs fixture redteam packs for expected deny outcomes without real secrets or live mutation."
+        - "The GitHub lethal-trifecta fixture demonstrates write-after-taint denial before upstream execution in fixture mode."
+      forbidden:
+        - "Boundary has live GitHub exploit conformance"
+        - "Redteam fixtures prove all MCP attacks are blocked"
+        - "Fixture redteam mutates real systems"
+        - "Boundary prevents every prompt injection attack"
+    gaps: []
+    depends_on: []
+
   - id: BND-CLAIM-004
     claim: "Boundary is a SQL firewall"
     status: "false"

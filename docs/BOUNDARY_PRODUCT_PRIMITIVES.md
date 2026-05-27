@@ -74,6 +74,7 @@ Evidence target:
 - `boundary redteam`
 - `github-lethal-trifecta` fixture
 - Decision records for expected deny outcomes
+- [`docs/firewall/REDTEAM.md`](./firewall/REDTEAM.md)
 
 Claim boundary:
 

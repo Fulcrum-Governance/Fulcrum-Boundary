@@ -1,5 +1,39 @@
 # CODEX Session Log
 
+## 2026-05-27 - Redteam Framework And GitHub Lethal-Trifecta Fixture
+
+### Context
+
+- Parent goal: Firewall + Secure GitHub MCP release train.
+- Subgoal: `Subgoal 6 - Redteam Framework And GitHub Lethal-Trifecta Fixture`.
+- Branch: `codex/2026-05-27-redteam-lethal-trifecta`
+- Scope: fixture-only redteam runner, `boundary redteam` CLI, GitHub write-after-taint denial fixture, redteam docs, tests, and claim entry.
+
+### What changed
+
+- Added `internal/redteam` with a fixture runner that uses the existing governance pipeline and builds decision records from captured audit events.
+- Added the implemented `github-lethal-trifecta` pack for external GitHub content taint followed by protected private-repo file mutation.
+- Added reserved redteam pack stubs for secrets exfiltration, tool poisoning, rug pull, Postgres destruction, GitHub PR exfiltration, filesystem credential reads, and Slack exfiltration.
+- Added `boundary redteam` with default fixture mode, JSON/text output, pack listing, and fail-closed rejection of non-fixture modes.
+- Added `docs/firewall/REDTEAM.md`.
+- Added delivered claim `BND-CLAIM-014` for fixture redteam packs with expected deny outcomes and no live mutation.
+
+### Verification
+
+- `go test ./internal/redteam/... -count=1 -timeout 5m`: pass
+- `go test ./tests/redteam/... -count=1 -timeout 5m`: pass
+- `go test ./claims/... -count=1`: pass
+- `go test ./internal/boundarycli/... -count=1 -timeout 5m`: pass
+- `go run ./cmd/boundary redteam`: pass
+- `go test ./... -short -count=1 -timeout 5m`: pass
+- `go vet ./...`: pass
+- `golangci-lint run --timeout=5m`: pass, `0 issues`
+- `git diff --check`: pass
+
+### Notes For Next Step
+
+- If merged, start Secure GitHub MCP preview profile from clean `main`.
+
 ## 2026-05-27 - Firewall Install, Uninstall, And Descriptor Lock
 
 ### Context
