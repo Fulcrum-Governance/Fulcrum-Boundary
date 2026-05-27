@@ -4,6 +4,8 @@ Fulcrum Boundary ships the `boundary` CLI from the Go module
 `github.com/fulcrum-governance/fulcrum-boundary`. The binary name remains
 `boundary`.
 
+Requires Go 1.25+.
+
 ## Go Install
 
 ```bash

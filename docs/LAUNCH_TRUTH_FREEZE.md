@@ -128,6 +128,9 @@ developer path and machine-ingest surfaces easier to verify:
   or compatibility claim.
 - The MCP audit GitHub Action scans repo-local MCP configs by default and emits
   Markdown and optional SARIF reports. It is CI audit/reporting only.
+- MCP audit GitHub Action examples use `@main` until a post-rename action tag
+  exists, and SARIF upload examples require `security-events: write`.
+- Public Go install paths require Go 1.25+.
 - Generated policies remain starter policies for operator review.
 - The dashboard remains local-only visibility over local artifacts.
 - Secure GitHub remains preview until live GitHub App conformance and

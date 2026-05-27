@@ -22,6 +22,8 @@ Final public posture:
   adoption signals.
 - Public install examples use `@main` until a post-rename release tag supersedes
   the stale `v0.2.0` module tag.
+- The public Go install path requires Go 1.25+.
+- GitHub Action examples use `@main` until a post-rename action tag exists.
 
 ## Test Commands
 
@@ -79,6 +81,8 @@ resolves to `v0.2.0`, whose `go.mod` still declares the old
 `github.com/fulcrum-governance/boundary` module path. Cut a post-rename release
 tag before moving public install copy back to `@latest`.
 
+The public Go install path requires Go 1.25+.
+
 ## Docs-Site Status
 
 Status: buildable repository artifact.
@@ -94,6 +98,9 @@ Status: delivered as repo-local CI audit/reporting.
 The MCP audit action documentation states that the action audits repository MCP
 configs, emits Markdown and optional SARIF reports, and does not provide runtime
 protection unless the relevant tool calls are routed through Boundary.
+
+Action examples use `@main` until a post-rename action tag exists. SARIF upload
+examples include `contents: read` and `security-events: write` permissions.
 
 The docs do not claim a Marketplace release, package distribution, or runtime
 enforcement from the action.

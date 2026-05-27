@@ -9,6 +9,8 @@
 
 ## Try It In One Minute
 
+Requires Go 1.25+.
+
 ```bash
 go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@main
 boundary selftest
@@ -72,6 +74,8 @@ mutation.
 ## Install
 
 Install the `boundary` CLI with Go:
+
+Requires Go 1.25+.
 
 ```bash
 go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@main

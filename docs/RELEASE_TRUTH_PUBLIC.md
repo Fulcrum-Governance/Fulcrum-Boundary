@@ -27,6 +27,8 @@ The final public truth is:
 - The GitHub Action is repo-local CI audit/reporting only.
 - Boundary governs routed tools. Tools that bypass Boundary are outside the
   governed route.
+- The public Go install path requires Go 1.25+.
+- Public action examples use `@main` until a post-rename action tag exists.
 
 ## Test Commands
 
@@ -120,12 +122,25 @@ The documented install path is:
 go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@main
 ```
 
+Requires Go 1.25+.
+
 `@main` follows the current public default branch while the first post-rename
 release tag is pending. `@latest` currently resolves to `v0.2.0`, which still
 declares the old module path, so `@latest` must not be used in public first-run
 copy until a post-rename tag is cut.
 
 No Homebrew, package-manager, or hosted distribution channel is claimed.
+
+## GitHub Action Ref Status
+
+The MCP audit action examples use:
+
+```yaml
+- uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@main
+```
+
+Use `@main` until a post-rename action tag exists. SARIF upload examples must
+include `contents: read` and `security-events: write` permissions.
 
 ## External Inventory Ingest Status
 
