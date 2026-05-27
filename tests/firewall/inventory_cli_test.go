@@ -77,6 +77,60 @@ func TestBoundaryInitDoesNotMutateMCPConfig(t *testing.T) {
 	}
 }
 
+func TestBoundaryGraphCLIReportsRiskPaths(t *testing.T) {
+	root := t.TempDir()
+	home := t.TempDir()
+	writeFile(t, filepath.Join(root, ".mcp.json"), `{
+  "mcpServers": {
+    "github": {"command": "github-mcp-server"},
+    "slack": {"command": "slack-mcp"}
+  }
+}`)
+
+	var stdout bytes.Buffer
+	code := boundarycli.Run([]string{"graph", "--root", root, "--home", home}, &stdout, &bytes.Buffer{})
+	if code != 0 {
+		t.Fatalf("graph exit = %d, output=%s", code, stdout.String())
+	}
+	for _, want := range []string{`"schema_version": "boundary.firewall.risk_graph.v1"`, `"category": "repo_write_path"`, `"category": "external_sink"`} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Fatalf("graph output missing %q: %s", want, stdout.String())
+		}
+	}
+
+	stdout.Reset()
+	code = boundarycli.Run([]string{"graph", "--root", root, "--home", home, "--format", "mermaid"}, &stdout, &bytes.Buffer{})
+	if code != 0 {
+		t.Fatalf("mermaid graph exit = %d", code)
+	}
+	if !strings.Contains(stdout.String(), "flowchart LR") || !strings.Contains(stdout.String(), "repo_write_path") {
+		t.Fatalf("mermaid graph missing expected risk path: %s", stdout.String())
+	}
+}
+
+func TestBoundaryPolicyGenerateCreatesVerifiablePolicies(t *testing.T) {
+	outDir := filepath.Join(t.TempDir(), "policies")
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := boundarycli.Run([]string{"policy", "generate", "--out", outDir}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("policy generate exit = %d, stderr=%s", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "mode: balanced") || !strings.Contains(stdout.String(), "starter policies: 6") {
+		t.Fatalf("policy generate output missing count: %s", stdout.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code = boundarycli.Run([]string{"verify", "--policies", outDir}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("generated policies did not verify: stdout=%s stderr=%s", stdout.String(), stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "warnings: 0") {
+		t.Fatalf("verify output had warnings: %s", stdout.String())
+	}
+}
+
 func writeFile(t *testing.T, path, body string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {

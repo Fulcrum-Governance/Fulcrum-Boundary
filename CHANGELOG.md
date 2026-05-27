@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - MCP Firewall `boundary init` and `boundary inventory` commands with read-only config discovery, capability classification, and JSON, Markdown, and SARIF reports.
+- MCP Firewall `boundary graph` and `boundary policy generate` commands with inventory-derived risk paths and verifiable starter policy templates.
 - Secure MCP contract, server template, tool taxonomy, and profile docs for claim-safe governed MCP profile development.
 - Fulcrum Boundary language system docs, lexicon, copy rules, product primitives, and a public-language lint gate for controlled overclaim phrases.
 - Boundary claims ledger with a machine-readable release truth gate.

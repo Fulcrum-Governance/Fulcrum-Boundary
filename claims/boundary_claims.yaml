@@ -239,6 +239,30 @@ claims:
     gaps: []
     depends_on: []
 
+  - id: BND-CLAIM-012
+    claim: "Boundary renders inventory-derived MCP risk graphs and generates verifiable starter firewall policies"
+    status: delivered
+    evidence:
+      tests:
+        - path: internal/firewall/graph_policy_test.go
+          assertion: "Risk graph detects untrusted input, repo write, external sink, descriptor, database, filesystem, and privileged mutation paths; starter policies load without warnings"
+        - path: tests/firewall/inventory_cli_test.go
+          assertion: "boundary graph renders JSON and Mermaid risk paths, and boundary policy generate creates policies that pass boundary verify"
+      docs:
+        - path: docs/firewall/RISK_GRAPH_POLICY_GENERATION.md
+          section: "MCP Firewall Risk Graph And Policy Generation"
+    public_language:
+      allowed:
+        - "Boundary renders inventory-derived MCP risk graphs and generates verifiable starter firewall policies."
+        - "Generated policies are starter policies that require operator review before deployment."
+      forbidden:
+        - "Boundary graph protects MCP servers"
+        - "Generated policies are production-complete"
+        - "Boundary detects every MCP exploit path"
+        - "Boundary proves runtime write-after-taint denial from generated policies alone"
+    gaps: []
+    depends_on: []
+
   - id: BND-CLAIM-004
     claim: "Boundary is a SQL firewall"
     status: "false"

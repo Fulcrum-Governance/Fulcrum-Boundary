@@ -1,5 +1,38 @@
 # CODEX Session Log
 
+## 2026-05-27 - Firewall Risk Graph And Policy Generation
+
+### Context
+
+- Parent goal: Firewall + Secure GitHub MCP release train.
+- Subgoal: `Subgoal 4 - Firewall Risk Graph And Policy Generation`.
+- Branch: `codex/2026-05-27-firewall-graph-policy`
+- Scope: inventory-derived graph rendering, starter policy generation, docs, tests, and claim entry.
+
+### What changed
+
+- Added `boundary graph` with JSON and Mermaid output.
+- Added inventory-derived risk-path detection for untrusted GitHub reads, private repo mutations, external publication, privileged mutations, descriptor-change review, destructive DB actions, filesystem exfiltration, and unclassified-review paths.
+- Added `boundary policy generate --mode balanced` with verifiable schema v1 starter policies for filesystem, GitHub, Postgres/database, Slack/messaging, shell, and descriptor integrity.
+- Added `docs/firewall/RISK_GRAPH_POLICY_GENERATION.md`.
+- Added delivered claim `BND-CLAIM-012` for risk graphs and verifiable starter policy generation.
+- Updated the human claims ledger with BND-CLAIM-011 and BND-CLAIM-012.
+
+### Verification
+
+- `go test ./internal/firewall/... -count=1 -timeout 5m`: pass
+- `go test ./tests/firewall/... -count=1 -timeout 5m`: pass
+- `go test ./claims/... -count=1`: pass
+- `go run ./cmd/boundary policy generate --out "$tmp/policies"`: pass
+- `go run ./cmd/boundary verify --policies "$tmp/policies"`: pass, `policy files: 6`, `rules: 12`, `warnings: 0`
+- `go test ./... -short -count=1 -timeout 5m`: pass
+- `git diff --check`: pass
+
+### Notes For Next Step
+
+- If merged, start Firewall install, uninstall, and descriptor lock from clean `main`.
+- Descriptor risk is currently graph/policy-generation evidence only. Real descriptor lockfile hashing and verification belongs to the next subgoal.
+
 ## 2026-05-27 - Firewall Discovery And Inventory
 
 ### Context
