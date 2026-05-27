@@ -1,5 +1,37 @@
 # CODEX Session Log
 
+## 2026-05-27 - Firewall + Secure GitHub Truth Reconciliation
+
+### Context
+
+- Parent goal: Firewall + Secure GitHub MCP release train.
+- Subgoal: `Subgoal 10 - Final Firewall + Secure GitHub Truth Reconciliation`.
+- Branch: `codex/2026-05-27-firewall-securegithub-truth`
+- Scope: release truth report, launch truth freeze, README copy tightening, changelog, and verification.
+
+### What changed
+
+- Added `docs/RELEASE_TRUTH_FIREWALL_SECUREGITHUB.md` covering claims, readiness, launch docs, demo docs, drift found/fixed, and remaining preview gates.
+- Added a dated Firewall + Secure GitHub release-train section to `docs/LAUNCH_TRUTH_FREEZE.md`.
+- Tightened the README opening description from broad production-agent language to the concrete privileged-tool action-boundary surface.
+- Updated the changelog with the final release truth report.
+
+### Verification
+
+- `go test ./... -count=1 -timeout 5m`: pass
+- `(cd adapters/grpc && go test ./... -count=1 -timeout 5m)`: pass
+- `go test ./tests/... -count=1 -timeout 5m`: pass
+- `go test ./claims/... -count=1 -timeout 5m`: pass
+- `go run ./cmd/boundary verify --policies examples/mcp-postgres-gateway/policies`: pass (`policy files: 1`, `rules: 5`, `warnings: 0`)
+- `go run ./cmd/boundary verify-record --help`: pass
+- `go run ./cmd/boundary inventory --help`: pass
+- `go run ./cmd/boundary redteam --help`: pass
+- `git diff --check`: pass
+
+### Notes For Next Step
+
+- After verification and merge, run branch cleanup and final goal closeout.
+
 ## 2026-05-27 - Release Demo And YC Surface
 
 ### Context
