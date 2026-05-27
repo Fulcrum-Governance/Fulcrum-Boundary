@@ -3,7 +3,7 @@
 The action boundary for MCP-native agents.
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@latest
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@main
 boundary selftest
 boundary demo github-lethal-trifecta
 ```

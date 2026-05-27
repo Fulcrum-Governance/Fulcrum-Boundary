@@ -39,13 +39,14 @@ The final public truth is:
 | `go run ./cmd/boundary demo github-lethal-trifecta` | Pass: `actual action: DENY`, `reason: lethal_trifecta_detected`, `upstream_called=false` |
 | `go run ./cmd/boundary inventory ingest --file fixtures/external-inventory/external-mcp-inventory.ndjson --source external-mcp --summary` | Pass: complete snapshot, 3 records read, 1 MCP config, 1 MCP server |
 | `GOPROXY=direct go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@1ad95e3ba9a0ab168dd78d4153dd568b16e7e4b2` | Pass: installed binary ran `boundary selftest` successfully |
+| `GOPROXY=direct go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@latest` | Fails until a post-rename release tag supersedes `v0.2.0`, which still declares the old module path. Public install examples use `@main` until that tag exists. |
 
 ## README First-Run Status
 
 README presents the first-run path before architecture:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@latest
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@main
 boundary selftest
 ```
 
@@ -116,13 +117,13 @@ boundary demo github-lethal-trifecta
 The documented install path is:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@latest
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@main
 ```
 
-Because public proxy and tag state can lag during repo/module rename windows,
-release verification uses an explicit commit-pinned install with `GOPROXY=direct`
-for the audited code commit. The installed binary must run `boundary selftest`
-without credentials.
+`@main` follows the current public default branch while the first post-rename
+release tag is pending. `@latest` currently resolves to `v0.2.0`, which still
+declares the old module path, so `@latest` must not be used in public first-run
+copy until a post-rename tag is cut.
 
 No Homebrew, package-manager, or hosted distribution channel is claimed.
 

@@ -20,6 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - MkDocs Material docs-site skeleton with GitHub Pages workflow and strict docs build target.
 - CLI reference, stable example output files, and intentional help text for first-run, firewall, demo, Secure GitHub, inventory ingest, install/uninstall, dashboard, and release verification commands.
 - Repository presentation guidance with description, topics, badge policy, social preview source, and first screenshot/GIF plan.
+- Final no-vendor repository presentation reconciliation, including README
+  install copy alignment to `@main` until a post-rename release tag exists.
 - Install and release workflow polish with `make selftest`, `make demo-github`, `make release-check`, and `docs/INSTALL.md`.
 - Final public release truth report covering README first-run status, claims, feature status, adapter/profile maturity, install status, external inventory ingest, and forbidden release language.
 - MCP Firewall `boundary dashboard` command with local-only text, JSON, HTML, and loopback server views over inventory, risk paths, policies, install receipts, descriptor locks, and local decision-record files.

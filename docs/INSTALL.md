@@ -7,13 +7,13 @@ Fulcrum Boundary ships the `boundary` CLI from the Go module
 ## Go Install
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@latest
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@main
 boundary selftest
 ```
 
-`@latest` follows the latest public Go module version visible to your Go
-toolchain and proxy. If the public proxy is briefly stale after a repository
-rename or release, retry with `GOPROXY=direct` or pin a known tag or commit.
+`@main` follows the current public default branch while the first post-rename
+release tag is pending. After a post-rename tag is cut, this command can move
+back to `@latest`.
 
 ## From Source
 

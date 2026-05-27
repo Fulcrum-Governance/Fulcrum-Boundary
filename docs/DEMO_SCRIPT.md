@@ -30,7 +30,7 @@ What the fixture does not prove:
 Use a local build or installed `boundary` binary.
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@latest
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@main
 boundary --help
 ```
 
@@ -204,4 +204,3 @@ Firewall surface. The Secure GitHub profile is preview, but the core demo is
 real: untrusted GitHub context plus a protected private-repo write becomes a
 deny-before-execute decision with an auditable record.
 ```
-
