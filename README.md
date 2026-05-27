@@ -11,9 +11,9 @@
 
 Fulcrum Boundary is the out-of-process action boundary for production AI agents. As a Go library and gateway binary, it evaluates tool calls against trust state, static policies, domain interceptors, and a portable policy engine before those calls reach the underlying tool.
 
-The first packaged release is the **MCP Safety Gateway**: route a Postgres tool call through Boundary, allow a safe `SELECT`, block a destructive `DROP TABLE`, prove the demo agent cannot bypass the gateway network path, and inspect the structured decision record.
+The first packaged release is the **MCP Safety Gateway**: route a Postgres tool call through Boundary, allow a safe `SELECT`, block a destructive `DROP TABLE`, demonstrate that the demo agent cannot bypass the gateway network path, and inspect the structured decision record.
 
-Boundary runs as part of an MCP proxy, CLI wrapper, code-execution gateway, gRPC interceptor, webhook adapter, or A2A adapter. Direct tool calls are governed only when routed through Boundary and when the deployment topology prevents the agent from reaching the privileged tool directly.
+Boundary includes a production MCP adapter plus CLI, CodeExec, gRPC, Managed Agents, Webhook, and A2A adapter packages with maturity tracked per adapter. Direct tool calls are governed only when routed through Boundary and when the deployment topology prevents the agent from reaching the privileged tool directly.
 
 ## MCP Safety Gateway Quick Start
 
@@ -142,7 +142,7 @@ per-adapter `readiness.yaml` files for the ten-step lifecycle behind each row.
 | CLI | `adapters/cli` | Shell commands including pipe chains, with a risk classifier; execution control is delegated to the host command wrapper |
 | Code exec | `adapters/codeexec` | Python and JavaScript source submitted to a sandbox, with obfuscation analysis; execution is delegated to the sandbox runtime |
 | gRPC | `adapters/grpc` | gRPC unary calls via a server interceptor in a separate module |
-| Managed Agents | `adapters/managedagents` | Managed Agents session streams in proxy mode, with policy-driven tool confirmations, thread budget tracking, and credential-bound bypass controls |
+| Managed Agents | `adapters/managedagents` | Managed Agents session streams in preview proxy mode, with policy-driven tool confirmations, thread budget tracking, and a documented credential-bound bypass model; production status requires a live upstream conformance run |
 | Webhook | `adapters/webhook` | HTTP webhook tool-call payloads, with handler-owned allow/deny response shaping |
 
 ### Experimental

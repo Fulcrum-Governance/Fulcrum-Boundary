@@ -35,8 +35,12 @@ claims:
     public_language:
       allowed:
         - "Every governed verdict produces a structured decision record."
-        - "Decision records include stable request, policy bundle, and decision hashes."
       forbidden:
+        - "receipt-grade decision record"
+        - "hash-verifiable record"
+        - "decision hashes"
+        - "tamper-detectable record"
+        - "signature"
         - "cryptographic proof of verdict"
     gaps: []
     depends_on: []
@@ -208,7 +212,7 @@ claims:
 
   - id: BND-CLAIM-004
     claim: "Boundary is a SQL firewall"
-    status: false
+    status: "false"
     evidence:
       tests: []
       docs:
