@@ -54,6 +54,7 @@ func languageLintPaths(t *testing.T, repoRoot string) []string {
 		"docs/*.md",
 		"docs/adapters/*.md",
 		"docs/firewall/*.md",
+		"docs/secure-mcp/*.md",
 		"docs/policies/*.md",
 		"docs/deployment/*.md",
 	}
@@ -115,7 +116,7 @@ func publicLanguageRules() []languageRule {
 		},
 		{
 			name:      "adapter maturity overclaim",
-			terms:     []string{"all adapters production", "six production adapters"},
+			terms:     []string{"all adapters production", "six production adapters", "seven production adapters"},
 			allowLine: negatedOrControlled,
 		},
 		{

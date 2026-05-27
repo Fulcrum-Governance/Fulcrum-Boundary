@@ -1,0 +1,42 @@
+adapter: securegithub
+status: preview
+target_status: preview
+lifecycle:
+  parse: implemented
+  identify: implemented
+  evaluate: delegated
+  deny: implemented
+  forward: implemented
+  inspect: implemented
+  metadata: implemented
+  record: delegated
+  bypass_proof: delegated
+  fail_closed: implemented
+delegated_steps:
+  - step: evaluate
+    owner: governance.Pipeline
+    contract: docs/SECURE_MCP_CONTRACT.md
+  - step: record
+    owner: governance.AuditPublisher
+    contract: docs/DECISION_RECORDS.md
+  - step: bypass_proof
+    owner: deployment topology
+    contract: docs/deployment/secure-github-bypass-proofing.md
+bypass_model: github-app-or-network-topology
+fail_closed_transports:
+  - mcp
+evidence:
+  tests:
+    - adapters/securegithub/adapter_test.go
+    - tests/securegithub/secure_github_cli_test.go
+    - tests/redteam/secure_github_integration_test.go
+  docs:
+    - docs/secure-mcp/GITHUB.md
+    - docs/secure-mcp/GITHUB_REDTEAM.md
+    - docs/deployment/secure-github-bypass-proofing.md
+    - docs/ADAPTER_READINESS_MATRIX.md
+gaps:
+  - id: BND-GH-001
+    description: "Secure GitHub remains preview until live GitHub App conformance evidence and deployment bypass proof are recorded."
+    spec: "Subgoal 7"
+

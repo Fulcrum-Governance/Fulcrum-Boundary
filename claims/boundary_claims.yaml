@@ -46,7 +46,7 @@ claims:
     depends_on: []
 
   - id: BND-CLAIM-003
-    claim: "Boundary ships one production MCP adapter and six preview adapter packages with lifecycle maturity tracked per adapter"
+    claim: "Boundary ships one production MCP adapter and seven preview adapter/profile packages with lifecycle maturity tracked per adapter"
     status: partial
     evidence:
       tests:
@@ -74,14 +74,19 @@ claims:
           assertion: "A2A request parsing, denial, forwarding, metadata, inspection, and fail-closed behavior are covered"
         - path: tests/adapters/a2a_lifecycle_test.go
           assertion: "A2A governed lifecycle denies before forwarding, forwards allowed tasks, emits records, and fails closed on malformed requests and pipeline errors"
+        - path: adapters/securegithub/adapter_test.go
+          assertion: "Secure GitHub preview profile denies W1/W2 private-repo mutations after taint before upstream execution and records taint metadata"
+        - path: tests/securegithub/secure_github_cli_test.go
+          assertion: "boundary secure github setup and serve dry-run expose preview fixture status and reject live mode"
       docs:
         - path: docs/ADAPTER_READINESS_MATRIX.md
           section: "Readiness Matrix"
     public_language:
       allowed:
-        - "Boundary includes a production MCP adapter plus CLI, CodeExec, gRPC, Managed Agents, Webhook, and A2A adapters with maturity tracked per adapter."
+        - "Boundary includes a production MCP adapter plus CLI, CodeExec, gRPC, Managed Agents, Webhook, A2A, and Secure GitHub preview adapter/profile packages with maturity tracked per adapter."
       forbidden:
         - "six production adapters"
+        - "seven production adapters"
         - "supports all major agent transports"
     gaps:
       - id: BND-MAPROD-001
@@ -307,6 +312,37 @@ claims:
         - "Redteam fixtures prove all MCP attacks are blocked"
         - "Fixture redteam mutates real systems"
         - "Boundary prevents every prompt injection attack"
+    gaps: []
+    depends_on: []
+
+  - id: BND-CLAIM-015
+    claim: "Boundary provides a preview Secure GitHub MCP profile for fixture write-after-taint denial before GitHub mutation"
+    status: delivered
+    adapter: securegithub
+    evidence:
+      tests:
+        - path: adapters/securegithub/adapter_test.go
+          assertion: "Secure GitHub denies W1 and W2 private-repo mutations after external GitHub taint before upstream execution"
+        - path: tests/securegithub/secure_github_cli_test.go
+          assertion: "boundary secure github setup and serve dry-run preserve preview fixture language and fail closed for live mode"
+        - path: tests/redteam/secure_github_integration_test.go
+          assertion: "Secure GitHub fixture path uses the shared write-after-taint policy and does not call upstream on denied write"
+      docs:
+        - path: docs/secure-mcp/GITHUB.md
+          section: "Secure GitHub MCP"
+        - path: docs/secure-mcp/GITHUB_REDTEAM.md
+          section: "Secure GitHub Redteam Fixture"
+        - path: docs/deployment/secure-github-bypass-proofing.md
+          section: "Release Gate"
+    public_language:
+      allowed:
+        - "Boundary provides a preview Secure GitHub MCP profile for fixture write-after-taint denial before GitHub mutation."
+        - "Secure GitHub remains preview until live GitHub App conformance evidence and deployment bypass proof exist."
+      forbidden:
+        - "Secure GitHub is production"
+        - "Boundary fully secures GitHub"
+        - "Secure GitHub prevents every malicious issue"
+        - "Secure GitHub has live GitHub App conformance"
     gaps: []
     depends_on: []
 

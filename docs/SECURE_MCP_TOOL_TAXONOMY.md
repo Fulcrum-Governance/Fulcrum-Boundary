@@ -60,20 +60,20 @@ through.
 
 ## GitHub Preview Taxonomy
 
-Secure GitHub MCP is the first planned Secure MCP profile. The initial preview
-path should start with the smallest set needed to prove write-after-taint
-denial before a GitHub mutation.
+Secure GitHub MCP is the first implemented Secure MCP preview profile. The
+current fixture path starts with the smallest set needed to prove
+write-after-taint denial before a GitHub mutation.
 
 | Tool | Class | Source | Sink | Mutation | Initial status |
 |---|---|---|---|---|---|
-| `get_issue` | `R0` | `external_collaborator` or `allowlisted_resource` | none | `none` | preview target |
-| `get_pull_request` | `R0` | `external_collaborator` or `allowlisted_resource` | none | `none` | preview target |
-| `get_file_contents` | `R0` | `public_resource` or `allowlisted_resource` | none | `none` | preview target |
-| `create_issue` | `W0` | `agent_generated` or `prior_tool_output` | `private_repo` or `public_repo` | `issue_or_pr_create` | preview target |
-| `create_pull_request` | `W0` | `agent_generated` or `prior_tool_output` | `private_repo` or `public_repo` | `issue_or_pr_create` | preview target |
-| `create_or_update_file` | `W1` | `agent_generated` or `prior_tool_output` | `private_repo` | `private_repo_content_write` | preview target |
-| `push_files` | `W1` | `agent_generated` or `prior_tool_output` | `private_repo` | `private_repo_content_write` | preview target |
-| `merge_pull_request` | `W2` | `agent_generated` or `prior_tool_output` | `private_repo` | `merge_or_release` | preview target |
+| `get_issue` | `R0` | `external_collaborator` or `allowlisted_resource` | none | `none` | preview implemented |
+| `get_pull_request` | `R0` | `external_collaborator` or `allowlisted_resource` | none | `none` | preview implemented |
+| `get_file_contents` | `R0` | `public_resource` or `allowlisted_resource` | none | `none` | preview implemented |
+| `create_issue` | `W0` | `agent_generated` or `prior_tool_output` | `private_repo` or `public_repo` | `issue_or_pr_create` | preview implemented |
+| `create_pull_request` | `W0` | `agent_generated` or `prior_tool_output` | `private_repo` or `public_repo` | `issue_or_pr_create` | preview implemented |
+| `create_or_update_file` | `W1` | `agent_generated` or `prior_tool_output` | `private_repo` | `private_repo_content_write` | preview implemented |
+| `push_files` | `W1` | `agent_generated` or `prior_tool_output` | `private_repo` | `private_repo_content_write` | preview implemented |
+| `merge_pull_request` | `W2` | `agent_generated` or `prior_tool_output` | `private_repo` | `merge_or_release` | preview implemented |
 
 For the first fixture proof, `get_issue` or `get_pull_request` can taint the
 envelope, and `create_or_update_file`, `push_files`, or `merge_pull_request`

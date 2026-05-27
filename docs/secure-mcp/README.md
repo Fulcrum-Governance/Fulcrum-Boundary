@@ -16,8 +16,8 @@ one level up:
 Secure MCP is a pattern and release-train contract. It does not imply every
 profile exists or is production-ready.
 
-The first flagship profile is Secure GitHub MCP. Its intended preview proof is
-fixture-based:
+The first flagship profile is Secure GitHub MCP. Its preview proof is
+fixture-based and implemented in `adapters/securegithub`:
 
 1. Untrusted GitHub content enters a governed envelope.
 2. The agent attempts a protected private-repo mutation.
@@ -27,6 +27,12 @@ fixture-based:
 
 Secure GitHub MCP remains preview until live GitHub App conformance evidence and
 deployment bypass proof exist.
+
+Profile docs:
+
+- [`GITHUB.md`](./GITHUB.md)
+- [`GITHUB_REDTEAM.md`](./GITHUB_REDTEAM.md)
+- [`docs/deployment/secure-github-bypass-proofing.md`](../deployment/secure-github-bypass-proofing.md)
 
 ## Profile Checklist
 

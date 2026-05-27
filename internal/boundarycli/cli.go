@@ -51,6 +51,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runFirewallVerifyLock(args[1:], stdout, stderr)
 	case "redteam":
 		return runRedteam(args[1:], stdout, stderr)
+	case "secure":
+		return runSecure(args[1:], stdout, stderr)
 	case "policy":
 		return runFirewallPolicy(args[1:], stdout, stderr)
 	case "mcp":
@@ -91,6 +93,7 @@ Commands:
   lock            Create a descriptor lockfile for MCP server descriptors
   verify-lock     Verify MCP server descriptors against a lockfile
   redteam         Run safe fixture attacks and report expected deny records
+  secure          Manage Secure MCP preview profiles
   policy generate Generate starter Boundary firewall policies
   mcp proxy       Fail-closed generic MCP proxy entrypoint for installed routes
   serve           Start the Boundary gateway

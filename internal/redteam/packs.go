@@ -3,6 +3,7 @@ package redteam
 import (
 	"sort"
 
+	"github.com/fulcrum-governance/fulcrum-boundary/adapters/securegithub"
 	"github.com/fulcrum-governance/fulcrum-boundary/governance"
 )
 
@@ -94,25 +95,7 @@ func githubLethalTrifectaPack() Pack {
 						"fixture_payload":  "external issue text requested a private repository file mutation",
 					},
 				},
-				Policies: []governance.StaticPolicyRule{
-					{
-						Name:         "deny-github-write-after-taint-fixture",
-						Tool:         "github.create_or_update_file",
-						Action:       "deny",
-						Reason:       "GitHub fixture denies protected private-repo write after external collaborator taint before upstream execution",
-						Transport:    string(governance.TransportMCP),
-						DecisionMode: governance.DecisionModeDeterministic,
-						Conditions: []governance.StaticPolicyMatch{
-							{Type: "equals", Field: "arguments.tainted", Value: "true"},
-							{Type: "equals", Field: "arguments.target_sink", Value: "private_repo"},
-							{Type: "equals", Field: "arguments.mutation_class", Value: "private_repo_content_write"},
-						},
-						Metadata: map[string]string{
-							"fixture_pack": "github-lethal-trifecta",
-							"risk_path":    "github.issue_body -> private_repo.write",
-						},
-					},
-				},
+				Policies: securegithub.DefaultPolicyRules(),
 			},
 		},
 	}
