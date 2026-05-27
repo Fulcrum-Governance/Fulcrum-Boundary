@@ -15,6 +15,7 @@
 - Added external inventory mapping for Boundary inventory records, generic MCP config/server fields, launcher hints (`npx`, `uvx`, `docker`), report-only package/extension components, and report-only exposure findings.
 - Added partial-snapshot semantics: missing or incomplete summaries warn, mark the snapshot partial, and disable install recommendations unless `--allow-partial` is explicitly set.
 - Added docs and fixtures for generic MCP, Bumblebee-style MCP, and mixed endpoint/package inventory streams.
+- Hardened inventory allocation capacity paths after CI CodeQL flagged potential integer-overflow allocation patterns.
 - Updated the changelog with the external inventory ingest command.
 
 ### Verification
@@ -23,6 +24,7 @@
 - `go test ./tests/firewall/... -run Ingest -count=1 -timeout 5m`: pass
 - `go test ./claims/... -count=1`: pass
 - `go test ./... -short -count=1 -timeout 5m`: pass
+- `golangci-lint run ./...`: pass
 - `git diff --check`: pass
 - `go run ./cmd/boundary inventory ingest --file fixtures/external-inventory/generic-mcp.ndjson --source generic --summary`: pass
 - `go run ./cmd/boundary inventory ingest --file fixtures/external-inventory/mixed-endpoint.ndjson --source generic --summary`: pass

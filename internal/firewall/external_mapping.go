@@ -394,14 +394,20 @@ func cleanExternalPath(path string) string {
 
 func appendUnique(values []string, additions ...string) []string {
 	seen := map[string]bool{}
-	out := make([]string, 0, len(values)+len(additions))
-	for _, value := range append(values, additions...) {
+	out := make([]string, 0, len(values))
+	appendValue := func(value string) {
 		value = strings.TrimSpace(value)
 		if value == "" || seen[value] {
-			continue
+			return
 		}
 		seen[value] = true
 		out = append(out, value)
+	}
+	for _, value := range values {
+		appendValue(value)
+	}
+	for _, value := range additions {
+		appendValue(value)
 	}
 	sort.Strings(out)
 	return out

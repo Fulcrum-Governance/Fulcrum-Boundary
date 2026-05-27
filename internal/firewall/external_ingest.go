@@ -159,7 +159,7 @@ func normalizeExternalInventorySource(source string) string {
 	}
 }
 
-func summaryStatus(raw map[string]any) (bool, bool) {
+func summaryStatus(raw map[string]any) (complete bool, found bool) {
 	if summary, ok := raw["scan_summary"].(map[string]any); ok {
 		if status := strings.ToLower(stringValue(summary, "status")); status != "" {
 			return status == "complete", true
