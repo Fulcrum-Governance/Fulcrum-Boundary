@@ -464,7 +464,7 @@ func runSecureGitHubFixture(ctx context.Context) (secureGitHubProof, error) {
 		return secureGitHubProof{}, fmt.Errorf("run Secure GitHub read fixture: %w", err)
 	}
 	if read == nil || !read.UpstreamCalled || read.Decision == nil || !read.Decision.Allowed() {
-		return secureGitHubProof{}, fmt.Errorf("Secure GitHub read fixture did not reach upstream as expected")
+		return secureGitHubProof{}, fmt.Errorf("secure GitHub read fixture did not reach upstream as expected")
 	}
 
 	write, err := adapter.GovernToolCall(ctx, securegithub.ToolCall{
@@ -490,7 +490,7 @@ func runSecureGitHubFixture(ctx context.Context) (secureGitHubProof, error) {
 		return secureGitHubProof{}, fmt.Errorf("run Secure GitHub write fixture: %w", err)
 	}
 	if write == nil || write.Decision == nil {
-		return secureGitHubProof{}, fmt.Errorf("Secure GitHub write fixture produced no governance decision")
+		return secureGitHubProof{}, fmt.Errorf("secure GitHub write fixture produced no governance decision")
 	}
 	return secureGitHubProof{read: read, write: write}, nil
 }

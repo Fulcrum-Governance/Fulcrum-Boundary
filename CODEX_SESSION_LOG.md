@@ -23,6 +23,7 @@
 - `go test ./claims/... -count=1`: pass
 - `go test ./... -short -count=1 -timeout 5m`: pass
 - `go run ./cmd/boundary demo github-lethal-trifecta`: pass
+- `golangci-lint run ./...`: pass
 - `git diff --check`: pass
 
 ### Notes For Next Step
