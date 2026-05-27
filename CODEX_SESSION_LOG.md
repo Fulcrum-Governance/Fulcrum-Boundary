@@ -1,5 +1,35 @@
 # CODEX Session Log
 
+## 2026-05-27 - v0.3 Publication Materials
+
+### Context
+
+- Parent goal: execute the v0.3 publication plus v0.4 Command Boundary sequence.
+- Subgoal: v0.3.0 publication materials.
+- Branch: `codex/2026-05-27-v030-publication-materials`
+- Scope: docs-only publication artifacts. No product behavior, release claims,
+  or Command Boundary implementation changed.
+
+### What changed
+
+- Added `docs/releases/v0.3.0.md`.
+- Added `docs/releases/v0.3.0-terminal-capture.md`.
+- Added `docs/releases/v0.3.0-checklist.md`.
+- Added `docs/GITHUB_PAGES_SETUP.md`.
+
+### Verification
+
+- `./scripts/assert-no-public-vendor-refs.sh`: pass.
+- `./scripts/docs-build.sh`: pass.
+- `make release-check`: pass.
+- `go test ./claims/... -count=1`: pass.
+
+### Notes For Next Step
+
+- After this branch lands, start the Command Boundary design-doc subgoal from a
+  clean `main`.
+- Do not add Command Boundary to v0.3.0 release truth.
+
 ## 2026-05-27 - v0.3 Publication Implementation Plan
 
 ### Context
