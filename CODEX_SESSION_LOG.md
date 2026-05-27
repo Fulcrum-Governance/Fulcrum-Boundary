@@ -1,5 +1,31 @@
 # CODEX Session Log
 
+## 2026-05-27 - Public Release README And Copy Polish
+
+### Context
+
+- Parent goal: Final public Boundary release hardening.
+- Subgoal: `Subgoal 1 - Public README And Copy Polish`.
+- Branch: `codex/2026-05-27-public-release-polish`
+- Scope: public README structure and reusable release copy only; no product behavior changes.
+
+### What changed
+
+- Reordered the README opening surface around install, a current five-minute local demo path, explicit claim limits, MCP Firewall local visibility, Secure GitHub preview, and the MCP Safety Gateway/Postgres demo.
+- Added `docs/PUBLIC_RELEASE_COPY.md` with short copy, medium copy, Secure GitHub preview copy, MCP Firewall copy, claim-safe demo wording, and forbidden public copy examples.
+- Updated the changelog with the README/copy polish.
+- Kept `boundary selftest` and `boundary demo github-lethal-trifecta` out of README commands until those commands land in later subgoals.
+
+### Verification
+
+- `go test ./claims/... -count=1`: pass
+- `go test ./... -short -count=1 -timeout 5m`: pass
+- `git diff --check`: pass
+
+### Notes For Next Step
+
+- After this branch lands, start `Subgoal 2 - Boundary Selftest` from clean `main`.
+
 ## 2026-05-27 - Public Release Hardening Goal Setup
 
 ### Context
