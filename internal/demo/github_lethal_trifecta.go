@@ -499,6 +499,7 @@ func writeDecisionRecords(path string, records []governance.DecisionRecordV1) er
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return err
 	}
+	// #nosec G304 -- decision records are written to an internally constructed fixture workspace path.
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
 	if err != nil {
 		return err

@@ -24,10 +24,12 @@
 - `go test ./... -short -count=1 -timeout 5m`: pass
 - `go run ./cmd/boundary demo github-lethal-trifecta`: pass
 - `golangci-lint run ./...`: pass
+- `go run github.com/securego/gosec/v2/cmd/gosec@latest ./...`: pass, `Issues: 0`
 - `git diff --check`: pass
 
 ### Notes For Next Step
 
+- PR `#51` received a scoped `#nosec G304` annotation for the internally constructed demo fixture decision-record path after CI security scan flagged the artifact write.
 - After this branch lands, start `Subgoal 4 - Inventory NDJSON Record Schema` from clean `main`.
 
 ## 2026-05-27 - Boundary Selftest
