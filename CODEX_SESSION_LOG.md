@@ -1,5 +1,50 @@
 # CODEX Session Log
 
+## 2026-05-27 - Command Boundary Run Wrapper
+
+### Context
+
+- Parent goal: execute the v0.3 publication plus v0.4 Command Boundary
+  sequence.
+- Subgoal: implement `boundary command run` as a wrapper-routed preview path.
+- Branch: `codex/2026-05-27-command-run-wrapper`
+- Scope: command run wrapper only. No project shell, shims, redteam packs,
+  README promotion, or release truth change.
+
+### What changed
+
+- Added default Command Boundary preview policy rules:
+  - C0 allow.
+  - C1 warn.
+  - C2/C3/C7 require approval.
+  - C4/C5/C6 deny.
+- Added governance request construction from command classifications.
+- Added a no-shell `OSRunner` using `os/exec` with explicit argv.
+- Added JSONL command decision records at
+  `.boundary/command/decision-records.jsonl` by default.
+- Added `boundary command run [--record-out PATH] -- <command> [args...]`.
+- Added `docs/command-boundary/RUN.md`.
+- Added unit and CLI tests for allow, deny, require-approval, redaction, and
+  shell-metacharacter handling.
+
+### Verification
+
+- `go test ./internal/commandboundary/... -count=1 -timeout 5m`: pass.
+- `go test ./tests/commandboundary/... -run Run -count=1 -timeout 5m`: pass.
+- `go test ./claims/... -count=1`: pass.
+- `go test ./... -short -count=1 -timeout 5m`: pass.
+- `golangci-lint run --timeout=5m`: pass, `0 issues`.
+- `git diff --check`: pass.
+- `/tmp/boundary-command-run-smoke command run --record-out /tmp/boundary-command-run-smoke.jsonl -- pwd`: pass, `executed=true`.
+- `/tmp/boundary-command-run-smoke command run --record-out /tmp/boundary-command-run-deny.jsonl -- rm -rf /tmp/boundary-command-run-never`: pass, exit `126`, `executed=false`.
+
+### Notes For Next Step
+
+- The next branch can add project-local `.boundary/bin` shims and
+  `boundary shell`.
+- Keep direct shell bypass language intact: this wrapper governs only commands
+  routed through Boundary.
+
 ## 2026-05-27 - Command Boundary Classifier CI Lint Fix
 
 ### Context
