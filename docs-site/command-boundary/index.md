@@ -1,6 +1,7 @@
 # Command Boundary Preview
 
-Command Boundary is the preview follow-on to Fulcrum Boundary v0.3.0.
+Command Boundary is the preview follow-on to Fulcrum Boundary v0.3.0 and is
+packaged in v0.4.0.
 
 Boundary can govern project-local command paths when commands route through
 `boundary command run`, `boundary shell`, or project-local shims.

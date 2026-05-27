@@ -12,7 +12,7 @@
 Requires Go 1.25+.
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.3.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.4.0
 boundary selftest
 boundary demo github-lethal-trifecta
 ```
@@ -78,7 +78,7 @@ Install the `boundary` CLI with Go:
 Requires Go 1.25+.
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.3.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.4.0
 boundary selftest
 ```
 
@@ -204,7 +204,7 @@ routes commands through the wrapper or shims. See
 Boundary includes a repo-local MCP audit action for CI visibility:
 
 ```yaml
-- uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.3.0
+- uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.4.0
 ```
 
 The action audits repository MCP configs and emits Markdown plus optional SARIF
