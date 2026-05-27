@@ -57,6 +57,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runSelftest(args[1:], stdout, stderr)
 	case "secure":
 		return runSecure(args[1:], stdout, stderr)
+	case "command":
+		return runCommand(args[1:], stdout, stderr)
 	case "policy":
 		return runFirewallPolicy(args[1:], stdout, stderr)
 	case "mcp":
@@ -103,6 +105,7 @@ Commands:
   redteam         Run safe fixture attacks and report expected deny records
   selftest        Run local no-credential Boundary release checks
   secure          Manage Secure MCP preview profiles
+  command         Classify project-local command paths without execution
   policy generate Generate starter Boundary firewall policies
   mcp proxy       Fail-closed generic MCP proxy entrypoint for installed routes
   serve           Start the Boundary gateway
