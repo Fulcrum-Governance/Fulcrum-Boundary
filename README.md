@@ -1,11 +1,23 @@
 # Fulcrum Boundary
 
-> The action boundary for MCP-native agents. See what your AI tools can do, block what they should not, and record every verdict before privileged execution.
+> The action boundary for MCP-native agents. See what your AI tools can do, block what they should not, and record every verdict before routed privileged execution.
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/fulcrum-governance/fulcrum-boundary.svg)](https://pkg.go.dev/github.com/fulcrum-governance/fulcrum-boundary)
 [![CI](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/actions/workflows/ci.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/fulcrum-governance/fulcrum-boundary)](https://goreportcard.com/report/github.com/fulcrum-governance/fulcrum-boundary)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
+
+## Try It In One Minute
+
+```bash
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@latest
+boundary selftest
+boundary demo github-lethal-trifecta
+```
+
+No credentials. No live GitHub calls. No real mutations.
+
+[Quickstart](#try-it-in-one-minute) | [Demo](./docs/DEMO_GITHUB_LETHAL_TRIFECTA.md) | [Install](./docs/INSTALL.md) | [Claims](./docs/CLAIMS_LEDGER.md) | [Release Truth](./docs/RELEASE_TRUTH_PUBLIC.md)
 
 ## What is Fulcrum Boundary?
 
@@ -17,6 +29,45 @@ Public language follows the Boundary lexicon and claim rules in
 [`docs/LANGUAGE_SYSTEM.md`](./docs/LANGUAGE_SYSTEM.md),
 [`docs/LEXICON.md`](./docs/LEXICON.md), and
 [`docs/COPY_RULES.md`](./docs/COPY_RULES.md).
+
+## What The Demo Shows
+
+The first-run demo inventories a fixture MCP config, renders the risky GitHub
+write-after-taint path, generates starter policies, runs the Secure GitHub
+preview fixture, denies the write before upstream mutation, and emits a
+decision record.
+
+Expected success signal:
+
+```text
+actual action: DENY
+reason: lethal_trifecta_detected
+upstream_called=false
+```
+
+```mermaid
+flowchart LR
+  A[Agent intent] --> B[Proposed action]
+  B --> C[Boundary]
+  C -->|allow| D[Privileged tool executes]
+  C -->|deny / escalate / require approval| E[No execution]
+  C --> F[Decision record]
+```
+
+Boundary sits before privileged execution. A tool call executes only after a
+verdict, and only for routes that pass through Boundary.
+
+```mermaid
+flowchart LR
+  A[Public GitHub issue<br/>untrusted content] --> B[Agent context<br/>tainted]
+  B --> C[Private repo write<br/>W1 mutation]
+  C --> D{Boundary verdict}
+  D -->|deny| E[GitHub not called]
+  D --> F[Decision record]
+```
+
+Secure GitHub preview denies the tested fixture path before upstream GitHub
+mutation.
 
 ## Install
 
@@ -92,6 +143,10 @@ private-repo mutation denied before any upstream GitHub call. See
 | Complete production policy | Generated policies are starter policies for operator review. |
 | Hosted monitoring | The dashboard reads local artifacts only. |
 
+Proof boundary: Boundary consumes proof-backed contracts through documented
+correspondence and decision-mode boundaries. It does not emit `proved` decisions
+itself. See [docs/PROOF_BOUNDARY.md](./docs/PROOF_BOUNDARY.md).
+
 ## MCP Firewall Local Visibility
 
 Boundary can inventory local MCP client configs, render risk paths, generate
@@ -124,6 +179,19 @@ boundary redteam --pack github-lethal-trifecta
 
 This path is fixture-backed. Live GitHub App conformance and deployment bypass
 proof are required before production status.
+
+## GitHub Action
+
+Boundary includes a repo-local MCP audit action for CI visibility:
+
+```yaml
+- uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@main
+```
+
+The action audits repository MCP configs and emits Markdown plus optional SARIF
+reports. It is CI audit/reporting only; runtime protection still requires
+governed routing through Boundary. See
+[docs/firewall/GITHUB_ACTION.md](./docs/firewall/GITHUB_ACTION.md).
 
 ## MCP Safety Gateway / Postgres Demo
 
@@ -418,6 +486,36 @@ Full signatures live in [`governance/`](./governance/).
 Standalone and kernel integration seams are documented in
 [docs/INTEGRATION.md](./docs/INTEGRATION.md) and
 [docs/STANDALONE_VS_KERNEL.md](./docs/STANDALONE_VS_KERNEL.md).
+
+## Docs
+
+| Topic | Link |
+|---|---|
+| Install | [docs/INSTALL.md](./docs/INSTALL.md) |
+| Demo | [docs/DEMO_GITHUB_LETHAL_TRIFECTA.md](./docs/DEMO_GITHUB_LETHAL_TRIFECTA.md) |
+| MCP Firewall | [docs/firewall/DISCOVERY_INVENTORY.md](./docs/firewall/DISCOVERY_INVENTORY.md) |
+| External Inventory Ingest | [docs/firewall/EXTERNAL_INVENTORY_INGEST.md](./docs/firewall/EXTERNAL_INVENTORY_INGEST.md) |
+| Secure GitHub | [docs/secure-mcp/GITHUB.md](./docs/secure-mcp/GITHUB.md) |
+| Claims Ledger | [docs/CLAIMS_LEDGER.md](./docs/CLAIMS_LEDGER.md) |
+| Release Truth | [docs/RELEASE_TRUTH_PUBLIC.md](./docs/RELEASE_TRUTH_PUBLIC.md) |
+| Language System | [docs/LANGUAGE_SYSTEM.md](./docs/LANGUAGE_SYSTEM.md) |
+
+## Development
+
+```bash
+make selftest
+make demo-github
+make release-check
+```
+
+## Tests
+
+```bash
+go test ./claims/... -count=1
+go test ./... -short -count=1 -timeout 5m
+make selftest
+make demo-github
+```
 
 ## Part of the Fulcrum Architecture
 

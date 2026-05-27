@@ -42,6 +42,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- README now leads with a one-minute selftest/demo path, Mermaid diagrams,
+  demo success signals, docs navigation, and release verification commands.
 - Raised the root module and CI baseline to Go 1.25 to consume patched dependency releases.
 - Reordered README first-run copy around install, five-minute demo, claim boundaries, MCP Firewall, and Secure GitHub preview language.
 - Renamed repo and module path from `boundary` to `fulcrum-boundary` for naming consistency across the Fulcrum repo family.

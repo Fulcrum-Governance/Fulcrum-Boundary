@@ -1,5 +1,35 @@
 # CODEX Session Log
 
+## 2026-05-27 - README Visual Polish
+
+### Context
+
+- Parent goal: Final public Boundary release polish.
+- Subgoal: `Subgoal 2 - README Visual Polish And Diagram Layer`.
+- Branch: `codex/2026-05-27-readme-visual-polish`
+- Scope: improve the first-time GitHub repo impression with a one-minute path,
+  compact navigation, diagrams, demo success signals, docs links, and developer
+  verification commands while preserving routed-tool claim boundaries.
+
+### What changed
+
+- Added a one-minute install/selftest/demo block immediately after badges.
+- Added compact README navigation and two GitHub-rendered Mermaid diagrams.
+- Added expected Secure GitHub fixture demo success signals.
+- Added early proof-boundary language, a GitHub Action section, a docs index,
+  and development/test command sections.
+
+### Verification
+
+- `git diff --check`: pass
+- `./scripts/assert-no-public-vendor-refs.sh`: pass
+- `go test ./claims/... -count=1`: pass
+- `go test ./... -short -count=1 -timeout 5m`: pass
+
+### Notes For Next Step
+
+- After this branch lands, start the docs site skeleton from clean `main`.
+
 ## 2026-05-27 - Vendor-Neutral External Inventory Polish
 
 ### Context
