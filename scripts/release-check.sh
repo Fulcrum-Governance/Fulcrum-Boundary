@@ -23,6 +23,7 @@ run_in() {
 }
 
 cd "$ROOT"
+run ./scripts/assert-no-public-vendor-refs.sh
 run go test ./... -count=1 -timeout 5m
 run_in adapters/grpc go test ./... -count=1 -timeout 5m
 run go test ./tests/... -count=1 -timeout 5m

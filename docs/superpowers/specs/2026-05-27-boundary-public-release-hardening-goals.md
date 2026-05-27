@@ -42,8 +42,8 @@ This goal set intentionally removes stale "Tony reviews" and "do not auto-merge"
 - Boundary protects only routed tools. Always distinguish governed routes from bypass paths.
 - Generated policies are starter policies for operator review, not complete production policy guarantees.
 - Dashboard output remains local-only unless a hosted service is actually implemented.
-- External or Bumblebee-style inventory ingestion is fixture-proven compatibility, not official Bumblebee integration.
-- Do not shell out to Bumblebee, import Bumblebee, or depend on Bumblebee.
+- External MCP inventory ingestion is fixture-proven mapping, not official named third-party scanner integration.
+- Do not shell out to, import, depend on, endorse, or claim compatibility with any named third-party scanner.
 - Do not perform real system mutation by default in demos, selftests, redteam packs, or release checks.
 - The CLI binary remains `boundary`.
 - Every user-facing command added in this train supports `--help`.
@@ -57,7 +57,7 @@ This goal set intentionally removes stale "Tony reviews" and "do not auto-merge"
 - `boundary demo github-lethal-trifecta` runs in a clean local environment and emits a decision record.
 - README presents the five-minute path before deep architecture.
 - Inventory output supports JSON, Markdown/SARIF where already present, and NDJSON records.
-- External and Bumblebee-style NDJSON fixtures ingest into Boundary inventory records with explicit scope limits.
+- External MCP inventory NDJSON fixtures ingest into Boundary inventory records with explicit scope limits.
 - GitHub Action audits repo-local MCP configs and does not scan host home directories in CI.
 - Claims validation passes and public claims match evidence.
 - Final release truth report records feature status, adapter/profile maturity, remaining preview gates, and forbidden language.
@@ -243,7 +243,7 @@ Verification:
 
 ### Subgoal 5 - External Inventory Ingest
 
-Objective: Ingest Boundary, generic, and Bumblebee-style MCP inventory NDJSON records into Boundary inventory records without claiming official external-product integration.
+Objective: Ingest Boundary, generic, and external MCP inventory NDJSON records into Boundary inventory records without claiming official external-product integration.
 
 Suggested branch:
 
@@ -253,7 +253,7 @@ Deliverables:
 
 - `boundary inventory ingest --file inventory.ndjson`
 - `--source generic`
-- `--source bumblebee`
+- `--source external-mcp`
 - `--out`
 - `--format json`
 - `--summary`
@@ -263,7 +263,7 @@ Deliverables:
 - `internal/boundarycli/inventory_ingest.go`
 - `docs/firewall/EXTERNAL_INVENTORY_INGEST.md`
 - `fixtures/external-inventory/generic-mcp.ndjson`
-- `fixtures/external-inventory/bumblebee-style-mcp.ndjson`
+- `fixtures/external-inventory/external-mcp-inventory.ndjson`
 - `fixtures/external-inventory/mixed-endpoint.ndjson`
 - `tests/firewall/external_ingest_test.go`
 
@@ -271,10 +271,10 @@ Key acceptance:
 
 - Boundary inventory NDJSON round-trips through ingest.
 - Generic NDJSON maps recognizable MCP fields such as `mcp`, `mcpServers`, `server_name`, `server`, `command`, `args`, `launcher`, `npx`, `uvx`, `docker`, `claude_desktop_config.json`, `mcp.json`, and `.mcp.json`.
-- Bumblebee-style fixture records are supported only as fixture-proven mapping, not official compatibility.
+- External MCP fixture records are supported only as fixture-proven mapping, not official compatibility.
 - Package/extension findings become `external_inventory_component` or `external_exposure_finding` for reporting only unless they map to an MCP action path.
 - If no complete summary exists, ingest warns, marks the snapshot partial, and does not use it for install recommendations unless `--allow-partial` is explicit.
-- No shell-out to Bumblebee, import from Bumblebee, or runtime dependency on Bumblebee.
+- No shell-out to, import from, runtime dependency on, endorsement of, or compatibility claim with any named third-party scanner.
 
 Verification:
 

@@ -15,7 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `boundary selftest` no-credential local release smoke test covering inventory, risk graph, starter policies, descriptor drift, GitHub lethal-trifecta redteam, Secure GitHub fail-closed live mode, and decision-record emission.
 - `boundary demo github-lethal-trifecta` fixture command with text, JSON, Markdown, report output, and optional local dashboard artifacts for the Secure GitHub write-after-taint denial path.
 - MCP Firewall `boundary inventory --format ndjson` record stream with a versioned JSON schema for tool-ingestible discovery output.
-- MCP Firewall `boundary inventory ingest` command for Boundary, generic, and fixture-proven Bumblebee-style MCP inventory NDJSON mapping.
+- MCP Firewall `boundary inventory ingest` command for Boundary, generic, and external MCP inventory NDJSON mapping.
 - MCP Firewall GitHub Action for repo-local MCP config audits with Markdown summaries and optional SARIF output.
 - Install and release workflow polish with `make selftest`, `make demo-github`, `make release-check`, and `docs/INSTALL.md`.
 - Final public release truth report covering README first-run status, claims, feature status, adapter/profile maturity, install status, external inventory ingest, and forbidden release language.

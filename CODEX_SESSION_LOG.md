@@ -1,5 +1,38 @@
 # CODEX Session Log
 
+## 2026-05-27 - Vendor-Neutral External Inventory Polish
+
+### Context
+
+- Parent goal: Final public Boundary release polish.
+- Subgoal: `Subgoal 1 - Vendor-Neutral External Inventory Cleanup`.
+- Branch: `codex/2026-05-27-vendor-neutral-inventory`
+- Scope: remove named third-party scanner references from public docs, code,
+  fixtures, tests, release truth, changelog, and CLI source modes.
+
+### What changed
+
+- Renamed the external inventory fixture to
+  `fixtures/external-inventory/external-mcp-inventory.ndjson`.
+- Replaced the CLI source mode with `--source external-mcp`.
+- Updated external inventory docs and release-truth wording around
+  vendor-neutral external MCP inventory NDJSON.
+- Added `scripts/assert-no-public-vendor-refs.sh` and wired it into
+  `make release-check`.
+
+### Verification
+
+- `./scripts/assert-no-public-vendor-refs.sh`: pass
+- `go test ./internal/firewall/... -count=1 -timeout 5m`: pass
+- `go test ./tests/firewall/... -run Ingest -count=1 -timeout 5m`: pass
+- `go test ./claims/... -count=1`: pass
+- `make release-check`: pass
+- `go test ./... -short -count=1 -timeout 5m`: pass
+
+### Notes For Next Step
+
+- After this branch lands, start README visual polish from clean `main`.
+
 ## 2026-05-27 - Final Public Release Truth
 
 ### Context
@@ -29,7 +62,7 @@
 - `go run ./cmd/boundary selftest`: pass
 - `go run ./cmd/boundary demo github-lethal-trifecta`: pass,
   `actual action: DENY`, `upstream_called=false`
-- `go run ./cmd/boundary inventory ingest --file fixtures/external-inventory/bumblebee-style-mcp.ndjson --source bumblebee --summary`:
+- `go run ./cmd/boundary inventory ingest --file fixtures/external-inventory/external-mcp-inventory.ndjson --source external-mcp --summary`:
   pass, complete snapshot with 3 records read
 - `GOPROXY=direct go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@1ad95e3ba9a0ab168dd78d4153dd568b16e7e4b2`
   followed by installed `boundary selftest`: pass
@@ -109,14 +142,14 @@
 - Parent goal: Final public Boundary release hardening.
 - Subgoal: `Subgoal 5 - External Inventory Ingest`.
 - Branch: `codex/2026-05-27-external-inventory-ingest`
-- Scope: ingest Boundary, generic, and fixture-proven Bumblebee-style MCP inventory NDJSON without claiming official third-party compatibility or adding runtime third-party dependencies.
+- Scope: ingest Boundary, generic, and external MCP inventory NDJSON without claiming official third-party compatibility or adding runtime third-party dependencies.
 
 ### What changed
 
-- Added `boundary inventory ingest --file <inventory.ndjson>` with `--source boundary|generic|bumblebee`, `--format json`, `--out`, `--summary`, and `--allow-partial`.
+- Added `boundary inventory ingest --file <inventory.ndjson>` with `--source boundary|generic|external-mcp`, `--format json`, `--out`, `--summary`, and `--allow-partial`.
 - Added external inventory mapping for Boundary inventory records, generic MCP config/server fields, launcher hints (`npx`, `uvx`, `docker`), report-only package/extension components, and report-only exposure findings.
 - Added partial-snapshot semantics: missing or incomplete summaries warn, mark the snapshot partial, and disable install recommendations unless `--allow-partial` is explicitly set.
-- Added docs and fixtures for generic MCP, Bumblebee-style MCP, and mixed endpoint/package inventory streams.
+- Added docs and fixtures for generic MCP, external MCP, and mixed endpoint/package inventory streams.
 - Hardened inventory allocation capacity paths after CI CodeQL flagged potential integer-overflow allocation patterns.
 - Updated the changelog with the external inventory ingest command.
 

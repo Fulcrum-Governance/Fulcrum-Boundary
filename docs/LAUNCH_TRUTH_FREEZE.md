@@ -122,10 +122,10 @@ developer path and machine-ingest surfaces easier to verify:
   the Secure GitHub write-after-taint path.
 - `boundary inventory --format ndjson` emits the machine-readable Boundary
   inventory record stream.
-- `boundary inventory ingest` maps Boundary, generic, and fixture-proven
-  Bumblebee-style MCP inventory NDJSON into Boundary inventory records.
-- Bumblebee-style ingest is not an official Bumblebee integration or
-  compatibility claim.
+- `boundary inventory ingest` maps Boundary, generic, and external MCP
+  inventory NDJSON into Boundary inventory records.
+- External MCP ingest is not an official named third-party scanner integration
+  or compatibility claim.
 - The MCP audit GitHub Action scans repo-local MCP configs by default and emits
   Markdown and optional SARIF reports. It is CI audit/reporting only.
 - Generated policies remain starter policies for operator review.
