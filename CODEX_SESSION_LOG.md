@@ -380,3 +380,34 @@
 
 - The Postgres AST guard is a statement classifier and fail-closed interceptor, not a general SQL firewall or universal SQL injection prevention claim.
 - Static policies run before interceptors; AST class conditions are intended for PolicyEval or for adapters that pre-populate `sql_class` before the static-policy stage.
+
+## 2026-05-26 — Spec 6 Receipt-Grade Decision Records
+
+### Context
+
+- Branch: `codex/2026-05-26-boundary-phase1-foundation`, continuing after Spec 5 was committed as `a1f2453`.
+- Scope: Spec 6 only. Add verifiable decision records, canonical request and policy hashes, parse-rejection events, optional signature schema support, and CLI verification.
+
+### Built
+
+- Added v1 decision-record primitives in `governance/receipt*.go`, including canonical decision hashing, canonical JSON request hashing, canonical YAML policy-bundle hashing, optional Ed25519 signing support, and record verification.
+- Extended audit events and slog output with `schema_version`, `record_id`, `policy_bundle_hash`, `request_hash`, `raw_shape_hash`, `decision_hash`, `trust_state`, `boundary_build_digest`, and optional signature fields.
+- Added `boundary verify-record` to validate stored records against request JSON, policy directories, build digests, and record hashes.
+- Added MCP parse-rejection auditing so malformed or invalid JSON-RPC requests emit `parse_rejected` records with `raw_shape_hash` even when no pipeline evaluation occurs.
+- Added `schemas/decision-record.v1.json`, `docs/RECEIPTS.md`, and refreshed decision-record, launch-truth, and claims-ledger language to allow receipt-grade records while forbidding signed-by-default claims.
+- Added tests for canonical request hashing, metadata-independent policy hashing, tamper detection, CLI `verify-record`, and parse-rejection audit emission.
+
+### Verification
+
+- `env -u GOROOT go test ./internal/boundarycli ./tests -run 'TestRun_VerifyRecord|TestReceipt|TestPolicyBundle|TestParseRejection' -count=1`: pass.
+- `env -u GOROOT go test ./... -short`: pass.
+- `env -u GOROOT go vet ./...`: pass.
+- `git ls-files '*.go' | xargs gofmt -l`: pass.
+- `git diff --check`: pass.
+- `env -u GOROOT go run ./cmd/boundary verify --policies schemas`: pass, `warnings: 0`.
+- `env -u GOROOT go run ./cmd/boundary verify --policies examples/mcp-postgres-gateway/policies`: pass, `warnings: 0`.
+
+### Notes
+
+- Receipt-grade means hash-verifiable decision records. Signature fields exist in the v1 schema, but Boundary does not claim signed receipts by default.
+- Parse rejections use `raw_shape_hash`, not `request_hash`, because no canonical governed request exists for malformed input.

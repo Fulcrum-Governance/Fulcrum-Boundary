@@ -41,6 +41,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runDemo(args[1:], stdout, stderr)
 	case "verify":
 		return runVerify(args[1:], stdout, stderr)
+	case "verify-record":
+		return runVerifyRecord(args[1:], stdout, stderr)
 	case "doctor":
 		return runDoctor(args[1:], stdout, stderr)
 	case "audit":
@@ -62,6 +64,7 @@ Commands:
   serve           Start the Boundary gateway
   demo postgres   Run the Postgres safety demo against a running gateway
   verify          Validate YAML policy files
+  verify-record   Verify a receipt-grade decision record
   doctor          Check local gateway prerequisites
   audit           Pretty-print structured decision records
 
@@ -87,16 +90,22 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	rules, err := governance.LoadStaticPoliciesFromDir(*policyDir)
+	policyResult, err := governance.LoadStaticPolicyFiles(*policyDir)
 	if err != nil {
 		fmt.Fprintf(stderr, "load policies: %v\n", err)
+		return 1
+	}
+	policyHash, err := governance.PolicyBundleHashFromDir(*policyDir)
+	if err != nil {
+		fmt.Fprintf(stderr, "hash policies: %v\n", err)
 		return 1
 	}
 
 	logger := slog.New(slog.NewJSONHandler(stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	pipeline := governance.NewPipeline(governance.PipelineConfig{
-		StaticPolicies: rules,
-		GatewayVersion: Version,
+		StaticPolicies:   policyResult.Rules,
+		GatewayVersion:   Version,
+		PolicyBundleHash: policyHash,
 	}, nil, nil, governance.NewSlogAuditPublisher(logger))
 	pipeline.RegisterInterceptor("query", sqlguard.NewPostgresInterceptor())
 
@@ -113,7 +122,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		}()
 	}
 
-	fmt.Fprintf(stderr, "boundary serve listening on %s in %s mode with %d static policy rules\n", *listen, mode, len(rules))
+	fmt.Fprintf(stderr, "boundary serve listening on %s in %s mode with %d static policy rules\n", *listen, mode, len(policyResult.Rules))
 	srv := &http.Server{
 		Addr:              *listen,
 		Handler:           handler,
@@ -260,6 +269,51 @@ func runVerify(args []string, stdout, stderr io.Writer) int {
 	for _, warning := range result.Warnings {
 		fmt.Fprintf(stdout, "- %s\n", warning)
 	}
+	return 0
+}
+
+func runVerifyRecord(args []string, stdout, stderr io.Writer) int {
+	fs := newFlagSet("boundary verify-record", stderr)
+	requestPath := fs.String("request", "", "request JSON body used to verify request_hash")
+	policyDir := fs.String("policies", "", "policy directory used to verify policy_bundle_hash")
+	binaryDigest := fs.String("binary-digest", "", "expected boundary build digest")
+	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
+		return 1
+	}
+	if fs.NArg() != 1 {
+		fmt.Fprintln(stderr, "usage: boundary verify-record [--request request.json] [--policies dir] [--binary-digest sha256:...] record.json")
+		return 1
+	}
+
+	body, err := os.ReadFile(fs.Arg(0))
+	if err != nil {
+		fmt.Fprintf(stderr, "read record: %v\n", err)
+		return 1
+	}
+	var record governance.DecisionRecordV1
+	if err := json.Unmarshal(body, &record); err != nil {
+		fmt.Fprintf(stderr, "parse record: %v\n", err)
+		return 1
+	}
+
+	var rawRequest []byte
+	if *requestPath != "" {
+		rawRequest, err = os.ReadFile(*requestPath)
+		if err != nil {
+			fmt.Fprintf(stderr, "read request: %v\n", err)
+			return 1
+		}
+	}
+
+	if err := governance.VerifyDecisionRecord(record, rawRequest, *policyDir, *binaryDigest); err != nil {
+		fmt.Fprintf(stderr, "record verification failed: %v\n", err)
+		return 1
+	}
+	fmt.Fprintln(stdout, "record verification: ok")
+	fmt.Fprintf(stdout, "record_id: %s\n", record.RecordID)
 	return 0
 }
 

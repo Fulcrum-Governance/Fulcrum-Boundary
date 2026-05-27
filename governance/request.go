@@ -82,6 +82,7 @@ type GovernanceDecision struct {
 	PolicyFile     string        `json:"policy_file,omitempty"`
 	GatewayVersion string        `json:"gateway_version,omitempty"`
 	TrustScore     float64       `json:"trust_score"`
+	TrustState     string        `json:"trust_state,omitempty"`
 	EnvelopeID     string        `json:"envelope_id"`
 	DryRun         bool          `json:"dry_run"`
 	CostEstimate   float64       `json:"cost_estimate,omitempty"`

@@ -32,17 +32,19 @@ func NewGateway(pipeline *governance.Pipeline, upstream Forwarder, defaultTenant
 
 // ServeHTTP handles single and batch JSON-RPC requests.
 func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	identity := ExtractIdentity(r, g.DefaultTenantID)
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
+		g.publishParseRejection(r.Context(), nil, identity, err.Error())
 		writeJSONRPCError(w, nil, -32700, "parse error", err.Error())
 		return
 	}
 	body = bytes.TrimSpace(body)
 	if len(body) == 0 {
+		g.publishParseRejection(r.Context(), body, identity, "empty request body")
 		writeJSONRPCError(w, nil, -32600, "invalid request", "empty request body")
 		return
 	}
-	identity := ExtractIdentity(r, g.DefaultTenantID)
 	if body[0] == '[' {
 		g.serveBatch(w, r.Context(), body, identity)
 		return
@@ -63,6 +65,7 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (g *Gateway) serveBatch(w http.ResponseWriter, ctx context.Context, body []byte, identity Identity) {
 	var raws []json.RawMessage
 	if err := json.Unmarshal(body, &raws); err != nil || len(raws) == 0 {
+		g.publishParseRejection(ctx, body, identity, "batch must contain at least one request")
 		writeJSONRPCError(w, nil, -32600, "invalid request", "batch must contain at least one request")
 		return
 	}
@@ -98,15 +101,18 @@ type jsonrpcRequest struct {
 func (g *Gateway) handleOne(ctx context.Context, raw []byte, identity Identity) (gatewayResponse, bool, *governance.GovernanceDecision) {
 	var req jsonrpcRequest
 	if err := json.Unmarshal(raw, &req); err != nil {
+		g.publishParseRejection(ctx, raw, identity, err.Error())
 		return gatewayResponse{Status: http.StatusOK, Body: jsonRPCError(nil, -32700, "parse error", err.Error())}, true, nil
 	}
 	if req.JSONRPC != "2.0" || req.Method == "" {
+		g.publishParseRejection(ctx, raw, identity, "jsonrpc 2.0 and method are required")
 		return gatewayResponse{Status: http.StatusOK, Body: jsonRPCError(req.ID, -32600, "invalid request", "jsonrpc 2.0 and method are required")}, true, nil
 	}
 	emitResponse := len(req.ID) > 0
 
 	gReq, err := g.governanceRequest(raw, req, identity)
 	if err != nil {
+		g.publishParseRejection(ctx, raw, identity, err.Error())
 		return gatewayResponse{Status: http.StatusOK, Body: jsonRPCError(req.ID, -32602, "invalid params", err.Error())}, emitResponse, nil
 	}
 	decision, err := g.Pipeline.Evaluate(ctx, gReq)
@@ -128,6 +134,20 @@ func (g *Gateway) handleOne(ctx context.Context, raw []byte, identity Identity) 
 	}
 	out = attachGovernanceMetadata(out, decision)
 	return gatewayResponse{Status: http.StatusOK, Body: out}, emitResponse, decision
+}
+
+func (g *Gateway) publishParseRejection(ctx context.Context, raw []byte, identity Identity, reason string) {
+	if g == nil || g.Pipeline == nil {
+		return
+	}
+	g.Pipeline.PublishParseRejection(ctx, governance.ParseRejectionEvent{
+		Adapter:         governance.TransportMCP,
+		RawPayload:      raw,
+		RejectionReason: reason,
+		AgentID:         identity.AgentID,
+		TenantID:        identity.TenantID,
+		TraceID:         identity.TraceID,
+	})
 }
 
 func (g *Gateway) governanceRequest(raw []byte, rpc jsonrpcRequest, identity Identity) (*governance.GovernanceRequest, error) {

@@ -35,8 +35,8 @@ claims:
     public_language:
       allowed:
         - "Every governed verdict produces a structured decision record."
+        - "Decision records include stable request, policy bundle, and decision hashes."
       forbidden:
-        - "verifiable receipt"
         - "cryptographic proof of verdict"
     gaps: []
     depends_on: []
@@ -171,21 +171,21 @@ claims:
 
   - id: BND-CLAIM-005
     claim: "Boundary produces receipt-grade decision records"
-    status: false
+    status: delivered
     evidence:
-      tests: []
+      tests:
+        - path: tests/receipt_verification_test.go
+          assertion: "Decision records verify against canonical request and policy hashes and fail after tampering"
+        - path: internal/boundarycli/cli_test.go
+          assertion: "boundary verify-record succeeds for valid records and fails for tampered records"
       docs:
-        - path: docs/LAUNCH_TRUTH_FREEZE.md
-          section: "What v0.2.0 Does Not Claim"
+        - path: docs/RECEIPTS.md
+          section: "Verification"
     public_language:
       allowed:
-        - "Boundary emits structured decision records."
+        - "Boundary produces receipt-grade decision records with request, policy bundle, and decision hashes."
       forbidden:
-        - "receipt-grade decision records"
-        - "verifiable receipts"
-    gaps:
-      - id: BND-REC-001
-        description: "Receipt-grade records require policy hashes, request hashes, and verification mechanics."
-        spec: "SPEC 6"
-    depends_on:
-      - BND-REC-001
+        - "cryptographic proof of verdict"
+        - "signed receipt by default"
+    gaps: []
+    depends_on: []

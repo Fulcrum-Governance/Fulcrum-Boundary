@@ -39,6 +39,12 @@ type PipelineConfig struct {
 	// can tie runtime verdicts to the released boundary build.
 	GatewayVersion string
 
+	// PolicyBundleHash is copied into receipt-grade decision records.
+	PolicyBundleHash string
+
+	// BuildDigest identifies the Boundary binary or image that emitted the record.
+	BuildDigest string
+
 	// FailClosedTransports are transports that deny on pipeline errors.
 	// All other transports fail-open on pipeline errors.
 	//
@@ -74,14 +80,16 @@ type PolicyEvaluator interface {
 //
 // This is the shared core of Boundary: all transport adapters call Pipeline.Evaluate().
 type Pipeline struct {
-	trustChecker   TrustChecker
-	interceptors   *InterceptorRegistry
-	evaluator      PolicyEvaluator
-	auditor        AuditPublisher
-	staticPolicies []StaticPolicyRule
-	gatewayVersion string
-	failClosed     map[TransportType]bool
-	dryRun         bool
+	trustChecker     TrustChecker
+	interceptors     *InterceptorRegistry
+	evaluator        PolicyEvaluator
+	auditor          AuditPublisher
+	staticPolicies   []StaticPolicyRule
+	gatewayVersion   string
+	policyBundleHash string
+	buildDigest      string
+	failClosed       map[TransportType]bool
+	dryRun           bool
 }
 
 // NewPipeline creates a governance pipeline.
@@ -106,14 +114,16 @@ func NewPipeline(cfg PipelineConfig, trust TrustChecker, evaluator PolicyEvaluat
 	}
 
 	return &Pipeline{
-		trustChecker:   trust,
-		interceptors:   NewInterceptorRegistry(),
-		evaluator:      evaluator,
-		auditor:        auditor,
-		staticPolicies: cfg.StaticPolicies,
-		gatewayVersion: cfg.GatewayVersion,
-		failClosed:     fc,
-		dryRun:         cfg.DryRun,
+		trustChecker:     trust,
+		interceptors:     NewInterceptorRegistry(),
+		evaluator:        evaluator,
+		auditor:          auditor,
+		staticPolicies:   cfg.StaticPolicies,
+		gatewayVersion:   cfg.GatewayVersion,
+		policyBundleHash: cfg.PolicyBundleHash,
+		buildDigest:      cfg.BuildDigest,
+		failClosed:       fc,
+		dryRun:           cfg.DryRun,
 	}
 }
 
@@ -168,6 +178,7 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 		// The PRD-002 taxonomy reserves "proved" and "human_approved" for
 		// upstream Foundry decisions that never originate here.
 		DecisionMode: DecisionModeDeterministic,
+		TrustState:   TrustStateTrusted.String(),
 	}
 	trustState := TrustStateTrusted
 
@@ -195,14 +206,17 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 			return decision, nil
 		}
 		trustState = state
+		decision.TrustState = state.String()
 		if state.Blocked() {
 			decision.Action = "deny"
 			decision.Reason = fmt.Sprintf("agent %s is %s", req.AgentID, state)
 			decision.TrustScore = 0.0
+			decision.TrustState = state.String()
 			return decision, nil
 		}
 		if state == TrustStateEvaluating {
 			decision.TrustScore = 0.5
+			decision.TrustState = state.String()
 		}
 	}
 
@@ -300,20 +314,24 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 
 func (p *Pipeline) emitAudit(ctx context.Context, req *GovernanceRequest, decision *GovernanceDecision) {
 	p.auditor.Publish(ctx, AuditEvent{
-		RequestID:      req.RequestID,
-		Transport:      req.Transport,
-		ToolName:       req.ToolName,
-		Action:         decision.Action,
-		Reason:         decision.Reason,
-		TrustScore:     decision.TrustScore,
-		EnvelopeID:     decision.EnvelopeID,
-		AgentID:        req.AgentID,
-		TenantID:       req.TenantID,
-		Timestamp:      time.Now(),
-		DecisionMode:   decision.DecisionMode,
-		MatchedRule:    decision.MatchedRule,
-		PolicyFile:     decision.PolicyFile,
-		GatewayVersion: decision.GatewayVersion,
-		TraceID:        req.TraceID,
+		RequestID:           req.RequestID,
+		Transport:           req.Transport,
+		ToolName:            req.ToolName,
+		Action:              decision.Action,
+		Reason:              decision.Reason,
+		TrustScore:          decision.TrustScore,
+		EnvelopeID:          decision.EnvelopeID,
+		AgentID:             req.AgentID,
+		TenantID:            req.TenantID,
+		Timestamp:           time.Now(),
+		PolicyBundleHash:    p.policyBundleHash,
+		BoundaryBuildDigest: p.buildDigest,
+		RequestHash:         ComputeRequestHash(req),
+		TrustState:          decision.TrustState,
+		DecisionMode:        decision.DecisionMode,
+		MatchedRule:         decision.MatchedRule,
+		PolicyFile:          decision.PolicyFile,
+		GatewayVersion:      decision.GatewayVersion,
+		TraceID:             req.TraceID,
 	})
 }
