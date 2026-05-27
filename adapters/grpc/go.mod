@@ -7,7 +7,7 @@ replace github.com/fulcrum-governance/boundary => ../../
 require (
 	github.com/fulcrum-governance/boundary v0.0.0
 	github.com/google/uuid v1.6.0
-	google.golang.org/grpc v1.81.0
+	google.golang.org/grpc v1.81.1
 )
 
 require (
