@@ -117,7 +117,7 @@ Seven fault classes × seven transports. Each cell is one of:
 
 `PipelineConfig.FailClosedTransports` is `nil` by default, which means Boundary
 applies `DefaultFailClosedTransports` (`mcp`, `managed_agents`, `code_exec`,
-`grpc`, and `a2a`). Operators can pass an explicit empty slice to opt out, or a
+`cli`, `grpc`, and `a2a`). Operators can pass an explicit empty slice to opt out, or a
 populated slice to override the secure-by-default set.
 
 | Transport | Recommended | Rationale |
@@ -248,7 +248,7 @@ bypass evidence are recorded.
 
 - **[RESOLVED in PRD-004R Phase 1] `FailClosedTransports` default is no
   longer empty.** The kernel ships with `DefaultFailClosedTransports =
-  [MCP, Managed Agents, CodeExec, gRPC, A2A]`, applied when
+  [MCP, Managed Agents, CLI, CodeExec, gRPC, A2A]`, applied when
   `PipelineConfig.FailClosedTransports == nil`. Operators who need
   fail-open everywhere must pass an explicit (non-nil) empty slice.
   See `governance/pipeline.go`.

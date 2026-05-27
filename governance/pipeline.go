@@ -18,6 +18,7 @@ import (
 //
 //   - TransportMCP — model-facing tool surface; the primary governance wedge.
 //   - TransportManagedAgents — hosted agent tool confirmations.
+//   - TransportCLI — wrapper-owned command execution.
 //   - TransportCodeExec — arbitrary code execution.
 //   - TransportGRPC — internal service surface for control-plane calls.
 //   - TransportA2A — agent-to-agent tasks crossing a governed boundary.
@@ -28,6 +29,7 @@ import (
 var DefaultFailClosedTransports = []TransportType{
 	TransportMCP,
 	TransportManagedAgents,
+	TransportCLI,
 	TransportCodeExec,
 	TransportGRPC,
 	TransportA2A,

@@ -40,7 +40,7 @@ Step states are `implemented`, `delegated`, `not_applicable`, or `stub`.
 | Adapter | Status | Target | parse | identify | evaluate | deny | forward | inspect | metadata | record | bypass_proof | fail_closed | Key gap |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | mcp | production | production | implemented | implemented | implemented | implemented | implemented | implemented | implemented | delegated | delegated | implemented | Production proxy path ships with lifecycle tests; bypass proof remains a deployment topology contract. |
-| cli | preview | preview | implemented | implemented | delegated | delegated | delegated | implemented | implemented | delegated | stub | delegated | BND-CLI-001: owned shell execution wrapper and bypass proof. |
+| cli | preview | preview | implemented | implemented | delegated | implemented | implemented | implemented | implemented | delegated | delegated | implemented | BND-CLI-002: production requires deployment evidence that the Boundary wrapper is the sole command path. |
 | codeexec | preview | production | implemented | implemented | delegated | delegated | delegated | implemented | implemented | delegated | stub | delegated | BND-CODE-001: sandbox lifecycle integration tests and bypass proof. |
 | grpc | preview | production | implemented | implemented | implemented | implemented | delegated | stub | delegated | delegated | stub | delegated | BND-GRPC-001: metadata/trailer conformance, response policy, and bypass proof. |
 | managedagents | preview | production | implemented | implemented | implemented | implemented | implemented | implemented | implemented | delegated | delegated | implemented | BND-MAPROD-001: live upstream Managed Agents conformance run with operator-owned credentials. |

@@ -53,7 +53,9 @@ claims:
         - path: adapters/mcp/adapter_test.go
           assertion: "MCP request parsing is covered"
         - path: adapters/cli/adapter_test.go
-          assertion: "CLI adapter parsing and metadata are covered"
+          assertion: "CLI adapter parsing, governed forwarding, denial, and metadata are covered"
+        - path: tests/adapters/cli_lifecycle_test.go
+          assertion: "CLI governed lifecycle denies before execution, executes allowed commands once, records decisions, fails closed on pipeline errors, and documents direct shell bypass"
         - path: adapters/codeexec/adapter_test.go
           assertion: "Code execution adapter parsing is covered"
         - path: adapters/grpc/adapter_test.go

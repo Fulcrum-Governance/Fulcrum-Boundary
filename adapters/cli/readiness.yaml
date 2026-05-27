@@ -5,29 +5,23 @@ lifecycle:
   parse: implemented
   identify: implemented
   evaluate: delegated
-  deny: delegated
-  forward: delegated
+  deny: implemented
+  forward: implemented
   inspect: implemented
   metadata: implemented
   record: delegated
-  bypass_proof: stub
-  fail_closed: delegated
+  bypass_proof: delegated
+  fail_closed: implemented
 delegated_steps:
   - step: evaluate
     owner: governance.Pipeline
     contract: docs/ADAPTER_CONTRACT.md
-  - step: deny
-    owner: agent runtime command bridge
-    contract: docs/ADAPTER_CONTRACT.md
-  - step: forward
-    owner: agent runtime command bridge
-    contract: docs/ADAPTER_CONTRACT.md
   - step: record
     owner: governance.AuditPublisher
     contract: docs/DECISION_RECORDS.md
-  - step: fail_closed
-    owner: host command wrapper
-    contract: docs/security/FAIL_MODE_MATRIX.md
+  - step: bypass_proof
+    owner: deployment topology
+    contract: docs/adapters/CLI.md
 bypass_model: process
 fail_closed_transports:
   - cli
@@ -36,10 +30,12 @@ evidence:
     - adapters/cli/adapter_test.go
     - adapters/cli/classifier_test.go
     - adapters/cli/inspector_test.go
+    - tests/adapters/cli_lifecycle_test.go
   docs:
+    - docs/adapters/CLI.md
     - docs/ADAPTER_CONTRACT.md
     - docs/ADAPTER_READINESS_MATRIX.md
 gaps:
-  - id: BND-CLI-001
-    description: "Production CLI status requires an owned shell execution wrapper and bypass proof around the command path."
+  - id: BND-CLI-002
+    description: "Production CLI status requires deployment evidence that the Boundary wrapper is the sole path to command execution."
     spec: "SPEC 2"
