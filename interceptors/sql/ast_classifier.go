@@ -48,7 +48,7 @@ func ClassifyPostgres(sqlText string) Classification {
 	return out
 }
 
-func classifyStmt(node *pg_query.Node) (Class, string) {
+func classifyStmt(node *pg_query.Node) (class Class, stmtType string) {
 	if node == nil || node.GetNode() == nil {
 		return ClassUnknown, "UNKNOWN"
 	}

@@ -32,10 +32,10 @@ func (a *Adapter) Type() governance.TransportType {
 // upstream session and tool-use ID.
 func (a *Adapter) ForwardGoverned(ctx context.Context, req *governance.GovernanceRequest, decision *governance.GovernanceDecision) (*governance.ToolResponse, error) {
 	if a.forwarder == nil {
-		return nil, fmt.Errorf("Managed Agents forwarding requires a configured confirmation forwarder")
+		return nil, fmt.Errorf("managed agents forwarding requires a configured confirmation forwarder")
 	}
 	if req == nil || req.Arguments == nil {
-		return nil, fmt.Errorf("Managed Agents request arguments are required")
+		return nil, fmt.Errorf("managed agents request arguments are required")
 	}
 	event := Event{
 		ID:              stringArg(req.Arguments, "tool_use_id"),

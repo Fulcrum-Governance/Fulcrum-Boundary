@@ -181,7 +181,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-func serveHandler(upstream string, pipeline *governance.Pipeline) (http.Handler, string, func() error, error) {
+func serveHandler(upstream string, pipeline *governance.Pipeline) (handler http.Handler, mode string, closeFn func() error, err error) {
 	parsed, err := url.Parse(upstream)
 	if err == nil && (parsed.Scheme == "http" || parsed.Scheme == "https") {
 		return mcp.NewGateway(pipeline, mcp.NewHTTPForwarder(upstream), "default"), "mcp-proxy", nil, nil
