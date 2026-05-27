@@ -19,6 +19,8 @@ func runCommand(args []string, stdout, stderr io.Writer) int {
 	switch args[0] {
 	case "classify":
 		return runCommandClassify(args[1:], stdout, stderr)
+	case "run":
+		return runCommandRun(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "unknown command subcommand %q\n\n", args[0])
 		printCommandHelp(stderr)
@@ -37,14 +39,17 @@ Usage:
 
 Commands:
   classify        Classify a command without executing it
+  run             Evaluate and run a wrapper-routed command
 
 Examples:
   boundary command classify -- git status
   boundary command classify -- git push origin main
   boundary command classify --json -- rm -rf dist
+  boundary command run -- git status
 
 Notes:
-  - This preview command classifies only. It does not execute commands.
+  - classify never executes commands.
+  - run executes only after the preview command policy allows or warns.
   - Command Boundary governs only commands routed through Boundary.
 `)
 }
