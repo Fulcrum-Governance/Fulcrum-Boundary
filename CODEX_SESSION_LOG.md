@@ -442,3 +442,35 @@
 
 - Standalone mode is process-local and is intended for demos and disconnected deployments.
 - Kernel mode reads fulcrum-trust IPC state through Redis and fails closed on protected transports when trust state cannot be checked.
+
+## 2026-05-26 — Spec 8 Cross-Repo Integration Contract
+
+### Context
+
+- Branch: `codex/2026-05-26-boundary-phase1-foundation`, continuing after Spec 7 was committed as `9b069e3`.
+- Scope: Spec 8 only. Define Boundary's standalone/kernel seams against the Fulcrum control plane, add runtime config validation, and document proof correspondence without claiming runtime proof extraction.
+
+### Built
+
+- Added `governance/providers.go` with integration interfaces for policy, cost, budget, escalation, envelope lifecycle, and proof correspondence.
+- Added `governance/standalone/` implementations for local policy loading, in-process trust, local budget tracking, approval escalation, local envelopes, and static proof correspondence.
+- Added `governance/kernel/` bridge implementations for Redis policies, Redis trust, HTTP budget enforcement, NATS-style escalation, NATS-style audit, and NATS-style envelope events using injectable transports.
+- Added `config/schema.v1.yaml`, runtime config loading/validation, and `boundary serve --config`; unsafe kernel config fails before startup.
+- Added `docs/INTEGRATION.md`, `docs/STANDALONE_VS_KERNEL.md`, and `docs/PROOF_BOUNDARY.md`.
+- Updated README, claims ledger, and changelog with bounded integration-contract language.
+- Reviewed `docs/PROOF_BOUNDARY.md` against actual theorem names in `/Users/td/ConceptDev/Projects/Fulcrum-Proofs/proofs/lean/`.
+
+### Verification
+
+- `env -u GOROOT go test ./claims ./tests/integration ./internal/boundarycli ./cmd/boundary -run 'TestClaims|TestStandaloneBundle|TestKernelBundle|TestRuntimeConfig|TestRun_Serve' -count=1`: pass.
+- `env -u GOROOT go test ./... -short`: pass.
+- `env -u GOROOT go vet ./...`: pass.
+- `git ls-files '*.go' | xargs gofmt -l`: pass.
+- `git diff --check`: pass.
+- `env -u GOROOT go run ./cmd/boundary verify --policies schemas`: pass, `warnings: 0`.
+- `env -u GOROOT go run ./cmd/boundary verify --policies examples/mcp-postgres-gateway/policies`: pass, `warnings: 0`.
+
+### Notes
+
+- Kernel package tests use fake Redis, HTTP, and publisher transports; live fulcrum-io service conformance remains an operator-environment acceptance step.
+- Boundary proof correspondence remains `design` scope only. Boundary itself still must not emit `proved` decisions.

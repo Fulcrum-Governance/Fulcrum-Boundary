@@ -83,6 +83,7 @@ func newFlagSet(name string, stderr io.Writer) *flag.FlagSet {
 
 func runServe(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("boundary serve", stderr)
+	configPath := fs.String("config", "", "Boundary runtime config file")
 	listen := fs.String("listen", ":8080", "HTTP listen address")
 	policyDir := fs.String("policies", "./policies/", "directory containing YAML policy files")
 	upstream := fs.String("upstream", "postgres://demo:demo@localhost:5432/demo?sslmode=disable", "upstream MCP HTTP URL or Postgres demo DSN")
@@ -94,6 +95,31 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 			return 0
 		}
 		return 1
+	}
+	if *configPath != "" {
+		cfg, err := LoadRuntimeConfig(*configPath)
+		if err != nil {
+			fmt.Fprintf(stderr, "config: %v\n", err)
+			return 1
+		}
+		if cfg.Server.Listen != "" {
+			*listen = cfg.Server.Listen
+		}
+		if cfg.Server.Upstream != "" {
+			*upstream = cfg.Server.Upstream
+		}
+		switch cfg.Mode {
+		case "standalone":
+			*trustMode = string(governance.TrustModeStandalone)
+			*policyDir = cfg.Standalone.PolicyDir
+		case "kernel":
+			*trustMode = string(governance.TrustModeKernel)
+			*trustRedisURL = cfg.Kernel.Trust.RedisURL
+			*policyDir = "./policies/"
+		}
+		if cfg.Security.RequireAgentID {
+			*requireAgentID = true
+		}
 	}
 
 	policyResult, err := governance.LoadStaticPolicyFiles(*policyDir)

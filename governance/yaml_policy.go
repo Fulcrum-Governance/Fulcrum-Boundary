@@ -115,6 +115,12 @@ func LoadStaticPolicyFiles(dir string) (*StaticPolicyLoadResult, error) {
 	return result, nil
 }
 
+// ParseStaticPolicyDocument parses either the legacy static-policy YAML shape
+// or policy schema v1 into Boundary's in-process static rule representation.
+func ParseStaticPolicyDocument(path string, body []byte) (*StaticPolicyDocument, error) {
+	return parseStaticPolicyDocument(path, body)
+}
+
 func staticMatchRequiresField(match StaticPolicyMatch) bool {
 	switch strings.ToLower(strings.TrimSpace(match.Type)) {
 	case "transport_is", "agent_in", "agent_not_in", "ast_class":

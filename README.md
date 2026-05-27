@@ -288,8 +288,8 @@ The router is a deployment pattern. The boundary is the product.
 
 ## Interfaces
 
-The governance package exports four interfaces that define every extension
-point:
+The governance package exports the core interfaces that define Boundary's
+extension points:
 
 - **`TrustChecker`** — returns the current trust state for an agent. Implement
   this to wire Boundary to your circuit-breaker or reputation system. `nil` is
@@ -310,6 +310,9 @@ point:
   this to NATS, Kafka, or a log sink.
 
 Full signatures live in [`governance/`](./governance/).
+Standalone and kernel integration seams are documented in
+[docs/INTEGRATION.md](./docs/INTEGRATION.md) and
+[docs/STANDALONE_VS_KERNEL.md](./docs/STANDALONE_VS_KERNEL.md).
 
 ## Part of the Fulcrum Architecture
 
@@ -327,7 +330,7 @@ reputation; and the formal core publishes machine-checkable proof artifacts.
 
 Project docs: [Contributing](./CONTRIBUTING.md) · [Security](./SECURITY.md) · [Changelog](./CHANGELOG.md) · [Code of Conduct](./CODE_OF_CONDUCT.md) · [Citation](./CITATION.cff)
 
-Boundary is the open-source enforcement layer. The full kernel pairs it with upstream Lean 4 proofs of bounded policy invariants in `Fulcrum-Proofs`; Boundary consumes those proof-backed contracts through documented correspondence and decision-mode boundaries rather than emitting `proved` decisions itself. The full kernel also adds Bayesian trust scoring with Beta distributions, per-tenant cost modelling, multi-agent workflow orchestration, and managed multi-tenant infrastructure.
+Boundary is the open-source enforcement layer. The full kernel pairs it with upstream Lean 4 proofs of bounded policy invariants in `Fulcrum-Proofs`; Boundary consumes those proof-backed contracts through documented correspondence and decision-mode boundaries rather than emitting `proved` decisions itself. See [docs/PROOF_BOUNDARY.md](./docs/PROOF_BOUNDARY.md) for the correspondence map. The full kernel also adds Bayesian trust scoring with Beta distributions, per-tenant cost modelling, multi-agent workflow orchestration, and managed multi-tenant infrastructure.
 
 - Website: [fulcrumlayer.io](https://fulcrumlayer.io)
 - Companion paper: tracked separately from this repository; cite Boundary as software until a public paper citation is issued

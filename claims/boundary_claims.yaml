@@ -179,6 +179,33 @@ claims:
     gaps: []
     depends_on: []
 
+  - id: BND-CLAIM-010
+    claim: "Boundary defines standalone and kernel integration contracts for the Fulcrum control plane"
+    status: delivered
+    evidence:
+      tests:
+        - path: tests/integration/standalone_test.go
+          assertion: "Standalone mode boots with local policies, in-process trust, budget, envelope, and proof correspondence"
+        - path: tests/integration/kernel_test.go
+          assertion: "Kernel bridge contracts load policy, read trust, call budget, publish escalation, audit, and envelope events"
+      docs:
+        - path: docs/INTEGRATION.md
+          section: "Interface Contracts"
+        - path: docs/STANDALONE_VS_KERNEL.md
+          section: "Standalone vs Kernel"
+        - path: docs/PROOF_BOUNDARY.md
+          section: "Proof Boundary"
+    public_language:
+      allowed:
+        - "Boundary defines standalone and kernel integration contracts for the Fulcrum control plane."
+        - "Kernel mode names the policy, trust, budget, escalation, audit, and envelope seams explicitly."
+      forbidden:
+        - "Boundary mechanically extracts runtime code from Lean proofs"
+        - "Boundary emits proved decisions"
+        - "Boundary production-connects to every Fulcrum service without operator configuration"
+    gaps: []
+    depends_on: []
+
   - id: BND-CLAIM-004
     claim: "Boundary is a SQL firewall"
     status: false

@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Preview Managed Agents adapter with policy-driven tool confirmations, per-thread budget and trust tracking, and credential-bound bypass proofing docs.
 - Policy schema v1 validation, richer PolicyEval request projection, and a Postgres AST guard with a 30+ case evasion corpus.
 - Standalone trust integration with adaptive termination, trust transition audit events, and `boundary trust show`.
+- Standalone and kernel integration contracts with runtime config validation and proof-correspondence documentation.
 
 ### Changed
 
