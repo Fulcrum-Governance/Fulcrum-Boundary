@@ -216,6 +216,29 @@ claims:
     gaps: []
     depends_on: []
 
+  - id: BND-CLAIM-011
+    claim: "Boundary inventories local MCP client configs and classifies discovered MCP server capabilities without mutating those configs"
+    status: delivered
+    evidence:
+      tests:
+        - path: internal/firewall/inventory_test.go
+          assertion: "Inventory discovers repo-local and user MCP configs, classifies GitHub, filesystem, and database servers, and redacts secret-like values"
+        - path: tests/firewall/inventory_cli_test.go
+          assertion: "boundary inventory reports GitHub W2 risk and boundary init does not mutate MCP config files"
+      docs:
+        - path: docs/firewall/DISCOVERY_INVENTORY.md
+          section: "MCP Firewall Discovery And Inventory"
+    public_language:
+      allowed:
+        - "Boundary inventories local MCP client configs and classifies discovered MCP server capabilities without mutating those configs."
+        - "Discovery is read-only for MCP client configs."
+      forbidden:
+        - "Boundary protects discovered MCP servers before install"
+        - "Boundary rewrites MCP client configs during inventory"
+        - "Boundary detects every dangerous MCP server"
+    gaps: []
+    depends_on: []
+
   - id: BND-CLAIM-004
     claim: "Boundary is a SQL firewall"
     status: "false"

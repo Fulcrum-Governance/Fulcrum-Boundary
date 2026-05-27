@@ -1,5 +1,35 @@
 # CODEX Session Log
 
+## 2026-05-27 - Firewall Discovery And Inventory
+
+### Context
+
+- Parent goal: Firewall + Secure GitHub MCP release train.
+- Subgoal: `Subgoal 3 - Firewall Discovery And Inventory`.
+- Branch: `codex/2026-05-27-firewall-discovery-inventory`
+- Scope: MCP config discovery, inventory reports, docs, tests, and claim entry.
+
+### What changed
+
+- Added `internal/firewall` discovery, MCP config parsing, capability classification, and report rendering.
+- Added `boundary init` and `boundary inventory`.
+- Added JSON, Markdown, and SARIF inventory report support.
+- Added `docs/firewall/DISCOVERY_INVENTORY.md` and fixture MCP configs.
+- Added delivered claim `BND-CLAIM-011` for read-only MCP config inventory.
+- Added focused package and CLI tests.
+
+### Verification
+
+- `go test ./internal/firewall/... -count=1 -timeout 5m`: pass
+- `go test ./tests/firewall/... -count=1 -timeout 5m`: pass
+- `go test ./claims/... -count=1`: pass
+- `go test ./... -short -count=1 -timeout 5m`: pass
+- `git diff --check`: pass
+
+### Notes For Next Step
+
+- If merged, start Firewall risk graph and policy generation from clean `main`.
+
 ## 2026-05-27 - Secure MCP Contract
 
 ### Context

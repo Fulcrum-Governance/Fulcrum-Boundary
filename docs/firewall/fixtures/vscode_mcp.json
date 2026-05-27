@@ -1,0 +1,18 @@
+{
+  "servers": {
+    "github": {
+      "command": "github-mcp-server",
+      "tools": [
+        {
+          "name": "get_issue"
+        },
+        {
+          "name": "create_or_update_file"
+        },
+        {
+          "name": "merge_pull_request"
+        }
+      ]
+    }
+  }
+}
