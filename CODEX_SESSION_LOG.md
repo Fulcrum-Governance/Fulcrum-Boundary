@@ -474,3 +474,29 @@
 
 - Kernel package tests use fake Redis, HTTP, and publisher transports; live fulcrum-io service conformance remains an operator-environment acceptance step.
 - Boundary proof correspondence remains `design` scope only. Boundary itself still must not emit `proved` decisions.
+
+## 2026-05-26 — Boundary Spec Series Closeout
+
+### Completed Phases
+
+- Phase 1 foundation gates: claims ledger and adapter readiness standard.
+- Spec 3: production MCP JSON-RPC proxy adapter.
+- Spec 4: preview Managed Agents proxy adapter.
+- Spec 5: policy schema v1 and Postgres AST guard.
+- Spec 6: receipt-grade decision records.
+- Spec 7: trust integration and adaptive termination.
+- Spec 8: cross-repo standalone/kernel integration contract.
+
+### Final Verification
+
+- `env -u GOROOT go test ./... -short`: pass.
+- `env -u GOROOT go vet ./...`: pass.
+- `git ls-files '*.go' | xargs gofmt -l`: pass.
+- `git diff --check HEAD`: pass.
+- `env -u GOROOT go run ./cmd/boundary verify --policies schemas`: pass, `warnings: 0`.
+- `env -u GOROOT go run ./cmd/boundary verify --policies examples/mcp-postgres-gateway/policies`: pass, `warnings: 0`.
+
+### Notes
+
+- Branch: `codex/2026-05-26-boundary-phase1-foundation`.
+- All phases in `.claude/sprint/BOUNDARY_SPEC_SERIES.md` have been implemented, validated, and committed in sequence.
