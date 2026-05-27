@@ -1,5 +1,34 @@
 # CODEX Session Log
 
+## 2026-05-27 - Boundary Selftest
+
+### Context
+
+- Parent goal: Final public Boundary release hardening.
+- Subgoal: `Subgoal 2 - Boundary Selftest`.
+- Branch: `codex/2026-05-27-selftest`
+- Scope: add a local no-credential selftest command for public release smoke checks; no live credentials, network mutation, or real system mutation.
+
+### What changed
+
+- Added `boundary selftest`, `boundary selftest --json`, and `boundary selftest --no-color`.
+- Added `internal/selftest` with fixture-only checks for CLI boot, MCP inventory, risk graph rendering, starter policy validation, descriptor lock baseline/drift, GitHub lethal-trifecta redteam denial, Secure GitHub live-mode fail-closed behavior, decision-record emission, and claims-validation pointer output.
+- Added `tests/selftest/selftest_cli_test.go` and `docs/SELFTEST.md`.
+- Updated the changelog with the selftest command.
+
+### Verification
+
+- `go test ./internal/selftest/... -count=1 -timeout 5m`: pass
+- `go test ./tests/selftest/... -count=1 -timeout 5m`: pass
+- `go test ./claims/... -count=1`: pass
+- `go test ./... -short -count=1 -timeout 5m`: pass
+- `go run ./cmd/boundary selftest`: pass
+- `git diff --check`: pass
+
+### Notes For Next Step
+
+- After this branch lands, start `Subgoal 3 - GitHub Lethal-Trifecta Demo Command` from clean `main`.
+
 ## 2026-05-27 - Public Release README And Copy Polish
 
 ### Context
