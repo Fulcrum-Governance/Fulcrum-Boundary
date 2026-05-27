@@ -1,5 +1,44 @@
 # CODEX Session Log
 
+## 2026-05-27 - Final Public Release Truth
+
+### Context
+
+- Parent goal: Final public Boundary release hardening.
+- Subgoal: `Subgoal 8 - Final Public Release Truth Reconciliation`.
+- Branch: `codex/2026-05-27-final-public-truth`
+- Scope: reconcile README first-run path, claims, feature status,
+  adapter/profile maturity, install status, external inventory ingest, GitHub
+  Action scope, and forbidden release language after prior hardening PRs landed.
+
+### What changed
+
+- Added `docs/RELEASE_TRUTH_PUBLIC.md`.
+- Put `boundary demo github-lethal-trifecta` at the start of README's
+  five-minute demo path.
+- Added a superseding note to `docs/RELEASE_TRUTH_FIREWALL_SECUREGITHUB.md` and
+  removed its stale "GitHub Action follow-up" statement.
+- Added a final public release truth section to `docs/LAUNCH_TRUTH_FREEZE.md`.
+- Added a changelog entry for the final public truth report.
+
+### Verification
+
+- `make release-check`: pass
+- `go test ./claims/... -count=1`: pass
+- `go test ./... -count=1 -timeout 5m`: pass
+- `go run ./cmd/boundary selftest`: pass
+- `go run ./cmd/boundary demo github-lethal-trifecta`: pass,
+  `actual action: DENY`, `upstream_called=false`
+- `go run ./cmd/boundary inventory ingest --file fixtures/external-inventory/bumblebee-style-mcp.ndjson --source bumblebee --summary`:
+  pass, complete snapshot with 3 records read
+- `GOPROXY=direct go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@1ad95e3ba9a0ab168dd78d4153dd568b16e7e4b2`
+  followed by installed `boundary selftest`: pass
+
+### Notes For Next Step
+
+- Commit, push, merge, then audit the parent goal against
+  `Last_Pass_Specs.md` success criteria.
+
 ## 2026-05-27 - Install And Release Workflow Polish
 
 ### Context

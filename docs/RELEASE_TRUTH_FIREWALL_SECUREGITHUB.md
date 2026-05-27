@@ -6,6 +6,11 @@ Audited base commit SHA: `87f336a342ed645d1a6c02aed9f707bcc405c5cf`
 
 Branch: `codex/2026-05-27-firewall-securegithub-truth`
 
+Note: This report records the earlier Firewall + Secure GitHub release-train
+state. The final public release state after NDJSON ingest, GitHub Action,
+install polish, and release-check work is recorded in
+[`docs/RELEASE_TRUTH_PUBLIC.md`](./RELEASE_TRUTH_PUBLIC.md).
+
 ## Summary
 
 This reconciliation checks the Boundary release surface after the MCP Firewall
@@ -130,5 +135,6 @@ The release truth is consistent:
   recorded.
 - A2A remains preview until live protocol conformance and deployment bypass
   evidence are recorded.
-- Optional repo-scanning GitHub Action remains split to a follow-up package.
+- The repo-local MCP audit GitHub Action is delivered as CI audit/reporting
+  only; it does not install Boundary or provide runtime protection.
 - Full GitHub MCP tool catalog coverage remains deferred.
