@@ -1,5 +1,56 @@
 # CODEX Session Log
 
+## 2026-05-27 - Command Boundary Project Shell And Shims
+
+### Context
+
+- Parent goal: execute the v0.3 publication plus v0.4 Command Boundary
+  sequence.
+- Subgoal: add project-local shims and `boundary shell` without global shell
+  takeover.
+- Branch: `codex/2026-05-27-command-shell-shims`
+- Scope: project-local shim install/uninstall and scoped subshell only. No
+  redteam packs, README promotion, release truth change, global shell profile
+  edits, or global shim installation.
+
+### What changed
+
+- Added project-local shim primitives in `internal/commandboundary`.
+- Added `boundary command install --project` and
+  `boundary command uninstall --project`.
+- Added `boundary shell` with project `.boundary/bin` prepended to `PATH` for
+  the launched subshell only.
+- Added `--print-env` inspection mode and `--no-install` shell mode for
+  testability and explicit operator control.
+- Added docs for project-local shim installation and shell behavior.
+- Added internal and CLI tests proving shim creation/removal, no global profile
+  mutation, and shell-scoped environment output.
+
+### Verification
+
+- `go test ./internal/commandboundary/... -count=1 -timeout 5m`: pass.
+- `go test ./tests/commandboundary/... -run Shim -count=1 -timeout 5m`: pass.
+- `go test ./tests/commandboundary/... -count=1 -timeout 5m`: pass.
+- `go test ./claims/... -count=1`: pass.
+- `go test ./... -short -count=1 -timeout 5m`: pass.
+- `golangci-lint run --timeout=5m`: pass, `0 issues`.
+- `./scripts/docs-build.sh`: pass.
+- `make release-check`: pass.
+- `git diff --check`: pass.
+
+### Notes For Next Step
+
+- The next branch can add fixture-only command redteam packs.
+- Keep the public copy explicit: Command Boundary governs only commands routed
+  through `boundary command run`, `boundary shell`, or project-local shims.
+
+### CI Fix
+
+- PR #74 security scan flagged the intentional interactive shell launch
+  (`G702`) and validated project-shim read path (`G304`).
+- Added scoped `#nosec` annotations with rationale. No behavior changed.
+- `go run github.com/securego/gosec/v2/cmd/gosec@v2.26.1 ./internal/boundarycli ./internal/commandboundary`: pass, `0 issues`.
+
 ## 2026-05-27 - Command Boundary Run Wrapper
 
 ### Context
