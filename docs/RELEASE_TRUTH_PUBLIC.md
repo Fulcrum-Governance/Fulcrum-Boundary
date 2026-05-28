@@ -60,8 +60,7 @@ the test suite, claims tests, policy verification, receipt verification help,
 `boundary selftest`, and `boundary demo github-lethal-trifecta`.
 
 Post-tag install and `@latest` verification are recorded in
-[`docs/RELEASE_TRUTH_V060_POSTRELEASE.md`](./RELEASE_TRUTH_V060_POSTRELEASE.md)
-after the tag is created.
+[`docs/RELEASE_TRUTH_V060_POSTRELEASE.md`](./RELEASE_TRUTH_V060_POSTRELEASE.md).
 
 ## README First-Run Status
 
