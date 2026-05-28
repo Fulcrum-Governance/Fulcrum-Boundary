@@ -3,7 +3,7 @@
 The action boundary for MCP-native agents.
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.5.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.6.0
 boundary selftest
 boundary demo github-lethal-trifecta
 ```
@@ -29,6 +29,7 @@ flowchart LR
 - Secure GitHub has fixture proof plus an opt-in live GitHub App conformance
   harness; deployment bypass evidence is still required before production.
 - Command Boundary is a preview, routed-path-only command governance surface.
+- Edit Boundary is a preview, routed-edit-envelope-only file mutation surface.
 - Generated policies are starter policies for operator review.
 - The dashboard is local-only artifact visibility.
 - Boundary governs routed tools; direct tool access is outside the governed

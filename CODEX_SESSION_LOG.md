@@ -1,5 +1,52 @@
 # CODEX Session Log
 
+## 2026-05-28 - v0.6.0 Edit Boundary Release Packaging
+
+### Context
+
+- Parent goal: execute the v0.6 Filesystem/Edit Boundary release train from
+  `/Users/td/ConceptDev/Projects/Fulcrum/.claude/sprint/next_spec0.6.md`.
+- Branch: `release/v060-package`.
+- Scope: release packaging and truth alignment only. No product behavior
+  changed.
+- Decision: package the already-merged Edit Boundary preview as v0.6.0 after
+  the truth reconciliation branch landed.
+
+### What changed
+
+- Updated active public install and GitHub Action examples to `@v0.6.0`.
+- Added `docs/releases/v0.6.0.md`.
+- Added `docs/RELEASE_TRUTH_V060.md`.
+- Updated active public truth and repo-polish truth to include Edit Boundary as
+  delivered preview while preserving MCP production, Secure GitHub preview,
+  and Command Boundary preview boundaries.
+- Added a dated v0.6.0 section to `docs/LAUNCH_TRUTH_FREEZE.md`.
+- Added a v0.6.0 changelog section.
+
+### Verification
+
+- `make docs-build`: pass. Existing upstream MkDocs 2.0 deprecation warning
+  only.
+- `make release-check`: pass.
+- `go test ./internal/editboundary/... -count=1 -timeout 5m`: pass.
+- `go test ./tests/editboundary/... -count=1 -timeout 5m`: pass.
+- `go test ./tests/redteam/... -run Edit -count=1 -timeout 5m`: pass.
+- `go test ./claims/... -count=1`: pass.
+- `go test ./... -count=1 -timeout 5m`: pass.
+- `go vet ./...`: pass.
+- `git ls-files '*.go' | xargs gofmt -l`: pass, no output.
+- `go run github.com/securego/gosec/v2/cmd/gosec@v2.26.1 ./...`: pass,
+  0 issues.
+- `golangci-lint run --timeout=5m`: pass, 0 issues.
+- Active public-reference sweep for `@v0.5.0`, `@v0.4.0`, and `@main`: pass,
+  no active stale refs.
+- `git diff --check`: pass.
+
+### Notes For Next Step
+
+- After this branch lands, tag `v0.6.0`, publish the GitHub release, and run
+  direct/public-proxy install smoke verification.
+
 ## 2026-05-28 - Edit Boundary Truth Reconciliation
 
 ### Context

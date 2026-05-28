@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.5.0
+      - uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.6.0
         with:
           format: sarif
 ```
