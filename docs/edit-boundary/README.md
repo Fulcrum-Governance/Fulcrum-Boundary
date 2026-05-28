@@ -1,7 +1,7 @@
 # Edit Boundary Preview
 
-Edit Boundary is the planned v0.6 preview train for Fulcrum Boundary. It extends
-the routed action-boundary model from MCP tools and project-local commands to
+Edit Boundary is the v0.6 preview train for Fulcrum Boundary. It extends the
+routed action-boundary model from MCP tools and project-local commands to
 proposed file mutations when those mutations are submitted through a Boundary
 edit envelope.
 
@@ -22,9 +22,9 @@ through MCP tool calls or shell commands. Command Boundary governs routed comman
 paths. Edit Boundary is the next preview surface for governing file-change
 proposals before they touch the worktree.
 
-## Planned Preview Surface
+## Preview Surface
 
-Edit Boundary will define three routed surfaces:
+Edit Boundary defines three routed surfaces:
 
 | Surface | Example | Scope |
 |---|---|---|
@@ -37,16 +37,20 @@ is represented as a Boundary edit envelope.
 
 ## Current Status
 
-This directory is the v0.6 design lock. It does not mark Edit Boundary as
-delivered behavior. The planned claim is recorded in the claims ledger as
-roadmap-only until the inspect, apply, redteam, and truth reconciliation steps
-land with tests.
+The inspect, apply-wrapper, and fixture redteam surfaces are implemented as a
+preview. This is not a filesystem sandbox, editor control plane, or global file
+write interceptor. Production maturity still depends on deployment evidence
+that edits route through Boundary-controlled envelopes.
 
 ## Documents
 
 - [Design](./DESIGN.md)
 - [Edit Taxonomy](./EDIT_TAXONOMY.md)
 - [Bypass Model](./BYPASS_MODEL.md)
+- [Inspect](./INSPECT.md)
+- [Apply](./APPLY.md)
+- [Redteam](./REDTEAM.md)
+- [Demo](./DEMO.md)
 - [Preview Claims](./PREVIEW_CLAIMS.md)
 - [Redteam Fixtures](./REDTEAM_FIXTURES.md)
 - [Relation to Command Boundary](./RELATION_TO_COMMAND_BOUNDARY.md)

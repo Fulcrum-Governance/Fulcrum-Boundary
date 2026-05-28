@@ -42,6 +42,12 @@ nav:
   - Command Boundary:
       - Overview: command-boundary/index.md
       - Demo: command-boundary/demo.md
+  - Edit Boundary:
+      - Overview: edit-boundary/index.md
+      - Inspect: edit-boundary/inspect.md
+      - Apply: edit-boundary/apply.md
+      - Redteam: edit-boundary/redteam.md
+      - Demo: edit-boundary/demo.md
   - Reference:
       - CLI: reference/cli.md
       - Claims: reference/claims.md
