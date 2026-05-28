@@ -50,4 +50,5 @@ nav:
       - Demo: edit-boundary/demo.md
   - Reference:
       - CLI: reference/cli.md
+      - Release Utilities: reference/release-utilities.md
       - Claims: reference/claims.md

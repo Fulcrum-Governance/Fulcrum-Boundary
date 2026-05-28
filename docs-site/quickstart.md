@@ -3,7 +3,7 @@
 Install the CLI and run the local smoke path:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.6.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.6.1
 boundary selftest
 boundary demo github-lethal-trifecta
 ```

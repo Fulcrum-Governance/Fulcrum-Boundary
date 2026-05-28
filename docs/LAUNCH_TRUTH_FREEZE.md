@@ -204,6 +204,36 @@ changing the production adapter boundary.
 Active public install and MCP audit GitHub Action examples use `@v0.6.0` for
 repeatable post-tag behavior.
 
+## 2026-05-28: v0.6.1 Utility Train Packaging
+
+Fulcrum Boundary v0.6.1 packages the v0.6.x utility train without adding a new
+governed action surface or upgrading any preview surface to production.
+
+Added release utility surfaces:
+
+- `boundary version`
+- `boundary demo action-boundary`
+- `boundary doctor`
+- `boundary evidence bundle`
+- `boundary evidence verify`
+
+Release truth:
+
+- MCP remains production.
+- Secure GitHub remains preview.
+- Command Boundary remains preview and routed-path-only.
+- Edit Boundary remains preview and routed-edit-envelope-only.
+- Evidence bundles are local integrity and handoff artifacts, not production
+  safety proof.
+- Doctor output is local diagnostics and bypass caveats, not proof that all
+  routes are protected.
+- The action-boundary demo is fixture-only and does not prove all attacks are
+  blocked.
+- Version output is metadata reporting, not cryptographic release provenance.
+
+Active public install and MCP audit GitHub Action examples use `@v0.6.1` for
+repeatable behavior.
+
 ## Verified Release Surface
 
 | Surface | Status |

@@ -12,7 +12,7 @@
 Requires Go 1.25+.
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.6.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.6.1
 boundary selftest
 boundary demo github-lethal-trifecta
 ```
@@ -78,7 +78,7 @@ Install the `boundary` CLI with Go:
 Requires Go 1.25+.
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.6.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.6.1
 boundary selftest
 ```
 
@@ -126,6 +126,23 @@ The flagship path starts with a poisoned GitHub issue fixture and ends with a
 private-repo mutation denied before any upstream GitHub call. See
 [`docs/DEMO_SCRIPT.md`](./docs/DEMO_SCRIPT.md) and
 [`docs/YC_DEMO_NARRATIVE.md`](./docs/YC_DEMO_NARRATIVE.md).
+
+## Release Utility Commands
+
+Boundary includes local utility commands for release proof and operator
+diagnostics:
+
+```bash
+boundary version
+boundary doctor --json
+boundary demo action-boundary
+boundary evidence bundle --include-demo --out boundary-evidence
+boundary evidence verify boundary-evidence
+```
+
+These commands use local metadata, fixture-safe demos, and local artifacts by
+default. They do not prove production route enforcement or close deployment
+bypasses by themselves.
 
 ## What This Proves
 
@@ -228,7 +245,7 @@ See [docs/edit-boundary/DEMO.md](./docs/edit-boundary/DEMO.md).
 Boundary includes a repo-local MCP audit action for CI visibility:
 
 ```yaml
-- uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.6.0
+- uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.6.1
 ```
 
 The action audits repository MCP configs and emits Markdown plus optional SARIF
