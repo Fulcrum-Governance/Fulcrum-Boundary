@@ -6,4 +6,6 @@ must name the tools, actions, policies, evidence, and bypass model it supports.
 
 Current public profile:
 
-- Secure GitHub: preview, fixture-backed write-after-taint denial.
+- Secure GitHub: preview, fixture-backed write-after-taint denial plus opt-in
+  live conformance for GitHub App read evidence and denied-write no-mutation
+  proof.

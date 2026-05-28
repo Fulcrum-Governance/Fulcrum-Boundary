@@ -1,5 +1,59 @@
 # CODEX Session Log
 
+## 2026-05-28 - v0.5.0 Secure GitHub Live Conformance Preview
+
+### Context
+
+- Parent goal: execute the v0.5 Secure GitHub live conformance preview plan
+  from `/Users/td/ConceptDev/Projects/Fulcrum/.claude/sprint/Next_Spec_0.5.md`.
+- Branch: `feat/securegithub-live-conformance-v050`.
+- Scope: Secure GitHub GitHub App authentication, opt-in live-read
+  conformance, denied write-after-taint no-mutation proof, sanitized
+  transcript evidence, CLI/docs/claims/readiness/release truth.
+- Decision: this plan supersedes the earlier v0.5 Filesystem/Edit Boundary
+  train. Filesystem/Edit Boundary moves to v0.6.
+
+### What changed
+
+- Added GitHub App JWT and installation-token auth for Secure GitHub live
+  conformance.
+- Added a sanitized REST GitHub client for live issue reads and guarded
+  mutation calls.
+- Added an opt-in conformance runner and CLI:
+  `boundary secure github conformance read`, `denied-write`, and `all`.
+- Added transcript safety controls and ignored raw/secret/unsanitized
+  transcript artifacts.
+- Added denied write-after-taint evidence that records
+  `upstream_called=false` and `github_mutation_called=false`.
+- Added Secure GitHub live conformance docs, permissions docs, evidence docs,
+  bypass-model docs, docs-site page, and v0.5 release truth.
+- Added `BND-CLAIM-018` for the opt-in live conformance harness while keeping
+  Secure GitHub in preview and preserving the fixture proof claim.
+
+### Verification
+
+- `go test ./adapters/securegithub/... -count=1 -timeout 5m`: pass.
+- `go test ./internal/boundarycli/... -count=1 -timeout 5m`: pass.
+- `go test ./tests/conformance/secure_github/... -count=1 -timeout 5m`: pass.
+- `go test ./tests/redteam/... -run GitHub -count=1 -timeout 5m`: pass.
+- `go test ./claims/... -count=1`: pass.
+- `make docs-build`: pass.
+- `make release-check`: pass.
+- `go test ./... -short -count=1 -timeout 5m`: pass.
+- `git diff --check`: pass.
+
+### Notes For Next Step
+
+- No credentials were stored in repo artifacts.
+- Operator-owned live GitHub conformance was not run in this session because no
+  credentials were provided.
+- The live conformance harness skips by default and fails closed when
+  `BOUNDARY_GITHUB_CONFORMANCE=true` is set without required GitHub App
+  environment.
+- Secure GitHub remains preview. Production still requires deployment bypass
+  proof showing direct GitHub API and upstream GitHub MCP paths are removed or
+  governed.
+
 ## 2026-05-27 - v0.4.0 Post-Release Alignment Audit
 
 ### Context

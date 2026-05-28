@@ -46,7 +46,7 @@ Step states are `implemented`, `delegated`, `not_applicable`, or `stub`.
 | managedagents | preview | production | implemented | implemented | implemented | implemented | implemented | implemented | implemented | delegated | delegated | implemented | BND-MAPROD-001: live upstream Managed Agents conformance run with operator-owned credentials. |
 | webhook | preview | preview | implemented | implemented | implemented | implemented | delegated | implemented | delegated | delegated | delegated | implemented | BND-WEB-001: production requires deployment evidence that execution webhooks are the sole downstream action path; informational webhooks remain post-execution audit only. |
 | a2a | preview | preview | implemented | implemented | delegated | implemented | implemented | implemented | implemented | delegated | delegated | implemented | BND-A2A-002: live protocol conformance and deployment bypass evidence before production. |
-| securegithub | preview | preview | implemented | implemented | delegated | implemented | implemented | implemented | implemented | delegated | delegated | implemented | BND-GH-001: live GitHub App conformance and deployment bypass evidence before production. |
+| securegithub | preview | preview | implemented | implemented | delegated | implemented | implemented | implemented | implemented | delegated | delegated | implemented | BND-GH-002: deployment bypass evidence before production; opt-in live conformance exists for operator-owned test repositories. |
 
 MCP is the first production adapter. Secure GitHub is a Secure MCP profile, not
 a standalone transport, but it declares the same lifecycle so its preview
@@ -60,6 +60,8 @@ governance is implemented and tested. Webhook now separates informational
 post-execution audit mode from execution pre-approval mode, but remains below
 production until deployment bypass evidence exists. Secure GitHub now has a
 preview fixture profile for write-after-taint denial, but remains below
-production until live GitHub App conformance and bypass evidence exist. Other
-adapters remain below production until an adapter-specific spec proves their
-full lifecycle.
+production until deployment bypass evidence exists. Secure GitHub now has an
+opt-in live conformance harness for GitHub App read evidence and denied
+write-after-taint no-mutation proof, but that harness does not prove deployment
+bypass resistance. Other adapters remain below production until an
+adapter-specific spec proves their full lifecycle.

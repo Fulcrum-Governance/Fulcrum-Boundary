@@ -6,7 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-No changes yet.
+### Added
+
+- Secure GitHub live conformance preview harness with GitHub App auth,
+  sanitized read evidence, denied write-after-taint no-mutation proof, and
+  `boundary secure github conformance` commands.
 
 ## [0.4.0] - 2026-05-27
 

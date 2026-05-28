@@ -25,13 +25,18 @@ fixture-based and implemented in `adapters/securegithub`:
 4. A decision record captures the verdict, tool, resource, taint source, and
    reason.
 
-Secure GitHub MCP remains preview until live GitHub App conformance evidence and
-deployment bypass proof exist.
+Secure GitHub MCP now includes an opt-in live conformance preview harness, but
+remains preview until deployment bypass proof exists.
 
 Profile docs:
 
 - [`GITHUB.md`](./GITHUB.md)
 - [`GITHUB_REDTEAM.md`](./GITHUB_REDTEAM.md)
+- [`GITHUB_APP_AUTH.md`](./GITHUB_APP_AUTH.md)
+- [`GITHUB_APP_PERMISSIONS.md`](./GITHUB_APP_PERMISSIONS.md)
+- [`GITHUB_LIVE_CONFORMANCE.md`](./GITHUB_LIVE_CONFORMANCE.md)
+- [`GITHUB_LIVE_EVIDENCE.md`](./GITHUB_LIVE_EVIDENCE.md)
+- [`GITHUB_LIVE_BYPASS_MODEL.md`](./GITHUB_LIVE_BYPASS_MODEL.md)
 - [`docs/deployment/secure-github-bypass-proofing.md`](../deployment/secure-github-bypass-proofing.md)
 
 ## Profile Checklist

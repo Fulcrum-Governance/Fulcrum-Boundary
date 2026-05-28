@@ -49,12 +49,14 @@ Common usage:
   boundary secure github serve --fixture --dry-run
 
 Commands:
-  setup   Write a fixture profile and starter policy bundle
-  serve   Serve the fixture Secure GitHub MCP profile
+  setup        Write a fixture profile and starter policy bundle
+  serve        Serve the fixture Secure GitHub MCP profile
+  conformance  Run live GitHub App conformance checks when explicitly enabled
 
 Notes:
   - Fixture mode uses no credentials, no network, and no live mutation.
-  - Secure GitHub remains preview until live GitHub App conformance evidence exists.
+  - Live conformance is opt-in and writes sanitized evidence only.
+  - Secure GitHub remains preview until live conformance and deployment bypass evidence exist.
 `)
 		return 0
 	}
@@ -63,6 +65,8 @@ Notes:
 		return runSecureGitHubSetup(args[1:], stdout, stderr)
 	case "serve":
 		return runSecureGitHubServe(args[1:], stdout, stderr)
+	case "conformance":
+		return runSecureGitHubConformance(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "unknown secure github command %q\n", args[0])
 		return 1

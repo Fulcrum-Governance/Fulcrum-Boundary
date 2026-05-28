@@ -57,11 +57,25 @@ Example output:
 boundary secure github --help
 boundary secure github setup --out .boundary/secure-github
 boundary secure github serve --fixture --dry-run
+boundary secure github conformance --help
 ```
 
 Secure GitHub is a preview profile for routed GitHub tools. Fixture mode writes
-local profile and starter policy artifacts only. Live GitHub App conformance is
-not claimed until live evidence exists.
+local profile and starter policy artifacts only. Live conformance is opt-in and
+skips unless `BOUNDARY_GITHUB_CONFORMANCE=true` is set.
+
+Live conformance commands:
+
+```bash
+BOUNDARY_GITHUB_CONFORMANCE=true boundary secure github conformance read
+BOUNDARY_GITHUB_CONFORMANCE=true boundary secure github conformance denied-write
+BOUNDARY_GITHUB_CONFORMANCE=true boundary secure github conformance all --out /tmp/boundary-secure-github
+```
+
+The denied-write path must report `actual action: DENY`,
+`reason: lethal_trifecta_detected`, `upstream_called=false`, and
+`github_mutation_called=false`. Secure GitHub remains preview until deployment
+bypass proof exists.
 
 ## 5. Inventory Ingest Commands
 

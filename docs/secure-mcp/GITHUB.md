@@ -1,12 +1,16 @@
 # Secure GitHub MCP
 
 Secure GitHub MCP is a preview Boundary profile for governing a small GitHub
-MCP tool set before forwarding. The current release is a fixture proof: it
+MCP tool set before forwarding. The default release path is a fixture proof: it
 demonstrates that untrusted GitHub content can taint an envelope and that a
 later protected private-repo mutation is denied before a GitHub call is made.
 
-Secure GitHub remains preview until live GitHub App conformance evidence and
-deployment bypass proof are recorded.
+The live conformance preview adds an opt-in GitHub App path. With
+operator-owned credentials, Boundary can read real GitHub context, mark the
+session tainted, and deny a protected write-after-taint action before any
+upstream GitHub mutation client call executes.
+
+Secure GitHub remains preview until deployment bypass proof is recorded.
 
 ## Status
 
@@ -14,9 +18,9 @@ deployment bypass proof are recorded.
 |---|---|
 | Profile ID | `secure-github` |
 | Maturity | `preview` |
-| Evidence mode | fixture |
-| Live GitHub mutation | none |
-| Production gate | live GitHub App conformance plus bypass proof |
+| Evidence mode | fixture by default; opt-in live conformance harness |
+| Live GitHub mutation | none by default; denied-write conformance must report `github_mutation_called=false` |
+| Production gate | deployment bypass proof plus operator deployment evidence |
 
 ## Commands
 
@@ -38,7 +42,17 @@ Run the fixture JSON-RPC HTTP profile:
 boundary secure github serve --fixture --listen 127.0.0.1:8940
 ```
 
-Live GitHub App mode intentionally fails closed in this preview profile.
+Run opt-in live conformance checks:
+
+```bash
+BOUNDARY_GITHUB_CONFORMANCE=true boundary secure github conformance read
+BOUNDARY_GITHUB_CONFORMANCE=true boundary secure github conformance denied-write
+BOUNDARY_GITHUB_CONFORMANCE=true boundary secure github conformance all --out /tmp/boundary-secure-github
+```
+
+Without `BOUNDARY_GITHUB_CONFORMANCE=true`, conformance commands skip without
+network calls. `boundary secure github serve --fixture=false` still fails closed;
+live serving is not part of this preview.
 
 ## MVP Tool Set
 
@@ -124,11 +138,23 @@ The data object also carries the decision record for fixture evidence.
 
 ## Limitations
 
-- The current profile is fixture-backed and does not call GitHub.
-- BYO GitHub App authentication is a production gate, not present evidence.
+- The default profile is fixture-backed and does not call GitHub.
+- The opt-in conformance harness calls GitHub only when explicitly enabled with
+  operator-owned GitHub App credentials.
+- Live conformance proves the configured read and denied-write no-mutation path;
+  it does not prove deployment bypass resistance.
 - One-repo-per-session enforcement is in-memory for the preview fixture.
 - Direct GitHub API calls or direct upstream GitHub MCP calls are bypasses unless
   deployment topology removes those paths.
 - The profile governs the MVP tool set above, not the full GitHub MCP tool
   catalog.
 
+## Live Conformance Docs
+
+- [GitHub App auth](./GITHUB_APP_AUTH.md)
+- [GitHub App permissions](./GITHUB_APP_PERMISSIONS.md)
+- [Live conformance](./GITHUB_LIVE_CONFORMANCE.md)
+- [Live read conformance](./GITHUB_LIVE_READ_CONFORMANCE.md)
+- [Live denied-write conformance](./GITHUB_LIVE_DENIED_WRITE_CONFORMANCE.md)
+- [Live bypass model](./GITHUB_LIVE_BYPASS_MODEL.md)
+- [Live evidence](./GITHUB_LIVE_EVIDENCE.md)

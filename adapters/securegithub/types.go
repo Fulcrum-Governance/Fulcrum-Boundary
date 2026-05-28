@@ -27,6 +27,7 @@ type Config struct {
 	Repo              string
 	OneRepoPerSession bool
 	FixtureMode       bool
+	LiveMode          bool
 	GatewayVersion    string
 	BuildDigest       string
 }
@@ -69,7 +70,11 @@ func (c Config) withDefaults() Config {
 		c.BuildDigest = defaults.BuildDigest
 	}
 	c.OneRepoPerSession = defaults.OneRepoPerSession
-	c.FixtureMode = defaults.FixtureMode
+	if c.LiveMode {
+		c.FixtureMode = false
+	} else {
+		c.FixtureMode = defaults.FixtureMode
+	}
 	return c
 }
 
@@ -141,7 +146,7 @@ func (e Envelope) Arguments() map[string]any {
 		"one_repo_per_session":  e.OneRepoPerSession,
 		"repo_scope_violation":  e.RepoScopeViolation,
 		"fixture_mode":          e.FixtureMode,
-		"live_github_evidence":  false,
+		"live_github_evidence":  !e.FixtureMode,
 		"live_git_app_required": true,
 	}
 	if len(e.TaintSources) > 0 {
