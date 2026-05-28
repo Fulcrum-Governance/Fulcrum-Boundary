@@ -23,6 +23,12 @@ run_in() {
 }
 
 cd "$ROOT"
+tmp="$(mktemp -d)"
+cleanup() {
+  rm -rf "$tmp"
+}
+trap cleanup EXIT
+
 run ./scripts/assert-no-public-vendor-refs.sh
 run go vet ./...
 run_in adapters/grpc go vet ./...
@@ -32,5 +38,10 @@ run go test ./tests/... -count=1 -timeout 5m
 run go test ./claims/... -count=1 -timeout 5m
 run go run ./cmd/boundary verify --policies examples/mcp-postgres-gateway/policies
 run go run ./cmd/boundary verify-record --help
+run go run ./cmd/boundary version
 run go run ./cmd/boundary selftest
 run go run ./cmd/boundary demo github-lethal-trifecta
+run go run ./cmd/boundary demo action-boundary
+run go run ./cmd/boundary doctor --json
+run go run ./cmd/boundary evidence bundle --include-demo --out "$tmp/evidence"
+run go run ./cmd/boundary evidence verify "$tmp/evidence"
