@@ -6,7 +6,10 @@ Canonical repository reference:
 First-run commands:
 
 ```bash
+boundary version
 boundary selftest
+boundary doctor --json
+boundary demo action-boundary
 boundary demo github-lethal-trifecta
 boundary evidence bundle --include-demo
 boundary evidence verify boundary-evidence

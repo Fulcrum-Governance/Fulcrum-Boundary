@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-05-28
+
+### Added
+
+- `boundary version` text and JSON output for local release metadata, module
+  path, Go runtime, and build-info fallback.
+- `boundary demo action-boundary` fixture-only demo spanning MCP / Secure
+  GitHub, Command Boundary, and Edit Boundary without credentials, network
+  calls, or live mutation.
+- Refitted `boundary doctor` local diagnostics for MCP, Command Boundary, and
+  Edit Boundary routed-surface readiness and bypass caveats.
+- `boundary evidence bundle` and `boundary evidence verify` for local evidence
+  manifests, SHA-256 artifact hashes, fixture-safe utility outputs, and bundle
+  integrity checks.
+
+### Changed
+
+- `make release-check` now covers the v0.6.x utility train: version, action
+  boundary demo, doctor JSON, evidence bundle, and evidence verify.
+- Public install and GitHub Action examples now target `@v0.6.1` for
+  repeatable utility-train installs.
+
 ## [0.6.0] - 2026-05-28
 
 ### Added
@@ -137,7 +159,8 @@ Initial public release of the project now known as Fulcrum Boundary.
 
 ---
 
-[Unreleased]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.3.0...v0.4.0

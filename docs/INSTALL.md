@@ -9,13 +9,13 @@ Requires Go 1.25+.
 ## Go Install
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.6.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.6.1
 boundary selftest
 ```
 
-`@v0.6.0` is the recommended repeatable install target for the Edit Boundary
-preview release. `@latest` resolves to the latest published release after the
-Go proxy refreshes.
+`@v0.6.1` is the recommended repeatable install target for the v0.6.x utility
+release. `@latest` resolves to the latest published release after the Go proxy
+refreshes.
 
 For the convenience path:
 

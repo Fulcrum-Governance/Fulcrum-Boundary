@@ -2,6 +2,11 @@
 
 Date: 2026-05-28
 
+Historical note: this report records the v0.6.0 repository polish state. For
+current public release truth after the v0.6.x utility train, see
+[`docs/RELEASE_TRUTH_PUBLIC.md`](./RELEASE_TRUTH_PUBLIC.md) and
+[`docs/RELEASE_TRUTH_V061.md`](./RELEASE_TRUTH_V061.md).
+
 Audited base commit: `77474b22616f83aedf18fb6eea284349211aae8d`
 
 Branch: `release/v060-package`

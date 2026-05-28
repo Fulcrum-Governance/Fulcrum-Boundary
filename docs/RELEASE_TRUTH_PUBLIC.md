@@ -2,16 +2,16 @@
 
 Date: 2026-05-28
 
-Audited base commit SHA: `77474b22616f83aedf18fb6eea284349211aae8d`
+Audited base commit SHA: `cf8e6595829090edfb567c3a6622aa40c40524e3`
 
-Branch: `release/v060-package`
+Branch: `release/v06x-utility-consolidation`
 
-Current release target: `v0.6.0`
+Current release target: `v0.6.1`
 
 ## Summary
 
-This report reconciles the public Boundary release surface for the v0.6.0 Edit
-Boundary preview package.
+This report reconciles the public Boundary release surface for the v0.6.1
+utility consolidation package.
 
 The final public truth is:
 
@@ -42,8 +42,11 @@ The final public truth is:
 - Boundary governs routed tools. Tools that bypass Boundary are outside the
   governed route.
 - The public Go install path requires Go 1.25+.
-- Public install examples use the repeatable `@v0.6.0` release tag.
-- Public action examples use `@v0.6.0` for repeatable CI behavior.
+- Public install examples use the repeatable `@v0.6.1` release tag.
+- Public action examples use `@v0.6.1` for repeatable CI behavior.
+- v0.6.1 adds local utility commands for version metadata, fixture-only
+  action-boundary demos, routed-surface diagnostics, and evidence bundle
+  verification.
 
 ## Test Commands
 
@@ -57,17 +60,19 @@ The final public truth is:
 
 `make release-check` also runs the root suite, the gRPC nested module suite,
 the test suite, claims tests, policy verification, receipt verification help,
-`boundary selftest`, and `boundary demo github-lethal-trifecta`.
+`boundary selftest`, `boundary demo github-lethal-trifecta`, `boundary
+version`, `boundary demo action-boundary`, `boundary doctor --json`,
+`boundary evidence bundle --include-demo`, and `boundary evidence verify`.
 
-Post-tag install and `@latest` verification are recorded in
-[`docs/RELEASE_TRUTH_V060_POSTRELEASE.md`](./RELEASE_TRUTH_V060_POSTRELEASE.md).
+Post-tag install and `@latest` verification must be recorded after the
+`v0.6.1` tag is pushed.
 
 ## README First-Run Status
 
 README presents the first-run path before architecture:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.6.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.6.1
 boundary selftest
 ```
 
@@ -107,6 +112,10 @@ mutation.
 | BND-CLAIM-CMD-002 | delivered | Command Boundary redteam packs are fixture-only and perform no live mutation. |
 | BND-CLAIM-EDIT-001 | delivered | Boundary provides preview Edit Boundary governance for proposed file mutations routed through Boundary edit envelopes. |
 | BND-CLAIM-EDIT-002 | delivered | Edit Boundary redteam packs are fixture-only and perform no live project mutation. |
+| BND-CLAIM-UTIL-001 | delivered | Boundary reports local version and build metadata; this is not cryptographic provenance. |
+| BND-CLAIM-UTIL-002 | delivered | Boundary runs a fixture-only action-boundary demo across routed MCP / Secure GitHub, Command Boundary, and Edit Boundary paths. |
+| BND-CLAIM-UTIL-003 | delivered | Boundary reports local routed-surface diagnostics and bypass caveats without proving production route protection. |
+| BND-CLAIM-UTIL-004 | delivered | Boundary creates and verifies local evidence bundles; evidence bundles do not prove production deployment safety. |
 
 Delivered Secure GitHub, Command Boundary, and Edit Boundary claims are
 delivered preview claims. They do not upgrade those surfaces to production.
@@ -132,6 +141,11 @@ delivered preview claims. They do not upgrade those surfaces to production.
 | Edit inspect | delivered preview | Classifies proposed patch bytes without applying them. |
 | Edit apply wrapper | delivered preview | Evaluates routed edit envelopes before applying file mutations. |
 | Edit redteam packs | delivered preview | Fixture-only secret-bearing, package-script, CI/deploy, destructive-delete, and cross-scope mutation packs. |
+| `boundary version` | delivered | Local build metadata in text and JSON form. |
+| `boundary demo action-boundary` | delivered | Fixture-only cross-surface demo across MCP / Secure GitHub, Command Boundary, and Edit Boundary. |
+| `boundary doctor` | delivered | Local routed-surface diagnostics and bypass caveats. |
+| `boundary evidence bundle` | delivered | Local evidence manifest, SHA-256 hashes, and fixture-safe utility outputs. |
+| `boundary evidence verify` | delivered | Local manifest, hash, schema, summary, and artifact reference checks. |
 
 ## Adapter, Profile, And Surface Status
 
@@ -153,12 +167,12 @@ delivered preview claims. They do not upgrade those surfaces to production.
 The documented repeatable install path is:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.6.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.6.1
 ```
 
 Requires Go 1.25+.
 
-README keeps `@v0.6.0` as the primary copy/paste command for repeatability. No
+README keeps `@v0.6.1` as the primary copy/paste command for repeatability. No
 Homebrew, package-manager, or hosted distribution channel is claimed.
 
 ## GitHub Action Ref Status
@@ -166,7 +180,7 @@ Homebrew, package-manager, or hosted distribution channel is claimed.
 The MCP audit action examples use:
 
 ```yaml
-- uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.6.0
+- uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.6.1
 ```
 
 Use the release tag for repeatable CI behavior. SARIF upload examples must
@@ -179,9 +193,9 @@ local MCP tool paths, renders risk paths, generates starter policies, runs safe
 fixture redteams, and denies governed privileged actions before execution when
 those actions route through Boundary.
 
-Fulcrum Boundary v0.6.0 packages Edit Boundary preview: proposed file
-mutations can be classified and gated before they apply when the mutation is
-submitted through a Boundary edit envelope.
+Fulcrum Boundary v0.6.1 packages local utility commands for version reporting,
+fixture action-boundary demos, routed-surface diagnostics, and evidence bundle
+verification. It does not add a new governed action surface.
 
 Secure GitHub is preview. Production status still requires deployment bypass
 evidence and broader live coverage.
@@ -217,6 +231,10 @@ Do not use these as public capability claims:
 - Do not claim Boundary protects direct editor writes.
 - Do not claim Boundary provides filesystem sandboxing.
 - Do not claim Boundary provides production edit governance.
+- Do not claim evidence bundles prove production safety.
+- Do not claim doctor proves all routes protected.
+- Do not claim the action-boundary demo proves all attacks blocked.
+- Do not claim version output proves cryptographic release provenance.
 
 These phrases may appear only in claim-control, language-control, historical,
 or explicit limitation context.
@@ -230,6 +248,7 @@ or explicit limitation context.
 - `claims/boundary_claims.yaml`
 - `docs/ADAPTER_READINESS_MATRIX.md`
 - `docs/RELEASE_TRUTH_V060.md`
+- `docs/RELEASE_TRUTH_V061.md`
 - `docs/RELEASE_TRUTH_REPO_POLISH.md`
 - `docs/LAUNCH_TRUTH_FREEZE.md`
 - `docs/PUBLIC_RELEASE_COPY.md`
@@ -243,10 +262,12 @@ or explicit limitation context.
 
 ## Drift Fixed
 
-- Updated active public truth to the v0.6.0 Edit Boundary preview package.
-- Updated active install and GitHub Action examples to `@v0.6.0`.
+- Updated active public truth to the v0.6.1 utility consolidation package.
+- Updated active install and GitHub Action examples to `@v0.6.1`.
 - Preserved historical v0.3.0, v0.4.0, and v0.5.0 release truth artifacts as
   history.
 - Clarified that Edit Boundary is delivered preview while direct editor writes,
   direct filesystem writes, shell redirection, direct `git apply`, and
   filesystem sandboxing remain out of scope.
+- Clarified that version, doctor, action-boundary demo, and evidence commands
+  are local utility surfaces and do not prove production route enforcement.
