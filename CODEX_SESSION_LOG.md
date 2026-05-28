@@ -35,8 +35,13 @@
 
 ### Notes For Next Step
 
-- Merge this release branch to `main`, tag `v0.4.0`, publish the GitHub
-  release from `docs/releases/v0.4.0.md`, and run the tag install smoke test.
+- PR #78 was squash-merged to `main` as
+  `1374cda332ac84b320892023708eaa3633867dee`.
+- GitHub release `v0.4.0` was published from `docs/releases/v0.4.0.md` and the
+  release body was updated with post-tag smoke results.
+- Post-tag smoke passed for direct `@v0.4.0` install, `boundary selftest`,
+  `boundary demo github-lethal-trifecta`, `boundary command classify -- git
+  push origin main`, and public-proxy `@latest` resolution to `v0.4.0`.
 - After v0.4.0 is published, start the v0.5 Filesystem/Edit Boundary design
   train for direct file-write governance.
 

@@ -106,6 +106,26 @@ Class: C3 repo mutation
 Recommended action: require_approval
 ```
 
+## Post-Tag Smoke Verification
+
+Date: 2026-05-27
+
+| Command | Result |
+| --- | --- |
+| `GOPROXY=direct go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.4.0` | Pass |
+| `boundary selftest` | Pass |
+| `boundary demo github-lethal-trifecta` | Pass |
+| `boundary command classify -- git push origin main` | Pass |
+| `GOPROXY=https://proxy.golang.org,direct go list -m github.com/fulcrum-governance/fulcrum-boundary@latest` | Pass; resolved `v0.4.0` |
+
+Smoke signals:
+
+- `boundary selftest` reported `status: pass`.
+- `boundary demo github-lethal-trifecta` reported `actual action: DENY`,
+  `reason: lethal_trifecta_detected`, and `upstream_called=false`.
+- `boundary command classify -- git push origin main` reported
+  `Class: C3 repo mutation` and `Recommended action: require_approval`.
+
 ## Approved Command Boundary Copy
 
 Boundary provides preview project-local command governance for commands routed
@@ -137,7 +157,6 @@ or explicit limitation context.
 
 ## Remaining Work
 
-- Record post-tag install smoke results after publishing `v0.4.0`.
 - Design v0.5 Filesystem/Edit Boundary for direct file-write governance.
 - Keep Command Boundary preview-scoped until deployment evidence shows Boundary
   is the relevant command path for a protected project or workflow.
