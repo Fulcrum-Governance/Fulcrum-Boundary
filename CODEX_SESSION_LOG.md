@@ -2010,3 +2010,32 @@
 
 - Command Boundary remains preview, not production.
 - MCP production status and Secure GitHub preview status are unchanged.
+
+## 2026-05-28 — v0.5.0 Post-Release Verification
+
+### Context
+
+- Branch: `release/v050-postrelease-truth`, cut from `main` after PR #82 merged as `3d22efe`.
+- Scope: post-tag release evidence only. No product behavior changes.
+
+### Verified
+
+- PR #82 merged: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/pull/82.
+- Tag `v0.5.0` published as annotated tag object `a2ed93e`, targeting commit `3d22efe`.
+- GitHub release published: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/releases/tag/v0.5.0.
+- Branch protection required checks were updated from deprecated Go matrix contexts (`test (go 1.23)`, `test (go 1.24)`) to current contexts (`test (go 1.25.0)`, `test (go 1.26.3)`), preserving `golangci-lint`, `security scan`, and `test grpc adapter`.
+
+### Post-Tag Smoke
+
+- `GOBIN="$tmp/bin" GOPROXY=direct go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.5.0`: pass.
+- `"$tmp/bin/boundary" selftest`: pass.
+- `"$tmp/bin/boundary" demo github-lethal-trifecta`: pass with `actual action: DENY`, `reason: lethal_trifecta_detected`, and `upstream_called=false`.
+- `"$tmp/bin/boundary" command classify -- git push origin main`: pass, classified as `C3 repo mutation`, `Risk: HIGH`, `Recommended action: require_approval`.
+- `GOPROXY=https://proxy.golang.org,direct go list -m github.com/fulcrum-governance/fulcrum-boundary@latest`: pass, resolved `v0.5.0`.
+- `GOBIN="$tmp/latest-bin" GOPROXY=https://proxy.golang.org,direct go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@latest`: pass.
+
+### Notes
+
+- v0.5.0 is the Secure GitHub live conformance preview release.
+- Secure GitHub remains preview until operator-owned live evidence and deployment bypass evidence are recorded.
+- MCP remains production. Command Boundary remains preview and routed-path-only.
