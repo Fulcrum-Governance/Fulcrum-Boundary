@@ -1,5 +1,36 @@
 # CODEX Session Log
 
+## 2026-05-28 - Edit Boundary Demo Surface
+
+### Context
+
+- Parent goal: execute the v0.6 Filesystem/Edit Boundary release train from
+  `/Users/td/ConceptDev/Projects/Fulcrum/.claude/sprint/next_spec0.6.md`.
+- Branch: `docs/edit-boundary-demo`.
+- Scope: docs/demo visibility only. No product behavior changed.
+
+### What changed
+
+- Added the public README Edit Boundary preview section.
+- Added the repository demo doc for `boundary edit inspect`,
+  `boundary edit apply --dry-run`, and fixture edit redteam packs.
+- Added docs-site Edit Boundary pages and navigation.
+- Updated the Edit Boundary overview from design-lock language to current
+  preview-surface language.
+
+### Verification
+
+- `make docs-build`: pass.
+- `go test ./claims/... -count=1`: pass.
+- `go test ./... -short -count=1 -timeout 5m`: pass.
+- `git diff --check`: pass.
+
+### Notes For Next Step
+
+- After this branch lands, reconcile Edit Boundary truth and upgrade the
+  design claim only if the inspect, apply, redteam, demo, and docs evidence all
+  remain synchronized.
+
 ## 2026-05-28 - v0.5.0 Secure GitHub Release Packaging
 
 ### Context

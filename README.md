@@ -208,6 +208,21 @@ This is preview. Direct shell access is outside Boundary unless the environment
 routes commands through the wrapper or shims. See
 [docs/command-boundary/DEMO.md](./docs/command-boundary/DEMO.md).
 
+## Filesystem/Edit Boundary Preview
+
+Boundary can also inspect and gate proposed file mutations when edits route
+through a Boundary edit envelope.
+
+```bash
+boundary edit inspect --patch proposed.diff
+boundary edit apply --patch proposed.diff --dry-run
+boundary redteam --pack edit-secret-exfil
+```
+
+This is preview. Direct editor writes, direct filesystem writes, shell
+redirection, direct `git apply`, and unwrapped IDE APIs are outside Boundary.
+See [docs/edit-boundary/DEMO.md](./docs/edit-boundary/DEMO.md).
+
 ## GitHub Action
 
 Boundary includes a repo-local MCP audit action for CI visibility:
