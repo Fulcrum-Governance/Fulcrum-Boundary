@@ -208,6 +208,9 @@ func copySourceArtifacts(absSource, absOut string) ([]Artifact, []string, error)
 		}
 		destRel := filepath.ToSlash(filepath.Join("artifacts", rel))
 		dest := filepath.Join(absOut, filepath.FromSlash(destRel))
+		if !isWithin(path, absSource) || !isWithin(dest, absOut) {
+			return fmt.Errorf("source artifact copy escaped expected roots: %s", rel)
+		}
 		if err := copyFile(path, dest); err != nil {
 			return err
 		}
@@ -288,6 +291,7 @@ func writeFile(path string, data []byte) error {
 }
 
 func copyFile(src, dest string) error {
+	// #nosec G304 -- src is emitted by filepath.WalkDir from the configured source root and validated before copyFile.
 	in, err := os.Open(src)
 	if err != nil {
 		return err
@@ -296,6 +300,7 @@ func copyFile(src, dest string) error {
 	if err := os.MkdirAll(filepath.Dir(dest), 0o700); err != nil {
 		return err
 	}
+	// #nosec G304 -- dest is built from a sanitized source-relative path under the bundle output directory.
 	out, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 	if err != nil {
 		return err

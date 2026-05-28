@@ -11,10 +11,11 @@ import (
 )
 
 func hashArtifact(root, relPath, kind, schema string) (Artifact, error) {
-	if !safeRelPath(relPath) {
-		return Artifact{}, fmt.Errorf("unsafe artifact path: %s", relPath)
+	path, err := artifactFullPath(root, relPath)
+	if err != nil {
+		return Artifact{}, err
 	}
-	path := filepath.Join(root, filepath.FromSlash(relPath))
+	// #nosec G304 -- artifactFullPath constrains relPath under the evidence bundle root before opening.
 	file, err := os.Open(path)
 	if err != nil {
 		return Artifact{}, err
@@ -32,6 +33,25 @@ func hashArtifact(root, relPath, kind, schema string) (Artifact, error) {
 		SizeBytes:     size,
 		SchemaVersion: schema,
 	}, nil
+}
+
+func artifactFullPath(root, relPath string) (string, error) {
+	if !safeRelPath(relPath) {
+		return "", fmt.Errorf("unsafe artifact path: %s", relPath)
+	}
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return "", fmt.Errorf("resolve artifact root: %w", err)
+	}
+	path := filepath.Join(absRoot, filepath.FromSlash(relPath))
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("resolve artifact path: %w", err)
+	}
+	if !samePath(absPath, absRoot) && !isWithin(absPath, absRoot) {
+		return "", fmt.Errorf("artifact path escapes bundle root: %s", relPath)
+	}
+	return absPath, nil
 }
 
 func safeRelPath(relPath string) bool {

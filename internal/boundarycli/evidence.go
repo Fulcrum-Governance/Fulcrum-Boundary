@@ -165,9 +165,7 @@ func runEvidenceVerify(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-func parseEvidenceVerifyArgs(args []string) (bool, []string, bool, error) {
-	jsonOutput := false
-	var positional []string
+func parseEvidenceVerifyArgs(args []string) (jsonOutput bool, positional []string, help bool, err error) {
 	for _, arg := range args {
 		switch arg {
 		case "--json", "-json":

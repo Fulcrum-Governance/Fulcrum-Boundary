@@ -30,8 +30,7 @@ func Verify(opts VerifyOptions) (*VerifyResult, error) {
 		result.Checks = append(result.Checks, VerifyCheck{Name: name, Status: status, Detail: detail})
 	}
 
-	manifestPath := filepath.Join(absBundle, "manifest.json")
-	manifestData, err := os.ReadFile(manifestPath)
+	manifestData, err := readBundleFile(absBundle, "manifest.json")
 	if err != nil {
 		addCheck("manifest_exists", "fail", err.Error())
 		return result, nil
@@ -57,7 +56,11 @@ func Verify(opts VerifyOptions) (*VerifyResult, error) {
 			addCheck("artifact_path:"+artifact.Path, "fail", "artifact path is not a safe relative path")
 			continue
 		}
-		absPath := filepath.Join(absBundle, filepath.FromSlash(artifact.Path))
+		absPath, err := artifactFullPath(absBundle, artifact.Path)
+		if err != nil {
+			addCheck("artifact_path:"+artifact.Path, "fail", err.Error())
+			continue
+		}
 		stat, err := os.Stat(absPath)
 		if err != nil {
 			addCheck("artifact_exists:"+artifact.Path, "fail", err.Error())
@@ -76,13 +79,13 @@ func Verify(opts VerifyOptions) (*VerifyResult, error) {
 			continue
 		}
 		if artifact.SchemaVersion != "" {
-			if err := verifyJSONSchema(absPath, artifact.SchemaVersion); err != nil {
+			if err := verifyJSONSchema(absBundle, artifact.Path, artifact.SchemaVersion); err != nil {
 				addCheck("artifact_schema:"+artifact.Path, "fail", err.Error())
 				continue
 			}
 		}
 		if artifact.Kind == "decision_record" {
-			count, err := parseRecordArtifact(absPath)
+			count, err := parseRecordArtifact(absBundle, artifact.Path)
 			if err != nil {
 				addCheck("record_parse:"+artifact.Path, "fail", err.Error())
 				continue
@@ -100,13 +103,13 @@ func Verify(opts VerifyOptions) (*VerifyResult, error) {
 		}
 		addCheck("fixture_output:"+kind, "pass", "claimed fixture-safe output is present")
 	}
-	if manifest.Summary == "" {
+	switch {
+	case manifest.Summary == "":
 		addCheck("summary", "fail", "manifest summary path is empty")
-	} else if !safeRelPath(manifest.Summary) {
+	case !safeRelPath(manifest.Summary):
 		addCheck("summary", "fail", "manifest summary path is unsafe")
-	} else {
-		summaryPath := filepath.Join(absBundle, filepath.FromSlash(manifest.Summary))
-		summaryData, err := os.ReadFile(summaryPath)
+	default:
+		summaryData, err := readBundleFile(absBundle, manifest.Summary)
 		if err != nil {
 			addCheck("summary", "fail", err.Error())
 		} else {
@@ -122,8 +125,24 @@ func Verify(opts VerifyOptions) (*VerifyResult, error) {
 	return result, nil
 }
 
-func verifyJSONSchema(path, want string) error {
-	data, err := os.ReadFile(path)
+func readBundleFile(root, relPath string) ([]byte, error) {
+	path, err := artifactFullPath(root, relPath)
+	if err != nil {
+		return nil, err
+	}
+	return os.ReadFile(path) // #nosec G304 -- artifactFullPath constrains relPath under the evidence bundle root before reading.
+}
+
+func openBundleFile(root, relPath string) (*os.File, error) {
+	path, err := artifactFullPath(root, relPath)
+	if err != nil {
+		return nil, err
+	}
+	return os.Open(path) // #nosec G304 -- artifactFullPath constrains relPath under the evidence bundle root before opening.
+}
+
+func verifyJSONSchema(root, relPath, want string) error {
+	data, err := readBundleFile(root, relPath)
 	if err != nil {
 		return err
 	}
@@ -139,13 +158,13 @@ func verifyJSONSchema(path, want string) error {
 	return nil
 }
 
-func parseRecordArtifact(path string) (int, error) {
-	file, err := os.Open(path)
+func parseRecordArtifact(root, relPath string) (int, error) {
+	file, err := openBundleFile(root, relPath)
 	if err != nil {
 		return 0, err
 	}
 	defer func() { _ = file.Close() }()
-	if strings.HasSuffix(path, ".jsonl") || strings.HasSuffix(path, ".ndjson") {
+	if strings.HasSuffix(relPath, ".jsonl") || strings.HasSuffix(relPath, ".ndjson") {
 		scanner := bufio.NewScanner(file)
 		count := 0
 		for scanner.Scan() {
