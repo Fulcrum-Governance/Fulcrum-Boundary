@@ -1,5 +1,36 @@
 # CODEX Session Log
 
+## 2026-05-28 - v0.6.x Build Train Design
+
+### Context
+
+- Parent goal: execute the high-value v0.6.x build train from
+  `/Users/td/Documents/Next_Spec0.6High.md`.
+- Branch: `codex/2026-05-28-v06x-build-train-design`.
+- Scope: design artifact only. No product behavior changed.
+- Decision: keep the train focused on cohesive utility surfaces:
+  `version -> demo -> diagnose routes -> bundle evidence -> verify evidence`.
+- Decision: combine evidence bundle and evidence verify into one implementation
+  branch/package because they share a manifest schema and hashing contract.
+
+### What changed
+
+- Added `docs/superpowers/specs/2026-05-28-v06x-build-train-design.md`.
+- Added `docs/superpowers/plans/2026-05-28-v06x-build-train.md`.
+
+### Verification
+
+- Design self-review: pass, no placeholders or diff whitespace issues in the
+  new design artifact.
+- Plan artifact pending commit.
+
+### Notes For Next Step
+
+- After design review, write the implementation plan and execute sequentially
+  from clean `main`.
+- Preserve claim boundaries: MCP production, Secure GitHub preview, Command
+  Boundary preview, Edit Boundary preview.
+
 ## 2026-05-28 - v0.6.0 Postrelease Smoke
 
 ### Context
