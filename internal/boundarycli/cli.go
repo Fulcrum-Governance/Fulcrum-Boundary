@@ -26,7 +26,7 @@ import (
 	sqlguard "github.com/fulcrum-governance/fulcrum-boundary/interceptors/sql"
 )
 
-var Version = "0.2.0-dev"
+var Version = "unknown"
 
 func Run(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
@@ -35,6 +35,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	switch args[0] {
+	case "version":
+		return runVersion(args[1:], stdout, stderr)
 	case "init":
 		return runFirewallInit(args[1:], stdout, stderr)
 	case "inventory":
@@ -98,6 +100,7 @@ Usage:
   boundary <command> [flags]
 
 Commands:
+  version         Print Boundary version and build metadata
   init            Initialize a Boundary firewall workspace
   inventory       Discover MCP configs or ingest inventory records
   graph           Render inventory-derived MCP risk paths
@@ -237,7 +240,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	}
 	pipeline := governance.NewPipeline(governance.PipelineConfig{
 		StaticPolicies:   policyResult.Rules,
-		GatewayVersion:   Version,
+		GatewayVersion:   currentGatewayVersion(),
 		PolicyBundleHash: policyHash,
 		RequireAgentID:   *requireAgentID,
 	}, trustBackend, nil, governance.NewSlogAuditPublisher(logger))
@@ -678,7 +681,7 @@ func runTrustDegradationDemo(stdout, stderr io.Writer) int {
 				},
 			},
 		},
-		GatewayVersion: Version,
+		GatewayVersion: currentGatewayVersion(),
 		RequireAgentID: true,
 	}, trust, nil, auditor)
 	ctx := context.Background()
