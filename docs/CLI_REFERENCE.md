@@ -42,18 +42,24 @@ Examples:
 ## 3. Demo Commands
 
 ```bash
+boundary demo action-boundary
+boundary demo action-boundary --markdown --out demo.md
 boundary demo github-lethal-trifecta
 boundary demo github-lethal-trifecta --markdown --out demo.md
 boundary demo postgres --gateway http://localhost:8080/mcp
 boundary demo trust-degradation
 ```
 
-The Secure GitHub demo is fixture-only: no credentials, no network, and no live
-GitHub mutation. The Postgres demo requires a running Boundary gateway and
-checks direct database bypass separately.
+The Action Boundary demo composes fixture-only MCP / Secure GitHub, Command
+Boundary, and Edit Boundary paths. It uses no credentials, no network, and no
+live mutation. The Secure GitHub demo is fixture-only as well. The Postgres demo
+requires a running Boundary gateway and checks direct database bypass
+separately.
 
-Example output:
-[examples/cli/demo-github-lethal-trifecta.txt](../examples/cli/demo-github-lethal-trifecta.txt)
+Example outputs:
+
+- [examples/cli/demo-action-boundary.txt](../examples/cli/demo-action-boundary.txt)
+- [examples/cli/demo-github-lethal-trifecta.txt](../examples/cli/demo-github-lethal-trifecta.txt)
 
 ## 4. Secure GitHub Commands
 
