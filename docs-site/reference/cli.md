@@ -8,6 +8,8 @@ First-run commands:
 ```bash
 boundary selftest
 boundary demo github-lethal-trifecta
+boundary evidence bundle --include-demo
+boundary evidence verify boundary-evidence
 ```
 
 Firewall commands:
@@ -45,6 +47,8 @@ Release verification commands:
 make selftest
 make demo-github
 make release-check
+boundary evidence bundle --include-demo --out /tmp/boundary-evidence
+boundary evidence verify /tmp/boundary-evidence
 go test ./claims/... -count=1
 go test ./... -short -count=1 -timeout 5m
 ```

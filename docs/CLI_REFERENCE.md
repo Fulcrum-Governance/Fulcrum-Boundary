@@ -12,6 +12,8 @@ boundary --help
 boundary version
 boundary selftest
 boundary doctor
+boundary evidence bundle --include-demo
+boundary evidence verify boundary-evidence
 ```
 
 `boundary version` prints build metadata in text or JSON form. Missing release
@@ -23,6 +25,12 @@ does not call the network, and does not perform live mutation.
 `boundary doctor` reports local routed-surface diagnostics and bypass caveats
 for MCP, Command Boundary, and Edit Boundary. It does not call the network or
 prove production deployment protection.
+
+`boundary evidence bundle` collects local release evidence with a manifest and
+SHA-256 hashes. `boundary evidence verify` checks manifest schema, artifact
+existence, artifact hashes, declared JSON schemas, parseable decision records
+when present, and summary references. Evidence verification is local integrity
+checking; it does not prove production route enforcement.
 
 Example output: [examples/cli/selftest.txt](../examples/cli/selftest.txt)
 
@@ -139,6 +147,8 @@ make docs-build
 make release-check
 go test ./claims/... -count=1
 go test ./... -short -count=1 -timeout 5m
+boundary evidence bundle --include-demo --out /tmp/boundary-evidence
+boundary evidence verify /tmp/boundary-evidence
 ```
 
 These checks keep public language, claims, docs, examples, and release gates in
