@@ -1,5 +1,48 @@
 # CODEX Session Log
 
+## 2026-05-27 - v0.4.0 Post-Release Alignment Audit
+
+### Context
+
+- Parent goal: reconcile active public docs after Fulcrum Boundary v0.4.0 was
+  tagged and published.
+- Branch: `release/v040-alignment-audit`
+- Scope: release-truth and docs alignment only. No product behavior changed.
+
+### What changed
+
+- Added `docs/RELEASE_TRUTH_V040_ALIGNMENT.md`.
+- Updated `docs/RELEASE_TRUTH_PUBLIC.md` from v0.3.0 current-release language
+  to v0.4.0 current-release language.
+- Updated `docs/RELEASE_TRUTH_REPO_POLISH.md` from v0.3.0 current install and
+  action references to v0.4.0.
+- Reworded the docs-site Command Boundary landing page to lead with v0.4.0
+  while preserving v0.3.0 as historical context.
+- Preserved v0.3.0 references in release notes, changelog history,
+  launch-truth history, session history, and planning artifacts.
+
+### Verification
+
+- `git grep -n '@main' -- README.md docs/INSTALL.md docs-site`: zero matches.
+- Remaining `@v0.3.0` and `v0.3.0` matches are historical, dependency, or
+  v0.3-to-v0.4 context.
+- Command Boundary overclaim phrases appear only in forbidden-copy, limitation,
+  claim-control, historical, or planning context.
+- `./scripts/assert-no-public-vendor-refs.sh`: pass.
+- `make docs-build`: pass.
+- `make release-check`: pass.
+- `go test ./internal/commandboundary/... -count=1 -timeout 5m`: pass.
+- `go test ./tests/commandboundary/... -count=1 -timeout 5m`: pass.
+- `go test ./tests/redteam/... -run Command -count=1 -timeout 5m`: pass.
+- `go test ./claims/... -count=1`: pass.
+- `go test ./... -count=1 -timeout 5m`: pass.
+
+### Notes For Next Step
+
+- After this branch lands, v0.4.0 public-release docs are aligned.
+- The next product train remains v0.5 Filesystem/Edit Boundary for direct
+  file-write governance.
+
 ## 2026-05-27 - v0.4.0 Command Boundary Release Packaging
 
 ### Context
