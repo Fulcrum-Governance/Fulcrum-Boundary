@@ -51,8 +51,8 @@
     `gosec` `G301`.
   - added a scoped `#nosec G304` rationale for the intentionally
     operator-provided GitHub App private key path.
-  - added an upper-bound check before converting the live conformance GitHub
-    issue number from `int64` to `int` for CodeQL integer-conversion safety.
+  - parsed the live conformance GitHub issue number with `strconv.Atoi` to
+    avoid unsafe narrowing from `int64` to `int` under CodeQL.
 
 ### Notes For Next Step
 

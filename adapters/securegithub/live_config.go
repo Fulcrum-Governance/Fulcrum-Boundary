@@ -107,15 +107,11 @@ func parsePositiveInt64Env(name, value string) (int64, error) {
 }
 
 func parsePositiveIntEnv(name, value string) (int, error) {
-	parsed, err := parsePositiveInt64Env(name, value)
-	if err != nil {
-		return 0, err
+	parsed, err := strconv.Atoi(strings.TrimSpace(value))
+	if err != nil || parsed <= 0 {
+		return 0, fmt.Errorf("%s must be a positive integer within platform int range", name)
 	}
-	maxInt := int64(1<<(strconv.IntSize-1) - 1)
-	if parsed > maxInt {
-		return 0, fmt.Errorf("%s must fit in platform int range", name)
-	}
-	return int(parsed), nil
+	return parsed, nil
 }
 
 func (c LiveConfig) adapterConfig() Config {
