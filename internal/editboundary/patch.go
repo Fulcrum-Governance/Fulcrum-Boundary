@@ -100,7 +100,7 @@ func ParsePatch(patch []byte) ([]FileChange, error) {
 	return changes, nil
 }
 
-func parseDiffGitLine(line string) (string, string) {
+func parseDiffGitLine(line string) (oldPath string, newPath string) {
 	fields := strings.Fields(line)
 	if len(fields) < 4 {
 		return "", ""

@@ -5,7 +5,6 @@ import (
 	"strings"
 )
 
-const redactedValue = "[redacted]"
 const redactedSecretPath = "[redacted-secret-path]"
 
 var secretContentPatterns = []*regexp.Regexp{

@@ -121,6 +121,7 @@ func readEditInspectPatch(patchPath string, fromGitDiff, fromStdin bool) ([]byte
 		if strings.HasPrefix(strings.TrimSpace(patchPath), "-") {
 			return nil, fmt.Errorf("patch path must not start with '-'")
 		}
+		// #nosec G304 -- edit inspect intentionally reads an operator-specified local patch file; contents are classified, not applied.
 		return os.ReadFile(patchPath)
 	}
 	if fromStdin {
