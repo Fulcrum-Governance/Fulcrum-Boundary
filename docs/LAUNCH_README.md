@@ -24,17 +24,21 @@ Delivered Firewall surfaces:
 Preview:
 
 - Secure GitHub MCP fixture profile
+- Command Boundary routed command preview
+- Edit Boundary routed edit-envelope preview
 - CLI, CodeExec, gRPC, Managed Agents, Webhook, and A2A adapters
 
 Do not describe Secure GitHub as production until deployment bypass evidence
 and broader live coverage are recorded.
+Do not describe Command Boundary or Edit Boundary as production until routed
+deployment evidence exists.
 
 ## Install Or Run Locally
 
 Installed binary:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.5.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.6.0
 boundary --help
 ```
 

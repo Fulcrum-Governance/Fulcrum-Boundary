@@ -2,16 +2,16 @@
 
 Date: 2026-05-28
 
-Audited base commit: `d1e3ed8163f37381d87e1e4dc701cf751b2f8285`
+Audited base commit: `77474b22616f83aedf18fb6eea284349211aae8d`
 
-Branch: `release/v050-securegithub-live-package`
+Branch: `release/v060-package`
 
-Current release target: `v0.5.0`
+Current release target: `v0.6.0`
 
 ## Summary
 
-This report reconciles the public Boundary repository surface after the v0.5.0
-Secure GitHub live conformance preview packaging pass.
+This report reconciles the public Boundary repository surface after the v0.6.0
+Edit Boundary preview packaging pass.
 
 Current public posture:
 
@@ -22,12 +22,14 @@ Current public posture:
   conformance harness for read-taint and denied-write no-mutation evidence.
 - Command Boundary is preview and applies only to routed project-local command
   paths.
+- Edit Boundary is preview and applies only to proposed file mutations routed
+  through Boundary edit envelopes.
 - External MCP inventory ingest is vendor-neutral.
 - Repo presentation guidance is documented without fake badges or fake adoption
   signals.
-- Public install examples use the repeatable `@v0.5.0` release tag.
+- Public install examples use the repeatable `@v0.6.0` release tag.
 - The public Go install path requires Go 1.25+.
-- GitHub Action examples use `@v0.5.0` for repeatable CI behavior.
+- GitHub Action examples use `@v0.6.0` for repeatable CI behavior.
 
 ## Test Commands
 
@@ -56,7 +58,7 @@ Current public posture:
 - `go run ./cmd/boundary demo github-lethal-trifecta`
 
 Post-tag install smoke is recorded separately in
-[`docs/RELEASE_TRUTH_V050_POSTRELEASE.md`](./RELEASE_TRUTH_V050_POSTRELEASE.md).
+[`docs/RELEASE_TRUTH_V060_POSTRELEASE.md`](./RELEASE_TRUTH_V060_POSTRELEASE.md).
 
 ## No-Vendor-Reference Check
 
@@ -67,12 +69,12 @@ public vendor-reference guard passes.
 
 ## README First-Run Status
 
-Status: pass with `@v0.5.0`.
+Status: pass with `@v0.6.0`.
 
 README now uses:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.5.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.6.0
 boundary selftest
 boundary demo github-lethal-trifecta
 ```
@@ -95,7 +97,7 @@ The MCP audit action documentation states that the action audits repository MCP
 configs, emits Markdown and optional SARIF reports, and does not provide
 runtime protection unless the relevant tool calls are routed through Boundary.
 
-Action examples use `@v0.5.0` for repeatable CI behavior. SARIF upload examples
+Action examples use `@v0.6.0` for repeatable CI behavior. SARIF upload examples
 include `contents: read` and `security-events: write` permissions.
 
 The docs do not claim a Marketplace release, package distribution, or runtime
@@ -128,7 +130,7 @@ Required caveat:
 > Secure GitHub remains preview. Production status still requires deployment
 > bypass evidence and broader live coverage.
 
-The v0.5.0 packaging pass does not claim production Secure GitHub, full GitHub
+The v0.6.0 packaging pass does not claim production Secure GitHub, full GitHub
 MCP catalog coverage, universal prompt-injection defense, or deployment bypass
 resistance.
 
@@ -144,13 +146,34 @@ Approved Command Boundary copy:
 
 Required caveat:
 
-> Command Boundary is preview. Direct shell access, CI jobs, SSH sessions, and
-> direct file edits remain outside Boundary unless they are routed through
-> Boundary.
+> Command Boundary is preview. Direct shell access, CI jobs, and SSH sessions
+> remain outside Command Boundary unless routed through Boundary command
+> wrappers or project-local shims. Direct file edits are covered only by Edit
+> Boundary when they route through edit envelopes.
 
 Command Boundary does not claim shell sandboxing, global shell control,
 production command governance, direct file-edit governance, SSH control, CI
 control, or universal coding-agent safety.
+
+## Edit Boundary Status
+
+Status: delivered preview.
+
+Approved Edit Boundary copy:
+
+> Boundary provides preview Edit Boundary governance for proposed file
+> mutations routed through Boundary edit envelopes.
+
+Required caveat:
+
+> Edit Boundary is preview. Direct editor writes, direct filesystem writes,
+> direct `git apply`, shell redirection, IDE saves, CI jobs, and arbitrary
+> processes remain outside Boundary unless routed through Boundary edit
+> envelopes.
+
+Edit Boundary does not claim direct editor-write protection, arbitrary
+filesystem interception, filesystem sandboxing, IDE control, or production edit
+governance.
 
 ## Repo Presentation Checklist
 
@@ -178,10 +201,9 @@ local MCP tool paths, renders risk paths, generates starter policies, runs safe
 fixture redteams, and denies governed privileged actions before execution when
 those actions route through Boundary.
 
-Fulcrum Boundary v0.5.0 packages Secure GitHub live conformance preview:
-operator-owned GitHub App credentials can be used to read real GitHub context,
-mark the session tainted, and deny a protected write-after-taint action before
-any upstream GitHub mutation client call executes.
+Fulcrum Boundary v0.6.0 packages Edit Boundary preview: proposed file
+mutations can be classified and gated before they apply when the mutation is
+submitted through a Boundary edit envelope.
 
 ## Forbidden Copy
 
@@ -202,7 +224,11 @@ Do not use these as public capability claims:
 - Boundary protects direct shell access
 - Boundary prevents every overeager agent action
 - Boundary provides production command governance
-- Boundary governs direct file edits outside routed command paths
+- Boundary governs direct file edits outside routed edit envelopes
+- Boundary controls all file writes
+- Boundary protects direct editor writes
+- Boundary provides filesystem sandboxing
+- Boundary provides production edit governance
 
 The exact legacy vendor codename terms are intentionally omitted from this
 repository artifact so the required zero-match guard remains machine-enforced.
@@ -213,10 +239,11 @@ historical, or explicit limitation context.
 
 - Upload a PNG social preview manually if GitHub repository settings reject the
   repo-owned SVG source.
-- Record the first terminal screenshot or GIF using the final `@v0.5.0`
+- Record the first terminal screenshot or GIF using the final `@v0.6.0`
   install command.
 - Keep Command Boundary preview-scoped until deployment evidence shows Boundary
   is the relevant command path for a protected project or workflow.
 - Keep Secure GitHub preview-scoped until deployment bypass proof and broader
   live coverage exist.
-- Design v0.6 Filesystem/Edit Boundary for direct file-write governance.
+- Keep Edit Boundary preview-scoped until deployment evidence shows edit
+  proposals are routed through Boundary edit envelopes.

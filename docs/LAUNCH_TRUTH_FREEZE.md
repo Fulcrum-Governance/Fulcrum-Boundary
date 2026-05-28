@@ -180,6 +180,30 @@ without changing the production adapter boundary.
 Active public install and MCP audit GitHub Action examples use `@v0.5.0` for
 repeatable post-tag behavior.
 
+## 2026-05-28: v0.6.0 Edit Boundary Preview Packaging
+
+Fulcrum Boundary v0.6.0 packages the Filesystem/Edit Boundary preview without
+changing the production adapter boundary.
+
+- MCP remains the production adapter.
+- Secure GitHub remains preview.
+- Command Boundary remains preview and routed-path-only.
+- Edit Boundary is delivered preview for proposed file mutations routed
+  through Boundary edit envelopes.
+- `boundary edit inspect` classifies patch bytes without applying them.
+- `boundary edit apply` evaluates a routed edit envelope before applying file
+  mutations.
+- Edit Boundary fixture redteam packs exercise selected secret-bearing,
+  package-script, CI/deploy, destructive-delete, and cross-scope mutation paths
+  without live project mutation.
+- Edit Boundary does not govern direct editor writes, direct filesystem writes,
+  shell redirection, direct `git apply`, IDE saves, CI jobs, or arbitrary
+  processes unless those mutations route through Boundary edit envelopes.
+- Edit Boundary does not provide filesystem sandboxing.
+
+Active public install and MCP audit GitHub Action examples use `@v0.6.0` for
+repeatable post-tag behavior.
+
 ## Verified Release Surface
 
 | Surface | Status |

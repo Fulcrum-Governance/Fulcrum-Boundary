@@ -14,6 +14,8 @@ Current claim posture:
 - Generated policies are starter policies for operator review.
 - Secure GitHub remains preview until deployment bypass evidence and broader
   live coverage are recorded.
+- Edit Boundary is delivered preview and governs only proposed file mutations
+  routed through Boundary edit envelopes.
 
 Authoritative files in the repository:
 
