@@ -234,6 +234,24 @@ Release truth:
 Active public install and MCP audit GitHub Action examples use `@v0.6.1` for
 repeatable behavior.
 
+Postrelease verification recorded 2026-05-28:
+
+- The GitHub release `v0.6.1` was published at
+  `64fca7f9612e8396bf90dd7463b97291c096f7c9`.
+- `GOPROXY=direct go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.6.1`
+  passed from a clean temporary `GOBIN`.
+- The installed binary passed `boundary version`, `boundary selftest`,
+  `boundary demo github-lethal-trifecta`, `boundary demo action-boundary`,
+  `boundary doctor --json`, `boundary evidence bundle --include-demo`, and
+  `boundary evidence verify`.
+- `GOPROXY=https://proxy.golang.org,direct go list -m -json github.com/fulcrum-governance/fulcrum-boundary@latest`
+  resolved to `v0.6.1`.
+- `GOPROXY=https://proxy.golang.org,direct go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@latest`
+  installed a binary that reported `Fulcrum Boundary v0.6.1`.
+
+The postrelease smoke report is
+[`docs/RELEASE_TRUTH_V061_POSTRELEASE.md`](./RELEASE_TRUTH_V061_POSTRELEASE.md).
+
 ## Verified Release Surface
 
 | Surface | Status |
