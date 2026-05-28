@@ -252,6 +252,19 @@
 - Added `docs/edit-boundary/` design-lock documents.
 - Added planned claim `BND-CLAIM-EDIT-001`.
 - Updated `docs/CLAIMS_LEDGER.md`.
+
+## 2026-05-28 — Edit Inspection Classifier
+
+### Context
+
+- Branch: `feat/edit-inspection-classifier`, cut from `main` after PR #85 merged as `28e97fc`.
+- Scope: classify proposed file edits without applying them.
+
+### Built
+
+- Added `internal/editboundary` patch parsing, path-scope checks, secret redaction, and E0-E7 classification.
+- Added `boundary edit inspect` with patch-file, Git diff, stdin, text, and JSON modes.
+- Added inspect docs, edit fixtures, and CLI integration tests.
 - `golangci-lint run --timeout=5m`: pass, `0 issues`.
 - `./scripts/docs-build.sh`: pass.
 - `make release-check`: pass.
