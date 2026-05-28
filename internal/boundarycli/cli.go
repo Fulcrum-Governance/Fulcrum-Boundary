@@ -118,6 +118,8 @@ Commands:
   policy generate Generate starter Boundary firewall policies
   mcp proxy       Fail-closed generic MCP proxy entrypoint for installed routes
   serve           Start the Boundary gateway
+  demo action-boundary
+                  Run a fixture-only cross-surface action-boundary demo
   demo postgres   Run the Postgres safety demo against a running gateway
   demo github-lethal-trifecta
                   Run a fixture-only Secure GitHub denial demo
@@ -309,12 +311,15 @@ Usage:
   boundary demo <name> [flags]
 
 Common usage:
+  boundary demo action-boundary
+  boundary demo action-boundary --markdown --out demo.md
   boundary demo github-lethal-trifecta
   boundary demo github-lethal-trifecta --markdown --out demo.md
   boundary demo postgres --gateway http://localhost:8080/mcp
   boundary demo trust-degradation
 
 Demos:
+  action-boundary          Fixture-only cross-surface action-boundary demo
   postgres                 Exercise allow, deny, and direct-bypass checks against a running gateway
   github-lethal-trifecta   Fixture-only Secure GitHub denial demo
   trust-degradation        Local adaptive-trust degradation demo
@@ -330,6 +335,9 @@ Notes:
 	}
 	if args[0] == "github-lethal-trifecta" {
 		return runGitHubLethalTrifectaDemo(args[1:], stdout, stderr)
+	}
+	if args[0] == "action-boundary" {
+		return runActionBoundaryDemo(args[1:], stdout, stderr)
 	}
 	if args[0] != "postgres" {
 		fmt.Fprintf(stderr, "unknown demo %q\n", args[0])
