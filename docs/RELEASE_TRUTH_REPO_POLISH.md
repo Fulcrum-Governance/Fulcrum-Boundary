@@ -193,6 +193,7 @@ governance.
 | Social preview source committed | Pass: `docs/assets/social-preview.svg` |
 | Social preview upload caveat documented | Pass |
 | Action demo asset committed | Pass: `docs/assets/boundary-action-demo.gif` |
+| Public-surface internal-artifact guard enforced | Pass: release-check and CI |
 
 Approved repository description:
 
@@ -239,6 +240,9 @@ The exact legacy vendor codename terms are intentionally omitted from this
 repository artifact so the required zero-match guard remains machine-enforced.
 The other phrases may appear only in claim-control, language-control,
 historical, or explicit limitation context.
+
+Public demo collateral must point to product-facing docs and committed assets,
+not private planning, session, or capture-instruction artifacts.
 
 ## Remaining Work
 

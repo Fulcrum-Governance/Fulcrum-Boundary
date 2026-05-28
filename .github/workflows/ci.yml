@@ -10,6 +10,14 @@ permissions:
   contents: read
 
 jobs:
+  public-surface:
+    name: public surface guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: internal artifact guard
+        run: ./scripts/assert-no-internal-public-artifacts.sh
+
   test:
     name: test (go ${{ matrix.go-version }})
     runs-on: ubuntu-latest
