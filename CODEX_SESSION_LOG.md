@@ -1,5 +1,44 @@
 # CODEX Session Log
 
+## 2026-05-28 - v0.6.0 Postrelease Smoke
+
+### Context
+
+- Parent goal: execute the v0.6 Filesystem/Edit Boundary release train from
+  `/Users/td/ConceptDev/Projects/Fulcrum/.claude/sprint/next_spec0.6.md`.
+- Branch: `release/v060-postrelease-truth`.
+- Scope: post-tag evidence only. No product behavior changed.
+- GitHub release:
+  <https://github.com/Fulcrum-Governance/Fulcrum-Boundary/releases/tag/v0.6.0>.
+
+### What changed
+
+- Added `docs/RELEASE_TRUTH_V060_POSTRELEASE.md`.
+- Updated public release truth to point to the completed post-tag evidence.
+
+### Verification
+
+- `GOPROXY=direct go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.6.0`:
+  pass.
+- `boundary selftest` from the `@v0.6.0` install: pass.
+- `boundary demo github-lethal-trifecta` from the `@v0.6.0` install: pass,
+  `actual action: DENY`, `upstream_called=false`.
+- `boundary command classify -- git push origin main`: pass, C3 repo mutation
+  requiring approval.
+- `boundary edit inspect --help`: pass.
+- `boundary redteam --pack edit-secret-exfil`: pass, denied fixture with
+  `applied=false`.
+- `go list -m github.com/fulcrum-governance/fulcrum-boundary@latest` through
+  `https://proxy.golang.org,direct`: pass, resolved `v0.6.0`.
+- `go install ...@latest` through `https://proxy.golang.org,direct`: pass.
+- `boundary selftest` from the `@latest` install: pass.
+- `git diff --check`: pass.
+
+### Notes For Next Step
+
+- v0.6.0 release mechanics are complete. Next release train remains future
+  v0.7+ work unless a separate spec changes that.
+
 ## 2026-05-28 - v0.6.0 Edit Boundary Release Packaging
 
 ### Context
