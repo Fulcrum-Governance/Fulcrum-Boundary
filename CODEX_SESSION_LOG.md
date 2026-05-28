@@ -16,10 +16,13 @@
 ### What changed
 
 - Added `docs/superpowers/specs/2026-05-28-v06x-build-train-design.md`.
+- Added `docs/superpowers/plans/2026-05-28-v06x-build-train.md`.
 
 ### Verification
 
-- Pending: design self-review and commit.
+- Design self-review: pass, no placeholders or diff whitespace issues in the
+  new design artifact.
+- Plan artifact pending commit.
 
 ### Notes For Next Step
 
