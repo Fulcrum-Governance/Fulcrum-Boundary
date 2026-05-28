@@ -460,6 +460,99 @@ claims:
     depends_on:
       - BND-CLAIM-018
 
+  - id: BND-CLAIM-UTIL-001
+    claim: "Boundary reports local version and build metadata in text and JSON formats"
+    status: delivered
+    evidence:
+      tests:
+        - path: internal/versioninfo/version_test.go
+          assertion: "version metadata reports module identity, semantic version fallback, commit fallback, build date fallback, and Go version"
+        - path: tests/cli_output/version_test.go
+          assertion: "boundary version renders text and JSON output without requiring credentials or network access"
+      docs:
+        - path: docs/CLI_REFERENCE.md
+          section: "Version"
+    public_language:
+      allowed:
+        - "Boundary reports local version and build metadata in text and JSON formats."
+        - "The version command is local metadata output and does not require credentials or network access."
+      forbidden:
+        - "version proves cryptographic release provenance"
+        - "version proves the binary is untampered"
+        - "version verifies supply-chain integrity"
+    gaps: []
+    depends_on: []
+
+  - id: BND-CLAIM-UTIL-002
+    claim: "Boundary runs a fixture-only action-boundary demo across MCP, Secure GitHub, Command Boundary, and Edit Boundary examples"
+    status: delivered
+    evidence:
+      tests:
+        - path: tests/demo/action_boundary_demo_test.go
+          assertion: "boundary demo action-boundary renders text, JSON, Markdown, and dashboard outputs with fixture-only cases and no live mutation"
+      docs:
+        - path: docs/DEMO_ACTION_BOUNDARY.md
+          section: "Action Boundary Demo"
+    public_language:
+      allowed:
+        - "Boundary runs a fixture-only action-boundary demo across MCP, Secure GitHub, Command Boundary, and Edit Boundary examples."
+        - "The action-boundary demo is no-credential, fixture-only, and does not mutate live systems."
+      forbidden:
+        - "demo proves all attacks blocked"
+        - "demo proves production deployment safety"
+        - "demo proves every bypass is closed"
+        - "demo uses live customer systems"
+    gaps: []
+    depends_on: []
+
+  - id: BND-CLAIM-UTIL-003
+    claim: "Boundary doctor reports local surface diagnostics and routed-path caveats without remote service checks"
+    status: delivered
+    evidence:
+      tests:
+        - path: tests/doctor/doctor_test.go
+          assertion: "boundary doctor reports local MCP, Command Boundary, and Edit Boundary diagnostics in text and JSON with bypass caveats"
+      docs:
+        - path: docs/DOCTOR.md
+          section: "Boundary Doctor"
+    public_language:
+      allowed:
+        - "Boundary doctor reports local surface diagnostics and routed-path caveats."
+        - "Doctor output is local diagnostics, not proof that every deployment route is protected."
+      forbidden:
+        - "doctor proves all routes protected"
+        - "doctor proves production deployment safety"
+        - "doctor verifies remote runtime enforcement"
+        - "doctor closes direct bypasses"
+    gaps: []
+    depends_on: []
+
+  - id: BND-CLAIM-UTIL-004
+    claim: "Boundary creates and verifies local evidence bundles with manifest hashing and fixture-safe utility outputs"
+    status: delivered
+    evidence:
+      tests:
+        - path: tests/evidence/bundle_test.go
+          assertion: "boundary evidence bundle writes a manifest, summary, version, selftest, doctor, optional demo artifacts, and copied local artifacts without credentials, network calls, or live mutation"
+        - path: tests/evidence/verify_test.go
+          assertion: "boundary evidence verify checks manifest schema, artifact existence, size, SHA-256 hashes, JSON schemas, decision-record parseability, and summary references"
+      docs:
+        - path: docs/EVIDENCE_BUNDLE.md
+          section: "Evidence Bundle"
+        - path: docs/EVIDENCE_VERIFY.md
+          section: "Evidence Verify"
+    public_language:
+      allowed:
+        - "Boundary creates and verifies local evidence bundles with manifest hashing and fixture-safe utility outputs."
+        - "Evidence bundles summarize local artifacts and fixture-safe outputs; they do not prove production deployment safety by themselves."
+      forbidden:
+        - "evidence proves production safety"
+        - "evidence bundle proves every route is protected"
+        - "evidence verify proves live enforcement"
+        - "evidence bundles close deployment bypasses"
+    gaps: []
+    depends_on: []
+
   - id: BND-CLAIM-004
     claim: "Boundary is a SQL firewall"
     status: "false"
