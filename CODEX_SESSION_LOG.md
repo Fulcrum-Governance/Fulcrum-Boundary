@@ -2039,3 +2039,29 @@
 - v0.5.0 is the Secure GitHub live conformance preview release.
 - Secure GitHub remains preview until operator-owned live evidence and deployment bypass evidence are recorded.
 - MCP remains production. Command Boundary remains preview and routed-path-only.
+
+## 2026-05-28 — v0.5.0 Closure Sanity
+
+### Context
+
+- Branch: `release/v050-closure-sanity`, cut from clean `main` at `09e0017`.
+- Scope: close v0.5 truth before starting v0.6 Filesystem/Edit Boundary. No product behavior changes.
+
+### Verified
+
+- Active install docs use `@v0.5.0`.
+- `@latest` resolves to `v0.5.0`.
+- Secure GitHub live conformance remains opt-in, credential-gated, no-mutation by default, preview-scoped, and still gated on deployment bypass proof for production.
+- Command Boundary remains preview, routed-command-only, and direct shell access remains a bypass.
+- Claims split is intact: `BND-CLAIM-018` delivered for the harness, `BND-CLAIM-019` partial until operator-owned live evidence is recorded.
+- Active public install surfaces have no `@v0.4.0` or `@main` matches.
+
+### Deliverable
+
+- Added `docs/RELEASE_TRUTH_V050_CLOSURE.md`.
+
+### Verification
+
+- `GOPROXY=https://proxy.golang.org,direct go list -m github.com/fulcrum-governance/fulcrum-boundary@latest`: pass, resolved `v0.5.0`.
+- `git grep -n '@v0.4.0' README.md docs/INSTALL.md docs-site || true`: pass, no active matches.
+- `git grep -n '@main' README.md docs/INSTALL.md docs-site || true`: pass, no active matches.
