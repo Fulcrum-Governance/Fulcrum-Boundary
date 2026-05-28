@@ -29,12 +29,7 @@ var _ governance.TransportAdapter = (*Adapter)(nil)
 func NewFixtureAdapter(cfg Config) *Adapter {
 	cfg = cfg.withDefaults()
 	auditor := &CaptureAuditPublisher{}
-	pipeline := governance.NewPipeline(governance.PipelineConfig{
-		StaticPolicies:   DefaultPolicyRules(),
-		GatewayVersion:   cfg.GatewayVersion,
-		BuildDigest:      cfg.BuildDigest,
-		PolicyBundleHash: "fixture-secure-github",
-	}, nil, nil, auditor)
+	pipeline := newPreviewPipeline(cfg, auditor)
 	return &Adapter{
 		cfg:      cfg,
 		pipeline: pipeline,
@@ -44,20 +39,34 @@ func NewFixtureAdapter(cfg Config) *Adapter {
 	}
 }
 
+func newPreviewPipeline(cfg Config, auditor *CaptureAuditPublisher) *governance.Pipeline {
+	policyHash := "fixture-secure-github"
+	if cfg.LiveMode {
+		policyHash = "live-secure-github"
+	}
+	return governance.NewPipeline(governance.PipelineConfig{
+		StaticPolicies:   DefaultPolicyRules(),
+		GatewayVersion:   cfg.GatewayVersion,
+		BuildDigest:      cfg.BuildDigest,
+		PolicyBundleHash: policyHash,
+	}, nil, nil, auditor)
+}
+
 func NewAdapter(cfg Config, pipeline *governance.Pipeline, upstream Upstream) *Adapter {
 	cfg = cfg.withDefaults()
 	if upstream == nil {
 		upstream = FixtureUpstream{}
 	}
+	auditor := &CaptureAuditPublisher{}
 	if pipeline == nil {
-		return NewFixtureAdapter(cfg)
+		pipeline = newPreviewPipeline(cfg, auditor)
 	}
 	return &Adapter{
 		cfg:      cfg,
 		pipeline: pipeline,
 		upstream: upstream,
 		sessions: NewSessionStore(),
-		auditor:  &CaptureAuditPublisher{},
+		auditor:  auditor,
 	}
 }
 
@@ -369,6 +378,7 @@ func deniedResponse(call ToolCall, envelope Envelope, decision *governance.Gover
 				"mutation_class":   envelope.MutationClass,
 				"upstream_called":  false,
 				"fixture_mode":     envelope.FixtureMode,
+				"live_mode":        !envelope.FixtureMode,
 				"decision_record":  record,
 			},
 		},
@@ -388,6 +398,7 @@ func unsupportedResponse(call ToolCall, err error) MCPResponse {
 				"reason":          err.Error(),
 				"upstream_called": false,
 				"fixture_mode":    true,
+				"live_mode":       false,
 			},
 		},
 	}
@@ -436,7 +447,7 @@ func envelopeFromRequest(req *governance.GovernanceRequest) Envelope {
 		RiskClass:       fmt.Sprint(req.Arguments["risk_class"]),
 		TargetSink:      fmt.Sprint(req.Arguments["target_sink"]),
 		MutationClass:   fmt.Sprint(req.Arguments["mutation_class"]),
-		FixtureMode:     true,
+		FixtureMode:     !truthy(req.Arguments["live_github_evidence"]),
 	}
 }
 

@@ -78,6 +78,8 @@ claims:
           assertion: "Secure GitHub preview profile denies W1/W2 private-repo mutations after taint before upstream execution and records taint metadata"
         - path: tests/securegithub/secure_github_cli_test.go
           assertion: "boundary secure github setup and serve dry-run expose preview fixture status and reject live mode"
+        - path: adapters/securegithub/live_conformance_test.go
+          assertion: "Secure GitHub live conformance records sanitized read evidence and denies protected write-after-taint before the GitHub mutation client is called"
       docs:
         - path: docs/ADAPTER_READINESS_MATRIX.md
           section: "Readiness Matrix"
@@ -332,17 +334,19 @@ claims:
           section: "Secure GitHub MCP"
         - path: docs/secure-mcp/GITHUB_REDTEAM.md
           section: "Secure GitHub Redteam Fixture"
+        - path: docs/secure-mcp/GITHUB_LIVE_CONFORMANCE.md
+          section: "Secure GitHub Live Conformance"
         - path: docs/deployment/secure-github-bypass-proofing.md
           section: "Release Gate"
     public_language:
       allowed:
         - "Boundary provides a preview Secure GitHub MCP profile for fixture write-after-taint denial before GitHub mutation."
-        - "Secure GitHub remains preview until live GitHub App conformance evidence and deployment bypass proof exist."
+        - "Secure GitHub remains preview until deployment bypass proof exists."
       forbidden:
         - "Secure GitHub is production"
         - "Boundary fully secures GitHub"
         - "Secure GitHub prevents every malicious issue"
-        - "Secure GitHub has live GitHub App conformance"
+        - "The fixture proof is live GitHub App conformance"
     gaps: []
     depends_on: []
 
@@ -393,6 +397,42 @@ claims:
         - "Boundary Action proves all MCP risks are blocked"
     gaps: []
     depends_on: []
+
+  - id: BND-CLAIM-018
+    claim: "Boundary provides an opt-in Secure GitHub live conformance harness for GitHub App read evidence and denied write-after-taint no-mutation proof"
+    status: delivered
+    adapter: securegithub
+    evidence:
+      tests:
+        - path: adapters/securegithub/github_app_auth_test.go
+          assertion: "GitHub App JWT installation-token exchange uses the current API header and caches installation tokens without storing credentials"
+        - path: adapters/securegithub/live_conformance_test.go
+          assertion: "Live conformance records sanitized read evidence and denies protected write-after-taint before the GitHub mutation client is called"
+        - path: internal/boundarycli/secure_github_conformance_test.go
+          assertion: "boundary secure github conformance skips by default and hard-fails missing required env when enabled"
+        - path: tests/conformance/secure_github/conformance_test.go
+          assertion: "Sanitized live conformance transcripts prove read taint, DENY, upstream_called=false, and github_mutation_called=false"
+      docs:
+        - path: docs/secure-mcp/GITHUB_LIVE_CONFORMANCE.md
+          section: "Secure GitHub Live Conformance"
+        - path: docs/secure-mcp/GITHUB_LIVE_EVIDENCE.md
+          section: "Secure GitHub Live Evidence"
+        - path: docs/RELEASE_TRUTH_V050.md
+          section: "Secure GitHub Status"
+    public_language:
+      allowed:
+        - "Boundary provides an opt-in Secure GitHub live conformance harness for operator-owned GitHub App credentials."
+        - "The denied-write conformance path records that a protected write-after-taint was denied before any GitHub mutation client call."
+        - "Secure GitHub remains preview until deployment bypass proof exists."
+      forbidden:
+        - "Secure GitHub is production"
+        - "Boundary fully secures GitHub"
+        - "Secure GitHub prevents every malicious issue"
+        - "Live conformance proves deployment bypass resistance"
+        - "Boundary mutates live repositories during conformance by default"
+    gaps: []
+    depends_on:
+      - BND-CLAIM-015
 
   - id: BND-CLAIM-004
     claim: "Boundary is a SQL firewall"

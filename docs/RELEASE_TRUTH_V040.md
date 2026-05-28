@@ -157,6 +157,7 @@ or explicit limitation context.
 
 ## Remaining Work
 
-- Design v0.5 Filesystem/Edit Boundary for direct file-write governance.
+- Post-v0.4 planning update: v0.5 moved to Secure GitHub live conformance
+  preview. Filesystem/Edit Boundary moved to v0.6.
 - Keep Command Boundary preview-scoped until deployment evidence shows Boundary
   is the relevant command path for a protected project or workflow.

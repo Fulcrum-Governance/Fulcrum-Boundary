@@ -24,6 +24,8 @@ Secure GitHub commands:
 
 ```bash
 boundary secure github --help
+boundary secure github conformance --help
+BOUNDARY_GITHUB_CONFORMANCE=true boundary secure github conformance denied-write
 boundary redteam --pack github-lethal-trifecta
 ```
 

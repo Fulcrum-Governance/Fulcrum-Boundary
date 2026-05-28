@@ -176,8 +176,9 @@ compatibility with any named third-party scanner.
 
 ## Remaining Preview Or Partial Work
 
-- Secure GitHub remains preview until live GitHub App conformance and deployment
-  bypass evidence are recorded.
+- Secure GitHub remains preview until deployment bypass evidence is recorded.
+  The opt-in live conformance harness covers read-taint evidence and denied
+  write-after-taint no-mutation proof for an operator-owned test repository.
 - Managed Agents remains preview until live upstream conformance evidence is
   recorded with operator-owned credentials.
 - CodeExec remains preview until a real named sandbox boundary is implemented,
@@ -190,7 +191,7 @@ compatibility with any named third-party scanner.
   evidence are recorded.
 - Command Boundary remains preview until deployment evidence shows Boundary is
   the relevant command path for a protected project or workflow.
-- Direct file edits outside routed command paths remain a v0.5 design gap.
+- Direct file edits outside routed command paths remain a v0.6 design gap.
 - Full GitHub MCP tool catalog coverage remains deferred.
 
 ## Approved Release Language

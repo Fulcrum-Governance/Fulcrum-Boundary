@@ -28,15 +28,20 @@ fail_closed_transports:
 evidence:
   tests:
     - adapters/securegithub/adapter_test.go
+    - adapters/securegithub/github_app_auth_test.go
+    - adapters/securegithub/live_conformance_test.go
     - tests/securegithub/secure_github_cli_test.go
     - tests/redteam/secure_github_integration_test.go
+    - tests/conformance/secure_github/conformance_test.go
   docs:
     - docs/secure-mcp/GITHUB.md
     - docs/secure-mcp/GITHUB_REDTEAM.md
+    - docs/secure-mcp/GITHUB_LIVE_CONFORMANCE.md
+    - docs/secure-mcp/GITHUB_LIVE_EVIDENCE.md
+    - docs/secure-mcp/GITHUB_LIVE_BYPASS_MODEL.md
     - docs/deployment/secure-github-bypass-proofing.md
     - docs/ADAPTER_READINESS_MATRIX.md
 gaps:
-  - id: BND-GH-001
-    description: "Secure GitHub remains preview until live GitHub App conformance evidence and deployment bypass proof are recorded."
-    spec: "Subgoal 7"
-
+  - id: BND-GH-002
+    description: "Secure GitHub remains preview until deployment bypass proof shows agents cannot reach direct GitHub API, direct upstream GitHub MCP, SSH, or other credentialed write paths outside Boundary. The live conformance harness proves the configured read and denied-write no-mutation path, not bypass resistance."
+    spec: "v0.5 Secure GitHub live conformance"

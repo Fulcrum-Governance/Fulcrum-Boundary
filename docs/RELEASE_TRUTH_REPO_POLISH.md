@@ -222,4 +222,5 @@ historical, or explicit limitation context.
   install command.
 - Keep Command Boundary preview-scoped until deployment evidence shows Boundary
   is the relevant command path for a protected project or workflow.
-- Design v0.5 Filesystem/Edit Boundary for direct file-write governance.
+- Keep Secure GitHub preview-scoped until deployment bypass proof exists.
+- Design v0.6 Filesystem/Edit Boundary for direct file-write governance.

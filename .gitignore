@@ -29,6 +29,12 @@ tests/conformance/managed_agents/transcript/*.secret*
 tests/conformance/managed_agents/transcript/*unsanitized*
 tests/conformance/managed_agents/transcript/*.log
 
+# Secure GitHub conformance transcripts
+tests/conformance/secure_github/transcript/*.raw
+tests/conformance/secure_github/transcript/*.secret*
+tests/conformance/secure_github/transcript/*unsanitized*
+tests/conformance/secure_github/transcript/*.log
+
 # Compiled example binaries (keep source, ignore build output).
 /examples/simple/simple
 /examples/mcp-proxy/mcp-proxy

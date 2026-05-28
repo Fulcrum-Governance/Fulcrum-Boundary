@@ -38,6 +38,7 @@ nav:
   - Secure MCP:
       - Overview: secure-mcp/index.md
       - Secure GitHub: secure-mcp/github.md
+      - Secure GitHub Live: secure-mcp/github-live-conformance.md
   - Command Boundary:
       - Overview: command-boundary/index.md
       - Demo: command-boundary/demo.md

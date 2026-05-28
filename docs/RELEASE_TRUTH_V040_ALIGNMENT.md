@@ -89,14 +89,14 @@ sandboxing, or direct file-edit governance.
 
 ## Remaining v0.4 Gaps
 
-- Secure GitHub production status still requires live GitHub App conformance and
-  deployment bypass evidence.
+- Secure GitHub production status still requires deployment bypass evidence.
+  The v0.5 train adds an opt-in live conformance harness, not production status.
 - Command Boundary production status still requires deployment evidence that
   Boundary is the relevant command path for a protected project or workflow.
 - Direct shell access remains outside Boundary unless routed through Boundary.
 - CI jobs, SSH sessions, cron jobs, editor tasks, and arbitrary local processes
   remain outside Boundary unless routed through Boundary.
-- Direct file edits outside routed command paths remain a v0.5 design gap.
+- Direct file edits outside routed command paths remain a v0.6 design gap.
 - Full GitHub MCP tool catalog coverage remains deferred.
 
 ## Approved Public Copy

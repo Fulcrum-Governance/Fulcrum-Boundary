@@ -15,7 +15,21 @@ The current profile proves the local decision path:
 - A later `W1` or `W2` private-repo mutation is denied before upstream.
 - Fixture upstream records that the denied write was not called.
 
-No live GitHub credential is used in this preview proof.
+No live GitHub credential is used in the fixture proof.
+
+## Live Conformance Boundary
+
+Secure GitHub also has an opt-in live conformance harness. It can:
+
+- use operator-owned GitHub App credentials;
+- read a configured live GitHub issue;
+- record sanitized taint evidence;
+- deny a protected write-after-taint action;
+- prove `upstream_called=false` and `github_mutation_called=false` for that
+  denied write.
+
+This proves the governed route for the configured test repository. It does not
+prove that the deployment has removed all bypass paths.
 
 ## Production Bypass Controls
 
@@ -31,7 +45,6 @@ A production Secure GitHub deployment would need documented evidence that:
 
 ## Release Gate
 
-Do not mark Secure GitHub production until live GitHub App conformance and
-deployment bypass evidence are recorded. Until then, public language must say
-preview fixture proof.
-
+Do not mark Secure GitHub production until deployment bypass evidence is
+recorded for the protected environment. Until then, public language must say
+preview and distinguish fixture proof from opt-in live conformance proof.
