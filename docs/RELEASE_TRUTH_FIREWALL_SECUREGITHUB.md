@@ -90,9 +90,10 @@ The release truth is consistent:
 - `docs/ADAPTER_READINESS_MATRIX.md`
 - `docs/LAUNCH_TRUTH_FREEZE.md`
 - `docs/DEMO_SCRIPT.md`
-- `docs/YC_DEMO_NARRATIVE.md`
+- `docs/DEMO_GITHUB_LETHAL_TRIFECTA.md`
+- `docs/DEMO_ACTION_BOUNDARY.md`
 - `docs/LAUNCH_README.md`
-- `docs/SCREENSHOT_SCRIPT.md`
+- `docs/assets/boundary-action-demo.gif`
 - `docs/firewall/DISCOVERY_INVENTORY.md`
 - `docs/firewall/RISK_GRAPH_POLICY_GENERATION.md`
 - `docs/firewall/INSTALL_LOCK.md`

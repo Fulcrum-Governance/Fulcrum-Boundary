@@ -192,7 +192,7 @@ governance.
 | README badges limited to real CI, Go Reference, Go Report Card, and license signals | Pass |
 | Social preview source committed | Pass: `docs/assets/social-preview.svg` |
 | Social preview upload caveat documented | Pass |
-| First screenshot/GIF plan documented | Pass |
+| Action demo asset committed | Pass: `docs/assets/boundary-action-demo.gif` |
 
 Approved repository description:
 
@@ -244,8 +244,7 @@ historical, or explicit limitation context.
 
 - Upload a PNG social preview manually if GitHub repository settings reject the
   repo-owned SVG source.
-- Record the first terminal screenshot or GIF using the final `@v0.6.0`
-  install command.
+- Keep the action demo asset current when the public demo output changes.
 - Keep Command Boundary preview-scoped until deployment evidence shows Boundary
   is the relevant command path for a protected project or workflow.
 - Keep Secure GitHub preview-scoped until deployment bypass proof and broader

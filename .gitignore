@@ -23,6 +23,12 @@ coverage.html
 /site/
 .boundary/
 
+# Local agent/session planning artifacts
+*_SESSION_LOG.md
+*_DEMO_NARRATIVE.md
+**/superpowers/
+.claude/sprint/
+
 # Managed Agents conformance transcripts
 tests/conformance/managed_agents/transcript/*.raw
 tests/conformance/managed_agents/transcript/*.secret*

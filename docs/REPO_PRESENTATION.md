@@ -65,17 +65,12 @@ happens, export a PNG manually from this SVG and upload the PNG through GitHub
 settings. Do not add a README image reference until the asset is actually
 served somewhere stable.
 
-## First Screenshot Or GIF Plan
+## Public Demo Asset
 
-The first moving visual should be an operator-grade terminal recording, not a
-marketing animation:
+The public README uses `docs/assets/boundary-action-demo.gif` as the finished
+action-boundary demo asset. It shows fixture-safe local output from
+`boundary demo action-boundary`, including the denied MCP write, the command
+preview non-execution result, and the edit preview non-application result.
 
-1. Run `boundary selftest`.
-2. Run `boundary demo github-lethal-trifecta`.
-3. Show `actual action: DENY`, `reason: lethal_trifecta_detected`, and
-   `upstream_called=false`.
-4. Optionally show `boundary graph --format mermaid` rendering the risk path.
-5. End on the decision-record line and the fixture/live boundary statement.
-
-Keep the capture honest: no credentials, no network, no live GitHub mutation,
-and no production-readiness language beyond the claims ledger.
+Keep the asset honest: no credentials, no network, no live GitHub mutation, and
+no production-readiness language beyond the claims ledger.
