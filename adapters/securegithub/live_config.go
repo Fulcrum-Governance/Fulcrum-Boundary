@@ -73,7 +73,7 @@ func LoadLiveConfigFromLookup(getenv func(string) string) (LiveConfig, error) {
 	if err != nil {
 		return LiveConfig{}, err
 	}
-	issueNumber64, err := parsePositiveInt64Env(EnvGitHubIssueNumber, getenv(EnvGitHubIssueNumber))
+	issueNumber, err := parsePositiveIntEnv(EnvGitHubIssueNumber, getenv(EnvGitHubIssueNumber))
 	if err != nil {
 		return LiveConfig{}, err
 	}
@@ -92,7 +92,7 @@ func LoadLiveConfigFromLookup(getenv func(string) string) (LiveConfig, error) {
 		PrivateKeyPath: strings.TrimSpace(getenv(EnvGitHubPrivateKeyPath)),
 		Owner:          strings.TrimSpace(getenv(EnvGitHubOwner)),
 		Repo:           strings.TrimSpace(getenv(EnvGitHubRepo)),
-		IssueNumber:    int(issueNumber64),
+		IssueNumber:    issueNumber,
 		APIBaseURL:     strings.TrimRight(apiBaseURL, "/"),
 		TranscriptDir:  transcriptDir,
 	}, nil
@@ -104,6 +104,18 @@ func parsePositiveInt64Env(name, value string) (int64, error) {
 		return 0, fmt.Errorf("%s must be a positive integer", name)
 	}
 	return parsed, nil
+}
+
+func parsePositiveIntEnv(name, value string) (int, error) {
+	parsed, err := parsePositiveInt64Env(name, value)
+	if err != nil {
+		return 0, err
+	}
+	maxInt := int64(1<<(strconv.IntSize-1) - 1)
+	if parsed > maxInt {
+		return 0, fmt.Errorf("%s must fit in platform int range", name)
+	}
+	return int(parsed), nil
 }
 
 func (c LiveConfig) adapterConfig() Config {

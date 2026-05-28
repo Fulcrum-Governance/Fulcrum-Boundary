@@ -46,6 +46,7 @@ Final v0.5.0 truth:
 | `go test ./... -short -count=1 -timeout 5m` | pass |
 | `golangci-lint run --timeout=5m` | pass, `0 issues` |
 | `go run github.com/securego/gosec/v2/cmd/gosec@v2.26.1 ./adapters/securegithub/... ./internal/boundarycli/...` | pass, `0 issues` |
+| `CodeQL` | pass after integer-conversion upper-bound fix |
 
 ## Secure GitHub Status
 
