@@ -1,0 +1,49 @@
+$ boundary demo action-boundary
+Action Boundary demo
+status: pass
+fixture-only: true
+credentials: none
+network: none
+live mutation: none
+
+Surface: MCP / Secure GitHub
+scenario: github-write-after-taint
+expected action: DENY
+actual action: DENY
+reason: lethal_trifecta_detected
+upstream_called=false
+read_upstream_called=true
+result: pass
+
+Surface: Command Boundary
+scenario: command-git-push
+command: git push origin main
+class: C3
+risk: HIGH
+recommended action: require_approval
+expected action: require_approval
+actual action: require_approval
+reason: repo mutation requires approval
+executed=false
+result: pass
+
+Surface: Edit Boundary
+scenario: edit-env-secret
+class: E4
+risk: CRITICAL
+expected action: DENY
+actual action: DENY
+reason: secret-bearing edit denied
+applied=false
+result: pass
+
+What this proves:
+- MCP / Secure GitHub denies the fixture private-repo write before upstream execution.
+- Command Boundary classifies the fixture git push as a repository mutation and does not execute it.
+- Edit Boundary classifies the fixture .env patch as secret-bearing and does not apply it.
+
+What this does not prove:
+- Fixture mode does not prove live GitHub App conformance.
+- Command Boundary governs only commands routed through Boundary.
+- Edit Boundary governs only proposed edit envelopes routed through Boundary.
+- Direct shell, direct upstream MCP access, and direct file edits remain deployment bypasses unless operators remove those paths.

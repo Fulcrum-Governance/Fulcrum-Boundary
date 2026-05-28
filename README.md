@@ -21,6 +21,8 @@ No credentials. No live GitHub calls. No real mutations.
 
 [Quickstart](#try-it-in-one-minute) | [Demo](./docs/DEMO_GITHUB_LETHAL_TRIFECTA.md) | [Install](./docs/INSTALL.md) | [Claims](./docs/CLAIMS_LEDGER.md) | [Release Truth](./docs/RELEASE_TRUTH_PUBLIC.md)
 
+![Boundary action demo](./docs/assets/boundary-action-demo.gif)
+
 ## What is Fulcrum Boundary?
 
 Fulcrum Boundary is the out-of-process action boundary for AI agents using privileged tools. As a Go library and gateway binary, it evaluates tool calls against trust state, static policies, domain interceptors, and a portable policy engine before those calls reach the underlying tool.
@@ -124,8 +126,9 @@ boundary dashboard --format html --out "$tmp/dashboard.html" \
 
 The flagship path starts with a poisoned GitHub issue fixture and ends with a
 private-repo mutation denied before any upstream GitHub call. See
-[`docs/DEMO_SCRIPT.md`](./docs/DEMO_SCRIPT.md) and
-[`docs/YC_DEMO_NARRATIVE.md`](./docs/YC_DEMO_NARRATIVE.md).
+[`docs/DEMO_SCRIPT.md`](./docs/DEMO_SCRIPT.md),
+[`docs/DEMO_GITHUB_LETHAL_TRIFECTA.md`](./docs/DEMO_GITHUB_LETHAL_TRIFECTA.md),
+and [`docs/DEMO_ACTION_BOUNDARY.md`](./docs/DEMO_ACTION_BOUNDARY.md).
 
 ## Release Utility Commands
 

@@ -14,6 +14,8 @@ reason: lethal_trifecta_detected
 upstream_called=false
 ```
 
+![Boundary action demo](assets/boundary-action-demo.gif)
+
 What it proves:
 
 - Boundary can inventory a fixture GitHub MCP server.

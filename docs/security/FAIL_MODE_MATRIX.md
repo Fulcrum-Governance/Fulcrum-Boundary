@@ -171,7 +171,7 @@ set, the deferred hook at `pipeline.go:118-130` applies **after** audit:
 
 One test case per DENY cell plus the parse-failure and fail-open edge cases.
 "Status" column records whether the behavior is already covered by a test in
-the current suite ("Existing") or is a new test to write post-YC ("New"). No
+the current suite ("Existing") or is a new follow-up test to write ("New"). No
 new tests are implemented by this PRD — this is a plan.
 
 | Test ID | Fault Class | Transport | Setup | Expected | Status |
