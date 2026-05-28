@@ -558,3 +558,28 @@ claims:
     gaps: []
     depends_on:
       - BND-CLAIM-CMD-001
+
+  - id: BND-CLAIM-EDIT-001
+    claim: "Boundary defines a preview Edit Boundary design for routed file mutation governance"
+    status: planned
+    evidence:
+      tests: []
+      docs:
+        - path: docs/edit-boundary/DESIGN.md
+          section: "Purpose"
+        - path: docs/edit-boundary/PREVIEW_CLAIMS.md
+          section: "Planned Claim"
+    public_language:
+      allowed:
+        - "Boundary can classify and gate proposed file mutations before they are applied."
+        - "Edit Boundary applies only to file mutations routed through a Boundary edit envelope."
+        - "Boundary defines a preview Edit Boundary design for routed file mutation governance."
+      forbidden:
+        - "Boundary controls all file writes"
+        - "Boundary protects direct editor writes"
+        - "Boundary prevents every unsafe edit"
+        - "Boundary provides filesystem sandboxing"
+        - "Boundary provides universal coding-agent file safety"
+        - "Boundary governs direct file edits outside routed edit envelopes"
+    gaps: []
+    depends_on: []

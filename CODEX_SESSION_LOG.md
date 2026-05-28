@@ -231,6 +231,27 @@
 - `go test ./tests/commandboundary/... -count=1 -timeout 5m`: pass.
 - `go test ./claims/... -count=1`: pass.
 - `go test ./... -short -count=1 -timeout 5m`: pass.
+
+## 2026-05-28 — v0.6 Edit Boundary Design Lock
+
+### Context
+
+- Branch: `docs/edit-boundary-design`, cut from `main` after PR #84 merged as `ae2d099`.
+- Scope: design and planned-claim lock for the v0.6 Filesystem/Edit Boundary preview train. No product behavior changes.
+
+### Design Decisions
+
+- Edit Boundary is route-scoped: it governs only proposed file mutations represented as Boundary edit envelopes.
+- Inspect mode is hard read-only.
+- Apply dry-run is hard no-mutation and must not invoke an applier, regardless of governance dry-run semantics.
+- Approval must bind to patch hash, target files, project root, actor, decision id, highest class, and expiry.
+- Path traversal, secret-bearing edits, destructive edits, and outside-project edits deny without mutation.
+
+### Deliverables
+
+- Added `docs/edit-boundary/` design-lock documents.
+- Added planned claim `BND-CLAIM-EDIT-001`.
+- Updated `docs/CLAIMS_LEDGER.md`.
 - `golangci-lint run --timeout=5m`: pass, `0 issues`.
 - `./scripts/docs-build.sh`: pass.
 - `make release-check`: pass.
