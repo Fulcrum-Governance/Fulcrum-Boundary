@@ -583,3 +583,25 @@ claims:
         - "Boundary governs direct file edits outside routed edit envelopes"
     gaps: []
     depends_on: []
+
+  - id: BND-CLAIM-EDIT-002
+    claim: "Boundary runs fixture Edit Boundary redteam packs that deny or require approval for selected file-mutation risk paths without live project mutation"
+    status: delivered
+    evidence:
+      tests:
+        - path: tests/redteam/edit_redteam_test.go
+          assertion: "boundary redteam edit packs report fixture-only deny and require-approval outcomes with applied=false"
+      docs:
+        - path: docs/edit-boundary/REDTEAM.md
+          section: "Edit Boundary Redteam"
+    public_language:
+      allowed:
+        - "Boundary runs fixture Edit Boundary redteam packs that deny or require approval for selected file-mutation risk paths without live project mutation."
+        - "Edit Boundary fixtures demonstrate expected deny or require-approval outcomes for tested routed patch envelopes."
+      forbidden:
+        - "Boundary prevents all unsafe file edits"
+        - "Boundary controls every editor"
+        - "Boundary protects direct file writes"
+        - "Boundary proves universal file safety"
+    gaps: []
+    depends_on: []

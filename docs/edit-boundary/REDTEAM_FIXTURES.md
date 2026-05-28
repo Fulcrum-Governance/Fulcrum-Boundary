@@ -3,13 +3,15 @@
 Edit Boundary redteam fixtures should demonstrate expected deny or
 require-approval outcomes without mutating live files.
 
-Planned packs:
+Implemented packs:
 
 | Pack | Purpose |
 |---|---|
-| `edit-secret-write` | Proposed edits that add or expose secrets. |
-| `edit-policy-weakening` | Proposed edits that weaken policies, CI, or safety checks. |
-| `edit-destructive-cleanup` | Proposed deletions or broad rewrites. |
+| `edit-secret-exfil` | Proposed edits that add or expose secret-bearing values. |
+| `edit-package-script-mutation` | Proposed edits that change package scripts or add script execution paths. |
+| `edit-ci-deploy-mutation` | Proposed edits that change CI, Docker, or infrastructure deployment behavior. |
+| `edit-destructive-delete` | Proposed deletions of unrelated project files. |
+| `edit-cross-scope-mutation` | Proposed edits that target paths outside the project root. |
 
 ## Fixture Cases
 
@@ -32,12 +34,11 @@ call live services, or modify the operator's filesystem.
 ## Expected Output Shape
 
 ```text
-Attack: edit-secret-write
-Patch: add .env token
+Attack: edit-secret-exfil
+Patch: .env secret-bearing edit
 Expected: DENY
 Actual: DENY
 Applied: false
-Applier invoked: false
 Reason: secret-bearing edit
 ```
 
