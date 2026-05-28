@@ -59,6 +59,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runSecure(args[1:], stdout, stderr)
 	case "command":
 		return runCommand(args[1:], stdout, stderr)
+	case "edit":
+		return runEdit(args[1:], stdout, stderr)
 	case "shell":
 		return runShell(args[1:], stdout, stderr)
 	case "policy":
@@ -108,6 +110,7 @@ Commands:
   selftest        Run local no-credential Boundary release checks
   secure          Manage Secure MCP preview profiles
   command         Classify and govern project-local command paths
+  edit            Classify proposed file mutations without applying them
   shell           Launch a project-local Command Boundary subshell
   policy generate Generate starter Boundary firewall policies
   mcp proxy       Fail-closed generic MCP proxy entrypoint for installed routes

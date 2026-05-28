@@ -199,12 +199,12 @@ The default preview policy should be conservative:
 | Class | Default action |
 |---|---|
 | E0 metadata/no-op | allow |
-| E1 low-risk docs/tests | allow |
-| E2 source/config change | require approval |
-| E3 policy/CI/dependency change | require approval |
+| E1 safe content edit | allow |
+| E2 source/config mutation | require approval |
+| E3 deployment/infrastructure mutation | require approval |
 | E4 secret-bearing edit | deny |
 | E5 destructive deletion or broad rewrite | deny |
-| E6 generated/vendor/lockfile change | require approval |
+| E6 execution behavior mutation | require approval |
 | E7 outside project scope | deny |
 
 Implementation branches may tune this policy, but tuning must preserve the

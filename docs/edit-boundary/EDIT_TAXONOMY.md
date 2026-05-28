@@ -7,12 +7,12 @@ overall action.
 | Class | Meaning | Examples | Default |
 |---|---|---|---|
 | E0 | metadata/no-op | empty diff, whitespace-only doc metadata | allow |
-| E1 | low-risk docs/tests | README copy, docs pages, test fixtures with no secrets | allow |
-| E2 | source/config change | Go source, JSON config, YAML config, policy examples | require approval |
-| E3 | policy/CI/dependency change | `.github/workflows/*`, policy files, `go.mod`, `package.json` | require approval |
+| E1 | safe content edit | README copy, docs pages, test fixtures with no secrets | allow |
+| E2 | source/config mutation | Go source, JSON config, YAML config, policy examples | require approval |
+| E3 | deployment/infrastructure mutation | Terraform, Kubernetes YAML, Helm charts, cloud config | require approval |
 | E4 | secret-bearing edit | `.env`, private keys, tokens, credential files, raw secret additions | deny |
 | E5 | destructive deletion or broad rewrite | mass delete, `DELETE` patches, large rewrites, path wipes | deny |
-| E6 | generated/vendor/lockfile change | generated code, vendor trees, lockfiles, build artifacts | require approval |
+| E6 | execution behavior mutation | package scripts, CI workflows, Dockerfiles, Makefiles, shell scripts, hooks | require approval |
 | E7 | outside project scope | absolute path, traversal, symlink escape, `.git/hooks/*` | deny |
 
 ## Precedence
@@ -35,12 +35,12 @@ Examples of path-based signals:
 | `docs/**/*.md` | E1 | documentation-only edit |
 | `*.go` | E2 | source change |
 | `config/*.yaml` | E2 | config change |
-| `.github/workflows/*.yml` | E3 | CI behavior change |
-| `go.mod` or `go.sum` | E3 | dependency and module graph change |
+| `.github/workflows/*.yml` | E6 | execution behavior change |
+| `go.mod` or `go.sum` | E2 | dependency and module graph change |
 | `.env` | E4 | credential-bearing path |
 | `.ssh/id_rsa` | E4 | credential-bearing path |
-| `vendor/**` | E6 | vendored dependency surface |
-| `**/*.pb.go` | E6 | generated code surface |
+| `terraform/**/*.tf` | E3 | infrastructure mutation |
+| `scripts/deploy.sh` | E6 | execution behavior change |
 | `.git/hooks/pre-commit` | E7 | repository control path |
 | `../outside.txt` | E7 | outside project scope |
 
