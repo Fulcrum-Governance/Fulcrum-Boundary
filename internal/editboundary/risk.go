@@ -44,6 +44,24 @@ type Inspection struct {
 	Findings          []Finding         `json:"findings"`
 }
 
+func (i Inspection) RedactedPaths() []string {
+	paths := make([]string, 0, len(i.Findings))
+	for _, finding := range i.Findings {
+		if finding.Redacted {
+			paths = append(paths, finding.Path)
+		}
+	}
+	return paths
+}
+
+func (i Inspection) RecordPaths() []string {
+	paths := make([]string, 0, len(i.Findings))
+	for _, finding := range i.Findings {
+		paths = append(paths, finding.Path)
+	}
+	return paths
+}
+
 type Finding struct {
 	Path        string            `json:"path"`
 	Operation   Operation         `json:"operation"`

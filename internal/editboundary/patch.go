@@ -23,8 +23,18 @@ type FileChange struct {
 	Operation    Operation
 	AddedLines   []string
 	DeletedLines []string
+	Hunks        []Hunk
 	Binary       bool
 	ModeChanged  bool
+}
+
+type Hunk struct {
+	Lines []HunkLine
+}
+
+type HunkLine struct {
+	Kind byte
+	Text string
 }
 
 func ParsePatch(patch []byte) ([]FileChange, error) {
@@ -84,10 +94,22 @@ func ParsePatch(patch []byte) ([]FileChange, error) {
 		case strings.HasPrefix(line, "Binary files ") || strings.HasPrefix(line, "GIT binary patch"):
 			ch := ensure()
 			ch.Binary = true
+		case strings.HasPrefix(line, "@@ "):
+			ch := ensure()
+			ch.Hunks = append(ch.Hunks, Hunk{})
 		case strings.HasPrefix(line, "+") && !strings.HasPrefix(line, "+++"):
-			ensure().AddedLines = append(ensure().AddedLines, strings.TrimPrefix(line, "+"))
+			ch := ensure()
+			text := strings.TrimPrefix(line, "+")
+			ch.AddedLines = append(ch.AddedLines, text)
+			appendHunkLine(ch, '+', text)
 		case strings.HasPrefix(line, "-") && !strings.HasPrefix(line, "---"):
-			ensure().DeletedLines = append(ensure().DeletedLines, strings.TrimPrefix(line, "-"))
+			ch := ensure()
+			text := strings.TrimPrefix(line, "-")
+			ch.DeletedLines = append(ch.DeletedLines, text)
+			appendHunkLine(ch, '-', text)
+		case strings.HasPrefix(line, " "):
+			ch := ensure()
+			appendHunkLine(ch, ' ', strings.TrimPrefix(line, " "))
 		}
 	}
 	if err := scanner.Err(); err != nil {
@@ -106,6 +128,14 @@ func parseDiffGitLine(line string) (oldPath string, newPath string) {
 		return "", ""
 	}
 	return trimPatchPath(fields[2]), trimPatchPath(fields[3])
+}
+
+func appendHunkLine(ch *FileChange, kind byte, text string) {
+	if len(ch.Hunks) == 0 {
+		ch.Hunks = append(ch.Hunks, Hunk{})
+	}
+	last := len(ch.Hunks) - 1
+	ch.Hunks[last].Lines = append(ch.Hunks[last].Lines, HunkLine{Kind: kind, Text: text})
 }
 
 func trimPatchPath(raw string) string {

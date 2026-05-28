@@ -2099,3 +2099,36 @@
 - `GOPROXY=https://proxy.golang.org,direct go list -m github.com/fulcrum-governance/fulcrum-boundary@latest`: pass, resolved `v0.5.0`.
 - `git grep -n '@v0.4.0' README.md docs/INSTALL.md docs-site || true`: pass, no active matches.
 - `git grep -n '@main' README.md docs/INSTALL.md docs-site || true`: pass, no active matches.
+
+## 2026-05-28 — Edit Boundary Apply Wrapper
+
+### Context
+
+- Branch: `feat/edit-apply-wrapper`, cut from `main` after the edit inspect classifier merged.
+- Scope: v0.6 Filesystem/Edit Boundary Spec 3. Adds routed patch application only; no global filesystem interception, IDE control, or sandboxing claim.
+
+### Built
+
+- Added `boundary edit apply` for patch files, `--from-git-diff`, and stdin patches.
+- Added default preview policy for edit classes: E0/E1 allow, E2/E3/E6 require approval, E4/E5/E7 deny.
+- Added internal no-shell patch applier for conservative unified diffs.
+- Added JSONL edit decision records with patch hash, file list, redacted paths, approval mode, dry-run, applied, applier-invoked, and index-changed evidence.
+- Documented `--require-approval` as a preview local operator acknowledgement, not a production approval artifact.
+
+### Verification
+
+- `go test ./internal/editboundary/... -count=1 -timeout 5m`: pass.
+- `go test ./tests/editboundary/... -run Apply -count=1 -timeout 5m`: pass.
+- `go test ./claims/... -count=1`: pass.
+- `go test ./... -short -count=1 -timeout 5m`: pass.
+- `git ls-files '*.go' | xargs gofmt -l`: pass, no output.
+- `make docs-build`: pass.
+- `git diff --check`: pass.
+- `go run github.com/securego/gosec/v2/cmd/gosec@v2.26.1 ./...`: pass, 0 issues.
+- `golangci-lint run --timeout=5m`: pass, 0 issues.
+
+### Notes
+
+- Dry-run never invokes the applier.
+- Hard-deny classes cannot be overridden by `--require-approval`.
+- The preview internal applier mutates the worktree only; it does not mutate the Git index.

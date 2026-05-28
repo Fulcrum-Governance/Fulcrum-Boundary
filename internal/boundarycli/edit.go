@@ -22,6 +22,8 @@ func runEdit(args []string, stdout, stderr io.Writer) int {
 	switch args[0] {
 	case "inspect":
 		return runEditInspect(args[1:], stdout, stderr)
+	case "apply":
+		return runEditApply(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "unknown edit subcommand %q\n\n", args[0])
 		printEditHelp(stderr)
@@ -40,15 +42,19 @@ Usage:
 
 Commands:
   inspect        Classify a patch without applying it
+  apply          Evaluate and apply a routed patch when policy permits
 
 Examples:
   boundary edit inspect --patch proposed.diff
   boundary edit inspect --patch proposed.diff --json
   boundary edit inspect --from-git-diff
   boundary edit inspect --stdin
+  boundary edit apply --patch proposed.diff
+  boundary edit apply --patch proposed.diff --dry-run
 
 Notes:
   - inspect never applies edits.
+  - apply never invokes a shell.
   - secret-looking paths and content are redacted in output.
   - Edit Boundary governs only proposed mutations routed through Boundary.
 `)
