@@ -1,0 +1,7 @@
+diff --git a/docs/unrelated.md b/docs/unrelated.md
+deleted file mode 100644
+--- a/docs/unrelated.md
++++ /dev/null
+@@ -1,2 +0,0 @@
+-# Unrelated
+-keep this file

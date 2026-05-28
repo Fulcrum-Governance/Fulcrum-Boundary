@@ -30,7 +30,7 @@ Edit Boundary will define three routed surfaces:
 |---|---|---|
 | Inspect | `boundary edit inspect --patch change.diff` | Classify a proposed edit without applying it. |
 | Apply wrapper | `boundary edit apply --patch change.diff` | Evaluate policy before applying an edit envelope. |
-| Fixture redteam | `boundary redteam --pack edit-secret-write` | Exercise edit-risk fixtures without live mutation. |
+| Fixture redteam | `boundary redteam --pack edit-secret-exfil` | Exercise edit-risk fixtures without live mutation. |
 
 The preview is route-scoped. Protection starts only when the proposed mutation
 is represented as a Boundary edit envelope.

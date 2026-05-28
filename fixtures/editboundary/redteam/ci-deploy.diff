@@ -1,0 +1,11 @@
+diff --git a/.github/workflows/deploy.yml b/.github/workflows/deploy.yml
+--- a/.github/workflows/deploy.yml
++++ b/.github/workflows/deploy.yml
+@@ -1,4 +1,7 @@
+ name: deploy
+ on:
+   push:
+     branches: [main]
++jobs:
++  deploy:
++    runs-on: ubuntu-latest

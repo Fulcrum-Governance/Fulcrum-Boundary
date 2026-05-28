@@ -38,6 +38,8 @@ type Scenario struct {
 	NoLiveMutation bool                          `json:"no_live_mutation"`
 	ExpectedAction string                        `json:"expected_action"`
 	CommandArgv    []string                      `json:"command_argv,omitempty"`
+	EditPatch      []byte                        `json:"-"`
+	EditPatchLabel string                        `json:"edit_patch_label,omitempty"`
 	Request        governance.GovernanceRequest  `json:"request"`
 	Policies       []governance.StaticPolicyRule `json:"policies"`
 }
@@ -74,7 +76,11 @@ type ScenarioResult struct {
 	Command        string                      `json:"command,omitempty"`
 	CommandClass   string                      `json:"command_class,omitempty"`
 	CommandRisk    string                      `json:"command_risk,omitempty"`
+	Patch          string                      `json:"patch,omitempty"`
+	EditClass      string                      `json:"edit_class,omitempty"`
+	EditRisk       string                      `json:"edit_risk,omitempty"`
 	Executed       bool                        `json:"executed"`
+	Applied        bool                        `json:"applied"`
 	Passed         bool                        `json:"passed"`
 	Reason         string                      `json:"reason"`
 	MatchedRule    string                      `json:"matched_rule,omitempty"`

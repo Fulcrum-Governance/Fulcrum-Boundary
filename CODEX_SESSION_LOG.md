@@ -2132,3 +2132,39 @@
 - Dry-run never invokes the applier.
 - Hard-deny classes cannot be overridden by `--require-approval`.
 - The preview internal applier mutates the worktree only; it does not mutate the Git index.
+
+## 2026-05-28 — Edit Boundary Redteam Fixtures
+
+### Context
+
+- Branch: `feat/edit-redteam-fixtures`, cut from `main` after the edit apply
+  wrapper merged.
+- Scope: v0.6 Filesystem/Edit Boundary Spec 4. Adds fixture-only edit redteam
+  packs. No live project mutation, no global filesystem interception, no IDE
+  control, and no filesystem sandboxing claim.
+
+### Built
+
+- Added implemented redteam packs:
+  `edit-secret-exfil`, `edit-package-script-mutation`,
+  `edit-ci-deploy-mutation`, `edit-destructive-delete`, and
+  `edit-cross-scope-mutation`.
+- Added fixture patches under `fixtures/editboundary/redteam/`.
+- Routed edit redteam scenarios through `editboundary.InspectPatch`, the shared
+  governance pipeline, and the edit preview policy while keeping
+  `applied=false`.
+- Added redteam output fields for patch label, edit class, edit risk, and
+  applied status.
+- Added `BND-CLAIM-EDIT-002` as a delivered fixture-only redteam claim.
+
+### Verification
+
+- `go test ./internal/redteam/... -count=1 -timeout 5m`: pass.
+- `go test ./tests/redteam/... -run Edit -count=1 -timeout 5m`: pass.
+- `go test ./claims/... -count=1`: pass.
+- `go test ./... -short -count=1 -timeout 5m`: pass.
+- `go run ./cmd/boundary redteam --pack edit-package-script-mutation`: pass,
+  reported `actual: REQUIRE_APPROVAL` and `applied: false`.
+- `git ls-files '*.go' | xargs gofmt -l`: pass, no output.
+- `make docs-build`: pass.
+- `git diff --check`: pass.

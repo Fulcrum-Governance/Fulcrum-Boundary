@@ -8,9 +8,17 @@ BND-CLAIM-EDIT-001:
   status: planned
 ```
 
-This is a roadmap claim only. Do not describe Edit Boundary as delivered until
-the inspect, apply, redteam, and reconciliation work lands with tests and
-evidence.
+## Delivered Fixture Claim
+
+```yaml
+BND-CLAIM-EDIT-002:
+  claim: "Boundary runs fixture Edit Boundary redteam packs that deny or require approval for selected file-mutation risk paths without live project mutation."
+  status: delivered
+```
+
+`BND-CLAIM-EDIT-002` is fixture proof only. Do not describe Edit Boundary as a
+delivered preview behavior claim until the final reconciliation promotes
+`BND-CLAIM-EDIT-001` with implementation evidence.
 
 ## Allowed Copy
 

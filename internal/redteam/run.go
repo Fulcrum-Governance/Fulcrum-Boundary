@@ -8,6 +8,7 @@ import (
 
 	"github.com/fulcrum-governance/fulcrum-boundary/governance"
 	"github.com/fulcrum-governance/fulcrum-boundary/internal/commandboundary"
+	"github.com/fulcrum-governance/fulcrum-boundary/internal/editboundary"
 )
 
 func Run(ctx context.Context, opts RunOptions) (*RunResult, error) {
@@ -64,6 +65,9 @@ func runScenario(ctx context.Context, pack Pack, scenario Scenario, mode string)
 	if len(scenario.CommandArgv) > 0 {
 		return runCommandScenario(ctx, pack, scenario, mode)
 	}
+	if len(scenario.EditPatch) > 0 {
+		return runEditScenario(ctx, pack, scenario, mode)
+	}
 
 	auditor := &captureAuditPublisher{}
 	req := scenario.Request
@@ -100,6 +104,64 @@ func runScenario(ctx context.Context, pack Pack, scenario Scenario, mode string)
 		NoLiveMutation: scenario.NoLiveMutation,
 		ExpectedAction: scenario.ExpectedAction,
 		ActualAction:   decision.Action,
+		Passed:         passed,
+		Reason:         decision.Reason,
+		MatchedRule:    decision.MatchedRule,
+		DecisionRecord: record,
+	}, nil
+}
+
+func runEditScenario(ctx context.Context, pack Pack, scenario Scenario, mode string) (ScenarioResult, error) {
+	inspection, err := editboundary.InspectPatch(scenario.EditPatch)
+	if err != nil {
+		return ScenarioResult{}, fmt.Errorf("run edit redteam scenario %q: %w", scenario.ID, err)
+	}
+	req := editboundary.BuildGovernanceRequest(editboundary.ApplyRequest{
+		Patch:    append([]byte(nil), scenario.EditPatch...),
+		CWD:      "/fixture/project",
+		AgentID:  "redteam-fixture-agent",
+		TenantID: "fixture-tenant",
+	}, inspection)
+	req.RequestID = "redteam-" + scenario.ID
+	req.EnvelopeID = "env-redteam-" + scenario.ID
+	req.TraceID = "trace-redteam-" + scenario.ID
+
+	auditor := &captureAuditPublisher{}
+	pipeline := governance.NewPipeline(governance.PipelineConfig{
+		StaticPolicies: editboundary.DefaultPreviewPolicyRules(),
+		GatewayVersion: "edit-redteam-fixture",
+		BuildDigest:    "fixture-only",
+	}, nil, nil, auditor)
+
+	decision, err := pipeline.Evaluate(ctx, req)
+	if err != nil {
+		return ScenarioResult{}, fmt.Errorf("run edit redteam scenario %q: %w", scenario.ID, err)
+	}
+	event, ok := auditor.LastDecisionEvent()
+	if !ok {
+		return ScenarioResult{}, fmt.Errorf("run edit redteam scenario %q: no decision record emitted", scenario.ID)
+	}
+	record := governance.BuildDecisionRecord(event)
+	passed := decision.Action == scenario.ExpectedAction
+	status := ResultPassed
+	if !passed {
+		status = ResultFailed
+	}
+	return ScenarioResult{
+		PackID:         pack.ID,
+		ScenarioID:     scenario.ID,
+		Name:           scenario.Name,
+		Mode:           mode,
+		Status:         status,
+		FixtureOnly:    scenario.FixtureOnly,
+		NoLiveMutation: scenario.NoLiveMutation,
+		ExpectedAction: scenario.ExpectedAction,
+		ActualAction:   decision.Action,
+		Patch:          scenario.EditPatchLabel,
+		EditClass:      string(inspection.HighestClass),
+		EditRisk:       string(inspection.Risk),
+		Executed:       false,
+		Applied:        false,
 		Passed:         passed,
 		Reason:         decision.Reason,
 		MatchedRule:    decision.MatchedRule,

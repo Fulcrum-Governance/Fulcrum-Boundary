@@ -53,6 +53,23 @@ func WriteText(w io.Writer, result *RunResult) error {
 				return err
 			}
 		}
+		if scenario.Patch != "" {
+			if _, err := fmt.Fprintf(w, "attack: %s\n", scenario.PackID); err != nil {
+				return err
+			}
+			if _, err := fmt.Fprintf(w, "patch: %s\n", scenario.Patch); err != nil {
+				return err
+			}
+			if _, err := fmt.Fprintf(w, "class: %s\n", scenario.EditClass); err != nil {
+				return err
+			}
+			if _, err := fmt.Fprintf(w, "risk: %s\n", scenario.EditRisk); err != nil {
+				return err
+			}
+			if _, err := fmt.Fprintf(w, "applied: %t\n", scenario.Applied); err != nil {
+				return err
+			}
+		}
 		if _, err := fmt.Fprintf(w, "expected: %s\n", strings.ToUpper(scenario.ExpectedAction)); err != nil {
 			return err
 		}
