@@ -1,11 +1,11 @@
 # Edit Boundary Preview Claims
 
-## Planned Claim
+## Delivered Preview Claim
 
 ```yaml
 BND-CLAIM-EDIT-001:
-  claim: "Boundary defines a preview Edit Boundary design for routed file mutation governance."
-  status: planned
+  claim: "Boundary provides preview Edit Boundary governance for proposed file mutations routed through Boundary edit envelopes."
+  status: delivered
 ```
 
 ## Delivered Fixture Claim
@@ -16,9 +16,10 @@ BND-CLAIM-EDIT-002:
   status: delivered
 ```
 
-`BND-CLAIM-EDIT-002` is fixture proof only. Do not describe Edit Boundary as a
-delivered preview behavior claim until the final reconciliation promotes
-`BND-CLAIM-EDIT-001` with implementation evidence.
+`BND-CLAIM-EDIT-001` is delivered preview behavior only. It does not mark Edit
+Boundary production, and it does not cover direct editor writes, direct
+filesystem writes, shell redirection, direct `git apply`, or unwrapped IDE APIs.
+`BND-CLAIM-EDIT-002` is fixture proof for selected edit-risk paths.
 
 ## Allowed Copy
 
@@ -26,8 +27,8 @@ delivered preview behavior claim until the final reconciliation promotes
   applied.
 - Edit Boundary applies only to file mutations routed through a Boundary edit
   envelope.
-- Edit Boundary is a planned preview surface for routed file mutation
-  governance.
+- Boundary provides preview Edit Boundary governance for proposed file mutations
+  routed through Boundary edit envelopes.
 
 ## Forbidden Copy
 
@@ -40,7 +41,7 @@ delivered preview behavior claim until the final reconciliation promotes
 
 ## Delivery Gate
 
-A delivered Edit Boundary claim requires:
+The delivered preview Edit Boundary claim requires:
 
 - inspect tests proving no mutation;
 - path traversal and secret-bearing edit denial tests;

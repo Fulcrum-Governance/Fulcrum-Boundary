@@ -560,20 +560,38 @@ claims:
       - BND-CLAIM-CMD-001
 
   - id: BND-CLAIM-EDIT-001
-    claim: "Boundary defines a preview Edit Boundary design for routed file mutation governance"
-    status: planned
+    claim: "Boundary provides preview Edit Boundary governance for proposed file mutations routed through Boundary edit envelopes"
+    status: delivered
     evidence:
-      tests: []
+      tests:
+        - path: internal/editboundary/classifier_test.go
+          assertion: "Edit Boundary classifies proposed patch bytes, redacts secret-looking paths, and never applies edits during inspection"
+        - path: tests/editboundary/inspect_test.go
+          assertion: "boundary edit inspect classifies patch files and stdin without mutating the worktree"
+        - path: tests/editboundary/apply_test.go
+          assertion: "boundary edit apply denies, requires approval, and dry-runs routed patch envelopes without unauthorized mutation"
+        - path: tests/redteam/edit_redteam_test.go
+          assertion: "Edit Boundary redteam packs exercise selected file-mutation risk paths with applied=false"
       docs:
         - path: docs/edit-boundary/DESIGN.md
           section: "Purpose"
+        - path: docs/edit-boundary/INSPECT.md
+          section: "Edit Inspect"
+        - path: docs/edit-boundary/APPLY.md
+          section: "Edit Boundary Apply"
+        - path: docs/edit-boundary/REDTEAM.md
+          section: "Edit Boundary Redteam"
+        - path: docs/edit-boundary/DEMO.md
+          section: "Edit Boundary Demo"
         - path: docs/edit-boundary/PREVIEW_CLAIMS.md
-          section: "Planned Claim"
+          section: "Delivered Preview Claim"
+        - path: docs/RELEASE_TRUTH_EDIT_BOUNDARY.md
+          section: "Release Truth"
     public_language:
       allowed:
         - "Boundary can classify and gate proposed file mutations before they are applied."
         - "Edit Boundary applies only to file mutations routed through a Boundary edit envelope."
-        - "Boundary defines a preview Edit Boundary design for routed file mutation governance."
+        - "Boundary provides preview Edit Boundary governance for proposed file mutations routed through Boundary edit envelopes."
       forbidden:
         - "Boundary controls all file writes"
         - "Boundary protects direct editor writes"
@@ -582,7 +600,8 @@ claims:
         - "Boundary provides universal coding-agent file safety"
         - "Boundary governs direct file edits outside routed edit envelopes"
     gaps: []
-    depends_on: []
+    depends_on:
+      - BND-CLAIM-EDIT-002
 
   - id: BND-CLAIM-EDIT-002
     claim: "Boundary runs fixture Edit Boundary redteam packs that deny or require approval for selected file-mutation risk paths without live project mutation"
