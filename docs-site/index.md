@@ -3,7 +3,7 @@
 The action boundary for MCP-native agents.
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.4.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.5.0
 boundary selftest
 boundary demo github-lethal-trifecta
 ```
@@ -26,8 +26,8 @@ flowchart LR
 - MCP is the production adapter.
 - CLI, CodeExec, gRPC, Managed Agents, Webhook, A2A, and Secure GitHub are
   preview adapter/profile surfaces.
-- Secure GitHub is fixture-backed until live GitHub App conformance and
-  deployment bypass evidence are recorded.
+- Secure GitHub has fixture proof plus an opt-in live GitHub App conformance
+  harness; deployment bypass evidence is still required before production.
 - Command Boundary is a preview, routed-path-only command governance surface.
 - Generated policies are starter policies for operator review.
 - The dashboard is local-only artifact visibility.

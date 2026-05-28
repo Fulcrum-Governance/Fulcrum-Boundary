@@ -1,5 +1,49 @@
 # CODEX Session Log
 
+## 2026-05-28 - v0.5.0 Secure GitHub Release Packaging
+
+### Context
+
+- Parent goal: resolve the lead discrepancy in
+  `/Users/td/ConceptDev/Projects/Fulcrum/.claude/sprint/Next_Specs0.5R.md`.
+- Branch: `release/v050-securegithub-live-package`.
+- Scope: release packaging and truth alignment only. No product behavior
+  changed.
+- Decision: package the already-merged Secure GitHub live conformance preview
+  as v0.5.0 before starting v0.6 Filesystem/Edit Boundary work.
+
+### What changed
+
+- Updated active public install and GitHub Action examples to `@v0.5.0`.
+- Added `docs/releases/v0.5.0.md`.
+- Updated public release truth, repo-polish truth, launch truth freeze, public
+  copy, docs-site copy, install docs, and Secure MCP contract language around
+  the v0.5.0 Secure GitHub live conformance preview.
+- Split Secure GitHub live conformance claims:
+  - `BND-CLAIM-018`: delivered opt-in harness.
+  - `BND-CLAIM-019`: partial operator-owned live run evidence until a
+    sanitized transcript hash is recorded.
+- Added `docs/RELEASE_TRUTH_V050_POSTRELEASE.md` as the post-tag smoke record
+  target.
+
+### Verification
+
+- `go test ./claims/... -count=1`: pass.
+- `make docs-build`: pass.
+- `make release-check`: pass.
+- `go test ./... -count=1 -timeout 5m`: pass.
+- `./scripts/assert-no-public-vendor-refs.sh`: pass.
+
+### Notes For Next Step
+
+- Tag `v0.5.0` after this release packaging branch lands on `main`.
+- Then run direct `@v0.5.0` install smoke, selftest,
+  `demo github-lethal-trifecta`, `command classify -- git push origin main`,
+  and public proxy `@latest` verification.
+- Update `docs/RELEASE_TRUTH_V050_POSTRELEASE.md` with post-tag results.
+- Start v0.6 Filesystem/Edit Boundary only after v0.5 post-release truth is
+  current.
+
 ## 2026-05-28 - v0.5.0 Secure GitHub Live Conformance Preview
 
 ### Context

@@ -4,6 +4,17 @@ Live conformance writes sanitized transcripts for operator review. Transcripts
 are designed to prove the conformance result without storing raw GitHub issue
 content or credentials.
 
+## Current Release Evidence Status
+
+As of v0.5.0 packaging, the opt-in live conformance harness is implemented and
+covered by automated skip, missing-environment fail-closed, transcript
+sanitization, and no-mutation tests. An operator-owned live run against a real
+GitHub repository has not been recorded in release evidence yet.
+
+To convert that partial evidence into recorded operator evidence, run the live
+conformance with operator-owned GitHub App credentials and record the sanitized
+transcript hash.
+
 ## Transcript Shape
 
 Sanitized transcripts include:
@@ -59,4 +70,3 @@ go test ./tests/conformance/secure_github/ -v -timeout 5m
 
 The validator checks read taint evidence, deny/no-mutation evidence, decision
 evidence, and sanitized transcript fields.
-

@@ -12,7 +12,7 @@
 Requires Go 1.25+.
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.4.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.5.0
 boundary selftest
 boundary demo github-lethal-trifecta
 ```
@@ -78,7 +78,7 @@ Install the `boundary` CLI with Go:
 Requires Go 1.25+.
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.4.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.5.0
 boundary selftest
 ```
 
@@ -142,7 +142,7 @@ private-repo mutation denied before any upstream GitHub call. See
 | Limit | Why it matters |
 |---|---|
 | Universal prompt-injection defense | The fixture covers the tested write-after-taint path, not every possible malicious issue or agent behavior. |
-| Production GitHub security | Secure GitHub remains preview until live GitHub App conformance and deployment bypass evidence are recorded. |
+| Production GitHub security | Secure GitHub remains preview until deployment bypass evidence and broader live coverage are recorded. |
 | Protection for direct tool calls | Boundary governs routed tools. Direct access to the same tool is a bypass path unless deployment topology blocks it. |
 | Complete production policy | Generated policies are starter policies for operator review. |
 | Hosted monitoring | The dashboard reads local artifacts only. |
@@ -213,7 +213,7 @@ routes commands through the wrapper or shims. See
 Boundary includes a repo-local MCP audit action for CI visibility:
 
 ```yaml
-- uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.4.0
+- uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.5.0
 ```
 
 The action audits repository MCP configs and emits Markdown plus optional SARIF

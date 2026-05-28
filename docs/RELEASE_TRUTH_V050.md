@@ -2,7 +2,9 @@
 
 Date: 2026-05-28
 
-Branch: `feat/securegithub-live-conformance-v050`
+Implementation branch: `feat/securegithub-live-conformance-v050`
+
+Release packaging branch: `release/v050-securegithub-live-package`
 
 Release train: Secure GitHub Live Conformance Preview
 
@@ -32,6 +34,27 @@ Final v0.5.0 truth:
   fail-closed path, sanitized transcript path, and denied-write no-mutation path
   are covered by automated tests.
 
+## Release Packaging
+
+The v0.5.0 packaging pass moves the already-merged Secure GitHub live
+conformance preview into the active public install and action examples:
+
+```bash
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.5.0
+boundary selftest
+boundary demo github-lethal-trifecta
+```
+
+GitHub Action examples use:
+
+```yaml
+- uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.5.0
+```
+
+The release package does not add new product behavior. It updates release notes,
+truth docs, copy rules, and active public references so v0.5.0 means Secure
+GitHub live no-mutation conformance preview.
+
 ## Test Commands
 
 | Command | Result |
@@ -57,7 +80,15 @@ Final v0.5.0 truth:
 | GitHub App auth | delivered preview | Generates RS256 JWTs and exchanges them for installation tokens at runtime. |
 | Live read conformance | delivered preview | Reads a configured real issue and records sanitized taint evidence. |
 | Live denied-write conformance | delivered preview | Denies protected write-after-taint before the GitHub mutation client is reached. |
+| Operator-owned live run evidence | partial | No sanitized transcript hash from an operator-owned live run is recorded in this release package. |
 | Live deployment bypass proof | not delivered | Still required before production. |
+
+## Claim Split
+
+- `BND-CLAIM-018` is delivered: the opt-in Secure GitHub live conformance
+  harness exists and is covered by automated tests.
+- `BND-CLAIM-019` is partial: an operator-owned live run has not been recorded
+  until a sanitized transcript evidence hash exists.
 
 ## MCP Status Unchanged
 

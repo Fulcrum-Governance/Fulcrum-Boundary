@@ -12,8 +12,8 @@ Current claim posture:
   Boundary.
 - Boundary is not a SQL firewall.
 - Generated policies are starter policies for operator review.
-- Secure GitHub remains preview until live conformance and deployment bypass
-  evidence are recorded.
+- Secure GitHub remains preview until deployment bypass evidence and broader
+  live coverage are recorded.
 
 Authoritative files in the repository:
 

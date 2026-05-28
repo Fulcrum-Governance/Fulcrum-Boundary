@@ -294,8 +294,8 @@ Secure MCP is a pattern. Individual profiles own their maturity.
 | Maturity | Meaning |
 |---|---|
 | `planned` | Contract or roadmap only. |
-| `preview` | Core fixture or local lifecycle works, but live conformance or bypass evidence is incomplete. |
+| `preview` | Core fixture, local lifecycle, or scoped live conformance works, but production bypass evidence or broader live coverage is incomplete. |
 | `production` | Full lifecycle, live conformance where needed, descriptor behavior, bypass proof, fail-mode tests, and claims ledger evidence exist. |
 
-Secure GitHub MCP remains preview until live GitHub App conformance evidence and
-deployment bypass proof exist.
+Secure GitHub MCP remains preview until deployment bypass proof and broader
+live coverage exist.
