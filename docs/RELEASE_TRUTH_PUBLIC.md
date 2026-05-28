@@ -1,30 +1,35 @@
 # Final Public Release Truth
 
-Date: 2026-05-27
+Date: 2026-05-28
 
-Audited base commit SHA: `33d31bb89dad7799dfd13078e666dae23e525962`
+Audited base commit SHA: `d1e3ed8163f37381d87e1e4dc701cf751b2f8285`
 
-Branch: `main`
+Branch: `release/v050-securegithub-live-package`
 
-Current release tag: `v0.4.0`
+Current release target: `v0.5.0`
 
 ## Summary
 
-This report reconciles the public Boundary release surface after the v0.4.0
-Command Boundary packaging and post-tag smoke verification.
+This report reconciles the public Boundary release surface for the v0.5.0
+Secure GitHub live conformance preview package.
 
 The final public truth is:
 
 - MCP remains the production adapter path.
-- Secure GitHub remains the flagship preview MCP profile and is fixture-backed.
-- Command Boundary is delivered as a preview surface in v0.4.0.
-- Command Boundary governs only commands routed through `boundary command run`,
-  `boundary shell`, or project-local shims.
-- Direct shell access, CI jobs, SSH sessions, cron jobs, editor tasks, arbitrary
-  local processes, and direct file edits remain outside Boundary unless they are
-  routed through Boundary.
+- Secure GitHub remains preview.
+- Secure GitHub has fixture proof plus an opt-in live GitHub App conformance
+  harness for read-taint evidence and denied write-after-taint no-mutation
+  proof.
+- Command Boundary remains delivered preview and routed-path-only.
 - CLI, CodeExec, gRPC, Managed Agents, Webhook, A2A, Secure GitHub, and Command
   Boundary remain preview adapter/profile/surface areas.
+- The default first-run demo is fixture-only: no credentials, no live GitHub
+  calls, and no real mutations.
+- The opt-in live Secure GitHub conformance path is credential-gated, skips by
+  default, and fails closed when enabled without required GitHub App
+  environment.
+- Secure GitHub production still requires deployment bypass evidence and
+  broader live coverage.
 - Generated policies are starter policies for operator review.
 - Dashboard output is local-only artifact visibility, not hosted monitoring.
 - External inventory ingest is Boundary-owned MCP inventory mapping, not an
@@ -33,9 +38,8 @@ The final public truth is:
 - Boundary governs routed tools. Tools that bypass Boundary are outside the
   governed route.
 - The public Go install path requires Go 1.25+.
-- Public install examples use the repeatable `@v0.4.0` release tag; `@latest`
-  resolves to `v0.4.0`.
-- Public action examples use `@v0.4.0` for repeatable CI behavior.
+- Public install examples use the repeatable `@v0.5.0` release tag.
+- Public action examples use `@v0.5.0` for repeatable CI behavior.
 
 ## Test Commands
 
@@ -44,24 +48,23 @@ The final public truth is:
 | `./scripts/assert-no-public-vendor-refs.sh` | Pass |
 | `make docs-build` | Pass |
 | `make release-check` | Pass |
-| `go test ./internal/commandboundary/... -count=1 -timeout 5m` | Pass |
-| `go test ./tests/commandboundary/... -count=1 -timeout 5m` | Pass |
-| `go test ./tests/redteam/... -run Command -count=1 -timeout 5m` | Pass |
 | `go test ./claims/... -count=1` | Pass |
 | `go test ./... -count=1 -timeout 5m` | Pass |
-| `GOPROXY=direct GOBIN="$tmp/bin" go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.4.0` | Pass: installed binary ran `boundary selftest`, `boundary demo github-lethal-trifecta`, and `boundary command classify -- git push origin main` successfully |
-| `GOPROXY=https://proxy.golang.org,direct go list -m github.com/fulcrum-governance/fulcrum-boundary@latest` | Pass: `@latest` resolves to `v0.4.0` |
 
 `make release-check` also runs the root suite, the gRPC nested module suite,
 the test suite, claims tests, policy verification, receipt verification help,
 `boundary selftest`, and `boundary demo github-lethal-trifecta`.
+
+Post-tag install and `@latest` verification are recorded in
+[`docs/RELEASE_TRUTH_V050_POSTRELEASE.md`](./RELEASE_TRUTH_V050_POSTRELEASE.md)
+after the tag is created.
 
 ## README First-Run Status
 
 README presents the first-run path before architecture:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.4.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.5.0
 boundary selftest
 ```
 
@@ -92,14 +95,16 @@ mutation.
 | BND-CLAIM-012 | delivered | Risk graphs and generated policies are starter/operator-review surfaces. |
 | BND-CLAIM-013 | delivered | Install/uninstall and descriptor locks are local, reversible, and receipt-backed. |
 | BND-CLAIM-014 | delivered | Redteam packs are fixture-only and do not use live secrets or live mutation. |
-| BND-CLAIM-015 | delivered | Secure GitHub is a preview fixture profile for write-after-taint denial before upstream GitHub mutation. |
+| BND-CLAIM-015 | delivered | Secure GitHub remains a preview fixture profile for write-after-taint denial before upstream GitHub mutation. |
 | BND-CLAIM-016 | delivered | Dashboard is local-only visibility over local artifacts. |
 | BND-CLAIM-017 | delivered | GitHub Action audits repo-local MCP configs and emits Markdown/SARIF reports. |
+| BND-CLAIM-018 | delivered | Secure GitHub provides an opt-in live conformance harness for read-taint evidence and denied write-after-taint no-mutation proof. |
+| BND-CLAIM-019 | partial | Operator-owned live Secure GitHub conformance has not yet been recorded in release evidence. |
 | BND-CLAIM-CMD-001 | delivered | Boundary provides preview project-local command governance for routed commands only. |
 | BND-CLAIM-CMD-002 | delivered | Command Boundary redteam packs are fixture-only and perform no live mutation. |
 
-`delivered` Command Boundary claims are delivered preview claims. They do not
-upgrade Command Boundary to production command governance.
+Delivered Secure GitHub and Command Boundary claims are delivered preview
+claims. They do not upgrade those surfaces to production.
 
 ## Feature Status
 
@@ -107,6 +112,8 @@ upgrade Command Boundary to production command governance.
 | --- | --- | --- |
 | `boundary selftest` | delivered | No-credential local smoke test over inventory, risk graph, starter policies, descriptor drift, redteam, Secure GitHub live fail-closed behavior, and decision records. |
 | `boundary demo github-lethal-trifecta` | delivered | Fixture-only demo of write-after-taint denial before upstream GitHub mutation. |
+| Secure GitHub fixture proof | delivered preview | Fixture setup/serve and redteam prove the tested deny path without credentials or live mutation. |
+| Secure GitHub live conformance harness | delivered preview | Opt-in GitHub App path records sanitized read-taint evidence and denied write-after-taint no-mutation proof. |
 | Inventory JSON/Markdown/SARIF | delivered | Local MCP inventory reporting surfaces. |
 | Inventory NDJSON | delivered | Versioned record stream for tool ingestion. |
 | External inventory ingest | delivered | Boundary, generic, and external MCP inventory NDJSON mapping. |
@@ -129,7 +136,7 @@ upgrade Command Boundary to production command governance.
 | Managed Agents | preview | Preview proxy and conformance harness exist; production requires live upstream conformance. |
 | Webhook | preview | Informational and execution modes are split; production requires sole-path deployment evidence. |
 | A2A | preview | Governed lifecycle exists against a documented snapshot; production requires live protocol conformance. |
-| Secure GitHub | preview | Fixture-backed Secure MCP profile; production requires live GitHub App conformance and deployment bypass evidence. |
+| Secure GitHub | preview | Fixture proof plus opt-in live GitHub App conformance harness; production requires deployment bypass evidence and broader live coverage. |
 | Command Boundary | preview | Project-local command governance for commands routed through `boundary command run`, `boundary shell`, or project-local shims. |
 
 ## User-Install Status
@@ -137,62 +144,24 @@ upgrade Command Boundary to production command governance.
 The documented repeatable install path is:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.4.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.5.0
 ```
 
 Requires Go 1.25+.
 
-`@latest` has been verified through `proxy.golang.org` and resolves to
-`v0.4.0`. README keeps `@v0.4.0` as the primary copy/paste command for
-repeatability.
-
-No Homebrew, package-manager, or hosted distribution channel is claimed.
+README keeps `@v0.5.0` as the primary copy/paste command for repeatability. No
+Homebrew, package-manager, or hosted distribution channel is claimed.
 
 ## GitHub Action Ref Status
 
 The MCP audit action examples use:
 
 ```yaml
-- uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.4.0
+- uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.5.0
 ```
 
 Use the release tag for repeatable CI behavior. SARIF upload examples must
 include `contents: read` and `security-events: write` permissions.
-
-## External Inventory Ingest Status
-
-External ingest maps Boundary, generic, and external MCP inventory NDJSON into
-Boundary inventory records. The `external-mcp` source name selects a tested
-mapping mode for the local fixture:
-
-```bash
-go run ./cmd/boundary inventory ingest \
-  --file fixtures/external-inventory/external-mcp-inventory.ndjson \
-  --source external-mcp --summary
-```
-
-Boundary does not shell out to, import, depend on, endorse, or claim
-compatibility with any named third-party scanner.
-
-## Remaining Preview Or Partial Work
-
-- Secure GitHub remains preview until deployment bypass evidence is recorded.
-  The opt-in live conformance harness covers read-taint evidence and denied
-  write-after-taint no-mutation proof for an operator-owned test repository.
-- Managed Agents remains preview until live upstream conformance evidence is
-  recorded with operator-owned credentials.
-- CodeExec remains preview until a real named sandbox boundary is implemented,
-  tested, and documented.
-- gRPC streaming workloads remain preview until per-message governance is
-  implemented and tested.
-- Webhook execution mode remains preview until sole-path deployment evidence is
-  recorded.
-- A2A remains preview until live protocol conformance and deployment bypass
-  evidence are recorded.
-- Command Boundary remains preview until deployment evidence shows Boundary is
-  the relevant command path for a protected project or workflow.
-- Direct file edits outside routed command paths remain a v0.6 design gap.
-- Full GitHub MCP tool catalog coverage remains deferred.
 
 ## Approved Release Language
 
@@ -201,12 +170,16 @@ local MCP tool paths, renders risk paths, generates starter policies, runs safe
 fixture redteams, and denies governed privileged actions before execution when
 those actions route through Boundary.
 
-Fulcrum Boundary v0.4.0 adds Command Boundary preview: project-local command
-classification and wrapper-routed command governance through
-`boundary command run`, `boundary shell`, and project-local shims.
+Fulcrum Boundary v0.5.0 packages Secure GitHub live conformance preview:
+operator-owned GitHub App credentials can be used to read real GitHub context,
+mark the session tainted, and deny a protected write-after-taint action before
+any upstream GitHub mutation client call executes.
 
-Command Boundary is preview. Direct shell access, CI jobs, SSH sessions, and
-direct file edits remain outside Boundary unless they are routed through
+Secure GitHub is preview. Production status still requires deployment bypass
+evidence and broader live coverage.
+
+Command Boundary remains preview. Direct shell access, CI jobs, SSH sessions,
+and direct file edits remain outside Boundary unless they are routed through
 Boundary.
 
 ## Forbidden Release Language
@@ -215,7 +188,8 @@ Do not use these as public capability claims:
 
 - Do not claim universal prompt-injection prevention.
 - Do not claim production Secure GitHub.
-- Do not claim official named third-party scanner integration or compatibility.
+- Do not claim Secure GitHub fully secures GitHub.
+- Do not claim live conformance proves deployment bypass resistance.
 - Do not claim all adapters production.
 - Do not claim generated policies are production-complete.
 - Do not claim dashboard monitoring.
@@ -237,11 +211,11 @@ or explicit limitation context.
 - `docs/CLAIMS_LEDGER.md`
 - `claims/boundary_claims.yaml`
 - `docs/ADAPTER_READINESS_MATRIX.md`
+- `docs/RELEASE_TRUTH_V050.md`
 - `docs/RELEASE_TRUTH_REPO_POLISH.md`
-- `docs/RELEASE_TRUTH_COMMAND_BOUNDARY.md`
-- `docs/RELEASE_TRUTH_V040.md`
 - `docs/LAUNCH_TRUTH_FREEZE.md`
 - `docs/PUBLIC_RELEASE_COPY.md`
+- `docs/secure-mcp/`
 - `docs/command-boundary/`
 - `docs-site/`
 - `docs/firewall/GITHUB_ACTION.md`
@@ -250,8 +224,10 @@ or explicit limitation context.
 
 ## Drift Fixed
 
-- Updated active public truth from v0.3.0 to v0.4.0.
-- Added Command Boundary preview status to public release truth.
-- Added current `@v0.4.0` install and GitHub Action references.
-- Preserved historical v0.3.0 references in release notes, changelog history,
-  launch-truth history, and planning artifacts.
+- Updated active public truth from v0.4.0 to the v0.5.0 Secure GitHub live
+  conformance preview package.
+- Updated active install and GitHub Action examples to `@v0.5.0`.
+- Preserved historical v0.3.0 and v0.4.0 release truth artifacts as history.
+- Clarified that live conformance is now a delivered preview harness while
+  production Secure GitHub still requires deployment bypass evidence and
+  broader live coverage.

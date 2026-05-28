@@ -26,15 +26,15 @@ Preview:
 - Secure GitHub MCP fixture profile
 - CLI, CodeExec, gRPC, Managed Agents, Webhook, and A2A adapters
 
-Do not describe Secure GitHub as production until live GitHub App conformance
-and deployment bypass evidence are recorded.
+Do not describe Secure GitHub as production until deployment bypass evidence
+and broader live coverage are recorded.
 
 ## Install Or Run Locally
 
 Installed binary:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.4.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.5.0
 boundary --help
 ```
 
@@ -157,7 +157,8 @@ The dashboard is local-only. It reads local files and does not upload telemetry.
 - `boundary secure github serve --fixture --dry-run` reports preview fixture
   status and no live GitHub mutation.
 - `boundary dashboard --format html` writes a local HTML file.
-- No launch copy claims live GitHub App conformance.
+- Launch copy keeps live GitHub App conformance scoped to the opt-in preview
+  harness.
 - No launch copy claims hosted monitoring.
 - No launch copy claims universal MCP attack prevention.
 

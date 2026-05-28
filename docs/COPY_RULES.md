@@ -125,7 +125,8 @@ route is forced through Boundary.
 ```
 
 ```text
-Secure GitHub MCP is preview until live GitHub App conformance evidence exists.
+Secure GitHub MCP is preview until deployment bypass evidence and broader live
+coverage exist.
 ```
 
 ## Bad Examples

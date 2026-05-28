@@ -1,6 +1,6 @@
 # Public Release Copy
 
-Date: 2026-05-27
+Date: 2026-05-28
 
 This document gives reusable public copy for the Boundary public release surface.
 It follows the language system in `docs/LANGUAGE_SYSTEM.md`, the copy rules in
@@ -28,8 +28,11 @@ demo models a coding agent reading untrusted GitHub content and then attempting
 a private-repo mutation. Boundary tracks the tainted context, denies the tested
 write-after-taint path before GitHub is touched, and records the verdict.
 
-Secure GitHub remains preview until live GitHub App conformance and deployment
-bypass evidence are recorded.
+Secure GitHub also includes an opt-in live conformance harness for
+operator-owned GitHub App credentials. The denied-write live conformance path
+records that a protected write-after-taint action was denied before any GitHub
+mutation client call. Secure GitHub remains preview until deployment bypass
+evidence and broader live coverage are recorded.
 
 ## MCP Firewall Copy
 
@@ -68,7 +71,8 @@ unless deployment topology blocks it.
 - See what your AI tools can do. Block what they should not.
 - Boundary governs routed tools before privileged execution.
 - Inventory shows what exists. Boundary decides what can act.
-- Secure GitHub is preview until live GitHub App conformance evidence exists.
+- Secure GitHub is preview until deployment bypass evidence and broader live
+  coverage exist.
 
 ## Forbidden Or Controlled Public Copy
 

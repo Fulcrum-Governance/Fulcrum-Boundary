@@ -6,11 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-05-28
+
 ### Added
 
 - Secure GitHub live conformance preview harness with GitHub App auth,
   sanitized read evidence, denied write-after-taint no-mutation proof, and
   `boundary secure github conformance` commands.
+
+### Changed
+
+- Public install and GitHub Action examples now target `@v0.5.0` for
+  repeatable Secure GitHub live conformance preview installs.
 
 ## [0.4.0] - 2026-05-27
 
@@ -117,7 +124,8 @@ Initial public release of the project now known as Fulcrum Boundary.
 
 ---
 
-[Unreleased]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.1.0...v0.2.0

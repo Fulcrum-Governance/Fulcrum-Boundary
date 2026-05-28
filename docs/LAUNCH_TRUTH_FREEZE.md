@@ -102,15 +102,15 @@ production adapter boundary:
   mutation.
 - Secure GitHub is a preview fixture profile for write-after-taint denial before
   upstream GitHub mutation.
-- Secure GitHub does not claim live GitHub App conformance or production bypass
-  resistance.
+- This release train did not claim live GitHub App conformance or production
+  bypass resistance.
 - The dashboard is local-only visibility over local artifacts. It is not hosted
   monitoring and not runtime protection by itself.
 
 Release-facing demo language should lead with the concrete poisoned GitHub
 issue to private-repo mutation attempt, then state the proof boundary: fixture
 write-after-taint denial before upstream, with production Secure GitHub gated on
-live GitHub App conformance and deployment bypass evidence.
+deployment bypass evidence and broader live coverage.
 
 ## 2026-05-27: Final Public Boundary Release Truth
 
@@ -133,8 +133,8 @@ developer path and machine-ingest surfaces easier to verify:
 - Public Go install paths require Go 1.25+.
 - Generated policies remain starter policies for operator review.
 - The dashboard remains local-only visibility over local artifacts.
-- Secure GitHub remains preview until live GitHub App conformance and
-  deployment bypass evidence are recorded.
+- Secure GitHub remains preview until deployment bypass evidence and broader
+  live coverage are recorded.
 
 The final public release report is
 [`docs/RELEASE_TRUTH_PUBLIC.md`](./RELEASE_TRUTH_PUBLIC.md).
@@ -153,6 +153,32 @@ The first post-rename release tag is `v0.3.0`.
 Public README install copy uses `@v0.3.0` for repeatability. Install docs may
 mention `@latest` as an available convenience path now that the public proxy
 resolves to the post-rename tag.
+
+## 2026-05-28: v0.5.0 Secure GitHub Live Conformance Preview Packaging
+
+Fulcrum Boundary v0.5.0 packages the Secure GitHub live conformance preview
+without changing the production adapter boundary.
+
+- MCP remains the production adapter.
+- Command Boundary remains preview and routed-path-only.
+- Secure GitHub remains preview.
+- The default demo remains fixture-only: no credentials, no live GitHub calls,
+  and no real mutations.
+- The opt-in live conformance harness is gated by
+  `BOUNDARY_GITHUB_CONFORMANCE=true` and operator-owned GitHub App
+  credentials.
+- Missing required GitHub App environment fails closed when live conformance is
+  enabled.
+- The denied-write live conformance path records `actual action: DENY`,
+  `reason: lethal_trifecta_detected`, `upstream_called=false`, and
+  `github_mutation_called=false`.
+- Operator-owned live conformance was not run during release packaging because
+  no credentials were provided.
+- Production Secure GitHub still requires deployment bypass evidence and
+  broader live coverage.
+
+Active public install and MCP audit GitHub Action examples use `@v0.5.0` for
+repeatable post-tag behavior.
 
 ## Verified Release Surface
 

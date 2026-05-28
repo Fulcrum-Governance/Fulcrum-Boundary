@@ -434,6 +434,32 @@ claims:
     depends_on:
       - BND-CLAIM-015
 
+  - id: BND-CLAIM-019
+    claim: "Operator-owned Secure GitHub live conformance has passed against a real GitHub repository"
+    status: partial
+    adapter: securegithub
+    evidence:
+      tests: []
+      docs:
+        - path: docs/secure-mcp/GITHUB_LIVE_EVIDENCE.md
+          section: "Secure GitHub Live Evidence"
+        - path: docs/RELEASE_TRUTH_V050.md
+          section: "Secure GitHub Status"
+    public_language:
+      allowed:
+        - "Operator-owned Secure GitHub live conformance can be run with configured GitHub App credentials."
+        - "Operator-owned live conformance evidence has not been recorded unless a sanitized transcript hash is present."
+      forbidden:
+        - "Operator-owned Secure GitHub live conformance has passed"
+        - "Secure GitHub is production"
+        - "Live conformance proves deployment bypass resistance"
+    gaps:
+      - id: BND-GHLIVE-001
+        description: "Run Secure GitHub live conformance with operator-owned GitHub App credentials and record sanitized transcript evidence hash."
+        spec: "v0.5.0 post-release operator live conformance"
+    depends_on:
+      - BND-CLAIM-018
+
   - id: BND-CLAIM-004
     claim: "Boundary is a SQL firewall"
     status: "false"
