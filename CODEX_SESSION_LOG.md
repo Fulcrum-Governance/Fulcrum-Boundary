@@ -1,5 +1,37 @@
 # CODEX Session Log
 
+## 2026-05-28 - Edit Boundary Truth Reconciliation
+
+### Context
+
+- Parent goal: execute the v0.6 Filesystem/Edit Boundary release train from
+  `/Users/td/ConceptDev/Projects/Fulcrum/.claude/sprint/next_spec0.6.md`.
+- Branch: `release/edit-boundary-truth`.
+- Scope: claims/truth reconciliation only.
+
+### What changed
+
+- Promoted `BND-CLAIM-EDIT-001` from planned design claim to delivered preview
+  behavior claim with inspect, apply, redteam, demo, and truth evidence.
+- Added `docs/RELEASE_TRUTH_EDIT_BOUNDARY.md`.
+- Kept Edit Boundary scoped to routed edit envelopes and explicitly outside
+  direct editor writes, direct filesystem writes, shell redirection, direct
+  `git apply`, IDE APIs, and filesystem sandboxing.
+
+### Verification
+
+- `make release-check`: pass.
+- `go test ./internal/editboundary/... -count=1 -timeout 5m`: pass.
+- `go test ./tests/editboundary/... -count=1 -timeout 5m`: pass.
+- `go test ./tests/redteam/... -run Edit -count=1 -timeout 5m`: pass.
+- `go test ./claims/... -count=1`: pass.
+- `go test ./... -count=1 -timeout 5m`: pass.
+
+### Notes For Next Step
+
+- After this branch lands, package v0.6.0 release notes, update active install
+  examples, tag `v0.6.0`, and run post-tag smoke verification.
+
 ## 2026-05-28 - Edit Boundary Demo Surface
 
 ### Context
