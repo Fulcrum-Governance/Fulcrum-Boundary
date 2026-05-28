@@ -157,7 +157,7 @@ func writeConformanceTranscript(cfg LiveConfig, transcript LiveConformanceTransc
 		return LiveConformanceResult{}, err
 	}
 	dir := firstNonEmpty(cfg.TranscriptDir, DefaultGitHubTranscriptDir)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return LiveConformanceResult{}, fmt.Errorf("create Secure GitHub conformance transcript directory: %w", err)
 	}
 	transcript.TranscriptSHA256 = ""
@@ -188,10 +188,10 @@ func writeConformanceTranscript(cfg LiveConfig, transcript LiveConformanceTransc
 
 func assertTranscriptSanitized(transcript LiveConformanceTranscript) error {
 	if !transcript.Sanitized {
-		return fmt.Errorf("Secure GitHub transcript must declare sanitized=true")
+		return fmt.Errorf("secure GitHub transcript must declare sanitized=true")
 	}
 	if transcript.RawContentIncluded || transcript.CredentialDataIncluded {
-		return fmt.Errorf("Secure GitHub transcript contains raw content or credential data")
+		return fmt.Errorf("secure GitHub transcript contains raw content or credential data")
 	}
 	return nil
 }

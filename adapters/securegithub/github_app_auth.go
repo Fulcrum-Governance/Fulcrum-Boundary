@@ -145,7 +145,7 @@ func readRSAPrivateKey(path string) (*rsa.PrivateKey, error) {
 	if strings.TrimSpace(path) == "" {
 		return nil, fmt.Errorf("GitHub App private key path is required")
 	}
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 -- GitHub App private key path is an explicit operator-owned conformance input.
 	if err != nil {
 		return nil, fmt.Errorf("read GitHub App private key from configured path: %s", sanitizedFileError(err))
 	}

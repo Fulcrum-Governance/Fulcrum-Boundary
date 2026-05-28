@@ -41,6 +41,16 @@
 - `make release-check`: pass.
 - `go test ./... -short -count=1 -timeout 5m`: pass.
 - `git diff --check`: pass.
+- `golangci-lint run --timeout=5m`: pass, `0 issues`.
+- `go run github.com/securego/gosec/v2/cmd/gosec@v2.26.1 ./adapters/securegithub/... ./internal/boundarycli/...`:
+  pass, `0 issues`.
+- CI fix after PR #81 opened:
+  - lowercased two transcript validation error strings for `staticcheck`
+    `ST1005`.
+  - restricted conformance transcript directory permissions to `0750` for
+    `gosec` `G301`.
+  - added a scoped `#nosec G304` rationale for the intentionally
+    operator-provided GitHub App private key path.
 
 ### Notes For Next Step
 
