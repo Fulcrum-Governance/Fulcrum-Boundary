@@ -78,6 +78,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runVerifyRecord(args[1:], stdout, stderr)
 	case "doctor":
 		return runDoctor(args[1:], stdout, stderr)
+	case "evidence":
+		return runEvidence(args[1:], stdout, stderr)
 	case "audit":
 		return runAudit(args[1:], os.Stdin, stdout, stderr)
 	case "trust":
@@ -125,6 +127,7 @@ Commands:
   verify          Validate YAML policy files
   verify-record   Verify a receipt-grade decision record
   doctor          Check local routed-surface diagnostics
+  evidence        Bundle and verify local Boundary evidence artifacts
   audit           Pretty-print structured decision records
   trust           Inspect or reset trust state
 
