@@ -15,7 +15,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"runtime"
 	"strings"
 	"time"
 
@@ -125,7 +124,7 @@ Commands:
                   Run a fixture-only Secure GitHub denial demo
   verify          Validate YAML policy files
   verify-record   Verify a receipt-grade decision record
-  doctor          Check local gateway prerequisites
+  doctor          Check local routed-surface diagnostics
   audit           Pretty-print structured decision records
   trust           Inspect or reset trust state
 
@@ -497,48 +496,6 @@ func runVerifyRecord(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-func runDoctor(args []string, stdout, stderr io.Writer) int {
-	fs := newFlagSet("boundary doctor", stderr)
-	listen := fs.String("listen", ":8080", "HTTP listen address")
-	policyDir := fs.String("policies", "./policies/", "directory containing YAML policy files")
-	upstream := fs.String("upstream", "postgres://demo:demo@localhost:5432/demo?sslmode=disable", "Postgres upstream DSN")
-	if err := fs.Parse(args); err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			return 0
-		}
-		return 1
-	}
-
-	failed := false
-	check := func(name string, err error) {
-		if err != nil {
-			failed = true
-			fmt.Fprintf(stdout, "FAIL %s: %v\n", name, err)
-			return
-		}
-		fmt.Fprintf(stdout, "PASS %s\n", name)
-	}
-
-	check("go version "+runtime.Version(), nil)
-	if stat, err := os.Stat(*policyDir); err != nil {
-		check("policy directory", err)
-	} else if !stat.IsDir() {
-		check("policy directory", fmt.Errorf("%s is not a directory", *policyDir))
-	} else {
-		check("policy directory", nil)
-	}
-	listener, err := net.Listen("tcp", *listen)
-	if err == nil {
-		_ = listener.Close()
-	}
-	check("listen port available", err)
-	check("upstream reachable", dialPostgresDSN(*upstream, 2*time.Second))
-	if failed {
-		return 1
-	}
-	return 0
-}
-
 func runAudit(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	fs := newFlagSet("boundary audit", stderr)
 	filePath := fs.String("file", "", "decision record log file; stdin is used when empty")
@@ -762,24 +719,4 @@ func valueString(record map[string]any, key string) string {
 		return value
 	}
 	return ""
-}
-
-func dialPostgresDSN(dsn string, timeout time.Duration) error {
-	parsed, err := url.Parse(dsn)
-	if err != nil {
-		return err
-	}
-	host := parsed.Hostname()
-	port := parsed.Port()
-	if host == "" {
-		return fmt.Errorf("missing host")
-	}
-	if port == "" {
-		port = "5432"
-	}
-	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, port), timeout)
-	if err != nil {
-		return err
-	}
-	return conn.Close()
 }

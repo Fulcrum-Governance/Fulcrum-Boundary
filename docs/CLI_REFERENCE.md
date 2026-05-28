@@ -11,6 +11,7 @@ go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.6.0
 boundary --help
 boundary version
 boundary selftest
+boundary doctor
 ```
 
 `boundary version` prints build metadata in text or JSON form. Missing release
@@ -18,6 +19,10 @@ metadata is reported as `unknown` instead of failing the command.
 
 `boundary selftest` runs no-credential release checks. It uses local fixtures,
 does not call the network, and does not perform live mutation.
+
+`boundary doctor` reports local routed-surface diagnostics and bypass caveats
+for MCP, Command Boundary, and Edit Boundary. It does not call the network or
+prove production deployment protection.
 
 Example output: [examples/cli/selftest.txt](../examples/cli/selftest.txt)
 
