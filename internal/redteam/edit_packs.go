@@ -132,13 +132,14 @@ func editScenario(id, name, description, patchLabel, patch, expectedAction strin
 	}
 }
 
+// #nosec G101 -- synthetic .env fixture path with redacted placeholder values; no real credentials are embedded.
 const secretExfilPatch = `diff --git a/.env b/.env
 new file mode 100644
 --- /dev/null
 +++ b/.env
 @@ -0,0 +1,2 @@
-+GITHUB_TOKEN=ghp_fixture_secret
-+DATABASE_PASSWORD=fixture-secret
++BOUNDARY_FIXTURE_VALUE=redacted_fixture_value
++BOUNDARY_FIXTURE_MODE=synthetic
 `
 
 const packageScriptPatch = `diff --git a/package.json b/package.json
