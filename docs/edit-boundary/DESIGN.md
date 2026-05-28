@@ -161,7 +161,12 @@ Reject or explicitly classify:
 
 ## Approval Rule
 
-Approval is not a free-form flag. A valid approval artifact must be bound to:
+The v0.6 preview CLI exposes `--require-approval` as a local operator
+acknowledgement for routed patch application. It is recorded as
+`approval_mode=local_flag` and must not be described as a production approval
+artifact.
+
+A future production approval artifact must be bound to:
 
 - patch hash;
 - target file list;
