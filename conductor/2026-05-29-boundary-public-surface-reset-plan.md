@@ -1114,4 +1114,3 @@ The final report must include:
 - Any failures, skips, or environment issues.
 
 Do not claim completion if `make docs-build`, `go test ./claims/... -count=1`, `env -u GOROOT go test ./... -short -count=1 -timeout 5m`, or `make release-check` did not pass.
-
