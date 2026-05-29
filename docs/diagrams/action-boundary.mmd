@@ -1,6 +1,7 @@
 flowchart LR
-  A[Agent intent] --> B[Proposed action]
+  A[Agent intent] --> B[Proposed routed action]
   B --> C{Boundary}
-  C -->|allow| D[Execute routed action]
-  C -->|deny / warn / escalate / require approval| E[No execution or approval path]
-  C --> F[Decision record]
+  C -->|allow / warn| D[Execute routed action]
+  C -->|deny| E[No execution]
+  C -->|require approval / escalate| F[Approval or escalation path]
+  C --> G[Decision record]
