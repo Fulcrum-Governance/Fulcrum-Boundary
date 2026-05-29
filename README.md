@@ -27,7 +27,7 @@ No credentials. No live GitHub calls. No real mutations.
 
 ![Boundary demo walkthrough](./docs/assets/boundary-demo-walkthrough.svg)
 
-Static walkthrough of the fixture-safe GitHub write-after-taint demo. The terminal recording is retained as a receipt, not as the primary demo.
+Static walkthrough of the fixture-safe GitHub write-after-taint demo. Recording artifacts are retained under `docs/assets/` for reference; the static walkthrough is the primary README demo.
 
 ## What It Proves
 
