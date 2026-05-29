@@ -1,0 +1,6 @@
+flowchart LR
+  A[Untrusted GitHub issue] --> B[Agent context tainted]
+  B --> C[Private-repo mutation proposed]
+  C --> D{Boundary evaluates}
+  D -->|deny before mutation| E[GitHub not called]
+  D --> F[Decision record emitted]
