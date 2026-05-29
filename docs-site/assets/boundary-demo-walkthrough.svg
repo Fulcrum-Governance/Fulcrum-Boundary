@@ -62,7 +62,7 @@
     <rect class="panel-accent" width="616" height="196" rx="18" />
     <text class="step" x="28" y="38">FRAME 3</text>
     <text class="head" x="28" y="77">Boundary evaluates first</text>
-    <text class="body" x="28" y="115">Policy and trust state are checked</text>
+    <text class="body" x="28" y="115">Static policy and taint state are checked</text>
     <text class="body" x="28" y="144">before upstream execution.</text>
     <text class="mono" x="28" y="174">upstream_called=false</text>
     <rect class="chip" x="338" y="148" width="230" height="32" rx="14" />
