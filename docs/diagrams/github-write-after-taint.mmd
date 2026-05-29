@@ -1,0 +1,6 @@
+flowchart LR
+  A[Fixture GitHub issue] --> B[Agent context tainted]
+  B --> C[Fixture private-repo mutation proposed]
+  C --> D{Boundary evaluates}
+  D -->|deny before mutation| E[Mutation client not called]
+  D --> F[Decision record emitted]

@@ -2,39 +2,40 @@
 
 The action boundary for MCP-native agents.
 
+Your agent is about to touch a real system. Boundary decides before the tool
+executes, records the verdict, and governs only routes forced through Boundary.
+
+## Try It In One Minute
+
 ```bash
 go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.6.1
 boundary selftest
 boundary demo github-lethal-trifecta
 ```
 
-Boundary inventories local MCP tool paths, renders risk paths, generates
-starter policies, runs safe fixture redteams, and denies governed privileged
-actions before execution when those actions route through Boundary.
+No credentials. No live GitHub calls. No real mutations.
 
-```mermaid
-flowchart LR
-  A[Agent intent] --> B[Proposed action]
-  B --> C[Boundary]
-  C -->|allow| D[Privileged tool executes]
-  C -->|deny / escalate / require approval| E[No execution]
-  C --> F[Decision record]
-```
+![Boundary demo walkthrough](assets/boundary-demo-walkthrough.svg)
+
+Static walkthrough of the fixture-safe GitHub write-after-taint demo.
 
 ## Current Release Truth
 
-- MCP is the production adapter.
-- CLI, CodeExec, gRPC, Managed Agents, Webhook, A2A, and Secure GitHub are
-  preview adapter/profile surfaces.
-- Secure GitHub has fixture proof plus an opt-in live GitHub App conformance
-  harness; deployment bypass evidence is still required before production.
-- Command Boundary is a preview, routed-path-only command governance surface.
-- Edit Boundary is a preview, routed-edit-envelope-only file mutation surface.
-- Generated policies are starter policies for operator review.
-- The dashboard is local-only artifact visibility.
-- Boundary governs routed tools; direct tool access is outside the governed
-  route.
+| Surface | Status | Limit |
+|---|---|---|
+| MCP adapter | Production | Governs MCP routes forced through Boundary. |
+| Secure GitHub | Preview | Fixture proof and opt-in conformance do not close deployment bypasses. |
+| Command Boundary | Delivered preview | Routed command paths only. |
+| Edit Boundary | Delivered preview | Routed edit envelopes only. |
+| Policy generation | Starter policy utility | Requires operator review. |
+| Dashboard | Local artifact visibility | Not hosted monitoring. |
 
-## Pages Status
+## Start Here
 
-This docs site is published by GitHub Pages from the `Docs` workflow on `main`.
+| Need | Page |
+|---|---|
+| Run the local path | [Quickstart](quickstart.md) |
+| Understand the flagship fixture | [Demo](demo.md) |
+| Learn the action-boundary model | [Concepts](concepts/action-boundary.md) |
+| Check public claim status | [Claims](reference/claims.md) |
+| Verify release utilities | [Release Utilities](reference/release-utilities.md) |

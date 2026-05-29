@@ -79,14 +79,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - MCP Firewall GitHub Action for repo-local MCP config audits with Markdown summaries and optional SARIF output.
 - MkDocs Material docs-site skeleton with GitHub Pages workflow and strict docs build target.
 - CLI reference, stable example output files, and intentional help text for first-run, firewall, demo, Secure GitHub, inventory ingest, install/uninstall, dashboard, and release verification commands.
-- Repository presentation guidance with description, topics, badge policy, social preview source, and first screenshot/GIF plan.
+- Repository presentation guidance with description, topics, badge policy, social preview source, and static walkthrough asset plan.
 - Final no-vendor repository presentation reconciliation, including README
   install copy alignment to `@main` until a post-rename release tag exists.
 - Install and release workflow polish with `make selftest`, `make demo-github`, `make release-check`, and `docs/INSTALL.md`.
 - Final public release truth report covering README first-run status, claims, feature status, adapter/profile maturity, install status, external inventory ingest, and forbidden release language.
 - MCP Firewall `boundary dashboard` command with local-only text, JSON, HTML, and loopback server views over inventory, risk paths, policies, install receipts, descriptor locks, and local decision-record files.
 - Secure GitHub MCP preview profile with fixture setup/serve commands, taint tracking, one-repo-per-session policy, W1/W2 write-after-taint denial before upstream, and decision-record output.
-- Firewall + Secure GitHub demo and launch docs covering the poisoned GitHub issue fixture, YC narrative, screenshot script, and claim boundaries.
+- Added fixture-safe demo/docs for the GitHub write-after-taint path.
 - Firewall + Secure GitHub release truth reconciliation report tying claims, readiness, launch docs, and demo copy to current evidence.
 - Secure MCP contract, server template, tool taxonomy, and profile docs for claim-safe governed MCP profile development.
 - Fulcrum Boundary language system docs, lexicon, copy rules, product primitives, and a public-language lint gate for controlled overclaim phrases.

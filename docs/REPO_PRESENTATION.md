@@ -67,10 +67,12 @@ served somewhere stable.
 
 ## Public Demo Asset
 
-The public README uses `docs/assets/boundary-action-demo.gif` as the finished
-action-boundary demo asset. It shows fixture-safe local output from
-`boundary demo action-boundary`, including the denied MCP write, the command
-preview non-execution result, and the edit preview non-application result.
+Primary demo asset: `docs/assets/boundary-demo-walkthrough.svg`, a static
+fixture-safe walkthrough of the GitHub write-after-taint path.
+
+Terminal receipt: `docs/assets/boundary-action-demo.gif` remains supporting
+evidence that the local fixture command completes. It is not a live GitHub run
+and does not prove production route enforcement.
 
 Keep the asset honest: no credentials, no network, no live GitHub mutation, and
 no production-readiness language beyond the claims ledger.

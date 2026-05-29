@@ -192,7 +192,8 @@ governance.
 | README badges limited to real CI, Go Reference, Go Report Card, and license signals | Pass |
 | Social preview source committed | Pass: `docs/assets/social-preview.svg` |
 | Social preview upload caveat documented | Pass |
-| Action demo asset committed | Pass: `docs/assets/boundary-action-demo.gif` |
+| Action demo walkthrough committed | Pass: `docs/assets/boundary-demo-walkthrough.svg` |
+| Terminal receipt retained as supporting evidence | Pass: `docs/assets/boundary-action-demo.gif` |
 | Public-surface internal-artifact guard enforced | Pass: release-check and CI |
 
 Approved repository description:
@@ -248,7 +249,8 @@ not private planning, session, or capture-instruction artifacts.
 
 - Upload a PNG social preview manually if GitHub repository settings reject the
   repo-owned SVG source.
-- Keep the action demo asset current when the public demo output changes.
+- Keep the primary walkthrough and terminal receipt aligned when public demo
+  presentation changes.
 - Keep Command Boundary preview-scoped until deployment evidence shows Boundary
   is the relevant command path for a protected project or workflow.
 - Keep Secure GitHub preview-scoped until deployment bypass proof and broader
