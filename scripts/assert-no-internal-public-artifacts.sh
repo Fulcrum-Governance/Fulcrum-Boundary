@@ -11,8 +11,10 @@ set -euo pipefail
 # Scope: every tracked file EXCEPT binary assets and a small set of files that
 # must legitimately reference the forbidden tokens to govern or ignore them
 # (this guard script itself; .gitignore, which lists ignore patterns such as
-# .claude/sprint/). The campaign label "MCP Safety Gateway" is ALLOWED (C2);
-# only the retired GIL / "Governance Interception Layer" framing is forbidden.
+# .claude/sprint/; docs/BOUNDARY_SPEC.md, the master language-control spec whose
+# §12 forbidden-language appendix quotes the banned phrases to govern them). The
+# campaign label "MCP Safety Gateway" is ALLOWED (C2); only the retired GIL /
+# "Governance Interception Layer" framing is forbidden.
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
@@ -33,7 +35,8 @@ mapfile -t files < <(
     | grep -viE '\.(gif|mp4|png|jpg|jpeg|webp|ico|pdf)$' \
     | grep -vE '^(\.git/|\.boundary/|site/)' \
     | grep -vxF "$SELF_REL" \
-    | grep -vxF ".gitignore"
+    | grep -vxF ".gitignore" \
+    | grep -vxF "docs/BOUNDARY_SPEC.md"
 )
 
 if [[ "${#files[@]}" -eq 0 ]]; then
