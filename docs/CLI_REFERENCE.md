@@ -59,9 +59,17 @@ boundary demo action-boundary
 boundary demo action-boundary --markdown --out demo.md
 boundary demo github-lethal-trifecta
 boundary demo github-lethal-trifecta --markdown --out demo.md
+boundary demo command-secret-exfil
+boundary demo command-secret-exfil --json
 boundary demo postgres --gateway http://localhost:8080/mcp
 boundary demo trust-degradation
 ```
+
+The Command Boundary secret-exfil demo wraps the `command-secret-exfil`
+fixture red-team pack: an untrusted task proposes posting a secret-looking
+environment file with `curl`, Boundary classifies it as Class C6 and denies it
+before execution (`executed=false`), and a decision record is emitted. It reads
+no real `.env`, makes no network call, and executes nothing.
 
 The Action Boundary demo composes fixture-only MCP / Secure GitHub, Command
 Boundary, and Edit Boundary paths. It uses no credentials, no network, and no
