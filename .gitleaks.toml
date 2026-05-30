@@ -1,0 +1,38 @@
+# gitleaks configuration for Fulcrum Boundary.
+#
+# Inherits gitleaks' default rule set, then allowlists the synthetic red-team
+# test fixtures so a cloner's secret scan does not false-positive. These
+# fixtures contain NO real secrets — they are intentional decoy payloads that
+# the test suite uses to prove Boundary denies the dangerous action. See
+# fixtures/README.md.
+
+title = "Fulcrum Boundary gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Synthetic test fixtures and known-benign placeholders — no real secrets"
+
+# Allowlist the entire fixtures tree (paths are matched against the file path),
+# plus two known-benign placeholders that trip the default rules but are not
+# secrets:
+#   - adapters/cli/inspector_test.go: a literal "-----BEGIN RSA PRIVATE
+#     KEY-----\nPLACEHOLDER..." string used to TEST Boundary's own secret
+#     detection (the word PLACEHOLDER stands in for any key material).
+#   - docs/INTEGRATION.md: the example URL path "fulcrum-api:8080/api/v1/..."
+#     matches the generic-api-key keyword "api" but is a URL, not a credential.
+paths = [
+  '''fixtures/.*''',
+  '''adapters/cli/inspector_test\.go''',
+  '''docs/INTEGRATION\.md''',
+]
+
+# Belt-and-suspenders: also allow the specific synthetic markers wherever they
+# appear, in case a fixture-derived value is echoed in a doc or test.
+regexes = [
+  '''API_KEY=example-secret''',
+  '''BOUNDARY_FIXTURE_VALUE=redacted_fixture_value''',
+  '''BOUNDARY_FIXTURE_MODE=synthetic''',
+  '''example\.invalid''',
+]

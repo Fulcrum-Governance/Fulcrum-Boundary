@@ -1,17 +1,24 @@
 # Final Public Release Truth
 
-Date: 2026-05-28
+Date: 2026-05-30
 
-Audited base commit SHA: `cf8e6595829090edfb567c3a6622aa40c40524e3`
+Branch: `boundary-launch-prep`
 
-Branch: `release/v06x-utility-consolidation`
-
-Current release target: `v0.6.1`
+Current release target: `v0.7.0`
 
 ## Summary
 
-This report reconciles the public Boundary release surface for the v0.6.1
-utility consolidation package.
+This report reconciles the public Boundary release surface for the `v0.7.0`
+open-source launch release. `v0.7.0` is the active launch tag; the prior
+`v0.6.1` utility-train tag is superseded as the install target and survives only
+as history (see `docs/internal/RELEASE_TRUTH_V061.md` and the changelog).
+
+The launch-prep pass that produced `v0.7.0` leads with the routed-agent-tools
+top-line, adds the Command Boundary `command-secret-exfil` demo lane as the
+user-facing second proof lane, fixes the CGO/Docker build, widens the
+public-surface guard to every tracked text file, tightens claim/version
+precision, and reorganizes the docs. It does not upgrade any preview surface to
+production.
 
 The final public truth is:
 
@@ -42,11 +49,12 @@ The final public truth is:
 - Boundary governs routed tools. Tools that bypass Boundary are outside the
   governed route.
 - The public Go install path requires Go 1.25+.
-- Public install examples use the repeatable `@v0.6.1` release tag.
-- Public action examples use `@v0.6.1` for repeatable CI behavior.
-- v0.6.1 adds local utility commands for version metadata, fixture-only
-  action-boundary demos, routed-surface diagnostics, and evidence bundle
-  verification.
+- Public install examples use the repeatable `@v0.7.0` release tag.
+- Public action examples use `@v0.7.0` for repeatable CI behavior.
+- The user-facing Command Boundary demo lane is `boundary demo
+  command-secret-exfil` (the routed `curl -d @.env …` secret-exfil denial,
+  `executed=false`); `boundary redteam --pack command-secret-exfil` remains the
+  underlying fixture/evidence path.
 
 ## Test Commands
 
@@ -65,14 +73,14 @@ version`, `boundary demo action-boundary`, `boundary doctor --json`,
 `boundary evidence bundle --include-demo`, and `boundary evidence verify`.
 
 Post-tag install and `@latest` verification are recorded in
-[`docs/RELEASE_TRUTH_V061_POSTRELEASE.md`](./RELEASE_TRUTH_V061_POSTRELEASE.md).
+[`docs/internal/RELEASE_TRUTH_V061_POSTRELEASE.md`](./internal/RELEASE_TRUTH_V061_POSTRELEASE.md).
 
 ## README First-Run Status
 
 README presents the first-run path before architecture:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.6.1
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.7.0
 boundary selftest
 ```
 
@@ -167,12 +175,12 @@ delivered preview claims. They do not upgrade those surfaces to production.
 The documented repeatable install path is:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.6.1
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.7.0
 ```
 
 Requires Go 1.25+.
 
-README keeps `@v0.6.1` as the primary copy/paste command for repeatability. No
+README keeps `@v0.7.0` as the primary copy/paste command for repeatability. No
 Homebrew, package-manager, or hosted distribution channel is claimed.
 
 ## GitHub Action Ref Status
@@ -180,7 +188,7 @@ Homebrew, package-manager, or hosted distribution channel is claimed.
 The MCP audit action examples use:
 
 ```yaml
-- uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.6.1
+- uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.7.0
 ```
 
 Use the release tag for repeatable CI behavior. SARIF upload examples must
@@ -188,14 +196,17 @@ include `contents: read` and `security-events: write` permissions.
 
 ## Approved Release Language
 
-Fulcrum Boundary is the action boundary for MCP-native agents. It inventories
+Fulcrum Boundary is the action boundary for routed agent tools. It inventories
 local MCP tool paths, renders risk paths, generates starter policies, runs safe
 fixture redteams, and denies governed privileged actions before execution when
-those actions route through Boundary.
+those actions route through Boundary. MCP is the first production route; Command
+Boundary, Edit Boundary, Secure GitHub, and the remaining adapters are preview.
 
-Fulcrum Boundary v0.6.1 packages local utility commands for version reporting,
-fixture action-boundary demos, routed-surface diagnostics, and evidence bundle
-verification. It does not add a new governed action surface.
+Fulcrum Boundary v0.7.0 is the open-source launch release. It leads with the
+routed-agent-tools framing and surfaces the two fixture-only proof lanes — `boundary
+demo github-lethal-trifecta` (MCP) and `boundary demo command-secret-exfil`
+(Command Boundary). It does not add a new governed action surface or upgrade any
+preview surface to production.
 
 Secure GitHub is preview. Production status still requires deployment bypass
 evidence and broader live coverage.
@@ -247,10 +258,10 @@ or explicit limitation context.
 - `docs/CLAIMS_LEDGER.md`
 - `claims/boundary_claims.yaml`
 - `docs/ADAPTER_READINESS_MATRIX.md`
-- `docs/RELEASE_TRUTH_V060.md`
-- `docs/RELEASE_TRUTH_V061.md`
-- `docs/RELEASE_TRUTH_REPO_POLISH.md`
-- `docs/LAUNCH_TRUTH_FREEZE.md`
+- `docs/internal/RELEASE_TRUTH_V060.md`
+- `docs/internal/RELEASE_TRUTH_V061.md`
+- `docs/internal/RELEASE_TRUTH_REPO_POLISH.md`
+- `docs/internal/LAUNCH_TRUTH_FREEZE.md`
 - `docs/PUBLIC_RELEASE_COPY.md`
 - `docs/secure-mcp/`
 - `docs/command-boundary/`
@@ -262,10 +273,13 @@ or explicit limitation context.
 
 ## Drift Fixed
 
-- Updated active public truth to the v0.6.1 utility consolidation package.
-- Updated active install and GitHub Action examples to `@v0.6.1`.
-- Preserved historical v0.3.0, v0.4.0, and v0.5.0 release truth artifacts as
-  history.
+- Updated active public truth to the `v0.7.0` open-source launch release.
+- Updated active install and GitHub Action examples to `@v0.7.0`; the prior
+  `@v0.6.1` pin is superseded and kept only as history.
+- Aligned the approved-release top-line to the routed-agent-tools framing and
+  the two-lane (`github-lethal-trifecta` + `command-secret-exfil`) proof spine.
+- Preserved historical v0.3.0, v0.4.0, v0.5.0, and v0.6.1 release truth
+  artifacts as history.
 - Clarified that Edit Boundary is delivered preview while direct editor writes,
   direct filesystem writes, shell redirection, direct `git apply`, and
   filesystem sandboxing remain out of scope.

@@ -8,14 +8,14 @@ Every phrase here must stay inside the evidence tracked by
 
 ## Core Sentence
 
-Before an AI agent touches a real system, Fulcrum decides whether that action is
+Before an AI agent touches a real system, Boundary decides whether that action is
 allowed.
 
 ## Approved Variants
 
 | Context | Sentence |
 |---|---|
-| Compressed | Before agents act, Fulcrum decides. |
+| Compressed | Before agents act, Boundary decides. |
 | Boundary | Boundary sits between agent intent and privileged tools. |
 | Developer | See what your AI tools can do. Block what they should not. |
 | MCP Firewall | Find and block dangerous MCP tool paths before your agent executes them. |

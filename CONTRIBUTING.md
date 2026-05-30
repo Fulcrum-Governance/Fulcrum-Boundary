@@ -28,8 +28,10 @@ diagnose a report.
 2. Create a branch from `main` named for the change.
 3. Keep commits focused and scoped to one lane.
 4. Run the local checks below before requesting review.
-5. Open a pull request against `main` and describe what changed, why it changed,
-   and what verification you ran.
+5. Open a pull request against `main`. The pull request template
+   (`.github/pull_request_template.md`) lists the verification and claim-safety
+   gates to confirm. See [docs/TESTING.md](./docs/TESTING.md) for the test
+   architecture and the coverage-attribution note.
 
 For larger changes, including new adapters, new extension points, release
 claim changes, or public positioning changes, open an issue first to discuss
@@ -42,7 +44,7 @@ Run these gates for public-surface or release-truth work:
 ```bash
 make release-check
 go test ./claims/... -count=1
-go test ./... -short -count=1 -timeout 5m
+go test ./... -count=1 -timeout 5m
 make docs-build
 ```
 
@@ -57,7 +59,7 @@ Expected results:
 
 - `gofmt -l` prints no file paths.
 - `go vet ./...` exits cleanly.
-- Claim tests and short Go tests pass.
+- Claim tests and Go tests pass.
 - Docs build succeeds in strict mode.
 - `make release-check` completes without public-surface or release gate
   failures.

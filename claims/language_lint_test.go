@@ -139,8 +139,9 @@ func languageControlFile(rel string) bool {
 		"docs/LANGUAGE_SYSTEM.md",
 		"docs/LEXICON.md",
 		"docs/BOUNDARY_PRODUCT_PRIMITIVES.md",
-		"docs/LAUNCH_TRUTH_FREEZE.md",
-		"docs/RELEASE_TRUTH_RECONCILIATION.md":
+		"docs/BOUNDARY_SPEC.md",
+		"docs/internal/LAUNCH_TRUTH_FREEZE.md",
+		"docs/internal/RELEASE_TRUTH_RECONCILIATION.md":
 		return true
 	default:
 		return false

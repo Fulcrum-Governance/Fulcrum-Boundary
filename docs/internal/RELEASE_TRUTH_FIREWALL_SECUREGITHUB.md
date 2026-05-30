@@ -9,7 +9,7 @@ Branch: `codex/2026-05-27-firewall-securegithub-truth`
 Note: This report records the earlier Firewall + Secure GitHub release-train
 state. The final public release state after NDJSON ingest, GitHub Action,
 install polish, and release-check work is recorded in
-[`docs/RELEASE_TRUTH_PUBLIC.md`](./RELEASE_TRUTH_PUBLIC.md).
+[`docs/RELEASE_TRUTH_PUBLIC.md`](../RELEASE_TRUTH_PUBLIC.md).
 
 ## Summary
 

@@ -1,6 +1,6 @@
 # policyeval
 
-Portable, dependency-free policy evaluation engine. Designed to be embedded in MCP proxies, SDKs, and any Go service that needs to govern agent tool calls before execution. Shipped as part of the Governance Interception Layer (GIL).
+Portable, dependency-free policy evaluation engine. Designed to be embedded in MCP proxies, SDKs, and any Go service that needs to govern agent tool calls before execution. Shipped as part of Fulcrum Boundary.
 
 ## Overview
 

@@ -1,5 +1,5 @@
 // Package interceptors provides ready-to-use governance.Interceptor
-// implementations that plug into the GIL pipeline without external dependencies.
+// implementations that plug into the Boundary pipeline without external dependencies.
 package interceptors
 
 import (

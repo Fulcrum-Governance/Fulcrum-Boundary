@@ -28,6 +28,7 @@ coverage.html
 *_DEMO_NARRATIVE.md
 **/superpowers/
 .claude/sprint/
+conductor/
 
 # Managed Agents conformance transcripts
 tests/conformance/managed_agents/transcript/*.raw
@@ -48,3 +49,6 @@ tests/conformance/secure_github/transcript/*.log
 /examples/redis-trust/redis-trust
 /examples/http-middleware/http-middleware
 /examples/rate-limit/rate-limit
+
+# local build artifact
+/boundary
