@@ -7,7 +7,7 @@ surfaces stay labeled preview.
 ## 1. First-Run Commands
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.6.1
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.7.0
 boundary --help
 boundary version
 boundary selftest

@@ -9,11 +9,11 @@ Requires Go 1.25+.
 ## Go Install
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.6.1
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.7.0
 boundary selftest
 ```
 
-`@v0.6.1` is the recommended repeatable install target for the v0.6.x utility
+`@v0.7.0` is the recommended repeatable install target for the current launch
 release. `@latest` resolves to the latest published release after the Go proxy
 refreshes.
 

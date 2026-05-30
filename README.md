@@ -22,7 +22,7 @@ The default build links the Postgres SQL classifier (`pganalyze/pg_query_go`)
 via cgo, so `CGO_ENABLED=0` builds fail; `go install` uses cgo by default.
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.6.1
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.7.0
 boundary selftest
 boundary demo github-lethal-trifecta    # Lane 1: MCP, the first production route
 boundary demo command-secret-exfil      # Lane 2: Command Boundary, a delivered preview

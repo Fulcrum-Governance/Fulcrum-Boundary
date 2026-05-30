@@ -6,6 +6,44 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-05-30
+
+First open-source launch release. Launch-prep hardening over the v0.6.x utility
+train; no preview surface is upgraded to production.
+
+### Added
+
+- A second user-facing proof lane: `boundary demo command-secret-exfil` denies a
+  routed `curl -d @.env …` secret exfiltration before execution (`executed=false`,
+  `class=C6`) with a decision record, alongside Lane 1 `boundary demo
+  github-lethal-trifecta` (MCP). `boundary redteam --pack command-secret-exfil`
+  remains the underlying fixture/evidence path.
+- `docs/BOUNDARY_SPEC.md` as the authoritative in-repo launch spec and
+  language-control document.
+- `docs/TESTING.md` and a pull-request template documenting the test posture and
+  no-`testing.Short()` full-suite convention.
+
+### Changed
+
+- README and public copy lead with the routed-agent-tools top-line ("the action
+  boundary for routed agent tools") and the two-lane proof spine, replacing the
+  narrower MCP-native framing as the identity.
+- Public install and GitHub Action examples now target `@v0.7.0` for the launch
+  release.
+- Widened the public-surface guard (`scripts/assert-no-internal-public-artifacts`)
+  to enumerate every tracked text file, so internal planning/session artifacts
+  cannot re-accrete in any tracked path.
+- Tightened claim and version precision across the docs, including
+  `CITATION.cff` (now `0.7.0`), and reorganized internal release-truth docs under
+  `docs/internal/`.
+
+### Fixed
+
+- Fixed the CGO/Docker build: the `Dockerfile` now builds with `CGO_ENABLED=1`
+  and a C toolchain so the cgo-linked Postgres SQL classifier
+  (`pganalyze/pg_query_go`) compiles, and the README documents the C-toolchain
+  prerequisite.
+
 ## [0.6.1] - 2026-05-28
 
 ### Added
@@ -159,7 +197,8 @@ Initial public release of the project now known as Fulcrum Boundary.
 
 ---
 
-[Unreleased]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.4.0...v0.5.0
