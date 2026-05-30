@@ -10,7 +10,7 @@ claims:
       docs:
         - path: docs/BOUNDARY_CONDITIONS.md
           section: "Protected condition"
-        - path: docs/LAUNCH_TRUTH_FREEZE.md
+        - path: docs/internal/LAUNCH_TRUTH_FREEZE.md
           section: "What v0.2.0 Proves"
     public_language:
       allowed:
@@ -417,7 +417,7 @@ claims:
           section: "Secure GitHub Live Conformance"
         - path: docs/secure-mcp/GITHUB_LIVE_EVIDENCE.md
           section: "Secure GitHub Live Evidence"
-        - path: docs/RELEASE_TRUTH_V050.md
+        - path: docs/internal/RELEASE_TRUTH_V050.md
           section: "Secure GitHub Status"
     public_language:
       allowed:
@@ -443,7 +443,7 @@ claims:
       docs:
         - path: docs/secure-mcp/GITHUB_LIVE_EVIDENCE.md
           section: "Secure GitHub Live Evidence"
-        - path: docs/RELEASE_TRUTH_V050.md
+        - path: docs/internal/RELEASE_TRUTH_V050.md
           section: "Secure GitHub Status"
     public_language:
       allowed:
@@ -559,7 +559,7 @@ claims:
     evidence:
       tests: []
       docs:
-        - path: docs/LAUNCH_TRUTH_FREEZE.md
+        - path: docs/internal/LAUNCH_TRUTH_FREEZE.md
           section: "What v0.2.0 Does Not Claim"
     public_language:
       allowed:
@@ -611,7 +611,7 @@ claims:
           section: "Preview Claim"
         - path: docs/command-boundary/DEMO.md
           section: "Claim Boundary"
-        - path: docs/RELEASE_TRUTH_COMMAND_BOUNDARY.md
+        - path: docs/internal/RELEASE_TRUTH_COMMAND_BOUNDARY.md
           section: "Command Boundary Status"
     public_language:
       allowed:
@@ -678,7 +678,7 @@ claims:
           section: "Edit Boundary Demo"
         - path: docs/edit-boundary/PREVIEW_CLAIMS.md
           section: "Delivered Preview Claim"
-        - path: docs/RELEASE_TRUTH_EDIT_BOUNDARY.md
+        - path: docs/internal/RELEASE_TRUTH_EDIT_BOUNDARY.md
           section: "Release Truth"
     public_language:
       allowed:

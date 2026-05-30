@@ -65,7 +65,7 @@ version`, `boundary demo action-boundary`, `boundary doctor --json`,
 `boundary evidence bundle --include-demo`, and `boundary evidence verify`.
 
 Post-tag install and `@latest` verification are recorded in
-[`docs/RELEASE_TRUTH_V061_POSTRELEASE.md`](./RELEASE_TRUTH_V061_POSTRELEASE.md).
+[`docs/internal/RELEASE_TRUTH_V061_POSTRELEASE.md`](./internal/RELEASE_TRUTH_V061_POSTRELEASE.md).
 
 ## README First-Run Status
 
@@ -247,10 +247,10 @@ or explicit limitation context.
 - `docs/CLAIMS_LEDGER.md`
 - `claims/boundary_claims.yaml`
 - `docs/ADAPTER_READINESS_MATRIX.md`
-- `docs/RELEASE_TRUTH_V060.md`
-- `docs/RELEASE_TRUTH_V061.md`
-- `docs/RELEASE_TRUTH_REPO_POLISH.md`
-- `docs/LAUNCH_TRUTH_FREEZE.md`
+- `docs/internal/RELEASE_TRUTH_V060.md`
+- `docs/internal/RELEASE_TRUTH_V061.md`
+- `docs/internal/RELEASE_TRUTH_REPO_POLISH.md`
+- `docs/internal/LAUNCH_TRUTH_FREEZE.md`
 - `docs/PUBLIC_RELEASE_COPY.md`
 - `docs/secure-mcp/`
 - `docs/command-boundary/`

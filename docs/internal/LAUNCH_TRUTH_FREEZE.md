@@ -137,7 +137,7 @@ developer path and machine-ingest surfaces easier to verify:
   live coverage are recorded.
 
 The final public release report is
-[`docs/RELEASE_TRUTH_PUBLIC.md`](./RELEASE_TRUTH_PUBLIC.md).
+[`docs/RELEASE_TRUTH_PUBLIC.md`](../RELEASE_TRUTH_PUBLIC.md).
 
 ## 2026-05-27: v0.3.0 Post-Rename Release Tag
 
