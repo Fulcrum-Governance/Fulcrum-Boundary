@@ -1,6 +1,10 @@
 # Fulcrum Boundary
 
-> The action boundary for MCP-native agents.
+> The action boundary for routed agent tools.
+
+**See what your AI tools can do. Block what they should not.**
+
+MCP is the first production route; Command and Edit are delivered previews.
 
 Your agent is about to touch a real system. Boundary decides before the tool executes, records the verdict, and governs only routes forced through Boundary.
 
@@ -20,16 +24,26 @@ via cgo, so `CGO_ENABLED=0` builds fail; `go install` uses cgo by default.
 ```bash
 go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.6.1
 boundary selftest
-boundary demo github-lethal-trifecta
+boundary demo github-lethal-trifecta    # Lane 1: MCP, the first production route
+boundary demo command-secret-exfil      # Lane 2: Command Boundary, a delivered preview
 ```
 
-No credentials. No live GitHub calls. No real mutations.
+No credentials. No live calls. No real mutations.
 
-## Walkthrough
+## Two Proof Lanes
 
-![Boundary demo walkthrough](./docs/assets/boundary-demo-walkthrough.svg)
+The launch is a tight spine of **two fixture-only proof lanes** — not a breadth-of-adapters list. Each denies a real dangerous action before it runs and emits a hash-verifiable decision record. Everything else ships as a labeled preview (see [Adapter Readiness](#adapter-readiness)).
 
-Static walkthrough of the fixture-safe GitHub write-after-taint demo. Recording artifacts are retained under `docs/assets/` for reference; the static walkthrough is the primary README demo.
+| Lane | Status | Demo | What is denied | Verified shape |
+|---|---|---|---|---|
+| **MCP** — the first production route | Production | `boundary demo github-lethal-trifecta` | A write-after-taint GitHub action, denied **before upstream** | `actual=DENY`, `upstream_called=false`, `reason=lethal_trifecta_detected` |
+| **Command Boundary** — a delivered preview (routed-only) | Delivered preview | `boundary demo command-secret-exfil` | A routed `curl -d @.env …` secret exfiltration, denied **before execution** | `actual=DENY`, `executed=false`, `class=C6` |
+
+## Terminal Receipt
+
+![Boundary terminal receipt](./docs/assets/boundary-demo-walkthrough.svg)
+
+A terminal receipt of the fixture-safe GitHub write-after-taint demo (Lane 1). It is a record of a real run, not a staged demo. Recording artifacts are retained under `docs/assets/` for reference; the static receipt above is the primary README visual.
 
 ## What It Proves
 
