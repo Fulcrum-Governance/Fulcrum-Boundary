@@ -66,8 +66,8 @@ unless deployment topology blocks it.
 
 ## Approved Phrases
 
-- The action boundary for MCP-native agents.
-- Before an AI agent touches a real system, Fulcrum decides whether that action is allowed.
+- The action boundary for routed agent tools.
+- Before an AI agent touches a real system, Boundary decides whether that action is allowed.
 - See what your AI tools can do. Block what they should not.
 - Boundary governs routed tools before privileged execution.
 - Inventory shows what exists. Boundary decides what can act.

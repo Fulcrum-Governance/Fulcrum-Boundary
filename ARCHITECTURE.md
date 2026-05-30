@@ -1,4 +1,4 @@
-# GIL Architecture
+# Boundary Architecture
 
 This document describes the pipeline, interface contracts, and extension
 points. It assumes familiarity with the [README](./README.md).
@@ -148,7 +148,7 @@ the caller; if the sink is slow, buffer or drop. The default is a no-op.
 
 ## Fail-closed vs fail-open
 
-GIL distinguishes infrastructure faults from policy outcomes. A policy that
+Boundary distinguishes infrastructure faults from policy outcomes. A policy that
 denies a call is a *decision*; a crash in the trust backend is a *fault*.
 
 | Fault location | Default behaviour | Rationale |

@@ -3,7 +3,7 @@
 // These types are inlined plain-Go equivalents of the protobuf messages
 // previously generated from fulcrum/policy/v1/policy_service.proto.
 //
-// The GIL evaluates policies locally against these in-memory Go structs. It
+// Boundary evaluates policies locally against these in-memory Go structs. It
 // does not require gRPC, protobuf runtime, or wire compatibility with any
 // upstream policy service. Consumers construct Policy/Rule/Condition values
 // directly in Go.

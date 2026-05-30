@@ -2,8 +2,8 @@ cff-version: 1.2.0
 message: "If you use Fulcrum Boundary, please cite the software."
 type: software
 title: "Fulcrum Boundary"
-version: "0.2.0"
-date-released: "2026-05-26"
+version: "0.6.1"
+date-released: "2026-05-28"
 license: "Apache-2.0"
 repository-code: "https://github.com/Fulcrum-Governance/Fulcrum-Boundary"
 url: "https://github.com/Fulcrum-Governance/Fulcrum-Boundary"
@@ -11,6 +11,7 @@ authors:
   - family-names: Diefenbach
     given-names: Anthony
 abstract: >-
-  Fulcrum Boundary is the open-source enforcement boundary for the Fulcrum
-  governance kernel. It provides transport adapters, a fail-aware policy
-  pipeline, and portable pre-execution control for AI agent tool calls.
+  Fulcrum Boundary is an open-source developer tool: the action boundary for
+  routed agent tools. It provides transport adapters, a fail-closed policy
+  pipeline, and portable pre-execution control that decides on an AI agent's
+  proposed tool actions before they run, for actions routed through Boundary.

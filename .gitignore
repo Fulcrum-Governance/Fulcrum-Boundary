@@ -28,6 +28,7 @@ coverage.html
 *_DEMO_NARRATIVE.md
 **/superpowers/
 .claude/sprint/
+conductor/
 
 # Managed Agents conformance transcripts
 tests/conformance/managed_agents/transcript/*.raw
