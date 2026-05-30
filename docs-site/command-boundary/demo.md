@@ -18,7 +18,15 @@ Deny a destructive wrapper-routed command before execution:
 boundary command run -- rm -rf fixture-dir
 ```
 
-Run fixture-only command redteams:
+Run the Command Boundary secret-exfil denial demo (the user-facing Lane 2 demo):
+
+```bash
+boundary demo command-secret-exfil
+```
+
+A routed `curl -d @.env …` secret exfiltration is denied before execution
+(`executed=false`, `class=C6`) with a decision record. The underlying
+fixture/evidence path is the red-team pack:
 
 ```bash
 boundary redteam --pack command-secret-exfil

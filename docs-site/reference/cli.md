@@ -11,6 +11,7 @@ boundary selftest
 boundary doctor --json
 boundary demo action-boundary
 boundary demo github-lethal-trifecta
+boundary demo command-secret-exfil
 boundary evidence bundle --include-demo
 boundary evidence verify boundary-evidence
 ```
@@ -41,7 +42,7 @@ boundary command classify --help
 boundary command run --help
 boundary command install --project
 boundary shell --help
-boundary redteam --pack command-secret-exfil
+boundary demo command-secret-exfil
 ```
 
 Release verification commands:
