@@ -170,5 +170,5 @@ The dashboard is local-only. It reads local files and does not upload telemetry.
 
 ```bash
 go test ./claims/... -count=1
-go test ./... -short -count=1 -timeout 5m
+go test ./... -count=1 -timeout 5m
 ```

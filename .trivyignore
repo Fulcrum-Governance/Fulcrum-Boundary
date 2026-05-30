@@ -1,0 +1,17 @@
+# Trivy ignore file for Fulcrum Boundary.
+#
+# The fixtures/ tree holds intentional, synthetic red-team payloads with NO real
+# secrets (see fixtures/README.md). They are decoys the test suite uses to prove
+# Boundary denies the dangerous action; nothing is read, executed, or sent. The
+# entries below stop Trivy's secret/misconfig scanners from false-positiving on
+# a fresh clone.
+
+# Suppress secret-scanner findings under the fixtures tree.
+# (Trivy matches these glob paths against the scanned file path.)
+fixtures/**
+fixtures/editboundary/**
+fixtures/editboundary/redteam/**
+fixtures/external-inventory/**
+
+# The synthetic .env decoys trigger the generic API-key secret rule by design.
+generic-api-key

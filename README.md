@@ -13,7 +13,9 @@ Your agent is about to touch a real system. Boundary decides before the tool exe
 
 ## Try It In One Minute
 
-Requires Go 1.25+.
+Requires Go 1.25+ and a C toolchain (a C compiler such as gcc/clang on `PATH`).
+The default build links the Postgres SQL classifier (`pganalyze/pg_query_go`)
+via cgo, so `CGO_ENABLED=0` builds fail; `go install` uses cgo by default.
 
 ```bash
 go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.6.1
@@ -128,7 +130,7 @@ make release-check
 
 ```bash
 go test ./claims/... -count=1
-go test ./... -short -count=1 -timeout 5m
+go test ./... -count=1 -timeout 5m
 make docs-build
 ```
 

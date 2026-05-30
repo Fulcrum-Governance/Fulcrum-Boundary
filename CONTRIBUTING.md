@@ -42,7 +42,7 @@ Run these gates for public-surface or release-truth work:
 ```bash
 make release-check
 go test ./claims/... -count=1
-go test ./... -short -count=1 -timeout 5m
+go test ./... -count=1 -timeout 5m
 make docs-build
 ```
 
@@ -57,7 +57,7 @@ Expected results:
 
 - `gofmt -l` prints no file paths.
 - `go vet ./...` exits cleanly.
-- Claim tests and short Go tests pass.
+- Claim tests and Go tests pass.
 - Docs build succeeds in strict mode.
 - `make release-check` completes without public-surface or release gate
   failures.

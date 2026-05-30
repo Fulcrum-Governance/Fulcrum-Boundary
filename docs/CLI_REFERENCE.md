@@ -146,7 +146,7 @@ a policy enforcement path.
 make docs-build
 make release-check
 go test ./claims/... -count=1
-go test ./... -short -count=1 -timeout 5m
+go test ./... -count=1 -timeout 5m
 boundary evidence bundle --include-demo --out /tmp/boundary-evidence
 boundary evidence verify /tmp/boundary-evidence
 ```

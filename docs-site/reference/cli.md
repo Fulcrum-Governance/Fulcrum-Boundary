@@ -53,5 +53,5 @@ make release-check
 boundary evidence bundle --include-demo --out /tmp/boundary-evidence
 boundary evidence verify /tmp/boundary-evidence
 go test ./claims/... -count=1
-go test ./... -short -count=1 -timeout 5m
+go test ./... -count=1 -timeout 5m
 ```

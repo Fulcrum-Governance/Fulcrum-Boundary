@@ -45,5 +45,5 @@ Run the full release gates before a release candidate:
 go test ./internal/selftest/... -count=1 -timeout 5m
 go test ./tests/selftest/... -count=1 -timeout 5m
 go test ./claims/... -count=1
-go test ./... -short -count=1 -timeout 5m
+go test ./... -count=1 -timeout 5m
 ```
