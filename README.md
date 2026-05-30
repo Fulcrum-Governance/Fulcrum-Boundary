@@ -123,7 +123,9 @@ Adapter maturity is declared in `adapters/<adapter>/readiness.yaml` and summariz
 |---|---|
 | Install | [docs/INSTALL.md](./docs/INSTALL.md) |
 | Demo | [docs/DEMO_GITHUB_LETHAL_TRIFECTA.md](./docs/DEMO_GITHUB_LETHAL_TRIFECTA.md) |
+| Full spec | [docs/BOUNDARY_SPEC.md](./docs/BOUNDARY_SPEC.md) |
 | Claims | [docs/CLAIMS_LEDGER.md](./docs/CLAIMS_LEDGER.md) |
+| Testing | [docs/TESTING.md](./docs/TESTING.md) |
 | Release truth | [docs/RELEASE_TRUTH_PUBLIC.md](./docs/RELEASE_TRUTH_PUBLIC.md) |
 | Adapter readiness | [docs/ADAPTER_READINESS_MATRIX.md](./docs/ADAPTER_READINESS_MATRIX.md) |
 | MCP Firewall | [docs/firewall/DISCOVERY_INVENTORY.md](./docs/firewall/DISCOVERY_INVENTORY.md) |
