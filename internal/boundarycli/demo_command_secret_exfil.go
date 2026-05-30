@@ -17,7 +17,7 @@ import (
 // classifies it as C6 (credential/secret access) and denies it before any
 // execution. The scenario is fixture-only: no real .env is read, no network
 // call is made, and nothing is executed.
-const commandSecretExfilDemoScenario = "command-curl-env-exfil"
+const commandSecretExfilDemoScenario = "command-curl-env-exfil" // #nosec G101 -- scenario identifier slug for the fixture demo, not a credential; no real secret value is embedded (gosec matches the word "secret" in the constant name).
 
 func runCommandSecretExfilDemo(args []string, stdout, stderr io.Writer) int {
 	fs := newHelpFlagSet("boundary demo command-secret-exfil", stderr, commandHelp{
