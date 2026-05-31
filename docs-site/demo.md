@@ -16,9 +16,11 @@ reason: lethal_trifecta_detected
 upstream_called=false
 ```
 
-![Boundary demo walkthrough](assets/boundary-demo-walkthrough.svg)
+![Boundary denies a GitHub write-after-taint action before upstream execution](assets/github-lethal-trifecta-demo.gif)
 
-Static walkthrough of the fixture-safe GitHub write-after-taint demo.
+A real run of `boundary demo github-lethal-trifecta`. The static
+[deny-before-upstream walkthrough](assets/boundary-demo-walkthrough.svg) is a
+no-JS fallback and is a stylized diagram, not a literal capture.
 
 ## What It Proves
 
@@ -38,12 +40,11 @@ Static walkthrough of the fixture-safe GitHub write-after-taint demo.
 - It does not protect tools that bypass Boundary.
 - It does not prove production route enforcement.
 
-## Terminal Receipt
+## Decision Record
 
-![Boundary terminal receipt](assets/boundary-action-demo.gif)
-
-The terminal receipt shows the local fixture command completing. It is not a
-live GitHub run and does not prove production route enforcement.
+Each governed denial emits a hash-verifiable decision record carrying the
+verdict, reason, and a decision hash. It is recorded evidence of the fixture
+run, not a live GitHub run, and does not prove production route enforcement.
 
 ## Source Doc
 

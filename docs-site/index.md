@@ -1,6 +1,6 @@
 # Fulcrum Boundary
 
-The action boundary for MCP-native agents.
+The action boundary for routed agent tools.
 
 Your agent is about to touch a real system. Boundary decides before the tool
 executes, records the verdict, and governs only routes forced through Boundary.
@@ -15,9 +15,12 @@ boundary demo github-lethal-trifecta
 
 No credentials. No live GitHub calls. No real mutations.
 
-![Boundary demo walkthrough](assets/boundary-demo-walkthrough.svg)
+![Boundary denies a GitHub write-after-taint action before upstream execution](assets/github-lethal-trifecta-demo.gif)
 
-Static walkthrough of the fixture-safe GitHub write-after-taint demo.
+A real run of `boundary demo github-lethal-trifecta`: Boundary denies the routed
+private-repo mutation before GitHub is touched and emits a hash-verifiable
+decision record. A static [walkthrough](assets/boundary-demo-walkthrough.svg) is
+available as a no-JS fallback.
 
 ## Current Release Truth
 
