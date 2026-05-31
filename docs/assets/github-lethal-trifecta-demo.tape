@@ -1,7 +1,7 @@
 # Fulcrum Boundary — flagship demo recording (Lane 1: GitHub write-after-taint)
 #
-# Reproducible source for the README hero asset. Regenerate with:
-#   PATH=/opt/homebrew/bin:$PATH vhs docs/assets/github-lethal-trifecta-demo.tape
+# Reproducible source for the README hero asset. Recreate the rendered assets by
+# running Charm VHS against this source file from the repo root.
 #
 # This records a REAL run of `boundary demo github-lethal-trifecta`.
 # All output is genuine binary output. Only typing cadence and the hold-beats

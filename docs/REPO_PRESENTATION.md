@@ -77,8 +77,8 @@ deny-before-upstream walkthrough for no-JS and mobile surfaces. It is a stylized
 diagram, not a literal capture.
 
 Use "demo recording" and "decision record" as the public framing. Do not lead
-public surfaces with "Terminal receipt." The recording is regenerated from
-`docs/assets/github-lethal-trifecta-demo.tape` via `vhs`.
+public surfaces with "Terminal receipt." The recording source is committed
+beside the rendered assets so the GIF and MP4 can be recreated by maintainers.
 
 Keep the asset honest: no credentials, no network, no live GitHub mutation, and
 no production-readiness language beyond the claims ledger.
