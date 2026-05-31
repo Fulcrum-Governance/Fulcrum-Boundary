@@ -30,6 +30,14 @@ boundary demo command-secret-exfil      # Lane 2: Command Boundary, a delivered 
 
 No credentials. No live calls. No real mutations.
 
+## See Boundary Deny Before Upstream
+
+![Boundary denies a GitHub write-after-taint action before upstream execution, with upstream_called=false and a hash-verifiable decision record](./docs/assets/github-lethal-trifecta-demo.gif)
+
+This fixture-safe demo shows untrusted GitHub issue context flowing into a private-repo mutation attempt. Boundary denies the routed action before GitHub is touched, reports `upstream_called=false`, and emits a hash-verifiable decision record. No credentials, live calls, or real mutations are used.
+
+A static [deny-before-upstream walkthrough](./docs/assets/boundary-demo-walkthrough.svg) is available as a no-JS fallback. The recording above is a real run of `boundary demo github-lethal-trifecta`; the walkthrough is a stylized diagram, not a literal capture.
+
 ## Two Proof Lanes
 
 The launch is a tight spine of **two fixture-only proof lanes** — not a breadth-of-adapters list. Each denies a real dangerous action before it runs and emits a hash-verifiable decision record. Everything else ships as a labeled preview (see [Adapter Readiness](#adapter-readiness)).
@@ -38,12 +46,6 @@ The launch is a tight spine of **two fixture-only proof lanes** — not a breadt
 |---|---|---|---|---|
 | **MCP** — the first production route | Production | `boundary demo github-lethal-trifecta` | A write-after-taint GitHub action, denied **before upstream** | `actual=DENY`, `upstream_called=false`, `reason=lethal_trifecta_detected` |
 | **Command Boundary** — a delivered preview (routed-only) | Delivered preview | `boundary demo command-secret-exfil` | A routed `curl -d @.env …` secret exfiltration, denied **before execution** | `actual=DENY`, `executed=false`, `class=C6` |
-
-## Terminal Receipt
-
-![Boundary terminal receipt](./docs/assets/boundary-demo-walkthrough.svg)
-
-A terminal receipt of the fixture-safe GitHub write-after-taint demo (Lane 1). It is a record of a real run, not a staged demo. Recording artifacts are retained under `docs/assets/` for reference; the static receipt above is the primary README visual.
 
 ## What It Proves
 

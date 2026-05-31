@@ -1,92 +1,84 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="720" height="1290" viewBox="0 0 720 1290" role="img" aria-labelledby="title desc">
-  <title id="title">Boundary fixture-safe GitHub write-after-taint walkthrough</title>
-  <desc id="desc">Four-frame static walkthrough showing a poisoned GitHub issue entering agent context, a private repository mutation attempt, Boundary evaluation before execution, and a deny verdict with a decision record.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="940" viewBox="0 0 880 940" role="img" aria-labelledby="t d">
+  <title id="t">Fulcrum Boundary - deny-before-upstream walkthrough (fixture-safe)</title>
+  <desc id="d">A fixture-safe walkthrough, not a literal capture. Untrusted GitHub issue context flows into a private-repo mutation attempt; Boundary evaluates the routed action, denies before upstream execution with upstream_called=false, and emits a hash-verifiable decision record. No credentials, no network, no live GitHub mutation.</desc>
   <defs>
     <style>
-      .bg { fill: #f7f8fb; }
-      .panel { fill: #ffffff; stroke: #c9d1dc; stroke-width: 2; }
-      .panel-accent { fill: #eef4ff; stroke: #7aa2e3; stroke-width: 2; }
-      .deny { fill: #fff1f1; stroke: #d55b5b; stroke-width: 2; }
-      .record { fill: #f4fbf2; stroke: #5f9f66; stroke-width: 2; }
-      .title { font: 700 34px Arial, Helvetica, sans-serif; fill: #152033; }
-      .subtitle { font: 400 21px Arial, Helvetica, sans-serif; fill: #4b5870; }
-      .step { font: 700 18px Arial, Helvetica, sans-serif; fill: #536174; letter-spacing: .08em; }
-      .head { font: 700 29px Arial, Helvetica, sans-serif; fill: #152033; }
-      .body { font: 400 23px Arial, Helvetica, sans-serif; fill: #344055; }
-      .small { font: 700 17px Arial, Helvetica, sans-serif; fill: #536174; }
-      .chip { fill: #152033; }
-      .chipText { font: 700 18px Arial, Helvetica, sans-serif; fill: #ffffff; }
-      .arrow { stroke: #607089; stroke-width: 4; fill: none; marker-end: url(#arrowhead); }
-      .denyText { font: 800 46px Arial, Helvetica, sans-serif; fill: #ba3030; }
-      .mono { font: 700 19px Menlo, Consolas, monospace; fill: #243044; }
+      .bg{fill:#0b0f14}
+      .card{fill:#11161d;stroke:#222c38;stroke-width:1.5}
+      .eval{fill:#101a20;stroke:#2a4a52;stroke-width:1.5}
+      .deny{fill:#1a1012;stroke:#5a2730;stroke-width:1.5}
+      .rec{fill:#0e1714;stroke:#274a39;stroke-width:1.5}
+      .h1{font:700 30px 'JetBrains Mono','SFMono-Regular',Menlo,Consolas,monospace;fill:#eef3f8}
+      .sub{font:400 16px 'JetBrains Mono',Menlo,Consolas,monospace;fill:#8b9bb0}
+      .step{font:700 12px 'JetBrains Mono',Menlo,Consolas,monospace;fill:#5fd0c5;letter-spacing:.22em}
+      .head{font:700 20px 'JetBrains Mono',Menlo,Consolas,monospace;fill:#dfe7f0}
+      .body{font:400 16px 'JetBrains Mono',Menlo,Consolas,monospace;fill:#aebacb}
+      .mono{font:400 15px 'JetBrains Mono',Menlo,Consolas,monospace;fill:#9fb4c7}
+      .key{fill:#7cc0ff}
+      .ok{fill:#a6e3ab}
+      .denyText{font:800 40px 'JetBrains Mono',Menlo,Consolas,monospace;fill:#ff7b86;letter-spacing:.04em}
+      .chipbg{fill:#0b0f14;stroke:#2a3542;stroke-width:1}
+      .chip{font:600 13px 'JetBrains Mono',Menlo,Consolas,monospace;fill:#8b9bb0}
+      .arrow{stroke:#3a4554;stroke-width:2.5;fill:none;marker-end:url(#a)}
+      .scope{font:400 13px 'JetBrains Mono',Menlo,Consolas,monospace;fill:#6b7c90}
+      .tag{font:600 12px 'JetBrains Mono',Menlo,Consolas,monospace;fill:#5b6b7e}
     </style>
-    <marker id="arrowhead" markerWidth="14" markerHeight="10" refX="12" refY="5" orient="auto">
-      <path d="M0,0 L14,5 L0,10 Z" fill="#607089" />
+    <marker id="a" markerWidth="12" markerHeight="9" refX="10" refY="4.5" orient="auto">
+      <path d="M0,0 L12,4.5 L0,9 Z" fill="#3a4554"/>
     </marker>
   </defs>
 
-  <rect class="bg" width="720" height="1290" />
-  <text class="title" x="52" y="58">Boundary denies before GitHub is called</text>
-  <text class="subtitle" x="52" y="94">Fixture-safe GitHub write-after-taint walkthrough.</text>
-  <text class="subtitle" x="52" y="124">No credentials, live calls, or real mutations.</text>
+  <rect class="bg" width="880" height="940"/>
 
-  <g transform="translate(52 148)">
-    <rect class="panel" width="616" height="186" rx="18" />
-    <text class="step" x="28" y="38">FRAME 1</text>
-    <text class="head" x="28" y="77">Poisoned issue enters context</text>
-    <text class="body" x="28" y="115">Untrusted GitHub issue text enters</text>
-    <text class="body" x="28" y="144">agent context before any tool call.</text>
-    <rect class="chip" x="28" y="155" width="124" height="32" rx="14" />
-    <text class="chipText" x="44" y="177">fixture-only</text>
-    <rect class="chip" x="166" y="155" width="146" height="32" rx="14" />
-    <text class="chipText" x="182" y="177">no credentials</text>
+  <text class="h1" x="44" y="62">Boundary denies before GitHub is called</text>
+  <text class="sub" x="44" y="92">Fixture-safe walkthrough of the GitHub write-after-taint path. Not a literal capture.</text>
+  <text class="tag" x="44" y="116">$ boundary demo github-lethal-trifecta</text>
+
+  <g transform="translate(44 140)">
+    <rect class="card" width="792" height="118" rx="12"/>
+    <text class="step" x="24" y="34">01 - SOURCE</text>
+    <text class="head" x="24" y="62">Agent reads untrusted GitHub issue</text>
+    <text class="body" x="24" y="90">Tainted issue text enters agent context before any tool call.</text>
+    <g transform="translate(556 26)">
+      <rect class="chipbg" width="116" height="26" rx="13"/><text class="chip" x="16" y="18">tainted source</text>
+    </g>
   </g>
+  <path class="arrow" d="M440 258 V286"/>
 
-  <path class="arrow" d="M360 348 V374" />
-
-  <g transform="translate(52 386)">
-    <rect class="panel" width="616" height="186" rx="18" />
-    <text class="step" x="28" y="38">FRAME 2</text>
-    <text class="head" x="28" y="77">Private-repo mutation attempt</text>
-    <text class="body" x="28" y="115">The agent proposes a repository write</text>
-    <text class="body" x="28" y="144">after tainted issue content is present.</text>
-    <rect class="chip" x="28" y="155" width="202" height="32" rx="14" />
-    <text class="chipText" x="44" y="177">no live GitHub calls</text>
-    <rect class="chip" x="244" y="155" width="188" height="32" rx="14" />
-    <text class="chipText" x="260" y="177">routed paths only</text>
+  <g transform="translate(44 290)">
+    <rect class="card" width="792" height="118" rx="12"/>
+    <text class="step" x="24" y="34">02 - SINK</text>
+    <text class="head" x="24" y="62">Agent proposes a private-repo mutation</text>
+    <text class="body" x="24" y="90">A repository write is requested while tainted context is present.</text>
+    <g transform="translate(552 26)">
+      <rect class="chipbg" width="120" height="26" rx="13"/><text class="chip" x="16" y="18">routed paths only</text>
+    </g>
   </g>
+  <path class="arrow" d="M440 408 V436"/>
 
-  <path class="arrow" d="M360 586 V612" />
-
-  <g transform="translate(52 624)">
-    <rect class="panel-accent" width="616" height="196" rx="18" />
-    <text class="step" x="28" y="38">FRAME 3</text>
-    <text class="head" x="28" y="77">Boundary evaluates first</text>
-    <text class="body" x="28" y="115">Static policy and taint state are checked</text>
-    <text class="body" x="28" y="144">before upstream execution.</text>
-    <text class="mono" x="28" y="174">upstream_called=false</text>
-    <rect class="chip" x="338" y="148" width="230" height="32" rx="14" />
-    <text class="chipText" x="354" y="170">DENY before mutation</text>
+  <g transform="translate(44 440)">
+    <rect class="eval" width="792" height="126" rx="12"/>
+    <text class="step" x="24" y="34">03 - BOUNDARY EVALUATES</text>
+    <text class="head" x="24" y="62">Routed action checked before upstream</text>
+    <text class="mono" x="24" y="92"><tspan class="key">matched rule:</tspan> deny-github-write-after-taint-fixture</text>
+    <text class="mono" x="24" y="116"><tspan class="key">upstream_called=</tspan><tspan class="ok">false</tspan>   <tspan class="key">read_upstream_called=</tspan>true</text>
   </g>
+  <path class="arrow" d="M440 566 V594"/>
 
-  <path class="arrow" d="M360 834 V860" />
-
-  <g transform="translate(52 872)">
-    <rect class="deny" width="616" height="300" rx="18" />
-    <text class="step" x="28" y="38">FRAME 4</text>
-    <text class="denyText" x="28" y="88">DENY</text>
-    <text class="body" x="28" y="126">Boundary denies the routed attempt.</text>
-    <text class="body" x="28" y="155">GitHub is not called.</text>
-    <rect class="chip" x="28" y="171" width="190" height="32" rx="14" />
-    <text class="chipText" x="44" y="193">no real mutations</text>
-    <g transform="translate(28 218)">
-      <rect class="record" width="560" height="66" rx="14" />
-      <text class="small" x="18" y="27">decision record emitted</text>
-      <text class="mono" x="18" y="53">reason: lethal_trifecta_detected</text>
+  <g transform="translate(44 598)">
+    <rect class="deny" width="792" height="206" rx="12"/>
+    <text class="step" x="24" y="34">04 - VERDICT</text>
+    <text class="denyText" x="24" y="82">DENY</text>
+    <text class="body" x="24" y="112">Boundary denies the routed attempt. GitHub is not called.</text>
+    <text class="mono" x="24" y="142"><tspan class="key">reason:</tspan> lethal_trifecta_detected</text>
+    <g transform="translate(24 158)">
+      <rect class="rec" width="744" height="34" rx="8"/>
+      <text class="mono" x="16" y="23"><tspan class="ok">decision record emitted</tspan>  -  <tspan class="key">decision hash:</tspan> sha256:25ffc91f491f62c0...</text>
     </g>
   </g>
 
-  <text class="small" x="52" y="1205">Scope: fixture-only, routed paths only; no credentials or live GitHub calls.</text>
-  <text class="small" x="52" y="1231">No real mutations. No production Secure GitHub claim.</text>
-  <text class="small" x="52" y="1257">No universal prompt-injection or global command/edit control claim.</text>
+  <line x1="44" y1="846" x2="836" y2="846" stroke="#1c2530" stroke-width="1"/>
+  <text class="scope" x="44" y="876">Scope: fixture-only - no credentials - no network - no live GitHub mutation - routed paths only.</text>
+  <text class="scope" x="44" y="898">Hash-verifiable decision record. Not a signed receipt, cryptographic proof, or production Secure GitHub claim.</text>
+  <text class="scope" x="44" y="920">No universal prompt-injection, command, or edit control is claimed.</text>
 </svg>

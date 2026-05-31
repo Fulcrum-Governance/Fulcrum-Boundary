@@ -8,7 +8,7 @@ release signals.
 
 Use this GitHub repository description:
 
-> The action boundary for MCP-native agents. See what your AI tools can do; block what they should not.
+> The action boundary for routed agent tools. See what your AI tools can do; block what they should not.
 
 This is shorter than the README tagline and fits GitHub's repository
 description field.
@@ -56,8 +56,8 @@ Suggested text:
 
 ```text
 Fulcrum Boundary
-The action boundary for MCP-native agents
-See what your AI tools can do. Block what they should not.
+The action boundary for routed agent tools
+Before an agent touches a dangerous tool, Boundary decides.
 ```
 
 GitHub repository social preview settings may reject SVG uploads. If that
@@ -67,12 +67,18 @@ served somewhere stable.
 
 ## Public Demo Asset
 
-Primary demo asset: `docs/assets/boundary-demo-walkthrough.svg`, a static
-fixture-safe walkthrough of the GitHub write-after-taint path.
+Primary demo asset: `docs/assets/github-lethal-trifecta-demo.gif`, a real run
+of `boundary demo github-lethal-trifecta` recorded from the flagship GitHub
+write-after-taint fixture. The recording dwells on the verdict block: `actual
+action: DENY`, `upstream_called=false`, and the decision hash.
 
-Terminal receipt: `docs/assets/boundary-action-demo.gif` remains supporting
-evidence that the local fixture command completes. It is not a live GitHub run
-and does not prove production route enforcement.
+Walkthrough fallback: `docs/assets/boundary-demo-walkthrough.svg`, a static
+deny-before-upstream walkthrough for no-JS and mobile surfaces. It is a stylized
+diagram, not a literal capture.
+
+Use "demo recording" and "decision record" as the public framing. Do not lead
+public surfaces with "Terminal receipt." The recording source is committed
+beside the rendered assets so the GIF and MP4 can be recreated by maintainers.
 
 Keep the asset honest: no credentials, no network, no live GitHub mutation, and
 no production-readiness language beyond the claims ledger.
