@@ -78,6 +78,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runVerifyRecord(args[1:], stdout, stderr)
 	case "explain":
 		return runExplain(args[1:], stdout, stderr)
+	case "replay":
+		return runReplay(args[1:], stdout, stderr)
 	case "doctor":
 		return runDoctor(args[1:], stdout, stderr)
 	case "evidence":
@@ -129,6 +131,7 @@ Commands:
   verify          Validate YAML policy files
   verify-record   Verify a receipt-grade decision record
   explain         Describe a decision record without verifying it
+  replay          Re-evaluate a recorded request and compare the decision
   doctor          Check local routed-surface diagnostics
   evidence        Bundle and verify local Boundary evidence artifacts
   audit           Pretty-print structured decision records
@@ -142,6 +145,30 @@ func newFlagSet(name string, stderr io.Writer) *flag.FlagSet {
 	fs := flag.NewFlagSet(name, flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	return fs
+}
+
+// parseInterspersed parses args into fs while allowing positional (non-flag)
+// arguments to appear in any position, not only after all flags. Go's flag
+// package stops at the first non-flag token, so by default a command with a
+// positional argument cannot accept flags that follow it. parseInterspersed
+// works around that by parsing in a loop: it parses, captures the first leftover
+// non-flag argument as a positional, and resumes parsing the remainder. It
+// returns the collected positionals in order. A flag.ErrHelp (from -h/--help) is
+// returned to the caller verbatim so it can exit 0.
+func parseInterspersed(fs *flag.FlagSet, args []string) ([]string, error) {
+	var positionals []string
+	remaining := args
+	for {
+		if err := fs.Parse(remaining); err != nil {
+			return nil, err
+		}
+		rest := fs.Args()
+		if len(rest) == 0 {
+			return positionals, nil
+		}
+		positionals = append(positionals, rest[0])
+		remaining = rest[1:]
+	}
 }
 
 type commandHelp struct {

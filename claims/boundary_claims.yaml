@@ -647,6 +647,37 @@ claims:
     depends_on:
       - BND-CLAIM-REC-001
 
+  - id: BND-CLAIM-REPLAY-001
+    claim: "Boundary replay re-evaluates a recorded request against the recorded policy bundle and reproduces the recorded decision-defining fields (action, reason, decision_mode, matched_rule, policy_file), failing closed on any mismatch"
+    status: delivered
+    evidence:
+      tests:
+        - path: internal/replay/replay_test.go
+          assertion: "a record emitted by a real pipeline run replays cleanly against the recorded request and policy bundle with every decision-defining field matching; same-action/different-matched_rule, same-action/different-reason, policy_bundle_hash mismatch, and request_hash mismatch all fail; missing --request/--policies/record and an unsupported schema version are rejected"
+        - path: tests/replay/replay_test.go
+          assertion: "boundary replay through real CLI dispatch reproduces the full recorded decision and exits 0, emits a stable boundary.replay.v1 JSON envelope with credentials/network/live-mutation all false, exits non-zero on each drift case, rejects missing flags and files, and replays the committed example triple end to end"
+      docs:
+        - path: docs/CLI_REFERENCE.md
+          section: "Decision-Record Replay Commands"
+        - path: docs/DECISION_RECORDS.md
+          section: "Replaying a record"
+    public_language:
+      allowed:
+        - "Boundary replay re-evaluates the recorded request against the recorded policy bundle and compares the decision-defining fields (action, reason, decision_mode, matched_rule, policy_file), not action alone."
+        - "Replay recomputes request_hash and, when present, policy_bundle_hash, and exits non-zero on any decision-field or hash mismatch."
+        - "Replay reproduces the decision, not enforcement; it is local-only and fixture-safe."
+        - "Replay re-evaluates against the supplied static policy bundle. A decision that originated from an interceptor or trust state rather than from the policy bundle does not reproduce; replay reports a mismatch (fail-closed) rather than a false reproduction."
+      forbidden:
+        - "replay proves enforcement"
+        - "replay proves the action was blocked"
+        - "replay proves no upstream bytes moved"
+        - "replay proves the verdict was correct"
+        - "replay compares action alone"
+        - "replay reproduces interceptor- or trust-originated decisions"
+    gaps: []
+    depends_on:
+      - BND-CLAIM-REC-001
+
   - id: BND-CLAIM-CMD-001
     claim: "Boundary provides preview project-local command governance for commands routed through boundary command run, boundary shell, or project-local shims"
     status: delivered

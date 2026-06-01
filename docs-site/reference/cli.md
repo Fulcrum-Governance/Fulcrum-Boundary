@@ -51,11 +51,18 @@ Decision-record commands:
 boundary verify-record record.json
 boundary explain record.json
 boundary explain --json docs/examples/decision-record-v2.example.json
+boundary replay record.json --request request.json --policies ./policies/
 ```
 
 `boundary explain` is local-only and read-only: it describes a decision record
 (schema_version 1 or 2) and does not verify its hashes. Run
 `boundary verify-record` to recompute them.
+
+`boundary replay` is local-only and fixture-safe: it re-evaluates the recorded
+request against the recorded policy bundle and compares the decision-defining
+fields (`action`, `reason`, `decision_mode`, `matched_rule`, `policy_file`) —
+not `action` alone. It reproduces the decision, not enforcement, and does not
+prove that no upstream bytes moved.
 
 Release verification commands:
 

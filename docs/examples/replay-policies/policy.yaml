@@ -1,0 +1,11 @@
+name: replay-example
+version: "1"
+rules:
+  - name: block-drop-table
+    tool: query
+    action: deny
+    reason: destructive SQL blocked before execution
+    match:
+      field: arguments.sql
+      contains: "DROP TABLE"
+      case_insensitive: true

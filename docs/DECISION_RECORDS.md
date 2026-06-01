@@ -267,3 +267,37 @@ To check a stored record against its request, policy bundle, and build digest �
 and to understand exactly what the request, policy-bundle, and decision hashes
 cover — use `boundary verify-record` as documented in
 [`docs/RECEIPTS.md`](RECEIPTS.md).
+
+## Replaying a record
+
+To reproduce a recorded *decision* locally, use `boundary replay <record.json>
+--request <request.json> --policies <dir>`. A record carries `request_hash` but
+not the request body, so replay takes the record plus the canonical
+`GovernanceRequest` JSON that was recorded and the operator's policy directory.
+Replay recomputes `request_hash` from the supplied request (confirming it is
+replaying *the recorded request*), recomputes `policy_bundle_hash` from
+`--policies` when the record carries one (confirming it is replaying against *the
+recorded policy bundle*), rebuilds the request, re-evaluates it against the
+supplied static policy bundle in a hermetic in-process configuration with no
+audit side effects, and compares
+the decision-defining fields — `action`, `reason`, `decision_mode`,
+`matched_rule`, and `policy_file` where present, **not `action` alone**. It exits
+non-zero on any decision-field mismatch, a `request_hash` mismatch, or a
+`policy_bundle_hash` mismatch; `--json` emits a stable `boundary.replay.v1`
+object.
+
+```bash
+boundary replay docs/examples/decision-record-replay.example.json \
+  --request docs/examples/replay-request.example.json \
+  --policies docs/examples/replay-policies/
+```
+
+`replay` reproduces the *decision*, not enforcement. A reproduced `deny` is
+**not** evidence the action was blocked; replay does **not** prove that no
+upstream bytes moved; it reproduces the decision only for routed requests; and a
+match does **not** prove the original verdict was correct — only that the same
+inputs reproduce the same decision. Replay re-evaluates the supplied static
+policy bundle only: a decision that originated from an interceptor (for example
+the Postgres AST classifier) or from trust state — not from the policy bundle —
+does **not** reproduce, and replay reports a mismatch rather than a false
+reproduction. No upstream tool is called and nothing is mutated.
