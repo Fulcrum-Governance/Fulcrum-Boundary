@@ -212,6 +212,14 @@ sync before shipping a Boundary release branch.
 
 ## 9. Decision-Record Verification Commands
 
+> **Availability:** `boundary verify-record` itself, and `schema_version "1"`
+> records, are in the `v0.7.0` release. The `schema_version "2"` route-context path
+> described below (and `boundary explain` / `boundary replay` in sections 10–11) is
+> available on `main` and from-source builds, but is not in the `v0.7.0` release
+> binary, so `go install …@v0.7.0` does not include it. Until a release that includes
+> it is tagged, build from source (`go run ./cmd/boundary …` or `make build`) to
+> verify a `schema_version "2"` record.
+
 ```bash
 boundary verify-record record.json
 boundary verify-record --binary-digest fixture-only record.json
@@ -265,6 +273,14 @@ that actually ran. See [docs/DECISION_RECORDS.md](./DECISION_RECORDS.md) and
 
 ## 10. Decision-Record Explanation Commands
 
+> **Availability:** `boundary explain` (this section) and `boundary replay`
+> (section 11) are available on `main` and from-source builds. They are not in the
+> `v0.7.0` release binary, so `go install …@v0.7.0` does not include them. Until a
+> release that includes them is tagged, build from source (`go run ./cmd/boundary …`
+> or `make build`) to run them. The `v0.7.0` first-run path — `selftest`, `doctor`,
+> the two proof demos, `evidence bundle`/`verify`, and `verify-record` on a
+> `schema_version "1"` record — is unaffected.
+
 ```bash
 boundary explain record.json
 boundary explain --json record.json
@@ -295,6 +311,11 @@ bypass a record cannot see. `topology_profile` is asserted, not attested, and
 [docs/RECEIPTS.md](./RECEIPTS.md).
 
 ## 11. Decision-Record Replay Commands
+
+> **Availability:** like `boundary explain` (section 10), `boundary replay` is
+> available on `main` and from-source builds and is not in the `v0.7.0` release
+> binary; `go install …@v0.7.0` does not include it. Build from source until a
+> release that includes it is tagged.
 
 ```bash
 boundary replay record.json --request request.json --policies ./policies/
