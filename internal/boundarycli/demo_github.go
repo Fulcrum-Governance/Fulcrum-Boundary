@@ -72,7 +72,8 @@ func runGitHubLethalTrifectaDemo(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stdout, "dashboard: %s\n", result.DashboardPath)
 		}
 		printRecordID(stdout, result.Scenario.DecisionRecordID)
-		printRecordPath(stdout, result.DecisionRecordPath)
+		printRecordPath(stdout, result.DecisionRecordObjectPath)
+		printRecordLog(stdout, result.DecisionRecordPath)
 	}
 	if !result.Passed {
 		return 1

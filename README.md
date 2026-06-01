@@ -48,14 +48,21 @@ boundary evidence verify boundary-evidence
 boundary verify-record <record.json>
 ```
 
+> The commands above ship in `v0.7.0` (the install line). The uniform
+> record-location output described below, plus `boundary explain` /
+> `boundary replay` and `DecisionRecordV2`, were added since `v0.7.0` and are
+> available by building from `main`.
+
 No credentials. No live calls. No real mutations. Every record-emitting command
-prints a uniform pair of lines — `decision record id: rec_...` (the record's id)
-and, when a record file is written, `decision record path: <path>` (the file
-`verify-record` consumes). Both proof lanes write that file under `--out`:
+prints uniform lines — `decision record id: rec_...` (the record's id) and, when
+a record file is written, `decision record path: <path>`: a single-record JSON
+object `verify-record` consumes directly. A multi-record `decision record log:
+<path>` (a `.jsonl` audit log) is written alongside; it is not a `verify-record`
+input. Both proof lanes write the verifiable file under `--out`:
 `boundary demo github-lethal-trifecta --json --out demo.json` lands
-`github-lethal-trifecta-artifacts/decision-records.jsonl`, and
+`github-lethal-trifecta-artifacts/decision-record.json`, and
 `boundary demo command-secret-exfil --out demo.txt` lands
-`command-secret-exfil-artifacts/decision-records.jsonl`. New here? See
+`command-secret-exfil-artifacts/decision-record.json`. New here? See
 [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) for the expected first-run
 states (a clean checkout shows `doctor` surfaces as `warn`, and
 `evidence verify` reports `parsed_records: 0` — both are normal).

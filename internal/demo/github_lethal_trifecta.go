@@ -28,32 +28,38 @@ type GitHubLethalTrifectaOptions struct {
 }
 
 type GitHubLethalTrifectaResult struct {
-	SchemaVersion       string                      `json:"schema_version"`
-	Status              string                      `json:"status"`
-	Passed              bool                        `json:"passed"`
-	FixtureOnly         bool                        `json:"fixture_only"`
-	RequiresCredentials bool                        `json:"requires_credentials"`
-	RequiresNetwork     bool                        `json:"requires_network"`
-	MutatesLiveSystems  bool                        `json:"mutates_live_systems"`
-	Workspace           string                      `json:"workspace"`
-	WorkspaceRetained   bool                        `json:"workspace_retained"`
-	ReportPath          string                      `json:"report_path,omitempty"`
-	DashboardPath       string                      `json:"dashboard_path,omitempty"`
-	ConfigPath          string                      `json:"config_path"`
-	PolicyDir           string                      `json:"policy_dir"`
-	SecureGitHubProfile string                      `json:"secure_github_profile"`
-	SecureGitHubPolicy  string                      `json:"secure_github_policy"`
-	DecisionRecordPath  string                      `json:"decision_record_path"`
-	InventorySummary    firewall.Summary            `json:"inventory_summary"`
-	RiskSummary         firewall.RiskSummary        `json:"risk_summary"`
-	PolicyFiles         int                         `json:"policy_files"`
-	PolicyRules         int                         `json:"policy_rules"`
-	RedteamPack         string                      `json:"redteam_pack"`
-	Scenario            GitHubDemoScenario          `json:"scenario"`
-	Proof               []string                    `json:"proof"`
-	Limitations         []string                    `json:"limitations"`
-	Checks              []GitHubDemoCheck           `json:"checks"`
-	DecisionRecord      governance.DecisionRecordV1 `json:"decision_record"`
+	SchemaVersion       string `json:"schema_version"`
+	Status              string `json:"status"`
+	Passed              bool   `json:"passed"`
+	FixtureOnly         bool   `json:"fixture_only"`
+	RequiresCredentials bool   `json:"requires_credentials"`
+	RequiresNetwork     bool   `json:"requires_network"`
+	MutatesLiveSystems  bool   `json:"mutates_live_systems"`
+	Workspace           string `json:"workspace"`
+	WorkspaceRetained   bool   `json:"workspace_retained"`
+	ReportPath          string `json:"report_path,omitempty"`
+	DashboardPath       string `json:"dashboard_path,omitempty"`
+	ConfigPath          string `json:"config_path"`
+	PolicyDir           string `json:"policy_dir"`
+	SecureGitHubProfile string `json:"secure_github_profile"`
+	SecureGitHubPolicy  string `json:"secure_github_policy"`
+	DecisionRecordPath  string `json:"decision_record_path"`
+	// DecisionRecordObjectPath is the single-record JSON object (the headline
+	// write-denial record) that `boundary verify-record` consumes directly. It
+	// is what the uniform `decision record path:` line points at. The multi-
+	// record JSONL log lives at DecisionRecordPath and is a separate dashboard/
+	// audit artifact, not a verify-record input.
+	DecisionRecordObjectPath string                      `json:"decision_record_object_path"`
+	InventorySummary         firewall.Summary            `json:"inventory_summary"`
+	RiskSummary              firewall.RiskSummary        `json:"risk_summary"`
+	PolicyFiles              int                         `json:"policy_files"`
+	PolicyRules              int                         `json:"policy_rules"`
+	RedteamPack              string                      `json:"redteam_pack"`
+	Scenario                 GitHubDemoScenario          `json:"scenario"`
+	Proof                    []string                    `json:"proof"`
+	Limitations              []string                    `json:"limitations"`
+	Checks                   []GitHubDemoCheck           `json:"checks"`
+	DecisionRecord           governance.DecisionRecordV1 `json:"decision_record"`
 }
 
 type GitHubDemoScenario struct {
@@ -167,7 +173,15 @@ func RunGitHubLethalTrifecta(ctx context.Context, opts GitHubLethalTrifectaOptio
 		redteamScenario.DecisionRecord,
 		secureProof.write.DecisionRecord,
 	}); err != nil {
-		return nil, fmt.Errorf("write decision-record artifact: %w", err)
+		return nil, fmt.Errorf("write decision-record log artifact: %w", err)
+	}
+	// Land the single headline write-denial record as a standalone JSON object
+	// so the uniform `decision record path:` line points at a file that
+	// `boundary verify-record` consumes directly. The multi-record JSONL log
+	// above remains a separate dashboard/audit artifact.
+	recordObjectPath := filepath.Join(workspace.path, DefaultDecisionRecordObjectFilename)
+	if err := WriteDecisionRecordJSON(recordObjectPath, secureProof.write.DecisionRecord); err != nil {
+		return nil, fmt.Errorf("write decision-record object artifact: %w", err)
 	}
 
 	dashboardPath := ""
@@ -212,27 +226,28 @@ func RunGitHubLethalTrifecta(ctx context.Context, opts GitHubLethalTrifectaOptio
 		status = "fail"
 	}
 	result := &GitHubLethalTrifectaResult{
-		SchemaVersion:       GitHubLethalTrifectaSchemaVersion,
-		Status:              status,
-		Passed:              passed,
-		FixtureOnly:         true,
-		RequiresCredentials: false,
-		RequiresNetwork:     false,
-		MutatesLiveSystems:  false,
-		Workspace:           workspace.path,
-		WorkspaceRetained:   workspace.retained,
-		ReportPath:          workspace.report,
-		DashboardPath:       dashboardPath,
-		ConfigPath:          configPath,
-		PolicyDir:           policyDir,
-		SecureGitHubProfile: setup.Profile,
-		SecureGitHubPolicy:  setup.Policy,
-		DecisionRecordPath:  recordsPath,
-		InventorySummary:    inventory.Summary,
-		RiskSummary:         graph.Summary,
-		PolicyFiles:         len(policies.Files),
-		PolicyRules:         len(loadedPolicies.Rules),
-		RedteamPack:         redteamResult.PackID,
+		SchemaVersion:            GitHubLethalTrifectaSchemaVersion,
+		Status:                   status,
+		Passed:                   passed,
+		FixtureOnly:              true,
+		RequiresCredentials:      false,
+		RequiresNetwork:          false,
+		MutatesLiveSystems:       false,
+		Workspace:                workspace.path,
+		WorkspaceRetained:        workspace.retained,
+		ReportPath:               workspace.report,
+		DashboardPath:            dashboardPath,
+		ConfigPath:               configPath,
+		PolicyDir:                policyDir,
+		SecureGitHubProfile:      setup.Profile,
+		SecureGitHubPolicy:       setup.Policy,
+		DecisionRecordPath:       recordsPath,
+		DecisionRecordObjectPath: recordObjectPath,
+		InventorySummary:         inventory.Summary,
+		RiskSummary:              graph.Summary,
+		PolicyFiles:              len(policies.Files),
+		PolicyRules:              len(loadedPolicies.Rules),
+		RedteamPack:              redteamResult.PackID,
 		Scenario: GitHubDemoScenario{
 			ID:                 redteamScenario.ScenarioID,
 			ExpectedAction:     expectedAction,
@@ -295,9 +310,15 @@ func WriteGitHubLethalTrifectaText(w io.Writer, result *GitHubLethalTrifectaResu
 	// Only advertise the record path when the workspace is retained (--out or
 	// --dashboard). Without retention the workspace is a temp directory that is
 	// deleted on return, so printing its path would point at a file that no
-	// longer exists by the time the operator reads it.
+	// longer exists by the time the operator reads it. The `decision record
+	// path:` line points at the single-record JSON object (verify-record
+	// consumes it directly); the `decision record log:` line points at the
+	// separate multi-record JSONL dashboard/audit log.
+	if result.WorkspaceRetained && result.DecisionRecordObjectPath != "" {
+		fmt.Fprintf(w, "decision record path: %s\n", result.DecisionRecordObjectPath)
+	}
 	if result.WorkspaceRetained && result.DecisionRecordPath != "" {
-		fmt.Fprintf(w, "decision record path: %s\n", result.DecisionRecordPath)
+		fmt.Fprintf(w, "decision record log: %s\n", result.DecisionRecordPath)
 	}
 	fmt.Fprintf(w, "inventory: configs=%d servers=%d github_servers=%d high_risk_servers=%d\n",
 		result.InventorySummary.ConfigFiles,
@@ -372,8 +393,11 @@ func WriteGitHubLethalTrifectaMarkdown(w io.Writer, result *GitHubLethalTrifecta
 		result.RiskSummary.RepoWritePaths,
 	)
 	fmt.Fprintf(w, "- Starter policies: `%d` files, `%d` rules\n", result.PolicyFiles, result.PolicyRules)
+	if result.WorkspaceRetained && result.DecisionRecordObjectPath != "" {
+		fmt.Fprintf(w, "- Decision record path: `%s`\n", result.DecisionRecordObjectPath)
+	}
 	if result.WorkspaceRetained && result.DecisionRecordPath != "" {
-		fmt.Fprintf(w, "- Decision record path: `%s`\n", result.DecisionRecordPath)
+		fmt.Fprintf(w, "- Decision record log: `%s`\n", result.DecisionRecordPath)
 	}
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "## What This Proves")

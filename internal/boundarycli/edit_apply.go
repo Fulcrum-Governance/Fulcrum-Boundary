@@ -65,7 +65,10 @@ func runEditApply(args []string, stdout, stderr io.Writer) int {
 	fmt.Fprintf(stdout, "Action: %s\n", result.Decision.Action)
 	fmt.Fprintf(stdout, "Applied: %t\n", result.Applied)
 	fmt.Fprintf(stdout, "Dry run: %t\n", result.Record.DryRun)
-	printRecordPath(stdout, result.RecordPath)
+	// The edit boundary writes an append-mode multi-record JSONL log, not a
+	// single verify-record DecisionRecordV1 object, so it is surfaced under the
+	// log label.
+	printRecordLog(stdout, result.RecordPath)
 	if !result.Applied && result.Record.Reason != "" {
 		fmt.Fprintf(stdout, "Reason: %s\n", result.Record.Reason)
 	}

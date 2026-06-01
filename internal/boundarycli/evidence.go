@@ -107,7 +107,11 @@ func runEvidenceBundle(args []string, stdout, stderr io.Writer) int {
 	fmt.Fprintf(stdout, "artifacts: %d\n", len(result.Manifest.Artifacts))
 	for _, artifact := range result.Manifest.Artifacts {
 		if artifact.Kind == "decision_record" {
-			printRecordPath(stdout, filepath.Join(result.Manifest.Output, filepath.FromSlash(artifact.Path)))
+			// Copied decision-record artifacts are the command/edit boundary
+			// append-mode logs, which are multi-record JSONL. verify-record
+			// rejects multi-record files, so surface them under the log label,
+			// not the single-object `decision record path:` label.
+			printRecordLog(stdout, filepath.Join(result.Manifest.Output, filepath.FromSlash(artifact.Path)))
 		}
 	}
 	fmt.Fprintln(stdout, "credentials: none")
