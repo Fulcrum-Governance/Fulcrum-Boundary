@@ -55,14 +55,24 @@ The verifier exits non-zero (`1`) and names the mismatched check. This is why
 the committed example must stay byte-for-byte as emitted: any edit to the record
 content would (correctly) fail verification.
 
-## Regenerate the record from the fixture-safe demo
+## Regenerate the record from the fixture-safe demos
 
-To produce your own equivalent record, run the flagship demo with `--out` so the
-workspace (and its decision records) are retained instead of discarded:
+Both proof-lane demos print a uniform record-location pair and write their
+record file under `--out`, so the find -> verify step is copy-paste. Every
+record-emitting command prints `decision record id: rec_...` and, when a file is
+written, `decision record path: <path>` — the path is exactly the file
+`verify-record` consumes.
+
+### Lane 1 — github-lethal-trifecta
+
+Run the flagship demo with `--out` so the workspace (and its decision records)
+are retained instead of discarded:
 
 ```bash
 ./bin/boundary demo github-lethal-trifecta --json --out /tmp/bnd-demo/demo.json
-# -> /tmp/bnd-demo/github-lethal-trifecta-artifacts/decision-records.jsonl
+# stdout prints:
+#   decision record id: rec_...
+#   decision record path: /tmp/bnd-demo/github-lethal-trifecta-artifacts/decision-records.jsonl
 ```
 
 That JSONL holds two `DecisionRecordV1` objects, one per line (a routed-redteam
@@ -74,13 +84,28 @@ sed -n '1p' /tmp/bnd-demo/github-lethal-trifecta-artifacts/decision-records.json
 ./bin/boundary verify-record /tmp/bnd-demo/record.json
 ```
 
-The hashes in your record will differ from the committed example: the timestamp
-and the per-run request hash are not fixed across runs. The verdict, matched
-rule, and the fact that it self-verifies are stable.
+### Lane 2 — command-secret-exfil
 
-> Without `--out` (and without `--dashboard`), the demo writes its workspace to
-> a temp directory and deletes it, so no decision record is persisted — the
-> records are printed to stdout only. Use `--out` to keep a file you can verify.
+The Command Boundary proof lane lands its single decision record under the same
+`--out` convention, at a predictable `command-secret-exfil-artifacts` sibling:
+
+```bash
+./bin/boundary demo command-secret-exfil --out /tmp/bnd-demo/cmd.txt
+# stdout prints:
+#   decision record id: rec_...
+#   decision record path: /tmp/bnd-demo/command-secret-exfil-artifacts/decision-records.jsonl
+sed -n '1p' /tmp/bnd-demo/command-secret-exfil-artifacts/decision-records.jsonl > /tmp/bnd-demo/cmd-record.json
+./bin/boundary verify-record /tmp/bnd-demo/cmd-record.json
+```
+
+The hashes in your records will differ from the committed example: the timestamp
+and the per-run request hash are not fixed across runs. The verdict, matched
+rule, and the fact that they self-verify are stable.
+
+> Without `--out`, a demo prints its records to stdout only and persists no file
+> — there is no `decision record path:` line because no file was written. Use
+> `--out` to keep a file you can verify. (The github-lethal-trifecta demo also
+> retains its workspace under `--dashboard`.)
 
 ## What the optional cross-check flags do (and why they do not pass here)
 

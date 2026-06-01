@@ -48,10 +48,14 @@ boundary evidence verify boundary-evidence
 boundary verify-record <record.json>
 ```
 
-No credentials. No live calls. No real mutations. Each demo prints a
-`decision record: rec_...` ID; to write a record file for `verify-record`, run
-`boundary demo github-lethal-trifecta --json --out demo.json`, which writes
-`github-lethal-trifecta-artifacts/decision-records.jsonl`. New here? See
+No credentials. No live calls. No real mutations. Every record-emitting command
+prints a uniform pair of lines — `decision record id: rec_...` (the record's id)
+and, when a record file is written, `decision record path: <path>` (the file
+`verify-record` consumes). Both proof lanes write that file under `--out`:
+`boundary demo github-lethal-trifecta --json --out demo.json` lands
+`github-lethal-trifecta-artifacts/decision-records.jsonl`, and
+`boundary demo command-secret-exfil --out demo.txt` lands
+`command-secret-exfil-artifacts/decision-records.jsonl`. New here? See
 [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) for the expected first-run
 states (a clean checkout shows `doctor` surfaces as `warn`, and
 `evidence verify` reports `parsed_records: 0` — both are normal).

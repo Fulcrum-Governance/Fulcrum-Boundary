@@ -26,7 +26,7 @@ func TestBoundaryRedteamDefaultShowsGitHubDenyDecisionRecord(t *testing.T) {
 		"expected: DENY",
 		"actual: DENY",
 		"result: pass",
-		"decision record: rec_",
+		"decision record id: rec_",
 		"decision hash: sha256:",
 	} {
 		if !strings.Contains(output, want) {

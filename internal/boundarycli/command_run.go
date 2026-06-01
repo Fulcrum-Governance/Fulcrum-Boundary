@@ -62,9 +62,10 @@ func runCommandRun(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr)
 		}
 	}
-	fmt.Fprintf(stderr, "boundary: action=%s executed=%t class=%s record=%s\n", result.Decision.Action, result.Executed, result.Classification.ClassLabel(), result.RecordPath)
+	fmt.Fprintf(stderr, "boundary: action=%s executed=%t class=%s\n", result.Decision.Action, result.Executed, result.Classification.ClassLabel())
 	if !result.Executed && result.Decision.Reason != "" {
 		fmt.Fprintf(stderr, "boundary: reason=%s\n", result.Decision.Reason)
 	}
+	printRecordPath(stderr, result.RecordPath)
 	return result.ExitCode
 }

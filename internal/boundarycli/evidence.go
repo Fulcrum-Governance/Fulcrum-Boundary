@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
 
 	"github.com/fulcrum-governance/fulcrum-boundary/internal/evidence"
@@ -104,6 +105,11 @@ func runEvidenceBundle(args []string, stdout, stderr io.Writer) int {
 	fmt.Fprintf(stdout, "output: %s\n", result.Manifest.Output)
 	fmt.Fprintf(stdout, "manifest: %s\n", result.ManifestPath)
 	fmt.Fprintf(stdout, "artifacts: %d\n", len(result.Manifest.Artifacts))
+	for _, artifact := range result.Manifest.Artifacts {
+		if artifact.Kind == "decision_record" {
+			printRecordPath(stdout, filepath.Join(result.Manifest.Output, filepath.FromSlash(artifact.Path)))
+		}
+	}
 	fmt.Fprintln(stdout, "credentials: none")
 	fmt.Fprintln(stdout, "network: none")
 	fmt.Fprintln(stdout, "live mutation: none")
