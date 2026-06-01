@@ -292,7 +292,7 @@ real first-run output:
 {
   "schema_version": "boundary.doctor.v1",
   "status": "pass",
-  "project_root": "/users/td/conceptdev/projects/fulcrum-boundary",
+  "project_root": "/path/to/fulcrum-boundary",
   "requires_credentials": false,
   "requires_network": false,
   "mutates_live_systems": false,
