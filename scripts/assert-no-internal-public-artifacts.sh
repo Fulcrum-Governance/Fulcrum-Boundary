@@ -19,6 +19,11 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "FAIL: public-surface guard must run inside a Git worktree" >&2
+  exit 1
+fi
+
 # This guard's own path, relative to ROOT, so it is excluded from its own match
 # (its detector strings are a known, intentional false positive).
 SELF_REL="scripts/assert-no-internal-public-artifacts.sh"
