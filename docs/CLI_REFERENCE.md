@@ -262,3 +262,34 @@ Optional cross-check flags bind a record to external inputs:
 no-flag pass does not bind the record to the request, policy bundle, or build
 that actually ran. See [docs/DECISION_RECORDS.md](./DECISION_RECORDS.md) and
 [docs/RECEIPTS.md](./RECEIPTS.md).
+
+## 10. Decision-Record Explanation Commands
+
+```bash
+boundary explain record.json
+boundary explain --json record.json
+boundary explain docs/examples/decision-record.example.json
+boundary explain --json docs/examples/decision-record-v2.example.json
+```
+
+`boundary explain` (Local-only) reads one decision-record JSON object and prints
+a human-readable account of it: the decision-defining fields (`action`,
+`reason`, `decision_mode`, `matched_rule`, `policy_file`), the route-context
+fields for a `schema_version "2"` record (`adapter_id`, `route_id`,
+`topology_profile`, `execution_claim`), each stable hash and exactly what it
+covers, and a fixed "what this does not prove" footer. It accepts both
+`schema_version "1"` and `"2"` records. `--json` emits a stable
+`boundary.explain.v1` object, mirroring `boundary doctor --json` and
+`boundary selftest --json`; the envelope carries `requires_credentials`,
+`requires_network`, and `mutates_live_systems`, all `false`.
+
+`explain` is read-only and renders only — it does **not** evaluate policy, call
+the network, mutate anything, or recompute any hash. Because it does not verify,
+it renders even a record whose `decision_hash` has been altered; use
+`boundary verify-record` (section 9) to recompute the hashes. `explain` does not
+prove the verdict was correct and does not prove enforcement: a `deny` record is
+not evidence the action was blocked, and direct access to the same tool is a
+bypass a record cannot see. `topology_profile` is asserted, not attested, and
+`execution_claim` is an adapter self-report, not corroborated. See
+[docs/DECISION_RECORDS.md](./DECISION_RECORDS.md) and
+[docs/RECEIPTS.md](./RECEIPTS.md).

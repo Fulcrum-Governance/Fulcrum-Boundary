@@ -45,6 +45,18 @@ boundary shell --help
 boundary demo command-secret-exfil
 ```
 
+Decision-record commands:
+
+```bash
+boundary verify-record record.json
+boundary explain record.json
+boundary explain --json docs/examples/decision-record-v2.example.json
+```
+
+`boundary explain` is local-only and read-only: it describes a decision record
+(schema_version 1 or 2) and does not verify its hashes. Run
+`boundary verify-record` to recompute them.
+
 Release verification commands:
 
 ```bash

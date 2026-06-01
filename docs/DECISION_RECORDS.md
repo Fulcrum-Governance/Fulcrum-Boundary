@@ -245,6 +245,22 @@ single record object, so split out one line before verifying (see
 printed `decision record path:` is local-only: it names a file Boundary wrote, it
 is not a network location and it does not prove the action was enforced.
 
+## Reading a record
+
+To read a stored record without verifying it, use `boundary explain
+<record.json>`. It prints a human-readable account of the decision-defining
+fields, the route-context fields for a `schema_version "2"` record, each stable
+hash and what it covers, and a fixed limitation footer; `--json` emits a stable
+`boundary.explain.v1` object. `explain` is read-only: it renders the record and
+does **not** recompute any hash, so it does not verify the record and does not
+prove the verdict was correct or that the action was enforced. Verification is a
+separate command — see below.
+
+```bash
+boundary explain docs/examples/decision-record.example.json
+boundary explain --json docs/examples/decision-record-v2.example.json
+```
+
 ## Verification
 
 To check a stored record against its request, policy bundle, and build digest —

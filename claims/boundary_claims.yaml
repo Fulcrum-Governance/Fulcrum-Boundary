@@ -619,6 +619,34 @@ claims:
     gaps: []
     depends_on: []
 
+  - id: BND-CLAIM-EXPLAIN-001
+    claim: "Boundary explain renders a decision record (schema_version 1 or 2), describing the decision-defining fields, route-context, and what each hash covers, without verifying the record"
+    status: delivered
+    evidence:
+      tests:
+        - path: internal/explain/explain_test.go
+          assertion: "explain describes V1 and V2 records, omits route-context for V1, surfaces a stored decision_hash verbatim without recomputing it, keeps the negation-framed does-not-prove footer, and rejects unsupported schema versions and missing action"
+        - path: tests/explain/explain_test.go
+          assertion: "boundary explain renders the committed V1 and V2 examples in text and a stable boundary.explain.v1 JSON envelope with credentials/network/live-mutation all false, renders a record whose decision_hash was altered without failing, and exits non-zero on a missing file or wrong arity"
+      docs:
+        - path: docs/CLI_REFERENCE.md
+          section: "Decision-Record Explanation Commands"
+        - path: docs/DECISION_RECORDS.md
+          section: "Reading a record"
+    public_language:
+      allowed:
+        - "Boundary explain reads a decision record and describes its fields, route-context, and what each hash covers."
+        - "explain is local-only and read-only; it renders a record and does not verify the record's hashes."
+        - "Run boundary verify-record to recompute a record's hashes; explain does not."
+      forbidden:
+        - "explain verifies the record"
+        - "explain proves the verdict was correct"
+        - "explain proves enforcement"
+        - "explain verifies hashes by itself"
+    gaps: []
+    depends_on:
+      - BND-CLAIM-REC-001
+
   - id: BND-CLAIM-CMD-001
     claim: "Boundary provides preview project-local command governance for commands routed through boundary command run, boundary shell, or project-local shims"
     status: delivered

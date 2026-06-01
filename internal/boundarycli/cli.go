@@ -76,6 +76,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runVerify(args[1:], stdout, stderr)
 	case "verify-record":
 		return runVerifyRecord(args[1:], stdout, stderr)
+	case "explain":
+		return runExplain(args[1:], stdout, stderr)
 	case "doctor":
 		return runDoctor(args[1:], stdout, stderr)
 	case "evidence":
@@ -126,6 +128,7 @@ Commands:
                   Run a fixture-only Secure GitHub denial demo
   verify          Validate YAML policy files
   verify-record   Verify a receipt-grade decision record
+  explain         Describe a decision record without verifying it
   doctor          Check local routed-surface diagnostics
   evidence        Bundle and verify local Boundary evidence artifacts
   audit           Pretty-print structured decision records
