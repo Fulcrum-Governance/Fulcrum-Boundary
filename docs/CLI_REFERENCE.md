@@ -100,6 +100,7 @@ boundary demo github-lethal-trifecta
 boundary demo github-lethal-trifecta --markdown --out demo.md
 boundary demo command-secret-exfil
 boundary demo command-secret-exfil --json
+boundary demo command-secret-exfil --out demo.txt
 boundary demo postgres --gateway http://localhost:8080/mcp
 boundary demo trust-degradation
 ```
@@ -109,6 +110,14 @@ fixture red-team pack: an untrusted task proposes posting a secret-looking
 environment file with `curl`, Boundary classifies it as Class C6 and denies it
 before execution (`executed=false`), and a decision record is emitted. It reads
 no real `.env`, makes no network call, and executes nothing.
+
+Both proof-lane demos print a uniform record-location pair —
+`decision record id: rec_...` and, when `--out` writes a file,
+`decision record path: <path>` — and land that file at a predictable
+`*-artifacts/decision-records.jsonl` location for `boundary verify-record`.
+`boundary demo command-secret-exfil --out demo.txt` writes
+`command-secret-exfil-artifacts/decision-records.jsonl`; without `--out` the
+record is printed to stdout only and no path line appears.
 
 The Action Boundary demo composes fixture-only MCP / Secure GitHub, Command
 Boundary, and Edit Boundary paths. It uses no credentials, no network, and no
@@ -213,17 +222,20 @@ recomputes its stable hashes, and confirms `schema_version` and the
 self-`decision_hash` match. With no flags it confirms only that the record is
 internally hash-consistent and unmodified since emission.
 
-The first-run demos and evidence steps can print a decision-record path. The
-fixture-safe way to produce a committable record is:
+The first-run demos and evidence steps print a uniform `decision record path:`
+line whenever they write a record file. Either proof lane produces a committable
+record under `--out`:
 
 ```bash
 boundary demo github-lethal-trifecta --json --out demo.json
 # writes github-lethal-trifecta-artifacts/decision-records.jsonl (one record per line)
+boundary demo command-secret-exfil --out demo.txt
+# writes command-secret-exfil-artifacts/decision-records.jsonl (one record)
 ```
 
 Split that JSONL into one object per file, then run bare `verify-record` on a
-single record. The default demo without `--out` does not retain a workspace, so
-the records are printed but not persisted.
+single record. A demo without `--out` prints its records to stdout but persists
+no file, so no `decision record path:` line appears.
 
 Optional cross-check flags bind a record to external inputs:
 

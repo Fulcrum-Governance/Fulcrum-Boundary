@@ -10,7 +10,7 @@ reason: lethal_trifecta_detected
 matched rule: deny-github-write-after-taint-fixture
 upstream_called=false
 read_upstream_called=true
-decision record: rec_<example>
+decision record id: rec_<example>
 decision hash: sha256:<example>
 inventory: configs=1 servers=1 github_servers=1 high_risk_servers=1
 risk paths: total=6 high_risk=5 repo_write=2

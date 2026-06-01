@@ -162,8 +162,8 @@ func RunGitHubLethalTrifecta(ctx context.Context, opts GitHubLethalTrifectaOptio
 	if err != nil {
 		return nil, err
 	}
-	recordsPath := filepath.Join(workspace.path, "decision-records.jsonl")
-	if err := writeDecisionRecords(recordsPath, []governance.DecisionRecordV1{
+	recordsPath := filepath.Join(workspace.path, DefaultDecisionRecordFilename)
+	if err := WriteDecisionRecordsJSONL(recordsPath, []governance.DecisionRecordV1{
 		redteamScenario.DecisionRecord,
 		secureProof.write.DecisionRecord,
 	}); err != nil {
@@ -290,8 +290,15 @@ func WriteGitHubLethalTrifectaText(w io.Writer, result *GitHubLethalTrifectaResu
 	fmt.Fprintf(w, "matched rule: %s\n", result.Scenario.MatchedRule)
 	fmt.Fprintf(w, "upstream_called=%t\n", result.Scenario.UpstreamCalled)
 	fmt.Fprintf(w, "read_upstream_called=%t\n", result.Scenario.ReadUpstreamCalled)
-	fmt.Fprintf(w, "decision record: %s\n", result.Scenario.DecisionRecordID)
+	fmt.Fprintf(w, "decision record id: %s\n", result.Scenario.DecisionRecordID)
 	fmt.Fprintf(w, "decision hash: %s\n", result.Scenario.DecisionHash)
+	// Only advertise the record path when the workspace is retained (--out or
+	// --dashboard). Without retention the workspace is a temp directory that is
+	// deleted on return, so printing its path would point at a file that no
+	// longer exists by the time the operator reads it.
+	if result.WorkspaceRetained && result.DecisionRecordPath != "" {
+		fmt.Fprintf(w, "decision record path: %s\n", result.DecisionRecordPath)
+	}
 	fmt.Fprintf(w, "inventory: configs=%d servers=%d github_servers=%d high_risk_servers=%d\n",
 		result.InventorySummary.ConfigFiles,
 		result.InventorySummary.Servers,
@@ -345,7 +352,7 @@ func WriteGitHubLethalTrifectaMarkdown(w io.Writer, result *GitHubLethalTrifecta
 	fmt.Fprintf(w, "- Reason: `%s`\n", result.Scenario.Reason)
 	fmt.Fprintf(w, "- Matched rule: `%s`\n", result.Scenario.MatchedRule)
 	fmt.Fprintf(w, "- Upstream called: `%t`\n", result.Scenario.UpstreamCalled)
-	fmt.Fprintf(w, "- Decision record: `%s`\n", result.Scenario.DecisionRecordID)
+	fmt.Fprintf(w, "- Decision record id: `%s`\n", result.Scenario.DecisionRecordID)
 	fmt.Fprintf(w, "- Decision hash: `%s`\n", result.Scenario.DecisionHash)
 	if result.DashboardPath != "" {
 		fmt.Fprintf(w, "- Local dashboard artifact: `%s`\n", result.DashboardPath)
@@ -365,7 +372,9 @@ func WriteGitHubLethalTrifectaMarkdown(w io.Writer, result *GitHubLethalTrifecta
 		result.RiskSummary.RepoWritePaths,
 	)
 	fmt.Fprintf(w, "- Starter policies: `%d` files, `%d` rules\n", result.PolicyFiles, result.PolicyRules)
-	fmt.Fprintf(w, "- Decision records: `%s`\n", result.DecisionRecordPath)
+	if result.WorkspaceRetained && result.DecisionRecordPath != "" {
+		fmt.Fprintf(w, "- Decision record path: `%s`\n", result.DecisionRecordPath)
+	}
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "## What This Proves")
 	fmt.Fprintln(w)
@@ -400,7 +409,10 @@ func prepareWorkspace(opts GitHubLethalTrifectaOptions) (workspacePlan, error) {
 	if err != nil {
 		return workspacePlan{}, err
 	}
-	dir := filepath.Join(filepath.Dir(report), "github-lethal-trifecta-artifacts")
+	dir, err := ArtifactDir(opts.OutPath, "github-lethal-trifecta")
+	if err != nil {
+		return workspacePlan{}, err
+	}
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return workspacePlan{}, fmt.Errorf("create demo artifact workspace: %w", err)
 	}
@@ -493,28 +505,6 @@ func runSecureGitHubFixture(ctx context.Context) (secureGitHubProof, error) {
 		return secureGitHubProof{}, fmt.Errorf("secure GitHub write fixture produced no governance decision")
 	}
 	return secureGitHubProof{read: read, write: write}, nil
-}
-
-func writeDecisionRecords(path string, records []governance.DecisionRecordV1) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-		return err
-	}
-	// #nosec G304 -- decision records are written to an internally constructed fixture workspace path.
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	encoder := json.NewEncoder(file)
-	for _, record := range records {
-		if record.RecordID == "" {
-			continue
-		}
-		if err := encoder.Encode(record); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func githubDemoChecks(result *GitHubLethalTrifectaResult) []GitHubDemoCheck {

@@ -86,7 +86,7 @@ func WriteText(w io.Writer, result *RunResult) error {
 			return err
 		}
 		record := scenario.DecisionRecord
-		if _, err := fmt.Fprintf(w, "decision record: %s\n", record.RecordID); err != nil {
+		if _, err := fmt.Fprintf(w, "decision record id: %s\n", record.RecordID); err != nil {
 			return err
 		}
 		if _, err := fmt.Fprintf(w, "decision hash: %s\n", record.DecisionHash); err != nil {

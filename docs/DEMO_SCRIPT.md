@@ -146,7 +146,7 @@ expected: DENY
 actual: DENY
 result: pass
 matched rule: deny-github-write-after-taint-fixture
-decision record: rec_<hash-prefix>
+decision record id: rec_<hash-prefix>
 decision hash: sha256:<hash>
 ```
 

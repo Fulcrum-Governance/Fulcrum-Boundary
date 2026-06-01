@@ -1,13 +1,17 @@
 package boundarycli
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"path/filepath"
 
+	"github.com/fulcrum-governance/fulcrum-boundary/governance"
+	boundarydemo "github.com/fulcrum-governance/fulcrum-boundary/internal/demo"
 	"github.com/fulcrum-governance/fulcrum-boundary/internal/redteam"
 )
 
@@ -22,17 +26,20 @@ const commandSecretExfilDemoScenario = "command-curl-env-exfil" // #nosec G101 -
 func runCommandSecretExfilDemo(args []string, stdout, stderr io.Writer) int {
 	fs := newHelpFlagSet("boundary demo command-secret-exfil", stderr, commandHelp{
 		Purpose: "Run a fixture-only Command Boundary denial demo for secret exfiltration.",
-		Usage:   "boundary demo command-secret-exfil [--json]",
+		Usage:   "boundary demo command-secret-exfil [--json] [--out PATH]",
 		Common: []string{
 			"boundary demo command-secret-exfil",
 			"boundary demo command-secret-exfil --json",
+			"boundary demo command-secret-exfil --out demo.txt",
 		},
 		Notes: []string{
 			"Fixture mode reads no real .env, makes no network call, and executes nothing.",
 			"The demo proves pre-execution denial for the routed command path, not control of unrouted shells (see the routed-only doctrine).",
+			"--out retains the decision record at <dir>/command-secret-exfil-artifacts/decision-records.jsonl for boundary verify-record.",
 		},
 	})
 	jsonOutput := fs.Bool("json", false, "emit machine-readable JSON")
+	outPath := fs.String("out", "", "write the demo report to a file and retain its decision record")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return 0
@@ -55,19 +62,55 @@ func runCommandSecretExfilDemo(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
+	var report bytes.Buffer
 	if *jsonOutput {
-		if err := writeCommandSecretExfilDemoJSON(stdout, scenario); err != nil {
+		if err := writeCommandSecretExfilDemoJSON(&report, scenario); err != nil {
 			fmt.Fprintf(stderr, "command-secret-exfil demo: %v\n", err)
 			return 1
 		}
 	} else {
-		writeCommandSecretExfilDemoText(stdout, scenario)
+		writeCommandSecretExfilDemoText(&report, scenario)
+	}
+
+	if *outPath == "" {
+		if _, err := io.Copy(stdout, &report); err != nil {
+			fmt.Fprintf(stderr, "command-secret-exfil demo: %v\n", err)
+			return 1
+		}
+	} else {
+		recordPath, err := writeCommandSecretExfilArtifacts(*outPath, report.Bytes(), scenario)
+		if err != nil {
+			fmt.Fprintf(stderr, "command-secret-exfil demo: %v\n", err)
+			return 1
+		}
+		fmt.Fprintf(stdout, "demo report: %s\n", *outPath)
+		printRecordID(stdout, scenario.DecisionRecord.RecordID)
+		printRecordPath(stdout, recordPath)
 	}
 
 	if !scenario.Passed {
 		return 1
 	}
 	return 0
+}
+
+// writeCommandSecretExfilArtifacts writes the demo report to outPath and lands
+// the scenario's decision record as JSONL in the demo's predictable artifact
+// directory, returning the record path. It mirrors the github-lethal-trifecta
+// demo's --out layout so both proof lanes expose the same find -> verify step.
+func writeCommandSecretExfilArtifacts(outPath string, report []byte, scenario redteam.ScenarioResult) (string, error) {
+	if err := writeDemoReportFile(outPath, report); err != nil {
+		return "", err
+	}
+	dir, err := boundarydemo.ArtifactDir(outPath, "command-secret-exfil")
+	if err != nil {
+		return "", err
+	}
+	recordPath := filepath.Join(dir, boundarydemo.DefaultDecisionRecordFilename)
+	if err := boundarydemo.WriteDecisionRecordsJSONL(recordPath, []governance.DecisionRecordV1{scenario.DecisionRecord}); err != nil {
+		return "", err
+	}
+	return recordPath, nil
 }
 
 func findScenarioResult(result *redteam.RunResult, scenarioID string) (redteam.ScenarioResult, bool) {
@@ -93,7 +136,7 @@ func writeCommandSecretExfilDemoText(w io.Writer, sr redteam.ScenarioResult) {
 	fmt.Fprintf(w, "expected: %s   actual: %s   result: %s\n", upperVerdict(sr.ExpectedAction), upperVerdict(sr.ActualAction), passLabel(sr.Passed))
 	fmt.Fprintf(w, "reason: %s   matched rule: %s\n", sr.Reason, sr.MatchedRule)
 	fmt.Fprintf(w, "executed: %t\n", sr.Executed)
-	fmt.Fprintf(w, "decision record: %s\n", sr.DecisionRecord.RecordID)
+	fmt.Fprintf(w, "decision record id: %s\n", sr.DecisionRecord.RecordID)
 	fmt.Fprintf(w, "decision hash: %s\n", sr.DecisionRecord.DecisionHash)
 	fmt.Fprintf(w, "decision mode: %s\n", sr.DecisionRecord.DecisionMode)
 	fmt.Fprintln(w)

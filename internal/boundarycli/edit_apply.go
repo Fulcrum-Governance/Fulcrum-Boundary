@@ -65,7 +65,7 @@ func runEditApply(args []string, stdout, stderr io.Writer) int {
 	fmt.Fprintf(stdout, "Action: %s\n", result.Decision.Action)
 	fmt.Fprintf(stdout, "Applied: %t\n", result.Applied)
 	fmt.Fprintf(stdout, "Dry run: %t\n", result.Record.DryRun)
-	fmt.Fprintf(stdout, "Record: %s\n", result.RecordPath)
+	printRecordPath(stdout, result.RecordPath)
 	if !result.Applied && result.Record.Reason != "" {
 		fmt.Fprintf(stdout, "Reason: %s\n", result.Record.Reason)
 	}

@@ -31,7 +31,7 @@ func TestGitHubLethalTrifectaDemoTextOutput(t *testing.T) {
 		"reason: lethal_trifecta_detected",
 		"upstream_called=false",
 		"read_upstream_called=true",
-		"decision record: rec_",
+		"decision record id: rec_",
 		"decision hash: sha256:",
 		"What this proves:",
 		"What this does not prove:",

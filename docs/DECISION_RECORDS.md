@@ -154,6 +154,35 @@ covered in [`docs/RECEIPTS.md`](RECEIPTS.md).
   the record corroborates them. Treat `upstream_called=false` as a self-attested
   adapter signal.
 
+## Locating a written record
+
+Every record-emitting command prints a uniform pair of lines so the record is
+easy to find and hand to `boundary verify-record`:
+
+- `decision record id: rec_...` — the record's `record_id`. Always an
+  identifier, never a path. Printed by the proof-lane demos, `boundary redteam`,
+  and the command/edit boundary surfaces.
+- `decision record path: <path>` — the on-disk location a record (or `.jsonl`
+  record log) was written to. Always a filesystem path, never an id. Printed only
+  when a file was actually written; an in-memory-only run prints no path line.
+
+The two proof-lane demos write their record file under `--out` at a predictable,
+per-demo `*-artifacts/decision-records.jsonl` location, so the
+"find -> verify" step is copy-paste:
+
+```bash
+boundary demo github-lethal-trifecta --json --out demo.json
+# -> decision record path: <dir>/github-lethal-trifecta-artifacts/decision-records.jsonl
+boundary demo command-secret-exfil --out demo.txt
+# -> decision record path: <dir>/command-secret-exfil-artifacts/decision-records.jsonl
+```
+
+A `.jsonl` file holds one record per line. `boundary verify-record` takes a
+single record object, so split out one line before verifying (see
+[`docs/examples/README.md`](examples/README.md) for the full walkthrough). The
+printed `decision record path:` is local-only: it names a file Boundary wrote, it
+is not a network location and it does not prove the action was enforced.
+
 ## Verification
 
 To check a stored record against its request, policy bundle, and build digest —

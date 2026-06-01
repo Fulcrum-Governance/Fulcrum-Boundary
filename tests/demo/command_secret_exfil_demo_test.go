@@ -32,7 +32,7 @@ func TestCommandSecretExfilDemoTextOutput(t *testing.T) {
 		"result: pass",
 		"matched rule: command-c6-deny",
 		"executed: false",
-		"decision record: rec_",
+		"decision record id: rec_",
 		"decision hash: sha256:",
 		"decision mode: deterministic",
 	} {
