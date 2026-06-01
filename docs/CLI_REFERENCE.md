@@ -293,3 +293,43 @@ bypass a record cannot see. `topology_profile` is asserted, not attested, and
 `execution_claim` is an adapter self-report, not corroborated. See
 [docs/DECISION_RECORDS.md](./DECISION_RECORDS.md) and
 [docs/RECEIPTS.md](./RECEIPTS.md).
+
+## 11. Decision-Record Replay Commands
+
+```bash
+boundary replay record.json --request request.json --policies ./policies/
+boundary replay --json record.json --request request.json --policies ./policies/
+boundary replay docs/examples/decision-record-replay.example.json \
+  --request docs/examples/replay-request.example.json \
+  --policies docs/examples/replay-policies/
+```
+
+`boundary replay` (Local-only) re-evaluates a recorded request and compares the
+reproduced decision against the record. A record carries `request_hash` but not
+the request body, so replay takes the record plus `--request` (the canonical
+`GovernanceRequest` JSON that was recorded) and `--policies` (the operator's
+policy directory). It (1) recomputes `request_hash` from the supplied request and
+confirms it matches the record, so it is replaying *the recorded request*; (2)
+when the record carries a `policy_bundle_hash`, recomputes it from `--policies`
+and confirms it matches, so it is replaying against *the recorded policy bundle*,
+not a stale or different one; (3) rebuilds the request and runs it through the
+same pipeline in a hermetic, in-process configuration with no audit side effects;
+and (4) compares the decision-defining fields — `action`, `reason`,
+`decision_mode`, `matched_rule`, and `policy_file` where present — **not `action`
+alone**, because a stale or different bundle can reach the same `action` through a
+different rule, reason, or decision mode.
+
+`replay` exits non-zero on any decision-field mismatch, on a `request_hash`
+mismatch, or on a `policy_bundle_hash` mismatch. `--json` emits a stable
+`boundary.replay.v1` object, mirroring `boundary doctor --json` and
+`boundary selftest --json`; the envelope carries `requires_credentials`,
+`requires_network`, and `mutates_live_systems`, all `false`.
+
+`replay` reproduces the *decision*, not enforcement. A reproduced `deny` is
+**not** evidence the action was blocked; replay does **not** prove that no
+upstream bytes moved; it reproduces the decision only for routed requests, and
+direct access to the same tool is a bypass a record cannot see; and a match does
+**not** prove the original verdict was correct — only that the same inputs
+reproduce the same decision. No upstream tool is called and nothing is mutated.
+See [docs/DECISION_RECORDS.md](./DECISION_RECORDS.md) and
+[docs/RECEIPTS.md](./RECEIPTS.md).

@@ -1,0 +1,1 @@
+{"request_id":"req-replay-example-0001","transport":"mcp","agent_id":"replay-example-agent","tenant_id":"replay-example-tenant","tool_name":"query","action":"tools/call","arguments":{"sql":"DROP TABLE users"},"envelope_id":"env-replay-example-0001","trace_id":"trace-replay-example","budget_key":""}

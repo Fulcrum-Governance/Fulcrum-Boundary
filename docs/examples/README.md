@@ -9,6 +9,7 @@ hand-authored sample.
 |---|---|---|
 | [`decision-record.example.json`](./decision-record.example.json) | One decision-record object (schema `"1"`, no route-context) — the input `boundary verify-record` consumes. | `boundary demo github-lethal-trifecta --json --out <dir>/demo.json`, first record of the emitted `decision-records.jsonl`. |
 | [`decision-record-v2.example.json`](./decision-record-v2.example.json) | One decision-record object (schema `"2"`) carrying the additive route-context fields `adapter_id`, `route_id`, `topology_profile`, and `execution_claim`. | `governance.BuildDecisionRecord` over the same fixture decision with route-context populated; the fields are descriptive, not attestation (see [`docs/DECISION_RECORDS.md`](../DECISION_RECORDS.md)). |
+| [`decision-record-replay.example.json`](./decision-record-replay.example.json) + [`replay-request.example.json`](./replay-request.example.json) + [`replay-policies/`](./replay-policies/) | A replayable triple: one decision record (schema `"2"`, a routed `DROP TABLE` deny), the canonical `GovernanceRequest` that was recorded, and the policy directory it was evaluated against. | A real pipeline evaluation with fixed identifiers, so `boundary replay` reproduces the recorded decision against the committed request and bundle (see "Replay the decision yourself"). |
 | [`evidence-manifest.example.json`](./evidence-manifest.example.json) | An **excerpt** of a real evidence-bundle `manifest.json` (schema `boundary.evidence_bundle.v1`). | `boundary evidence bundle --include-demo --out boundary-evidence`, then trimmed (see "About the manifest excerpt"). |
 
 The two files come from **two separate subsystems**. The decision record is a
@@ -69,6 +70,39 @@ record verification failed: decision_hash mismatch: got sha256:4b68b9d6... want 
 The verifier exits non-zero (`1`) and names the mismatched check. This is why
 the committed example must stay byte-for-byte as emitted: any edit to the record
 content would (correctly) fail verification.
+
+## Replay the decision yourself
+
+`verify-record` proves a record is internally consistent. `boundary replay`
+proves something different: that re-running *the recorded request* against *the
+recorded policy bundle* reproduces *the recorded decision*. The committed triple
+makes this a copy-paste step:
+
+```bash
+./bin/boundary replay docs/examples/decision-record-replay.example.json \
+  --request docs/examples/replay-request.example.json \
+  --policies docs/examples/replay-policies/
+```
+
+Real output (exit 0) ends with:
+
+```text
+result: MATCH — the recorded request reproduced the recorded decision
+```
+
+Replay recomputes `request_hash` from `replay-request.example.json` (so it is
+replaying the recorded request), recomputes `policy_bundle_hash` from
+`replay-policies/` (so it is replaying against the recorded bundle), rebuilds the
+request, runs it through the same pipeline, and compares the decision-defining
+fields — `action`, `reason`, `decision_mode`, `matched_rule`, and `policy_file` —
+**not `action` alone**. Change the policy bundle, or supply a different request,
+and replay exits non-zero and names the mismatched gate.
+
+Replay reproduces the *decision*, not enforcement: a reproduced `deny` is **not**
+evidence the action was blocked, replay does **not** prove that no upstream bytes
+moved, and a match does **not** prove the original verdict was correct — only
+that the same inputs reproduce the same decision. No upstream tool is called and
+nothing is mutated.
 
 ## Regenerate the record from the fixture-safe demos
 
