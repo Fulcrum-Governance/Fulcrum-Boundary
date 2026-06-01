@@ -47,6 +47,14 @@ boundary demo command-secret-exfil
 
 Decision-record commands:
 
+!!! note "Availability — on `main`, not in the v0.7.0 release"
+    `boundary explain`, `boundary replay`, and `schema_version "2"` (route-context)
+    decision records are available on `main` and from-source builds. They are not in
+    the `v0.7.0` release binary, so `go install …@v0.7.0` does not include them. Until
+    a release that includes them is tagged, build from source (`go run ./cmd/boundary …`
+    or `make build`) to use these three. `boundary verify-record` on a
+    `schema_version "1"` record is in `v0.7.0` and is unaffected.
+
 ```bash
 boundary verify-record record.json
 boundary explain record.json
