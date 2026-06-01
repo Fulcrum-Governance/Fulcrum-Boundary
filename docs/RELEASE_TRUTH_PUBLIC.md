@@ -72,8 +72,13 @@ the test suite, claims tests, policy verification, receipt verification help,
 version`, `boundary demo action-boundary`, `boundary doctor --json`,
 `boundary evidence bundle --include-demo`, and `boundary evidence verify`.
 
-Post-tag install and `@latest` verification are recorded in
-[`docs/internal/RELEASE_TRUTH_V061_POSTRELEASE.md`](./internal/RELEASE_TRUTH_V061_POSTRELEASE.md).
+The most recent recorded post-tag install and `@latest` verification is the
+historical `v0.6.1` record in
+[`docs/internal/RELEASE_TRUTH_V061_POSTRELEASE.md`](./internal/RELEASE_TRUTH_V061_POSTRELEASE.md);
+it documents the superseded `v0.6.1` tag, not `v0.7.0`. Post-tag install and
+`@latest` verification for `v0.7.0` have not been run yet and are not recorded
+here; once the `v0.7.0` tag post-release checks are run, they will be recorded
+in a future `docs/internal/RELEASE_TRUTH_V070_POSTRELEASE.md`.
 
 ## README First-Run Status
 
