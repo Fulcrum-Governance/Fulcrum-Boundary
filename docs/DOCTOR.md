@@ -3,15 +3,26 @@
 `boundary doctor` reports local routed-surface diagnostics for Boundary without
 credentials, network calls, or live mutation.
 
+> **Local-only caveat (read this first).** Doctor output is local diagnostics,
+> not proof that every deployment route is protected. It is the third step of the
+> first-run path ([README](../README.md),
+> [docs/CLI_REFERENCE.md](./CLI_REFERENCE.md) section 1), and it reports
+> readiness and bypass caveats only.
+
 It is a readiness and caveat command, not a deployment proof. A passing doctor
 run means the local Boundary command surface can describe the governed routes
-and their bypass boundaries. It does not prove production deployment protection.
+and their bypass boundaries.
+
+On a clean checkout each surface reports `warn`, not `fail`, because the optional
+`.boundary` firewall, command, and edit workspaces are absent until you create
+them. That is the expected first-run state.
 
 ## Commands
 
-Run all local surface diagnostics:
+Run all local surface diagnostics (the first-run path uses `--json`):
 
 ```bash
+boundary doctor --json
 boundary doctor
 ```
 
@@ -55,8 +66,11 @@ Every output states:
 
 Use this wording:
 
-> Boundary Doctor reports local routed-surface readiness and bypass caveats for
-> MCP, Command Boundary, and Edit Boundary.
+> Boundary doctor reports local surface diagnostics and routed-path caveats.
 
-Do not say doctor proves all routes are protected, proves live deployment
-enforcement, or validates production bypass resistance.
+> Doctor output is local diagnostics, not proof that every deployment route is
+> protected.
+
+Do not say that doctor proves all routes protected, that doctor proves
+production deployment safety, that doctor verifies remote runtime enforcement, or
+that doctor closes direct bypasses.

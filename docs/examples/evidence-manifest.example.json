@@ -1,0 +1,51 @@
+{
+  "_note": "EXCERPT of a real `boundary evidence bundle --include-demo` manifest.json. The `source`/`output` absolute paths were replaced with placeholders; the artifact list is trimmed to 4 of 8 artifacts. All sha256 and schema_version values below are the genuine emitted values. This bundle contains zero decision records (parsed_records: 0) by design; decision records come from the demo path, not the evidence bundle.",
+  "schema_version": "boundary.evidence_bundle.v1",
+  "created_at": "2026-06-01T04:36:40Z",
+  "source": "<your-checkout>/.boundary",
+  "output": "boundary-evidence",
+  "summary": "summary.md",
+  "include_demo": true,
+  "requires_credentials": false,
+  "requires_network": false,
+  "mutates_live_systems": false,
+  "fixture_safe_outputs": [
+    "version",
+    "selftest",
+    "doctor",
+    "action_boundary_demo"
+  ],
+  "artifacts": [
+    {
+      "path": "demo/action-boundary.json",
+      "kind": "action_boundary_demo",
+      "sha256": "sha256:0fd2a61ef527b2859ae9db979ace6bac177f33be87e627b3e8fa4ce878d1ab6c",
+      "size_bytes": 2249,
+      "schema_version": "boundary.demo.action_boundary.v1"
+    },
+    {
+      "path": "doctor.json",
+      "kind": "doctor",
+      "sha256": "sha256:5f117d842bce6ffd5067a53ef4bbb27734266bce7ddf63a4347fb5ae16a190a5",
+      "size_bytes": 3045,
+      "schema_version": "boundary.doctor.v1"
+    },
+    {
+      "path": "selftest.json",
+      "kind": "selftest",
+      "sha256": "sha256:24fe6660c5b0883c2dcc168f5f60381bda9b3521a18c9fd7d1a2d744d5f5a134",
+      "size_bytes": 3513,
+      "schema_version": "boundary.selftest.v1"
+    },
+    {
+      "path": "version.json",
+      "kind": "version",
+      "sha256": "sha256:e73f2ebb2f14c72a3c43b2bb5595f804f7080991a48ca0f05eff71eaa0afbf26",
+      "size_bytes": 291,
+      "schema_version": "boundary.version.v1"
+    }
+  ],
+  "warnings": [
+    "source directory not present; no existing .boundary artifacts copied"
+  ]
+}

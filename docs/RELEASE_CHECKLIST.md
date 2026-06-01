@@ -30,7 +30,7 @@ env -u GOROOT go test ./tests/adapter_conformance
 Run the standard Boundary gates before handoff:
 
 ```bash
-env -u GOROOT go test ./... -short
+env -u GOROOT go test ./... -count=1 -timeout 5m
 env -u GOROOT go vet ./...
 git ls-files '*.go' | xargs gofmt -l
 git diff --check
