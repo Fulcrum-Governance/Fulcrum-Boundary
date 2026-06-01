@@ -9,10 +9,21 @@ import (
 )
 
 // DefaultDecisionRecordFilename is the predictable basename every proof-lane
-// demo writes its decision record(s) to inside its artifact directory. Holding
-// the name fixed (rather than deriving it per-demo) is what makes the
-// "find -> verify" step copy-paste across demos.
+// demo writes its decision-record *log* to inside its artifact directory. The
+// log is a multi-record JSONL (one DecisionRecordV1 object per line) intended
+// for dashboards and append-style audit reading; it is NOT what the
+// `decision record path:` UX line points at. Holding the name fixed (rather
+// than deriving it per-demo) is what makes the "find -> read the log" step
+// copy-paste across demos.
 const DefaultDecisionRecordFilename = "decision-records.jsonl"
+
+// DefaultDecisionRecordObjectFilename is the predictable basename every
+// proof-lane demo writes its single headline decision record to inside its
+// artifact directory. Unlike DefaultDecisionRecordFilename, this file holds
+// exactly one DecisionRecordV1 JSON object (not JSONL), so it is the path
+// `boundary verify-record` consumes directly. It is the target of the uniform
+// `decision record path:` line: a single-record JSON object, never a log.
+const DefaultDecisionRecordObjectFilename = "decision-record.json"
 
 // ArtifactDir derives a demo's retained artifact directory from the operator's
 // --out report path, using a stable "<name>-artifacts" sibling of the report
@@ -59,4 +70,26 @@ func WriteDecisionRecordsJSONL(path string, records []governance.DecisionRecordV
 		}
 	}
 	return nil
+}
+
+// WriteDecisionRecordJSON writes exactly one DecisionRecordV1 as an indented
+// JSON object to path, truncating any existing file and creating the parent
+// directory. Unlike WriteDecisionRecordsJSONL it emits a single top-level
+// object (no JSONL framing), which is the exact shape `boundary verify-record`
+// consumes: the file the uniform `decision record path:` line points at. It is
+// the single-record companion to the multi-record JSONL log so a demo can land
+// both a verifiable headline record and a fuller log in the same artifact dir.
+func WriteDecisionRecordJSON(path string, record governance.DecisionRecordV1) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return err
+	}
+	// #nosec G304 -- the decision record is written to an internally constructed or operator-selected demo artifact path.
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(record)
 }

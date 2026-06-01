@@ -66,6 +66,9 @@ func runCommandRun(args []string, stdout, stderr io.Writer) int {
 	if !result.Executed && result.Decision.Reason != "" {
 		fmt.Fprintf(stderr, "boundary: reason=%s\n", result.Decision.Reason)
 	}
-	printRecordPath(stderr, result.RecordPath)
+	// The command boundary writes an append-mode multi-record JSONL log
+	// (boundary.command_decision.v1), not a single verify-record DecisionRecordV1
+	// object, so it is surfaced under the log label.
+	printRecordLog(stderr, result.RecordPath)
 	return result.ExitCode
 }

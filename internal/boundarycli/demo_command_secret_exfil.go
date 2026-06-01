@@ -35,7 +35,7 @@ func runCommandSecretExfilDemo(args []string, stdout, stderr io.Writer) int {
 		Notes: []string{
 			"Fixture mode reads no real .env, makes no network call, and executes nothing.",
 			"The demo proves pre-execution denial for the routed command path, not control of unrouted shells (see the routed-only doctrine).",
-			"--out retains the decision record at <dir>/command-secret-exfil-artifacts/decision-records.jsonl for boundary verify-record.",
+			"--out retains the decision record at <dir>/command-secret-exfil-artifacts/decision-record.json for boundary verify-record, plus a decision-records.jsonl log.",
 		},
 	})
 	jsonOutput := fs.Bool("json", false, "emit machine-readable JSON")
@@ -78,7 +78,7 @@ func runCommandSecretExfilDemo(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 	} else {
-		recordPath, err := writeCommandSecretExfilArtifacts(*outPath, report.Bytes(), scenario)
+		recordPath, logPath, err := writeCommandSecretExfilArtifacts(*outPath, report.Bytes(), scenario)
 		if err != nil {
 			fmt.Fprintf(stderr, "command-secret-exfil demo: %v\n", err)
 			return 1
@@ -86,6 +86,7 @@ func runCommandSecretExfilDemo(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "demo report: %s\n", *outPath)
 		printRecordID(stdout, scenario.DecisionRecord.RecordID)
 		printRecordPath(stdout, recordPath)
+		printRecordLog(stdout, logPath)
 	}
 
 	if !scenario.Passed {
@@ -95,22 +96,30 @@ func runCommandSecretExfilDemo(args []string, stdout, stderr io.Writer) int {
 }
 
 // writeCommandSecretExfilArtifacts writes the demo report to outPath and lands
-// the scenario's decision record as JSONL in the demo's predictable artifact
-// directory, returning the record path. It mirrors the github-lethal-trifecta
-// demo's --out layout so both proof lanes expose the same find -> verify step.
-func writeCommandSecretExfilArtifacts(outPath string, report []byte, scenario redteam.ScenarioResult) (string, error) {
+// the scenario's decision record in the demo's predictable artifact directory
+// in two shapes: a single-record JSON object (verify-record-consumable) and a
+// multi-record JSONL log. It returns the object path (the verify-record input
+// surfaced under `decision record path:`) and the log path (surfaced under
+// `decision record log:`). It mirrors the github-lethal-trifecta demo's --out
+// layout so both proof lanes expose the same find -> verify step against a
+// single-record JSON object.
+func writeCommandSecretExfilArtifacts(outPath string, report []byte, scenario redteam.ScenarioResult) (recordPath, logPath string, err error) {
 	if err := writeDemoReportFile(outPath, report); err != nil {
-		return "", err
+		return "", "", err
 	}
 	dir, err := boundarydemo.ArtifactDir(outPath, "command-secret-exfil")
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	recordPath := filepath.Join(dir, boundarydemo.DefaultDecisionRecordFilename)
-	if err := boundarydemo.WriteDecisionRecordsJSONL(recordPath, []governance.DecisionRecordV1{scenario.DecisionRecord}); err != nil {
-		return "", err
+	logPath = filepath.Join(dir, boundarydemo.DefaultDecisionRecordFilename)
+	if err := boundarydemo.WriteDecisionRecordsJSONL(logPath, []governance.DecisionRecordV1{scenario.DecisionRecord}); err != nil {
+		return "", "", err
 	}
-	return recordPath, nil
+	recordPath = filepath.Join(dir, boundarydemo.DefaultDecisionRecordObjectFilename)
+	if err := boundarydemo.WriteDecisionRecordJSON(recordPath, scenario.DecisionRecord); err != nil {
+		return "", "", err
+	}
+	return recordPath, logPath, nil
 }
 
 func findScenarioResult(result *redteam.RunResult, scenarioID string) (redteam.ScenarioResult, bool) {
