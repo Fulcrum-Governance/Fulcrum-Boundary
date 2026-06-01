@@ -1,6 +1,6 @@
 # Fulcrum Boundary Developer-Value Push Spec
 
-Last updated: 2026-06-01
+Last updated: 2026-05-31 (Rev 2 — execution-locked)
 
 This is an internal execution spec for the next Fulcrum Boundary push. Its job is
 to turn the current repository from "interesting but hard to evaluate" into a
@@ -14,6 +14,23 @@ The release must lead with the concrete action Boundary governs:
 Boundary is not a universal agent sandbox. It governs actions that route through
 Boundary. Direct paths outside the route remain outside the claim unless the
 operator's deployment topology blocks them.
+
+## Execution Decision (Locked 2026-05-31)
+
+This revision locks scope before execution:
+
+- **In scope for this push:** Subgoal 0 (First-Run Trust Loop) and Subgoal 1
+  (Evidence You Can Inspect), plus the Subgoal 3 route-conformance work delivered
+  as a documented checklist only. These directly remediate the four evaluation
+  criticisms, stay inside the current claims ledger, and require no new claim.
+- **Deferred to a separately gated next lane:** Subgoal 2 (`boundary test`
+  policy-as-code) and Subgoal 5 (Adapter SDK). Each is a new CLI surface and/or a
+  new claim, so each gets its own branch, claim review, tests, docs, and release
+  gate per `CONTRIBUTING.md` one-lane discipline. A scoped next-lane brief is
+  written at `docs/internal/BOUNDARY_TEST_POLICY_AS_CODE_LANE.md`.
+- **Publish posture:** land on the execution branch, pass every gate, and open a
+  PR to `main`. No tag is cut, no `@`-pin changes, and `main` is not updated
+  until human review and merge. Nothing outward-facing happens automatically.
 
 ## Why This Push Exists
 
@@ -198,8 +215,19 @@ Goal: a developer can inspect what Boundary decided and what the evidence proves
 
 Deliverables:
 
-- A versioned decision-record reference that documents field names, required
-  fields, optional fields, hash behavior, and caveats.
+- A versioned decision-record reference that documents the **two-tier record
+  model** so a skeptical developer is not misled by the word "hash-verifiable":
+  - the structured decision record (`BND-CLAIM-002`): what every governed verdict
+    emits, field by field;
+  - the receipt-grade record (`BND-CLAIM-005`): the request, policy-bundle, and
+    decision hashes that `boundary verify-record` recomputes, exactly what those
+    hashes cover, and the tamper-detection behavior (verification fails after any
+    field is altered).
+  The reference must state plainly what "hash-verifiable" does **not** prove: it
+  is not cryptographic proof of a runtime verdict, it does not prove the verdict
+  was enforced, and `upstream_called=false` is an adapter self-report, not
+  independent network proof. Document required fields, optional fields, and
+  caveats alongside the model.
 - A small set of committed example records from fixture-safe runs.
 - A record verification walkthrough using `boundary verify-record`.
 - Evidence bundle documentation that shows manifest shape, artifact list,
@@ -367,8 +395,13 @@ make docs-build
 git ls-files '*.go' | xargs gofmt -l
 go vet ./...
 go test ./claims/... -count=1
-go test ./... -short -count=1 -timeout 5m
+go test ./... -count=1 -timeout 5m
 ```
+
+> Note: this repository has **no `-short` mode** (zero `testing.Short()` guards).
+> The canonical suite is `go test ./... -count=1 -timeout 5m` — the same
+> invocation `make release-check` runs. An earlier draft listed `-short`, which
+> is a no-op here; it is removed.
 
 Additional review gates:
 

@@ -6,6 +6,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+Docs and developer-experience hardening. No code changes, no new governed
+surface, and no preview surface upgraded to production.
+
+### Added
+
+- `docs/TROUBLESHOOTING.md`: a first-run troubleshooting guide covering the Go
+  1.25+ and C-toolchain (cgo) requirements, `PATH` issues after `go install`,
+  the failure modes of each first-run command, and how to read
+  `boundary doctor --json`. It documents that a clean checkout reports `doctor`
+  surfaces as `warn` and `evidence verify` as `parsed_records: 0` — both are
+  the expected first-run states, not errors.
+- `docs/ROUTE_CONFORMANCE_CHECKLIST.md`: a documented (not code) per-route
+  checklist for the ten governance lifecycle steps and the
+  experimental/preview/production maturity criteria, derived from the readiness
+  matrix, with a caveat table distinguishing a governed route from a globally
+  controlled system. It does not prove a deployment removed every bypass path.
+- `docs/examples/`: committed, fixture-safe example artifacts — a
+  `DecisionRecordV1` object and an evidence-bundle manifest excerpt — with a
+  walkthrough showing bare `boundary verify-record` self-verification and why
+  the optional cross-check flags do not match the fixture records.
+- `docs-site` reference stubs for Route Conformance and Troubleshooting,
+  registered in the published docs navigation and pointing at the canonical
+  in-repo files.
+
+### Changed
+
+- README, `docs/CLI_REFERENCE.md`, and `docs/TROUBLESHOOTING.md` now share one
+  canonical first-run command sequence (install, `selftest`, `doctor --json`,
+  the two proof-lane demos, `evidence bundle`/`verify`, `verify-record`).
+- Tightened the decision-record, receipt, evidence-bundle, and evidence-verify
+  docs to state plainly that `upstream_called=false` / `executed=false` are
+  adapter self-reports of their own control flow, are not fields of the hashed
+  record, and are not independently corroborated by it; Boundary does not emit
+  `proved` decisions.
+
 ## [0.7.0] - 2026-05-30
 
 First open-source launch release. Launch-prep hardening over the v0.6.x utility

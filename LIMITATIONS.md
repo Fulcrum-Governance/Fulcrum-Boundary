@@ -1,17 +1,49 @@
 # Limitations
 
-The MCP Safety Gateway preview proves pre-execution control for one concrete
-tool path: MCP-style Postgres calls routed through Fulcrum Boundary.
+Fulcrum Boundary governs an action only when the route is forced through
+Boundary. Direct shell, editor, filesystem, CI, SSH, or API paths outside
+Boundary are not governed unless deployment topology removes that direct path.
+Nearly every limitation below follows from this routed-only constraint.
 
-The included SQL policy is demo-grade destructive-action blocking. It is not a
-general SQL firewall. The first release only demonstrates substring rules such
-as `DROP TABLE`, `DELETE FROM`, `TRUNCATE`, and `ALTER TABLE`.
+This page is a summary. The authoritative, per-surface status lives in
+[`docs/RELEASE_TRUTH_PUBLIC.md`](docs/RELEASE_TRUTH_PUBLIC.md),
+[`docs/ADAPTER_READINESS_MATRIX.md`](docs/ADAPTER_READINESS_MATRIX.md), and the
+[`claims/`](claims/) ledger.
 
-Known limits:
+## Surface maturity
 
-- SQL comments, whitespace tricks, dialect-specific syntax, and semantic SQL
-  analysis are outside this preview unless explicitly covered by tests.
-- Direct tool calls are governed only when routed through Boundary.
-- Decision records are structured logs, not cryptographic receipts.
-- The Docker bypass proof is topology-specific: the demo agent is isolated from
-  the backend network, while the gateway can reach Postgres.
+- MCP is the first and only production route, and only for MCP requests forced
+  through Boundary.
+- Command Boundary and Edit Boundary are delivered previews for routed command
+  paths and routed edit envelopes. They do not control direct shell access or
+  direct file writes.
+- Secure GitHub is a preview profile, not production. It denies the tested
+  write-after-taint fixture before upstream mutation; the fixture proof and the
+  opt-in live conformance harness do not close deployment bypasses.
+- The remaining adapters (A2A, CLI, CodeExec, gRPC, Managed Agents, Webhook)
+  ship as labeled previews.
+
+## Decision records
+
+Decision records are receipt-grade when they carry the request, policy-bundle,
+and decision hashes: tampering after emission is detectable by recomputation
+with `boundary verify-record`. These hashes are unkeyed SHA-256 over canonical
+bytes — integrity, not authenticity. They are not cryptographic proof that a
+verdict was correct or that it was enforced; signatures are off by default; and
+`upstream_called=false` / `executed=false` are adapter self-reports, not fields
+of the hashed record. See [`docs/RECEIPTS.md`](docs/RECEIPTS.md) and
+[`docs/DECISION_RECORDS.md`](docs/DECISION_RECORDS.md).
+
+## SQL classification
+
+The bundled Postgres support is an AST classifier that labels statements before
+policy evaluation. It is not a general SQL firewall and does not prevent all SQL
+injection; dialect-specific syntax and semantic analysis are outside it unless a
+test explicitly covers them.
+
+## Evidence and diagnostics
+
+`boundary doctor`, `boundary evidence bundle`, and `boundary evidence verify`
+are local-only utilities. A passing doctor or a verified evidence bundle does
+not prove that every deployment route is protected or that no bytes moved
+outside Boundary.

@@ -13,9 +13,24 @@ Your agent is about to touch a real system. Boundary decides before the tool exe
 [![Go Report Card](https://goreportcard.com/badge/github.com/fulcrum-governance/fulcrum-boundary)](https://goreportcard.com/report/github.com/fulcrum-governance/fulcrum-boundary)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 
-[Quickstart](#try-it-in-one-minute) | [Demo](./docs/DEMO_GITHUB_LETHAL_TRIFECTA.md) | [Docs](https://fulcrum-governance.github.io/Fulcrum-Boundary/) | [Claims](./docs/CLAIMS_LEDGER.md) | [Release Truth](./docs/RELEASE_TRUTH_PUBLIC.md) | [Security](./SECURITY.md)
+[Quickstart](#first-run-in-one-minute) | [Demo](./docs/DEMO_GITHUB_LETHAL_TRIFECTA.md) | [Docs](https://fulcrum-governance.github.io/Fulcrum-Boundary/) | [Claims](./docs/CLAIMS_LEDGER.md) | [Release Truth](./docs/RELEASE_TRUTH_PUBLIC.md) | [Security](./SECURITY.md)
 
-## Try It In One Minute
+## What Boundary Stops
+
+A coding agent reads an untrusted GitHub issue, then proposes a write to a
+private repository — a write-after-taint action.
+
+- **Action:** the write to the private repository, the system the agent is about to touch.
+- **Route:** the request travels the **MCP route**, the first production route forced through Boundary.
+- **Verdict:** Boundary returns `DENY` **before upstream**, with `reason=lethal_trifecta_detected`.
+- **Record:** Boundary emits a structured decision record of that verdict (`rec_...`), checkable with `boundary verify-record`.
+
+Boundary governs an action only when the route is forced through Boundary.
+Direct access to the same tool is a bypass unless deployment topology removes
+that path. The same shape holds for Command Boundary, a delivered preview, which
+denies a routed secret-exfiltration command before execution.
+
+## First-Run In One Minute
 
 Requires Go 1.25+ and a C toolchain (a C compiler such as gcc/clang on `PATH`).
 The default build links the Postgres SQL classifier (`pganalyze/pg_query_go`)
@@ -24,11 +39,22 @@ via cgo, so `CGO_ENABLED=0` builds fail; `go install` uses cgo by default.
 ```bash
 go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.7.0
 boundary selftest
-boundary demo github-lethal-trifecta    # Lane 1: MCP, the first production route
-boundary demo command-secret-exfil      # Lane 2: Command Boundary, a delivered preview
+boundary doctor --json
+boundary demo github-lethal-trifecta      # Lane 1: MCP, the first production route
+boundary demo command-secret-exfil        # Lane 2: Command Boundary, a delivered preview
+boundary evidence bundle --include-demo --out boundary-evidence
+boundary evidence verify boundary-evidence
+# when a demo or evidence artifact prints a decision-record path:
+boundary verify-record <record.json>
 ```
 
-No credentials. No live calls. No real mutations.
+No credentials. No live calls. No real mutations. Each demo prints a
+`decision record: rec_...` ID; to write a record file for `verify-record`, run
+`boundary demo github-lethal-trifecta --json --out demo.json`, which writes
+`github-lethal-trifecta-artifacts/decision-records.jsonl`. New here? See
+[docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) for the expected first-run
+states (a clean checkout shows `doctor` surfaces as `warn`, and
+`evidence verify` reports `parsed_records: 0` — both are normal).
 
 ## See Boundary Deny Before Upstream
 
@@ -46,6 +72,23 @@ The launch is a tight spine of **two fixture-only proof lanes** — not a breadt
 |---|---|---|---|---|
 | **MCP** — the first production route | Production | `boundary demo github-lethal-trifecta` | A write-after-taint GitHub action, denied **before upstream** | `actual=DENY`, `upstream_called=false`, `reason=lethal_trifecta_detected` |
 | **Command Boundary** — a delivered preview (routed-only) | Delivered preview | `boundary demo command-secret-exfil` | A routed `curl -d @.env …` secret exfiltration, denied **before execution** | `actual=DENY`, `executed=false`, `class=C6` |
+
+## The Record It Leaves
+
+Every governed verdict produces a structured decision record
+([docs/DECISION_RECORDS.md](./docs/DECISION_RECORDS.md)). Where configured, that
+record is receipt-grade — carrying request, policy bundle, and decision hashes —
+so tampering after emission is detectable by recomputation with
+`boundary verify-record` ([docs/RECEIPTS.md](./docs/RECEIPTS.md)). Bundle and
+re-check the local fixture-safe evidence with `boundary evidence bundle` and
+`boundary evidence verify` ([docs/EVIDENCE_BUNDLE.md](./docs/EVIDENCE_BUNDLE.md)).
+To confirm a route is forced through Boundary before relying on a verdict, work
+through the [route conformance checklist](./docs/ROUTE_CONFORMANCE_CHECKLIST.md).
+
+The `upstream_called=false` and `executed=false` fields are adapter self-reports
+of their own control flow; they are **not** fields of the hashed record and are
+**not** independently corroborated by it. Boundary does not emit `proved`
+decisions itself.
 
 ## What It Proves
 
@@ -124,12 +167,17 @@ Adapter maturity is declared in `adapters/<adapter>/readiness.yaml` and summariz
 | Need | Start here |
 |---|---|
 | Install | [docs/INSTALL.md](./docs/INSTALL.md) |
+| First-run troubleshooting | [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) |
 | Demo | [docs/DEMO_GITHUB_LETHAL_TRIFECTA.md](./docs/DEMO_GITHUB_LETHAL_TRIFECTA.md) |
 | Full spec | [docs/BOUNDARY_SPEC.md](./docs/BOUNDARY_SPEC.md) |
 | Claims | [docs/CLAIMS_LEDGER.md](./docs/CLAIMS_LEDGER.md) |
 | Testing | [docs/TESTING.md](./docs/TESTING.md) |
 | Release truth | [docs/RELEASE_TRUTH_PUBLIC.md](./docs/RELEASE_TRUTH_PUBLIC.md) |
 | Adapter readiness | [docs/ADAPTER_READINESS_MATRIX.md](./docs/ADAPTER_READINESS_MATRIX.md) |
+| Route conformance | [docs/ROUTE_CONFORMANCE_CHECKLIST.md](./docs/ROUTE_CONFORMANCE_CHECKLIST.md) |
+| Decision records | [docs/DECISION_RECORDS.md](./docs/DECISION_RECORDS.md) |
+| Receipt-grade records | [docs/RECEIPTS.md](./docs/RECEIPTS.md) |
+| Evidence bundle | [docs/EVIDENCE_BUNDLE.md](./docs/EVIDENCE_BUNDLE.md) |
 | MCP Firewall | [docs/firewall/DISCOVERY_INVENTORY.md](./docs/firewall/DISCOVERY_INVENTORY.md) |
 | Secure GitHub | [docs/secure-mcp/GITHUB.md](./docs/secure-mcp/GITHUB.md) |
 | Command Boundary | [docs/command-boundary/README.md](./docs/command-boundary/README.md) |
