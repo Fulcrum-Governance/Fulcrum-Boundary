@@ -9,9 +9,11 @@ adapter maturity matrix in `docs/ADAPTER_READINESS_MATRIX.md`.
 
 ## Short Copy
 
-Fulcrum Boundary is the action boundary for MCP-native agents. See what your AI
+Fulcrum Boundary is the action boundary for routed agent tools. See what your AI
 tools can do, block what they should not, and record every verdict before
-privileged execution.
+privileged execution. MCP is the first production route; the Command Boundary
+lane brings the same pre-execution decision to routed command paths as a
+delivered preview.
 
 ## Medium Copy
 

@@ -9,7 +9,7 @@ they match repo evidence. Do not use them to upgrade a claim beyond
 Definition: The enforced decision point between agent intent and privileged
 execution.
 
-Allowed use: "Boundary is the action boundary for MCP-native agents."
+Allowed use: "Boundary is the action boundary for routed agent tools."
 
 Forbidden use: "Boundary is an AI governance dashboard."
 

@@ -83,13 +83,19 @@ The router is a deployment pattern. The boundary is the product.
 ## Preferred Public Frame
 
 ```text
-Fulcrum Boundary is the action boundary for MCP-native agents. It discovers
-dangerous MCP tool paths, generates policies, red-teams risky flows, and blocks
-unsafe actions before privileged tools execute.
+Fulcrum Boundary is the action boundary for routed agent tools. It decides
+whether a proposed action is allowed before the underlying tool executes, and
+records the verdict. MCP is the first production route: on the MCP lane Boundary
+discovers tool paths, generates starter policies, red-teams fixture flows, and
+denies tested write-after-taint actions before privileged tools execute. The
+Command Boundary lane brings the same pre-execution decision to routed command
+paths as a delivered preview.
 ```
 
 Use this only as each listed capability becomes supported by repo evidence. If a
 capability is still planned or partial, caveat it with the current claim status.
+MCP-lane wording ("MCP-native", "your MCP tools") is correct only inside copy
+scoped to the MCP route, not as the general product identity.
 
 ## What Proof Means Here
 

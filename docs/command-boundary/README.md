@@ -16,9 +16,10 @@ commands without routing through Boundary.
 
 ## Why This Exists
 
-Boundary v0.3.0 is an MCP-native release. It governs routed MCP tool calls,
-records decisions, and demonstrates fixture write-after-taint denial through the
-GitHub lethal-trifecta demo.
+Boundary is the action boundary for routed agent tools, and MCP is its first
+production route. On the MCP lane it governs routed MCP tool calls, records
+decisions, and demonstrates fixture write-after-taint denial through the GitHub
+lethal-trifecta demo.
 
 Coding agents also act through ordinary command paths: `git`, `gh`, package
 managers, cloud CLIs, Docker, filesystem tools, and database clients. Command
