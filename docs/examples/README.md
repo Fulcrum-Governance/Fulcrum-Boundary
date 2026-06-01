@@ -7,7 +7,8 @@ hand-authored sample.
 
 | File | What it is | How it was produced |
 |---|---|---|
-| [`decision-record.example.json`](./decision-record.example.json) | One `DecisionRecordV1` object (schema `"1"`) — the input `boundary verify-record` consumes. | `boundary demo github-lethal-trifecta --json --out <dir>/demo.json`, first record of the emitted `decision-records.jsonl`. |
+| [`decision-record.example.json`](./decision-record.example.json) | One decision-record object (schema `"1"`, no route-context) — the input `boundary verify-record` consumes. | `boundary demo github-lethal-trifecta --json --out <dir>/demo.json`, first record of the emitted `decision-records.jsonl`. |
+| [`decision-record-v2.example.json`](./decision-record-v2.example.json) | One decision-record object (schema `"2"`) carrying the additive route-context fields `adapter_id`, `route_id`, `topology_profile`, and `execution_claim`. | `governance.BuildDecisionRecord` over the same fixture decision with route-context populated; the fields are descriptive, not attestation (see [`docs/DECISION_RECORDS.md`](../DECISION_RECORDS.md)). |
 | [`evidence-manifest.example.json`](./evidence-manifest.example.json) | An **excerpt** of a real evidence-bundle `manifest.json` (schema `boundary.evidence_bundle.v1`). | `boundary evidence bundle --include-demo --out boundary-evidence`, then trimmed (see "About the manifest excerpt"). |
 
 The two files come from **two separate subsystems**. The decision record is a
@@ -35,11 +36,25 @@ record_id: rec_4b68b9d63c69
 ```
 
 That is a genuine PASS against the committed file. `verify-record` checks two
-things intrinsic to the record with no extra inputs: `schema_version == "1"`,
-and that the recomputed `decision_hash` equals the stored one. Because both are
-derived from the record's own content, the record is verifiable on its own — no
-`request.json`, no policy directory, and no build digest are required for this
-to pass.
+things intrinsic to the record with no extra inputs: that `schema_version` is a
+supported version (`"1"` or `"2"`), and that the recomputed `decision_hash`
+equals the stored one. Because both are derived from the record's own content,
+the record is verifiable on its own — no `request.json`, no policy directory, and
+no build digest are required for this to pass.
+
+The `schema_version "2"` example verifies the same way and additionally carries
+route-context fields:
+
+```bash
+./bin/boundary verify-record docs/examples/decision-record-v2.example.json
+```
+
+The route-context fields (`adapter_id`, `route_id`, `topology_profile`,
+`execution_claim`) are covered by `decision_hash`, so editing any of them — for
+example changing `topology_profile` — fails verification exactly like editing
+`action`. Recording route-context extends tamper-detection to those fields; it
+does not attest that the deployment matches the asserted `topology_profile` and
+does not corroborate the `execution_claim` self-report.
 
 ### It actually catches tampering
 

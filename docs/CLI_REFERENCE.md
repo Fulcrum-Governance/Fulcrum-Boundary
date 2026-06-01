@@ -217,10 +217,15 @@ boundary verify-record record.json
 boundary verify-record --binary-digest fixture-only record.json
 ```
 
-`boundary verify-record` (Local-only) reads one `DecisionRecordV1` JSON object,
+`boundary verify-record` (Local-only) reads one decision-record JSON object,
 recomputes its stable hashes, and confirms `schema_version` and the
-self-`decision_hash` match. With no flags it confirms only that the record is
-internally hash-consistent and unmodified since emission.
+self-`decision_hash` match. It accepts both `schema_version "1"` (no
+route-context) and `schema_version "2"` (additive route-context: `adapter_id`,
+`route_id`, `topology_profile`, `execution_claim`); the route-context fields are
+covered by `decision_hash`, so altering one fails verification, but they are not
+attestation — see [`docs/DECISION_RECORDS.md`](DECISION_RECORDS.md). With no
+flags it confirms only that the record is internally hash-consistent and
+unmodified since emission.
 
 The first-run demos and evidence steps print a uniform `decision record path:`
 line whenever they write a record file. Either proof lane produces a committable
