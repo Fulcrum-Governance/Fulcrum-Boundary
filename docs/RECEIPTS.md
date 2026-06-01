@@ -53,7 +53,9 @@ boundary verify-record \
 The command reads the record and runs these checks **in order**, stopping at the
 first mismatch:
 
-1. `schema_version` must equal `"1"`.
+1. `schema_version` must be `"1"` (no route-context) or `"2"` (additive
+   route-context). Any other value is rejected. The remaining checks are the
+   same for either version.
 2. `request_hash` — only when `--request` is set: recompute the canonical
    request hash from the supplied file and compare it to `request_hash`.
 3. `policy_bundle_hash` — only when `--policies` is set: recompute the policy
@@ -80,6 +82,16 @@ only `schema_version` and `decision_hash` self-consistency — that the record h
 not been altered since emission. It does not, by itself, bind the record to the
 request, the policy bundle, or the build that actually ran; supplying the three
 flags is what adds those bindings.
+
+For a `schema_version "2"` record, the route-context fields (`adapter_id`,
+`route_id`, `topology_profile`, `execution_claim`) are content covered by
+`decision_hash`, so altering any of them is caught by check 5 exactly like any
+other content field. Tamper-detection extends to route-context; it does **not**
+mean the asserted `topology_profile` is verified against the deployment or that
+the `execution_claim` self-report is independently corroborated — see
+[`docs/DECISION_RECORDS.md`](DECISION_RECORDS.md#route-context-fields-schema_version-2).
+A committed V2 example is at
+[`docs/examples/decision-record-v2.example.json`](examples/decision-record-v2.example.json).
 
 ## Tamper detection
 
@@ -137,12 +149,13 @@ described. The content-layer limits are in
   routes forced through Boundary; direct access to the same tool is a bypass the
   record cannot see. The record is a decision artifact, not an execution-control
   proof.
-- **`upstream_called=false` is an adapter self-report, not part of the record.**
-  `DecisionRecordV1` has no `upstream_called` field. Flags such as
-  `upstream_called` and `executed` live on adapter and demo result structures and
-  are set by the adapter from its own control flow. They are a component
-  reporting on itself, not an independently observed network fact; nothing in the
-  hashed record corroborates them. Treat `upstream_called=false` as a
+- **`upstream_called=false` is an adapter self-report.** A `schema_version "1"`
+  record has no execution self-report at all; a `schema_version "2"` record may
+  carry one in `execution_claim` (`upstream_called`, `executed`). Either way the
+  flag is set by the adapter from its own control flow — a component reporting on
+  itself, not an independently observed network fact. The `decision_hash` covers
+  `execution_claim` for tamper-detection, but nothing in the record corroborates
+  the self-report. Treat `execution_claim.upstream_called=false` as a
   self-attested adapter signal, not a verifiable property of the record.
 - **Verification with no flags is weak.** Without `--request`, `--policies`, and
   `--binary-digest`, `boundary verify-record` confirms only `schema_version` and

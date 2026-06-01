@@ -35,6 +35,22 @@ type AuditEvent struct {
 	// DecisionMode mirrors GovernanceDecision.DecisionMode so audit sinks
 	// can filter or aggregate by epistemic confidence level.
 	DecisionMode DecisionMode `json:"decision_mode,omitempty"`
+
+	// Route-context (schema_version "2" decision-record fields). These are
+	// descriptive context the adapter already knows; they are copied verbatim
+	// into the decision record. They are not attestation — see ExecutionClaim
+	// and DecisionRecordV1's route-context field docs for the honesty caveats.
+
+	// AdapterID names the adapter that parsed and routed the request.
+	AdapterID string `json:"adapter_id,omitempty"`
+	// RouteID names the specific governed route the request traveled.
+	RouteID string `json:"route_id,omitempty"`
+	// TopologyProfile is the named deployment posture asserted at emission
+	// (asserted, not attested).
+	TopologyProfile string `json:"topology_profile,omitempty"`
+	// ExecutionClaim is the adapter's structured execution self-report
+	// (self-report, not corroborated).
+	ExecutionClaim *ExecutionClaim `json:"execution_claim,omitempty"`
 }
 
 // AuditPublisher publishes governance audit events.

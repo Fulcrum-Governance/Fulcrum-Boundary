@@ -43,6 +43,17 @@ func BuildDecisionRecord(event AuditEvent) DecisionRecordV1 {
 		TrustState:          event.TrustState,
 		Signature:           event.Signature,
 		SignatureKeyID:      event.SignatureKeyID,
+		AdapterID:           event.AdapterID,
+		RouteID:             event.RouteID,
+		TopologyProfile:     event.TopologyProfile,
+		ExecutionClaim:      event.ExecutionClaim,
+	}
+	// Emit "2" only when route-context is populated; otherwise keep "1" so the
+	// record stays byte-compatible with existing V1 tooling and its
+	// decision_hash is identical to a pre-V2 record. The version is fixed
+	// BEFORE hashing so it is covered by decision_hash.
+	if record.HasRouteContext() {
+		record.SchemaVersion = DecisionRecordSchemaV2
 	}
 	record.DecisionHash = ComputeDecisionHash(record)
 	record.RecordID = recordID(record.DecisionHash)
@@ -116,9 +127,18 @@ func PolicyBundleHashFromDir(dir string) (string, error) {
 	return "sha256:" + hex.EncodeToString(sum[:]), nil
 }
 
+// SupportedDecisionRecordSchemaVersion reports whether v is a decision-record
+// schema version this build can verify. Both "1" (no route-context) and "2"
+// (additive route-context) are accepted; decision_hash is recomputed over the
+// same superset struct for either, so a V1 record still verifies under a V2
+// build and a V2 record verifies with its route-context fields covered.
+func SupportedDecisionRecordSchemaVersion(v string) bool {
+	return v == DecisionRecordSchemaVersion || v == DecisionRecordSchemaV2
+}
+
 func VerifyDecisionRecord(record DecisionRecordV1, rawRequest []byte, policyDir, binaryDigest string) error {
-	if record.SchemaVersion != DecisionRecordSchemaVersion {
-		return fmt.Errorf("schema_version mismatch: got %q want %q", record.SchemaVersion, DecisionRecordSchemaVersion)
+	if !SupportedDecisionRecordSchemaVersion(record.SchemaVersion) {
+		return fmt.Errorf("schema_version unsupported: got %q want one of %q, %q", record.SchemaVersion, DecisionRecordSchemaVersion, DecisionRecordSchemaV2)
 	}
 	if rawRequest != nil {
 		requestHash, err := ComputeRawRequestHash(rawRequest)

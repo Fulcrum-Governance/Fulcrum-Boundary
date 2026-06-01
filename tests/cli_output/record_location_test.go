@@ -66,8 +66,12 @@ func assertVerifiableRecordFile(t *testing.T, path, wantID string) {
 		if rec.RecordID == "" || !strings.HasPrefix(rec.DecisionHash, "sha256:") {
 			t.Fatalf("record lacks id/hash: %#v", rec)
 		}
-		if rec.SchemaVersion != "1" {
-			t.Fatalf("record schema_version = %q, want \"1\"", rec.SchemaVersion)
+		// Accept any supported decision-record schema version. The proof-lane
+		// demos route through the pipeline/adapters, which populate additive
+		// route-context, so their records are schema_version "2"; a record with
+		// no route-context stays "1". Both remain verifiable.
+		if !governance.SupportedDecisionRecordSchemaVersion(rec.SchemaVersion) {
+			t.Fatalf("record schema_version = %q, want a supported version (\"1\" or \"2\")", rec.SchemaVersion)
 		}
 		if rec.RecordID == wantID {
 			foundID = true

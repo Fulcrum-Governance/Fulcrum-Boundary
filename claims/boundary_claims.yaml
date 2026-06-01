@@ -591,6 +591,34 @@ claims:
     gaps: []
     depends_on: []
 
+  - id: BND-CLAIM-REC-001
+    claim: "Boundary records additive route-context (adapter_id, route_id, topology_profile, execution_claim) in schema_version 2 decision records covered by decision_hash, while V1 records stay valid"
+    status: delivered
+    evidence:
+      tests:
+        - path: governance/receipt_v2_test.go
+          assertion: "V1 records stay schema_version 1 and byte-compatible; populating route-context promotes to schema_version 2; route-context fields are covered by decision_hash so tampering fails; the pipeline emits adapter_id, route_id, and topology_profile while execution_claim stays absent pre-execution"
+        - path: tests/decision_record_v2_test.go
+          assertion: "boundary verify-record accepts both schema_version 1 and 2 records and fails when a route-context field is altered; the committed V2 example carries every route-context field and verifies"
+      docs:
+        - path: docs/DECISION_RECORDS.md
+          section: "Route-context fields (schema_version 2)"
+        - path: docs/examples/decision-record-v2.example.json
+          section: "Committed V2 example"
+    public_language:
+      allowed:
+        - "Schema_version 2 decision records record route-context fields (adapter_id, route_id, topology_profile, execution_claim) that are covered by decision_hash, and schema_version 1 records remain valid."
+        - "Route-context recording extends tamper-detection to those fields; it does not add attestation or authenticity."
+      forbidden:
+        - "topology_profile is attested"
+        - "topology_profile proves the deployment matches"
+        - "execution_claim is corroborated"
+        - "execution_claim proves no upstream bytes moved"
+        - "route-context proves enforcement"
+        - "route-context attests the deployment topology"
+    gaps: []
+    depends_on: []
+
   - id: BND-CLAIM-CMD-001
     claim: "Boundary provides preview project-local command governance for commands routed through boundary command run, boundary shell, or project-local shims"
     status: delivered

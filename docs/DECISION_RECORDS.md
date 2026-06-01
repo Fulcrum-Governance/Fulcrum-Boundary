@@ -30,11 +30,24 @@ in both tiers — there is no separate "receipt" type.
 
 ## Schema version
 
-Records declare `schema_version` and the current value is `"1"`
-(`DecisionRecordSchemaVersion` in `governance/receipt_schema.go`).
-`boundary verify-record` rejects any other value. When the record shape changes
-in a breaking way, the schema version is incremented and this reference is
-updated in the same change.
+Records declare `schema_version`. Two values exist, and both are supported:
+
+- `"1"` — the original record shape, with no route-context fields
+  (`DecisionRecordSchemaVersion` in `governance/receipt_schema.go`).
+- `"2"` — a strictly additive evolution that appends the route-context fields
+  (`adapter_id`, `route_id`, `topology_profile`, `execution_claim`)
+  documented under [Route-context fields](#route-context-fields-schema_version-2)
+  below (`DecisionRecordSchemaV2`).
+
+V2 is a strict superset of V1: a V1 record is simply a V2 record without the
+route-context fields. A record is emitted as `"2"` only when at least one
+route-context field is populated; otherwise it is emitted as `"1"` and is
+byte-for-byte identical to a pre-V2 record, so existing V1 records and their
+`decision_hash` values remain valid unchanged. `boundary verify-record` accepts
+`schema_version` of `"1"` or `"2"` and rejects any other value; the `decision_hash`
+is recomputed over the same record fields for either version. When the record
+shape changes in a way that is not strictly additive, the schema version is
+incremented again and this reference is updated in the same change.
 
 ## Example
 
@@ -77,7 +90,7 @@ Field names and Go types are taken from `DecisionRecordV1`
 
 | JSON field | Type | Required / Optional | Meaning |
 | --- | --- | --- | --- |
-| `schema_version` | string | Required | Record schema version. Constant `"1"` in this release. |
+| `schema_version` | string | Required | Record schema version: `"1"` (no route-context) or `"2"` (route-context present). |
 | `event_type` | string | Optional | `governance_decision` for a governed verdict (default); `trust_transition` for a trust-state change; `parse_rejected` for an input rejected before a governed request was built. |
 | `record_id` | string | Required | Derived identifier: `rec_` plus the first 12 hex characters of `decision_hash`. It is derived from the record, not an independent input. |
 | `timestamp` | string (RFC 3339) | Required | UTC time the record was emitted. |
@@ -101,6 +114,10 @@ Field names and Go types are taken from `DecisionRecordV1`
 | `trust_state` | string | Optional | Trust state string, e.g. `trusted`. |
 | `signature` | string | Optional | Operator-attached signature. Empty by default; Boundary's default path does not sign records. See [`docs/RECEIPTS.md`](RECEIPTS.md). |
 | `signature_key_id` | string | Optional | Key ID for an operator-attached signature, when one is present. |
+| `adapter_id` | string | Optional | **(schema_version 2)** Name of the adapter that parsed and routed the request. Descriptive only. |
+| `route_id` | string | Optional | **(schema_version 2)** The specific governed route the request traveled (transport plus tool). Descriptive only. |
+| `topology_profile` | string | Optional | **(schema_version 2)** The named deployment posture asserted at emission. Asserted, not attested — the field does not verify that the running deployment matches the named posture. |
+| `execution_claim` | object | Optional | **(schema_version 2)** The adapter's structured execution self-report (`upstream_called`, `executed`, and a `source` label). Self-report, not corroborated — recording it does not make it independently verified. |
 
 ### Field provenance
 
@@ -111,6 +128,45 @@ fields — `policy_bundle_hash` and `boundary_build_digest` — come from pipeli
 configuration; `request_hash` is computed per request. This is why a record can
 carry a `policy_bundle_hash` that reflects the policy bundle the pipeline was
 configured with rather than a per-request value.
+
+### Route-context fields (schema_version 2)
+
+A `schema_version "2"` record adds four route-context fields that describe the
+governed route the request traveled. They are structured forms of context the
+adapter already knows. They are **descriptive context, not attestation**: they
+are covered by `decision_hash` (so altering one is detectable by
+`boundary verify-record`), but recording them does not make the deployment
+posture verified or the adapter self-report independently corroborated.
+
+| Field | What it records | What it does not do |
+| --- | --- | --- |
+| `adapter_id` | The adapter that parsed and routed the request. | It describes the adapter; it does not prove the adapter was the only path to the tool. |
+| `route_id` | The specific governed route (transport plus tool). | It names the routed path; it does not prove no unrouted path to the same tool exists. |
+| `topology_profile` | The named deployment posture asserted at emission. | **Asserted, not attested.** The field does not verify that the running deployment matches the named posture; a record can assert a posture the deployment does not actually have. |
+| `execution_claim` | The adapter's structured execution self-report — `upstream_called`, `executed`, and a `source` label. | **Self-report, not corroborated.** Recording it explicitly does not make it independently verified; nothing in the hashed record corroborates it. It is the same self-attested adapter signal as a loose `upstream_called` flag, now carried in the record. |
+
+A pipeline emits `execution_claim` as absent for the records it writes itself,
+because the pipeline decides **before** execution — a pre-execution record makes
+no execution self-report. Adapters or demos that proxy an upstream call attach
+`execution_claim` from their own control flow, and it remains a self-report.
+
+A committed, inspectable V2 example with every route-context field populated
+lives at
+[`docs/examples/decision-record-v2.example.json`](examples/decision-record-v2.example.json)
+and verifies with `boundary verify-record docs/examples/decision-record-v2.example.json`.
+
+```json
+{
+  "schema_version": "2",
+  "action": "deny",
+  "reason": "write-after-taint",
+  "adapter_id": "securegithub",
+  "route_id": "mcp:github.create_or_update_file",
+  "topology_profile": "single-tenant-routed",
+  "execution_claim": { "upstream_called": false, "executed": false, "source": "securegithub" },
+  "decision_hash": "sha256:<canonical-record-hash>"
+}
+```
 
 ### Decision-mode note
 
@@ -146,13 +202,19 @@ covered in [`docs/RECEIPTS.md`](RECEIPTS.md).
   that are forced through Boundary; direct access to the same tool is a bypass
   that a record cannot see. The record is a decision artifact, not proof that the
   action was blocked at runtime.
-- **`upstream_called=false` is an adapter self-report, not part of the record.**
-  `DecisionRecordV1` has no `upstream_called` field. Flags such as
-  `upstream_called` and `executed` live on adapter and demo result structures and
-  are set by the adapter from its own control flow. They are a component
-  reporting on itself, not an independently observed network fact, and nothing in
-  the record corroborates them. Treat `upstream_called=false` as a self-attested
-  adapter signal.
+- **`upstream_called=false` is an adapter self-report.** Historically these
+  flags lived only on adapter and demo result structures. A `schema_version "2"`
+  record can now carry them inside the `execution_claim` field, but that does not
+  change what they are: a component reporting on itself, not an independently
+  observed network fact, with nothing in the record corroborating them. Treat
+  `execution_claim.upstream_called=false` as a self-attested adapter signal, the
+  same as the loose flag.
+- **Route-context is descriptive, not attestation.** `adapter_id`, `route_id`,
+  and `topology_profile` describe the route a request traveled and the posture
+  asserted at emission. They do not verify that the deployment matches the
+  asserted `topology_profile`, and they do not prove that no unrouted path to the
+  same tool exists. Recording route-context extends tamper-detection to those
+  fields; it does not add attestation or authenticity.
 
 ## Locating a written record
 

@@ -50,6 +50,13 @@ type PipelineConfig struct {
 	// BuildDigest identifies the Boundary binary or image that emitted the record.
 	BuildDigest string
 
+	// TopologyProfile is the named deployment posture asserted into every
+	// schema_version "2" decision record this pipeline emits. It is asserted,
+	// not attested: setting it does not verify that the running deployment
+	// matches the named posture. Empty leaves the field unset (records stay
+	// schema_version "1" unless other route-context is present).
+	TopologyProfile string
+
 	// RequireAgentID denies protected adapter requests that do not carry an
 	// agent identity. This is intended for production trust-aware deployments.
 	RequireAgentID bool
@@ -97,6 +104,7 @@ type Pipeline struct {
 	gatewayVersion   string
 	policyBundleHash string
 	buildDigest      string
+	topologyProfile  string
 	requireAgentID   bool
 	failClosed       map[TransportType]bool
 	dryRun           bool
@@ -132,6 +140,7 @@ func NewPipeline(cfg PipelineConfig, trust TrustChecker, evaluator PolicyEvaluat
 		gatewayVersion:   cfg.GatewayVersion,
 		policyBundleHash: cfg.PolicyBundleHash,
 		buildDigest:      cfg.BuildDigest,
+		topologyProfile:  cfg.TopologyProfile,
 		requireAgentID:   cfg.RequireAgentID,
 		failClosed:       fc,
 		dryRun:           cfg.DryRun,
@@ -351,6 +360,20 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 	return decision, nil
 }
 
+// routeID derives the governed route identifier recorded in schema_version "2"
+// decision records. It is descriptive only: it names the transport+tool path
+// the request traveled, not an attestation that the route is the only path to
+// the tool. Returns "" when the transport is unset so the record stays V1.
+func routeID(req *GovernanceRequest) string {
+	if req == nil || req.Transport == "" {
+		return ""
+	}
+	if req.ToolName == "" {
+		return string(req.Transport)
+	}
+	return string(req.Transport) + ":" + req.ToolName
+}
+
 func (p *Pipeline) emitAudit(ctx context.Context, req *GovernanceRequest, decision *GovernanceDecision) {
 	p.auditor.Publish(ctx, AuditEvent{
 		RequestID:           req.RequestID,
@@ -372,6 +395,15 @@ func (p *Pipeline) emitAudit(ctx context.Context, req *GovernanceRequest, decisi
 		PolicyFile:          decision.PolicyFile,
 		GatewayVersion:      decision.GatewayVersion,
 		TraceID:             req.TraceID,
+		// Route-context (schema_version "2"): descriptive only. adapter_id and
+		// route_id name the path the request traveled; topology_profile is the
+		// asserted (not attested) deployment posture. execution_claim stays nil
+		// here — the pipeline decides BEFORE execution, so a pre-execution
+		// record makes no execution self-report; adapters that proxy upstream
+		// attach it themselves.
+		AdapterID:       string(req.Transport),
+		RouteID:         routeID(req),
+		TopologyProfile: p.topologyProfile,
 	})
 }
 
@@ -415,6 +447,9 @@ func (p *Pipeline) emitTrustTransition(ctx context.Context, req *GovernanceReque
 		PolicyFile:          decision.PolicyFile,
 		GatewayVersion:      decision.GatewayVersion,
 		TraceID:             req.TraceID,
+		AdapterID:           string(req.Transport),
+		RouteID:             routeID(req),
+		TopologyProfile:     p.topologyProfile,
 		Metadata: map[string]interface{}{
 			"trust_before": update.Before.State.String(),
 			"trust_after":  update.After.State.String(),

@@ -66,5 +66,12 @@ func (p *SlogAuditPublisher) Publish(ctx context.Context, event AuditEvent) {
 		slog.Float64("trust_score", event.TrustScore),
 		slog.String("envelope_id", event.EnvelopeID),
 		slog.Time("timestamp", event.Timestamp),
+		// Route-context (schema_version "2"). Emitted for slog/record parity;
+		// empty for V1 records. Descriptive only — see ExecutionClaim docs for
+		// the asserted-not-attested / self-report-not-corroborated caveats.
+		slog.String("adapter_id", record.AdapterID),
+		slog.String("route_id", record.RouteID),
+		slog.String("topology_profile", record.TopologyProfile),
+		slog.Bool("execution_claim_present", record.ExecutionClaim != nil),
 	)
 }
