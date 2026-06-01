@@ -1,5 +1,5 @@
 site_name: Fulcrum Boundary
-site_description: The action boundary for MCP-native agents.
+site_description: The action boundary for routed agent tools.
 repo_url: https://github.com/Fulcrum-Governance/Fulcrum-Boundary
 repo_name: Fulcrum-Governance/Fulcrum-Boundary
 docs_dir: docs-site
@@ -54,3 +54,4 @@ nav:
       - Troubleshooting: reference/troubleshooting.md
       - Release Utilities: reference/release-utilities.md
       - Claims: reference/claims.md
+      - Roadmap: reference/roadmap.md
