@@ -62,7 +62,7 @@ the committed example:
   "event_type": "governance_decision",
   "record_id": "rec_a1b2c3d4e5f6",
   "timestamp": "2026-05-31T18:24:07Z",
-  "boundary_version": "0.8.0",
+  "boundary_version": "0.9.0",
   "adapter": "mcp",
   "agent_id": "demo-agent",
   "tenant_id": "demo",
@@ -224,26 +224,31 @@ easy to find and hand to `boundary verify-record`:
 - `decision record id: rec_...` — the record's `record_id`. Always an
   identifier, never a path. Printed by the proof-lane demos, `boundary redteam`,
   and the command/edit boundary surfaces.
-- `decision record path: <path>` — the on-disk location a record (or `.jsonl`
-  record log) was written to. Always a filesystem path, never an id. Printed only
-  when a file was actually written; an in-memory-only run prints no path line.
+- `decision record path: <path>` — the on-disk location of a single-record JSON
+  object that `boundary verify-record` consumes directly. Always a filesystem
+  path, never an id. Printed only when a file was actually written; an
+  in-memory-only run prints no path line.
+- `decision record log: <path>` — the on-disk location of a multi-record JSONL
+  audit stream, when one is written. This is not a `verify-record` input.
 
-The two proof-lane demos write their record file under `--out` at a predictable,
-per-demo `*-artifacts/decision-records.jsonl` location, so the
+The two proof-lane demos write their single-record JSON file under `--out` at a
+predictable, per-demo `*-artifacts/decision-record.json` location, so the
 "find -> verify" step is copy-paste:
 
 ```bash
 boundary demo github-lethal-trifecta --json --out demo.json
-# -> decision record path: <dir>/github-lethal-trifecta-artifacts/decision-records.jsonl
+# -> decision record path: <dir>/github-lethal-trifecta-artifacts/decision-record.json
+# -> decision record log:  <dir>/github-lethal-trifecta-artifacts/decision-records.jsonl
 boundary demo command-secret-exfil --out demo.txt
-# -> decision record path: <dir>/command-secret-exfil-artifacts/decision-records.jsonl
+# -> decision record path: <dir>/command-secret-exfil-artifacts/decision-record.json
+# -> decision record log:  <dir>/command-secret-exfil-artifacts/decision-records.jsonl
 ```
 
-A `.jsonl` file holds one record per line. `boundary verify-record` takes a
-single record object, so split out one line before verifying (see
-[`docs/examples/README.md`](examples/README.md) for the full walkthrough). The
-printed `decision record path:` is local-only: it names a file Boundary wrote, it
-is not a network location and it does not prove the action was enforced.
+`boundary verify-record` takes the single-record JSON object named by
+`decision record path:`. The `.jsonl` stream named by `decision record log:` is
+for audit/log review. The printed paths are local-only: they name files Boundary
+wrote, they are not network locations, and they do not prove the action was
+enforced.
 
 ## Reading a record
 

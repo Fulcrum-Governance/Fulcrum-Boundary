@@ -5,9 +5,8 @@ policy bundles. It is a local-only assertion runner: it does not require
 credentials, does not call upstream tools, does not use the network, and does
 not mutate live systems.
 
-Availability note: `boundary test` is a post-`v0.8.0` command on `main` after
-the Phase 1 policy-testing lane merges. The `@v0.8.0` install does not include
-it; the next tagged release can promote the install command once the tag exists.
+Availability note: `boundary test` is included in the `v0.9.0` release. The
+`@v0.9.0` install includes it; the historical `@v0.8.0` install does not.
 
 ```bash
 boundary test --path tests/fixtures/policy-test/cases

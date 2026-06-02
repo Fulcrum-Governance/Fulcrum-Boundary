@@ -5,25 +5,23 @@ Canonical repository reference:
 
 A developer-facing roadmap organized around one question: how far can you trust
 the decision record a verdict leaves behind? It separates what is in the
-`v0.8.0` release, what is implemented on `main` after `v0.8.0`, and what remains
-planned.
+`v0.9.0` release, what remains planned, and which caveats still apply.
 
-The **shipped baseline** in the current `v0.8.0` release is the `DecisionRecordV1`
+The **shipped baseline** in the current `v0.9.0` release is the `DecisionRecordV1`
 structured decision record (`schema_version "1"`), `boundary verify-record`
 receipt-grade verification, `boundary doctor`, `boundary evidence bundle` /
 `verify`, and the two proof-lane demos.
 
-**In the `v0.8.0` release:** Phase 0A (Trust the Record / Evidence UX) adds
-route-context record fields (`DecisionRecordV2`, `schema_version "2"`), a
-read-side `boundary explain`, and a local `boundary replay`. These are released
-in `v0.8.0` and exercised by tests, and the `@v0.8.0` install includes them.
-`boundary replay` reproduces the *decision*, not the absence of upstream side
-effects.
+**Shipped in `v0.8.0` and included in `v0.9.0`:** Phase 0A (Trust the Record /
+Evidence UX) adds route-context record fields (`DecisionRecordV2`,
+`schema_version "2"`), a read-side `boundary explain`, and a local
+`boundary replay`. The `@v0.9.0` install includes them. `boundary replay`
+reproduces the *decision*, not the absence of upstream side effects.
 
-**Post-`v0.8.0` on `main`:** Phase 1 adds `boundary test`, a local,
+**In the `v0.9.0` release:** Phase 1 adds `boundary test`, a local,
 fixture-only policy-as-code test runner over local YAML policy bundles and
-request fixtures. It is not in the `@v0.8.0` install path; use a source build
-from `main` or the next tagged release once it exists.
+request fixtures. The `@v0.9.0` install includes it; the historical `@v0.8.0`
+install does not.
 
 The **planned** Phase 0B work is forward-looking and is not a delivered
 capability: deeper `doctor` environment diagnostics, redacted report output, and

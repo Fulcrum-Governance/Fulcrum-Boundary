@@ -30,7 +30,7 @@ What the fixture does not prove:
 Use a local build or installed `boundary` binary.
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.8.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0
 boundary --help
 ```
 

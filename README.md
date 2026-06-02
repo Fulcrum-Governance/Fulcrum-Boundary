@@ -37,7 +37,7 @@ The default build links the Postgres SQL classifier (`pganalyze/pg_query_go`)
 via cgo, so `CGO_ENABLED=0` builds fail; `go install` uses cgo by default.
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.8.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0
 boundary selftest
 boundary doctor --json
 boundary demo github-lethal-trifecta      # Lane 1: MCP, the first production route
@@ -49,8 +49,9 @@ boundary verify-record <record.json>
 ```
 
 > The commands above, including the uniform record-location output described
-> below, plus `boundary explain` / `boundary replay` and `DecisionRecordV2`,
-> ship in `v0.8.0` (the install line). The `@v0.8.0` install includes them.
+> below, plus `boundary explain` / `boundary replay`, `DecisionRecordV2`, and
+> `boundary test`, ship in `v0.9.0` (the install line). The `@v0.9.0` install
+> includes them.
 
 No credentials. No live calls. No real mutations. Every record-emitting command
 prints uniform lines — `decision record id: rec_...` (the record's id) and, when
@@ -65,6 +66,23 @@ input. Both proof lanes write the verifiable file under `--out`:
 [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) for the expected first-run
 states (a clean checkout shows `doctor` surfaces as `warn`, and
 `evidence verify` reports `parsed_records: 0` — both are normal).
+
+## Test Policies Like Code
+
+`boundary test` runs local, fixture-only policy-as-code assertions against an
+operator's own policy bundles. It is built for CI: a case supplies a routed
+request fixture and an expected verdict, and Boundary exits non-zero on a
+mismatch, malformed case, unexpected policy-load error, or failed
+`parse_rejection` expectation.
+
+```bash
+boundary test --path tests/fixtures/policy-test/cases
+boundary test --path tests/fixtures/policy-test/cases --format json
+```
+
+It reports policy verdicts for routed request fixtures only. Passing tests do
+not prove production route enforcement or deployment bypass resistance. See
+[docs/POLICY_TESTING.md](./docs/POLICY_TESTING.md).
 
 ## Two Proof Lanes
 

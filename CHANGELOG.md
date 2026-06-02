@@ -4,6 +4,39 @@ All notable changes to **Fulcrum Boundary** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-06-02
+
+First release to include the Phase 1 policy-as-code testing lane. `v0.9.0`
+preserves the Phase 0A record-trust loop from `v0.8.0` and adds `boundary test`
+as the developer-facing CI lever: local policy fixtures, expected verdicts, and
+non-zero exits on drift. It adds no new governed action surface, no new
+transport adapter, and no production upgrade for preview surfaces.
+
+### Added
+
+- `boundary test`: a local, fixture-only policy-as-code runner over operator
+  YAML policy bundles. Cases assert `allow`, `deny`, `warn`,
+  `require_approval`, `escalate`, or expected `parse_rejection`; text and JSON
+  output both report credentials/network/live-mutation as false.
+  (Claim `BND-CLAIM-TEST-001`.)
+- `docs/POLICY_TESTING.md` and the docs-site policy-testing stub: canonical
+  operator guidance for committed policy-test corpora and CI usage.
+- Release-check coverage for the committed `tests/fixtures/policy-test/cases`
+  corpus, keeping the feature inside the standard release gate.
+- `docs/releases/v0.9.0.md`: public release notes for the record-trust plus
+  policy-testing release.
+
+### Changed
+
+- Public install and GitHub Action examples now target `@v0.9.0`.
+- `CITATION.cff` set to `0.9.0`.
+- Roadmap and CLI availability language now mark `boundary test` as included in
+  `v0.9.0` while preserving the caveat that it proves local policy verdicts for
+  routed fixtures only, not production route enforcement or bypass resistance.
+- Decision-record documentation now distinguishes the single-record
+  `decision record path:` artifact from the multi-record `decision record log:`
+  JSONL stream.
+
 ## [0.8.0] - 2026-06-01
 
 First release to include the Phase 0A "Trust the Record" lane: route-context
@@ -264,7 +297,8 @@ Initial public release of the project now known as Fulcrum Boundary.
 
 ---
 
-[Unreleased]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.6.0...v0.6.1
