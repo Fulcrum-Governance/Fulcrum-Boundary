@@ -1,0 +1,15 @@
+name: deny-write-after-taint
+policies: ../policies/deny-write-after-taint
+request:
+  transport: mcp
+  tool_name: github.create_or_update_file
+  action: tools/call
+  agent_id: policy-test-agent
+  tenant_id: policy-test-tenant
+  arguments:
+    untrusted_input: "true"
+    target_repo_visibility: private
+    file_path: src/handler.go
+expect:
+  action: deny
+  reason_contains: lethal_trifecta_detected

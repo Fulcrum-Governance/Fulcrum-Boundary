@@ -80,6 +80,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runExplain(args[1:], stdout, stderr)
 	case "replay":
 		return runReplay(args[1:], stdout, stderr)
+	case "test":
+		return runTest(args[1:], stdout, stderr)
 	case "doctor":
 		return runDoctor(args[1:], stdout, stderr)
 	case "evidence":
@@ -132,6 +134,7 @@ Commands:
   verify-record   Verify a receipt-grade decision record
   explain         Describe a decision record without verifying it
   replay          Re-evaluate a recorded request and compare the decision
+  test            Run local policy-as-code tests against policy bundles
   doctor          Check local routed-surface diagnostics
   evidence        Bundle and verify local Boundary evidence artifacts
   audit           Pretty-print structured decision records

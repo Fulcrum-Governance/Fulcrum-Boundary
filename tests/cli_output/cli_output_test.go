@@ -74,6 +74,11 @@ func TestHelpOutputUsesIntentionalLanguage(t *testing.T) {
 			args: []string{"secure", "github", "--help"},
 			want: []string{"preview profile", "routed GitHub tools", "no live mutation"},
 		},
+		{
+			name: "test",
+			args: []string{"test", "--help"},
+			want: []string{"Run local policy-as-code test cases", "no credentials, no network, no live mutation", "does not prove production route enforcement"},
+		},
 	}
 
 	for _, tc := range cases {

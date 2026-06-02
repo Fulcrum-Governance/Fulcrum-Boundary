@@ -1,0 +1,14 @@
+name: warn-large-result
+policies: ../policies/warn-large-result
+request:
+  transport: mcp
+  tool_name: search.query
+  action: tools/call
+  agent_id: policy-test-agent
+  tenant_id: policy-test-tenant
+  arguments:
+    result_size: large
+    query_host: example.invalid
+expect:
+  action: warn
+  reason_contains: large result set should be reviewed

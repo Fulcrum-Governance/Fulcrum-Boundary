@@ -1,0 +1,11 @@
+name: reject-malformed-policy
+policies: ../policies/malformed
+request:
+  transport: mcp
+  tool_name: github.create_or_update_file
+  action: tools/call
+  agent_id: policy-test-agent
+  tenant_id: policy-test-tenant
+expect:
+  action: parse_rejection
+  reason_contains: parse policy file

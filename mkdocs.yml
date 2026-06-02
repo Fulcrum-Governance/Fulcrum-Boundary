@@ -50,6 +50,7 @@ nav:
       - Demo: edit-boundary/demo.md
   - Reference:
       - CLI: reference/cli.md
+      - Policy Testing: reference/policy-testing.md
       - Route Conformance: reference/route-conformance.md
       - Troubleshooting: reference/troubleshooting.md
       - Release Utilities: reference/release-utilities.md

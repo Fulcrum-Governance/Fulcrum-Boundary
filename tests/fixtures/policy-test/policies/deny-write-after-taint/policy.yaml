@@ -1,0 +1,14 @@
+name: deny-write-after-taint
+version: "1"
+rules:
+  - name: deny-private-write-after-taint
+    tool: github.create_or_update_file
+    action: deny
+    reason: lethal_trifecta_detected
+    conditions:
+      - field: arguments.untrusted_input
+        value: "true"
+        type: equals
+      - field: arguments.target_repo_visibility
+        value: private
+        type: equals

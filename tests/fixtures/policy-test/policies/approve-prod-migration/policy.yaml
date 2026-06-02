@@ -1,0 +1,11 @@
+name: approve-prod-migration
+version: "1"
+rules:
+  - name: require-prod-migration-approval
+    tool: deploy.run_migration
+    action: require_approval
+    reason: production migration requires approval
+    match:
+      field: arguments.environment
+      value: production
+      type: equals

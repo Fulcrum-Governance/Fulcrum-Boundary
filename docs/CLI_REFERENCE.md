@@ -203,12 +203,44 @@ make docs-build
 make release-check
 go test ./claims/... -count=1
 go test ./... -count=1 -timeout 5m
+boundary test --path tests/fixtures/policy-test/cases
 boundary evidence bundle --include-demo --out /tmp/boundary-evidence
 boundary evidence verify /tmp/boundary-evidence
 ```
 
 These checks keep public language, claims, docs, examples, and release gates in
 sync before shipping a Boundary release branch.
+
+## 8A. Policy-as-Code Test Commands
+
+> **Availability:** `boundary test` is a post-`v0.8.0` command on `main` after
+> the Phase 1 policy-testing lane merges. The `@v0.8.0` install does not include
+> it; the next tagged release can promote the install command once that tag
+> exists.
+
+```bash
+boundary test --path tests/fixtures/policy-test/cases
+boundary test --path tests/fixtures/policy-test/cases --format json
+boundary test --path .boundary/tests
+```
+
+`boundary test` (Local-only) runs YAML policy-as-code cases through the existing
+Boundary governance pipeline. Each case names a local policy bundle, a
+`GovernanceRequest` fixture, and an expected verdict. The runner exits non-zero
+on any verdict mismatch, malformed case, unexpected policy-load error, or
+expected `parse_rejection` that does not reject. It supports `allow`, `deny`,
+`warn`, `require_approval`, `escalate`, and `parse_rejection`.
+
+The command is fixture-only: no credentials, no network calls, and no live
+mutation. JSON output emits a stable `boundary.test.v1` envelope with those
+local-safety flags, a summary, one result per case, and a fixed
+`does_not_prove` footer. See [docs/POLICY_TESTING.md](./POLICY_TESTING.md).
+
+`boundary test` reports policy verdicts for routed request fixtures only. It
+does **not** prove production route enforcement, does **not** prove a deployment
+removed every direct or unrouted path to the same tool, and does **not** prove
+the verdict was globally correct beyond the supplied fixture and local policy
+bundle.
 
 ## 9. Decision-Record Verification Commands
 

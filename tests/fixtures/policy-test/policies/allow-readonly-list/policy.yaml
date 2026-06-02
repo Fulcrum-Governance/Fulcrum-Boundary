@@ -1,0 +1,10 @@
+name: allow-readonly-list
+version: "1"
+rules:
+  - name: allow-readonly-list
+    tool: github.list_issues
+    action: allow
+    reason: readonly listing permitted
+    match:
+      field: arguments.repository
+      contains: example.invalid

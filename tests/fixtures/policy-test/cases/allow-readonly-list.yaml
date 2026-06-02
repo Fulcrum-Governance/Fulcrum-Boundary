@@ -1,0 +1,12 @@
+name: allow-readonly-list
+policies: ../policies/allow-readonly-list
+request:
+  transport: mcp
+  tool_name: github.list_issues
+  action: tools/call
+  agent_id: policy-test-agent
+  tenant_id: policy-test-tenant
+  arguments:
+    repository: example.invalid/fulcrum/boundary
+expect:
+  action: allow

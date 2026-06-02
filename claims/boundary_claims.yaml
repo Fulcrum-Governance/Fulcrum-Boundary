@@ -678,6 +678,27 @@ claims:
     depends_on:
       - BND-CLAIM-REC-001
 
+  - id: BND-CLAIM-TEST-001
+    claim: "Boundary runs operator-authored policy-as-code test cases against local policy bundles and reports the verdict for each case without live mutation"
+    status: delivered
+    evidence:
+      tests:
+        - path: tests/test_runner/boundary_test_runner_test.go
+          assertion: "boundary test reports allow/deny/warn/require_approval/escalate outcomes, rejects malformed policy bundles, and exits non-zero on any mismatch without live mutation"
+      docs:
+        - path: docs/POLICY_TESTING.md
+          section: "Policy-as-Code Tests"
+    public_language:
+      allowed:
+        - "Boundary runs operator-authored policy-as-code tests against local policy bundles and reports the verdict for each case."
+        - "boundary test is a local, fixture-only policy assertion runner; it does not call upstream tools, the network, or mutate live systems."
+      forbidden:
+        - "boundary test proves production route enforcement"
+        - "boundary test proves a deployment removed every direct tool path"
+        - "boundary test proves the verdict was correct, not only that the policy decided it"
+    gaps: []
+    depends_on: []
+
   - id: BND-CLAIM-CMD-001
     claim: "Boundary provides preview project-local command governance for commands routed through boundary command run, boundary shell, or project-local shims"
     status: delivered
