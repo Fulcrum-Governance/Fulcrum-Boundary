@@ -2,17 +2,15 @@
 
 Date: 2026-06-02
 
-Branch: `codex/release-v0.9.0-wrap`
+Branch: `main`
 
-Current release target: `v0.9.0` (candidate until the annotated tag and GitHub
-Release are created)
+Current release target: `v0.9.0`
 
 ## Summary
 
-This report reconciles the public Boundary release surface for the `v0.9.0`
-release candidate. `v0.8.0` remains the latest published tag until `v0.9.0` is
-tagged and published; after that, `v0.8.0` survives as the Phase 0A history tag
-and `v0.9.0` becomes the repeatable install target.
+This report reconciles the public Boundary release surface for the published
+`v0.9.0` release. `v0.9.0` is the current release tag and repeatable install
+target; `v0.8.0` survives as the Phase 0A history tag.
 
 `v0.9.0` wraps the Phase 0A "Trust the Record" record-UX lane from `v0.8.0`
 and adds the Phase 1 policy-as-code testing lane: `boundary test`, a local,
@@ -86,10 +84,9 @@ version`, `boundary demo action-boundary`, `boundary doctor --json`,
 `boundary evidence bundle --include-demo`, `boundary evidence verify`, and
 `boundary test --path tests/fixtures/policy-test/cases`.
 
-Post-tag install and `@latest` verification for `v0.9.0` are intentionally
-pending until the annotated tag and GitHub Release exist. Record that evidence
-in `docs/internal/RELEASE_TRUTH_V090_POSTRELEASE.md` after publishing. The
-prior `v0.8.0` post-tag evidence remains recorded in
+Post-tag install and `@latest` verification for `v0.9.0` are recorded in
+[`docs/internal/RELEASE_TRUTH_V090_POSTRELEASE.md`](./internal/RELEASE_TRUTH_V090_POSTRELEASE.md).
+The prior `v0.8.0` post-tag evidence remains recorded in
 [`docs/internal/RELEASE_TRUTH_V080_POSTRELEASE.md`](./internal/RELEASE_TRUTH_V080_POSTRELEASE.md).
 The prior `v0.6.1` record in
 [`docs/internal/RELEASE_TRUTH_V061_POSTRELEASE.md`](./internal/RELEASE_TRUTH_V061_POSTRELEASE.md)
@@ -307,6 +304,7 @@ or explicit limitation context.
 - `claims/boundary_claims.yaml`
 - `docs/ADAPTER_READINESS_MATRIX.md`
 - `docs/releases/v0.9.0.md`
+- `docs/internal/RELEASE_TRUTH_V090_POSTRELEASE.md`
 - `docs/BOUNDARY_ROADMAP.md`
 - `docs/DECISION_RECORDS.md`
 - `docs/RECEIPTS.md`
@@ -328,10 +326,12 @@ or explicit limitation context.
 
 ## Drift Fixed
 
-- Updated active public truth to the `v0.9.0` release candidate.
+- Updated active public truth to the published `v0.9.0` release.
+- Recorded the `v0.9.0` post-tag evidence: annotated tag, GitHub Release,
+  pinned `@v0.9.0` install, `@latest` install, and installed `boundary test`
+  availability.
 - Updated active install and GitHub Action examples to `@v0.9.0`; the prior
-  `@v0.8.0` pin is superseded once the `v0.9.0` tag exists and kept as Phase 0A
-  history.
+  `@v0.8.0` pin is now superseded and kept as Phase 0A history.
 - Recorded the Phase 0A record-UX additions (route-context `DecisionRecordV2`,
   `boundary explain`, `boundary replay`, record-location UX) as delivered claims
   with asserted-not-attested and self-report-not-corroborated caveats.
