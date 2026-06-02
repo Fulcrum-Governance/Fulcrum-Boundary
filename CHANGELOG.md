@@ -4,13 +4,39 @@ All notable changes to **Fulcrum Boundary** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.8.0] - 2026-06-01
 
-Docs and developer-experience hardening. No code changes, no new governed
-surface, and no preview surface upgraded to production.
+First release to include the Phase 0A "Trust the Record" lane: route-context
+decision records (`DecisionRecordV2`), `boundary explain`, `boundary replay`, and
+uniform record-location output. These add no new governed action surface and
+upgrade no preview surface to production. MCP remains the only production route;
+Command Boundary, Edit Boundary, and Secure GitHub remain preview.
 
 ### Added
 
+- `DecisionRecordV2` route-context: additive `schema_version "2"` records carrying
+  `adapter_id`, `route_id`, `topology_profile`, and `execution_claim`.
+  `schema_version "1"` records stay valid and byte-compatible; the route-context
+  fields are content covered by `decision_hash` (so tampering is detected).
+  `topology_profile` is asserted, not attested; `execution_claim` is an adapter
+  self-report and is not independently corroborated by the hashed record.
+  (`governance/receipt_schema.go`; claim `BND-CLAIM-REC-001`.)
+- `boundary explain <record>`: read-only rendering of a decision record
+  (`schema_version "1"` or `"2"`) — verdict, reason, decision mode, matched rule,
+  route context, and what each of the three hashes covers — with a stable
+  `--format json` (`boundary.explain.v1`). It renders only; it does not re-verify
+  hashes or prove the verdict was correct or enforced.
+  (Claim `BND-CLAIM-EXPLAIN-001`.)
+- `boundary replay <record> --request <file> --policies <dir>`: local,
+  fixture-safe re-evaluation that recomputes `request_hash` and
+  `policy_bundle_hash`, re-runs the recorded request through the same pipeline,
+  and compares the decision-defining fields (`action`, `reason`, `decision_mode`,
+  `matched_rule`, `policy_file`), failing closed on any mismatch. It reproduces
+  the decision, not enforcement and not the absence of upstream side effects; it
+  is routed-only. (Claim `BND-CLAIM-REPLAY-001`.)
+- `boundary verify-record` now accepts `schema_version` of `"1"` or `"2"` and
+  recomputes `decision_hash` per the record's own version (it previously rejected
+  anything other than `"1"`).
 - `docs/TROUBLESHOOTING.md`: a first-run troubleshooting guide covering the Go
   1.25+ and C-toolchain (cgo) requirements, `PATH` issues after `go install`,
   the failure modes of each first-run command, and how to read
@@ -40,6 +66,12 @@ surface, and no preview surface upgraded to production.
   adapter self-reports of their own control flow, are not fields of the hashed
   record, and are not independently corroborated by it; Boundary does not emit
   `proved` decisions.
+- Uniform record-location output across the record-emitting commands (`demo`,
+  `redteam`, `evidence`): a single stable record-path/`record_id` line and uniform
+  `--out` semantics, so the find → verify → explain → replay loop is copy-paste.
+  Wired into the `docs/examples/` walkthrough.
+- Public install and GitHub Action examples now target `@v0.8.0`.
+- `CITATION.cff` set to `0.8.0`.
 
 ## [0.7.0] - 2026-05-30
 
@@ -232,7 +264,8 @@ Initial public release of the project now known as Fulcrum Boundary.
 
 ---
 
-[Unreleased]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.5.0...v0.6.0

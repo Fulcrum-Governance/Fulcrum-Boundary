@@ -8,13 +8,11 @@ decision yourself" — without changing what Boundary actually governs.
 
 Two rules govern this page:
 
-- **Shipped means shipped on `main`.** The baseline below, plus all of Phase 0A,
-  is in the codebase on `main` and is exercised by tests and the two proof-lane
-  demos. "Shipped" here means present in the source on `main`, **not** that it is
-  in a tagged release: the latest tag is `v0.7.0`, which **predates** Phase 0A, so
-  the `@v0.7.0` install does not include the Phase 0A commands or fields. Phase 0A
-  items are marked **available on `main`; not in the `v0.7.0` release** wherever
-  they appear, so a reader on `@v0.7.0` is not misled.
+- **Shipped means in the `v0.8.0` release.** The baseline below, plus all of
+  Phase 0A, is released in `v0.8.0` and is exercised by tests and the two
+  proof-lane demos. The `@v0.8.0` install includes the Phase 0A commands and
+  record fields, so a reader on `@v0.8.0` has every capability marked shipped on
+  this page.
 - **Planned means planned.** Everything under Phase 0B and Phase 1 is
   forward-looking. None of it is in the codebase yet, and nothing in those phases
   should be read as a delivered capability or a dated commitment. If an item is
@@ -54,14 +52,11 @@ corroborated by it. Boundary does not emit `proved` decisions itself.
 
 ---
 
-## Phase 0A — Trust the Record / Evidence UX (shipped on `main`)
+## Phase 0A — Trust the Record / Evidence UX (shipped in `v0.8.0`)
 
-> **Available on `main`; not in the `v0.7.0` release.** Everything in this section
-> is in the codebase on `main`, exercised by tests, and reflected in the claims
-> ledger. It is **not** in the latest tag (`v0.7.0`), which predates Phase 0A, so
-> the `@v0.7.0` install does not include these commands or record fields; build
-> from source (`make build`) to use them until a release that includes them is
-> tagged. Command and field reference:
+> **In the `v0.8.0` release.** Everything in this section is released in `v0.8.0`,
+> exercised by tests, and reflected in the claims ledger. The `@v0.8.0` install
+> includes these commands and record fields. Command and field reference:
 > [`docs/CLI_REFERENCE.md`](CLI_REFERENCE.md) (§§10–11) and the route-context
 > section of [`docs/DECISION_RECORDS.md`](DECISION_RECORDS.md).
 
@@ -83,7 +78,7 @@ the decision was made, not only what it decided:
   `executed` today, recorded explicitly rather than as a free field).
 
 Because these fields change the record shape, they arrive as a later schema
-version (`DecisionRecordV2`). `DecisionRecordV2` is shipped on `main`: it is an
+version (`DecisionRecordV2`). `DecisionRecordV2` is released in `v0.8.0`: it is an
 additive superset over `DecisionRecordV1`, and both `schema_version "1"` and
 `schema_version "2"` records are emitted and verified. `DecisionRecordV1`
 (`schema_version "1"`) remains valid and unchanged.
@@ -93,9 +88,9 @@ additive superset over `DecisionRecordV1`, and both `schema_version "1"` and
 A read-side command that takes an existing decision record and renders a
 human-readable account of the verdict — the matched rule, the reason, the
 decision mode, and the route context above — so a record can be understood
-without reverse-engineering JSON by hand. `boundary explain` is a current command
-on `main` (reference: [`docs/CLI_REFERENCE.md`](CLI_REFERENCE.md) §10);
-**available on `main`; not in the `v0.7.0` release**.
+without reverse-engineering JSON by hand. `boundary explain` is a command in the
+`v0.8.0` release (reference: [`docs/CLI_REFERENCE.md`](CLI_REFERENCE.md) §10),
+included in the `@v0.8.0` install.
 
 ### `boundary replay <record>`
 
@@ -103,9 +98,9 @@ A command that re-runs the recorded request through the same evaluation path to
 reproduce the verdict locally, so a developer can confirm a record's decision is
 deterministic and recompute it on their own machine. Replay is a local,
 fixture-safe reproduction step. It reproduces the *decision*, not the absence of
-upstream side effects. `boundary replay` is a current command on `main`
-(reference: [`docs/CLI_REFERENCE.md`](CLI_REFERENCE.md) §11); **available on
-`main`; not in the `v0.7.0` release**.
+upstream side effects. `boundary replay` is a command in the `v0.8.0` release
+(reference: [`docs/CLI_REFERENCE.md`](CLI_REFERENCE.md) §11), included in the
+`@v0.8.0` install.
 
 ### Both proof-lane records are first-class
 
@@ -188,11 +183,10 @@ asserting a delivered capability until those exist. Until that work lands,
 This repository mechanically checks that public language matches shipped
 behavior. To keep that contract intact:
 
-- The Baseline and Phase 0A (Shipped on `main`) sections describe behavior that
-  is in the codebase. `explain`, `replay`, `DecisionRecordV2`, and the
-  route-context fields are shipped on `main` — available on `main` but **not** in
-  the `v0.7.0` release, which predates them. `boundary test` is forward-looking
-  and is not shipped.
+- The Baseline and Phase 0A (Shipped) sections describe behavior that is in the
+  codebase. `explain`, `replay`, `DecisionRecordV2`, and the route-context fields
+  are released in `v0.8.0`, and the `@v0.8.0` install includes them. `boundary
+  test` is forward-looking and is not shipped.
 - When any planned item lands, it ships behind the same release gates as the rest
   of the repository — tests, the claims and language gate, a strict docs build,
   and the full release check — and the claims ledger is updated in the same

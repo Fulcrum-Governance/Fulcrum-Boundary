@@ -38,7 +38,7 @@ deployment evidence exists.
 Installed binary:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.7.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.8.0
 boundary --help
 ```
 

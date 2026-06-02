@@ -1,26 +1,28 @@
-# Final Public Release Truth
+# Release Truth: v0.7.0 Open-Source Launch (archived)
 
-Date: 2026-06-01
+Superseded by `docs/RELEASE_TRUTH_PUBLIC.md` (now `v0.8.0`); retained as history.
 
-Branch: `release/v0.8.0`
+Date: 2026-05-30
 
-Current release target: `v0.8.0`
+Release packaging branch: `boundary-launch-prep`
+
+Release train: v0.7.0 open-source launch
 
 ## Summary
 
-This report reconciles the public Boundary release surface for the `v0.8.0`
-release. `v0.8.0` is the active tag; the prior `v0.7.0` launch tag is superseded
-as the install target and survives only as history (see
-`docs/internal/RELEASE_TRUTH_V070.md`, `docs/releases/v0.7.0.md`, and the
-changelog).
+This report reconciles the public Boundary release surface for the `v0.7.0`
+open-source launch release. `v0.7.0` was the active launch tag; the prior
+`v0.6.1` utility-train tag was superseded as the install target and survives only
+as history (see `docs/internal/RELEASE_TRUTH_V061.md` and the changelog).
 
-`v0.8.0` tags the Phase 0A "Trust the Record" record-UX lane already on `main`:
-route-context decision records (`DecisionRecordV2`, `schema_version "2"`),
-`boundary explain`, `boundary replay`, and uniform record-location output. It
-does not add a new governed action surface and does not upgrade any preview
-surface to production.
+The launch-prep pass that produced `v0.7.0` leads with the routed-agent-tools
+top-line, adds the Command Boundary `command-secret-exfil` demo lane as the
+user-facing second proof lane, fixes the CGO/Docker build, widens the
+public-surface guard to every tracked text file, tightens claim/version
+precision, and reorganizes the docs. It does not upgrade any preview surface to
+production.
 
-The final public truth is:
+The v0.7.0 public truth was:
 
 - MCP remains the production adapter path.
 - Secure GitHub remains preview.
@@ -49,22 +51,12 @@ The final public truth is:
 - Boundary governs routed tools. Tools that bypass Boundary are outside the
   governed route.
 - The public Go install path requires Go 1.25+.
-- Public install examples use the repeatable `@v0.8.0` release tag.
-- Public action examples use `@v0.8.0` for repeatable CI behavior.
+- Public install examples use the repeatable `@v0.7.0` release tag.
+- Public action examples use `@v0.7.0` for repeatable CI behavior.
 - The user-facing Command Boundary demo lane is `boundary demo
   command-secret-exfil` (the routed `curl -d @.env …` secret-exfil denial,
   `executed=false`); `boundary redteam --pack command-secret-exfil` remains the
   underlying fixture/evidence path.
-- `DecisionRecordV2` adds route-context (`adapter_id`, `route_id`,
-  `topology_profile`, `execution_claim`) in `schema_version "2"` records covered
-  by `decision_hash`; `topology_profile` is asserted, not attested, and
-  `execution_claim` is an adapter self-report not independently corroborated.
-  `schema_version "1"` records remain valid.
-- `boundary explain` renders a decision record read-only; it does not re-verify
-  hashes or prove the verdict was correct or enforced.
-- `boundary replay` reproduces the recorded decision for routed requests against
-  the recorded policy bundle; it does not prove enforcement or that no upstream
-  bytes moved.
 
 ## Test Commands
 
@@ -82,21 +74,19 @@ the test suite, claims tests, policy verification, receipt verification help,
 version`, `boundary demo action-boundary`, `boundary doctor --json`,
 `boundary evidence bundle --include-demo`, and `boundary evidence verify`.
 
-The most recent recorded post-tag install and `@latest` verification is the
-historical `v0.6.1` record in
-[`docs/internal/RELEASE_TRUTH_V061_POSTRELEASE.md`](./internal/RELEASE_TRUTH_V061_POSTRELEASE.md);
-it documents a superseded tag, not `v0.8.0`. Post-tag install and `@latest`
-verification for `v0.8.0` have not been run yet and are not recorded here,
-because that record is written only after the `v0.8.0` tag is pushed; once the
-`v0.8.0` tag post-release checks are run, they will be recorded in a future
-`docs/internal/RELEASE_TRUTH_V080_POSTRELEASE.md`.
+The most recent recorded post-tag install and `@latest` verification at the time
+of the v0.7.0 cut was the historical `v0.6.1` record in
+`docs/internal/RELEASE_TRUTH_V061_POSTRELEASE.md`; it documents the superseded
+`v0.6.1` tag, not `v0.7.0`. Post-tag install and `@latest` verification for
+`v0.7.0` were deferred to a future
+`docs/internal/RELEASE_TRUTH_V070_POSTRELEASE.md`.
 
 ## README First-Run Status
 
 README presents the first-run path before architecture:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.8.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.7.0
 boundary selftest
 ```
 
@@ -111,7 +101,7 @@ mutation.
 
 ## Claims Status
 
-| Claim | Status | Final release truth |
+| Claim | Status | Release truth |
 | --- | --- | --- |
 | BND-CLAIM-001 | delivered | MCP Safety Gateway requests are governed before execution only when the route passes through Boundary. |
 | BND-CLAIM-002 | delivered | Structured decision records are emitted for governed verdicts. |
@@ -140,9 +130,6 @@ mutation.
 | BND-CLAIM-UTIL-002 | delivered | Boundary runs a fixture-only action-boundary demo across routed MCP / Secure GitHub, Command Boundary, and Edit Boundary paths. |
 | BND-CLAIM-UTIL-003 | delivered | Boundary reports local routed-surface diagnostics and bypass caveats without proving production route protection. |
 | BND-CLAIM-UTIL-004 | delivered | Boundary creates and verifies local evidence bundles; evidence bundles do not prove production deployment safety. |
-| BND-CLAIM-REC-001 | delivered | Decision records carry additive route-context fields; `topology_profile` is asserted not attested and `execution_claim` is an adapter self-report. |
-| BND-CLAIM-EXPLAIN-001 | delivered | `boundary explain` renders a decision record read-only; it does not verify hashes or prove the verdict. |
-| BND-CLAIM-REPLAY-001 | delivered | `boundary replay` reproduces the recorded decision for routed requests; it does not prove enforcement or absence of upstream side effects. |
 
 Delivered Secure GitHub, Command Boundary, and Edit Boundary claims are
 delivered preview claims. They do not upgrade those surfaces to production.
@@ -173,10 +160,6 @@ delivered preview claims. They do not upgrade those surfaces to production.
 | `boundary doctor` | delivered | Local routed-surface diagnostics and bypass caveats. |
 | `boundary evidence bundle` | delivered | Local evidence manifest, SHA-256 hashes, and fixture-safe utility outputs. |
 | `boundary evidence verify` | delivered | Local manifest, hash, schema, summary, and artifact reference checks. |
-| `DecisionRecordV2` route-context | delivered | Additive `schema_version "2"` records carry `adapter_id`, `route_id`, `topology_profile`, and `execution_claim` covered by `decision_hash`; `topology_profile` is asserted not attested and `execution_claim` is an adapter self-report not independently corroborated. V1 records stay valid. |
-| `boundary explain` | delivered | Read-only rendering of a decision record (V1 or V2); does not re-verify hashes or prove the verdict was correct or enforced. |
-| `boundary replay` | delivered | Local re-evaluation that reproduces the recorded decision for routed requests against the recorded bundle; does not prove enforcement or the absence of upstream side effects. |
-| Record-location output | delivered | Uniform record-path/`record_id` line and `--out` semantics across `demo`, `redteam`, and `evidence`, so the find → verify → explain → replay loop is copy-paste. |
 
 ## Adapter, Profile, And Surface Status
 
@@ -195,23 +178,23 @@ delivered preview claims. They do not upgrade those surfaces to production.
 
 ## User-Install Status
 
-The documented repeatable install path is:
+The documented repeatable install path was:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.8.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.7.0
 ```
 
 Requires Go 1.25+.
 
-README keeps `@v0.8.0` as the primary copy/paste command for repeatability. No
+README kept `@v0.7.0` as the primary copy/paste command for repeatability. No
 Homebrew, package-manager, or hosted distribution channel is claimed.
 
 ## GitHub Action Ref Status
 
-The MCP audit action examples use:
+The MCP audit action examples used:
 
 ```yaml
-- uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.8.0
+- uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.7.0
 ```
 
 Use the release tag for repeatable CI behavior. SARIF upload examples must
@@ -225,16 +208,11 @@ fixture redteams, and denies governed privileged actions before execution when
 those actions route through Boundary. MCP is the first production route; Command
 Boundary, Edit Boundary, Secure GitHub, and the remaining adapters are preview.
 
-Fulcrum Boundary v0.8.0 adds the Phase 0A "Trust the Record" loop over the two
-fixture-only proof lanes — `boundary demo github-lethal-trifecta` (MCP) and
-`boundary demo command-secret-exfil` (Command Boundary). Route-context decision
-records (`DecisionRecordV2`), `boundary explain`, and `boundary replay` let an
-operator find, verify, render, and reproduce a recorded decision. `boundary
-explain` renders read-only and does not verify hashes; `boundary replay`
-reproduces the recorded decision, not enforcement and not the absence of upstream
-side effects; `topology_profile` is asserted, not attested, and `execution_claim`
-is an adapter self-report. v0.8.0 does not add a new governed action surface or
-upgrade any preview surface to production.
+Fulcrum Boundary v0.7.0 is the open-source launch release. It leads with the
+routed-agent-tools framing and surfaces the two fixture-only proof lanes — `boundary
+demo github-lethal-trifecta` (MCP) and `boundary demo command-secret-exfil`
+(Command Boundary). It does not add a new governed action surface or upgrade any
+preview surface to production.
 
 Secure GitHub is preview. Production status still requires deployment bypass
 evidence and broader live coverage.
@@ -274,11 +252,6 @@ Do not use these as public capability claims:
 - Do not claim doctor proves all routes protected.
 - Do not claim the action-boundary demo proves all attacks blocked.
 - Do not claim version output proves cryptographic release provenance.
-- Do not claim `topology_profile` attests or verifies the deployment.
-- Do not claim `execution_claim` independently proves no upstream bytes moved.
-- Do not claim `boundary replay` proves enforcement.
-- Do not claim `boundary explain` verifies hashes or proves the verdict.
-- Do not claim route-context records are cryptographic proof of a runtime verdict.
 
 These phrases may appear only in claim-control, language-control, historical,
 or explicit limitation context.
@@ -291,14 +264,8 @@ or explicit limitation context.
 - `docs/CLAIMS_LEDGER.md`
 - `claims/boundary_claims.yaml`
 - `docs/ADAPTER_READINESS_MATRIX.md`
-- `docs/releases/v0.8.0.md`
-- `docs/BOUNDARY_ROADMAP.md`
-- `docs/DECISION_RECORDS.md`
-- `docs/RECEIPTS.md`
-- `docs/examples/README.md`
 - `docs/internal/RELEASE_TRUTH_V060.md`
 - `docs/internal/RELEASE_TRUTH_V061.md`
-- `docs/internal/RELEASE_TRUTH_V070.md`
 - `docs/internal/RELEASE_TRUTH_REPO_POLISH.md`
 - `docs/internal/LAUNCH_TRUTH_FREEZE.md`
 - `docs/PUBLIC_RELEASE_COPY.md`
@@ -312,18 +279,15 @@ or explicit limitation context.
 
 ## Drift Fixed
 
-- Updated active public truth to the `v0.8.0` release.
-- Updated active install and GitHub Action examples to `@v0.8.0`; the prior
-  `@v0.7.0` pin is superseded and kept only as history.
-- Recorded the Phase 0A record-UX additions (route-context `DecisionRecordV2`,
-  `boundary explain`, `boundary replay`, record-location UX) as delivered claims
-  with asserted-not-attested and self-report-not-corroborated caveats.
-- Archived the v0.7.0 active truth to `docs/internal/RELEASE_TRUTH_V070.md`.
-- Preserved historical v0.3.0, v0.4.0, v0.5.0, v0.6.1, and v0.7.0 release truth
+- Updated active public truth to the `v0.7.0` open-source launch release.
+- Updated active install and GitHub Action examples to `@v0.7.0`; the prior
+  `@v0.6.1` pin is superseded and kept only as history.
+- Aligned the approved-release top-line to the routed-agent-tools framing and
+  the two-lane (`github-lethal-trifecta` + `command-secret-exfil`) proof spine.
+- Preserved historical v0.3.0, v0.4.0, v0.5.0, and v0.6.1 release truth
   artifacts as history.
 - Clarified that Edit Boundary is delivered preview while direct editor writes,
   direct filesystem writes, shell redirection, direct `git apply`, and
   filesystem sandboxing remain out of scope.
-- Clarified that version, doctor, action-boundary demo, evidence, `explain`, and
-  `replay` commands are local utility surfaces and do not prove production route
-  enforcement.
+- Clarified that version, doctor, action-boundary demo, and evidence commands
+  are local utility surfaces and do not prove production route enforcement.
