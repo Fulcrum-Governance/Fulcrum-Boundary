@@ -2,6 +2,11 @@
 
 Last updated: 2026-05-31 (Rev 2 — execution-locked)
 
+> Status: historical planning artifact. The push this spec scopes shipped in
+> PR #107 (merged to `main`) and is now part of the `v0.8.0` release. The
+> version references below (`v0.7.0`) reflect the release truth at authoring
+> time; the current release is `v0.8.0`.
+
 This is an internal execution spec for the next Fulcrum Boundary push. Its job is
 to turn the current repository from "interesting but hard to evaluate" into a
 developer tool that can be installed, run, inspected, and judged in minutes.

@@ -2,7 +2,7 @@
 
 > **This is the single authoritative launch spec** for the first open-source release of
 > **Fulcrum Boundary** (Apache-2.0, Go developer tool,
-> `github.com/fulcrum-governance/fulcrum-boundary`, CLI binary `boundary`, target tag `v0.7.0`).
+> `github.com/fulcrum-governance/fulcrum-boundary`, CLI binary `boundary`, target tag `v0.8.0`).
 > It defines what is published and what it is called. It is a language-control document:
 > §12 enumerates the approved and forbidden public language, so it intentionally quotes the
 > forbidden phrases in order to govern them.
@@ -25,8 +25,8 @@
 ## How to read this spec
 
 **Authority order (tie-breaker for any claim; highest wins).**
-`docs/RELEASE_TRUTH_PUBLIC.md` (v0.7.0) → `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md`
-(**CI-enforced**, the binding floor) → `README.md` (v0.7.0) → most-recent intent
+`docs/RELEASE_TRUTH_PUBLIC.md` (v0.8.0) → `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md`
+(**CI-enforced**, the binding floor) → `README.md` (v0.8.0) → most-recent intent
 (`conductor/2026-05-29-*-reset-{design,plan}.md`, polish only) → the language stack
 (`docs/LANGUAGE_SYSTEM.md` / `docs/COPY_RULES.md` / `docs/LEXICON.md` /
 `docs/BOUNDARY_PRODUCT_PRIMITIVES.md`) → `docs/LAUNCH_TRUTH_FREEZE.md` →
@@ -116,7 +116,7 @@ only once — in its owning section with a `superseded:` predecessor. No section
 
 - The category-defining noun is **"the action boundary."** The qualifier is **"routed agent tools"** — broader than MCP, and the word **"routed"** carries the honesty: Boundary governs only what is forced through it.
 - **One-liner (LOCKED):** *Boundary is the local-first action boundary for your AI agent's tools — see what your tools can actually do, and block the dangerous ones before they run. One `go install`, no account, no cloud, no live calls.* Each clause is `production` for the verified first-run path (`go install …@v0.8.0` → `boundary selftest` 10/10 → `boundary demo github-lethal-trifecta` denies with `upstream_called=false`; evidence: README "Try It In One Minute", briefing §1).
-- The hero ships verbatim in `docs/LANGUAGE_SYSTEM.md` (Developer variant) and the v0.7.0 README. It leads with the action, not the architecture. When copy is MCP-specific, "your MCP tools" / "MCP-native" is correct and preferred **for that lane**.
+- The hero ships verbatim in `docs/LANGUAGE_SYSTEM.md` (Developer variant) and the v0.8.0 README. It leads with the action, not the architecture. When copy is MCP-specific, "your MCP tools" / "MCP-native" is correct and preferred **for that lane**.
 - **superseded:** "the action boundary for **MCP-native** agents" (README v0.6.1 line 3 / `docs/LANGUAGE_SYSTEM.md` "Preferred Public Frame"). MCP is now the **first production route**, not the identity, so the Command/CLI lane and future routes fit the same frame without re-scoping.
 
 ## 1.2 The category (LOCKED — resolves C1)
@@ -393,7 +393,7 @@ flowchart TB
 # 4. Scope & Maturity Matrix
 
 > **Authority order for every claim below** (highest first): `docs/RELEASE_TRUTH_PUBLIC.md`
-> (v0.7.0) → `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md` (CI-enforced) →
+> (v0.8.0) → `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md` (CI-enforced) →
 > `docs/ADAPTER_READINESS_MATRIX.md` + `adapters/<x>/readiness.yaml` → `README.md`. Repo verified:
 > HEAD `7a20362`, read-only, 2026-05-30.
 
@@ -614,7 +614,7 @@ Controlled rules (verified): generic platform lead (`AI governance platform`, he
 
 ## 7.2 Authority order (the tie-breaker)
 
-When two documents disagree about what may be claimed, resolve highest-wins (the canonical chain from the briefing): (1) `docs/RELEASE_TRUTH_PUBLIC.md` (v0.7.0); (2) `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md` (**CI-enforced**; the binding floor); (3) `README.md` (v0.7.0); (4) `conductor/2026-05-29-…-reset-{design,plan}.md` (intent, polish only); (5) the language stack; (6) `docs/LAUNCH_TRUTH_FREEZE.md`; (7) `Fulcrum_Boundary_Vision.md` (direction only).
+When two documents disagree about what may be claimed, resolve highest-wins (the canonical chain from the briefing): (1) `docs/RELEASE_TRUTH_PUBLIC.md` (v0.8.0); (2) `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md` (**CI-enforced**; the binding floor); (3) `README.md` (v0.8.0); (4) `conductor/2026-05-29-…-reset-{design,plan}.md` (intent, polish only); (5) the language stack; (6) `docs/LAUNCH_TRUTH_FREEZE.md`; (7) `Fulcrum_Boundary_Vision.md` (direction only).
 
 **Demote / do not cite as authority:** `BOUNDARY_SPEC_SERIES.md`, the "governance kernel / kernel-connected" framing, all GIL-named material, the per-version `RELEASE_TRUTH_V0xx` history.
 
@@ -665,7 +665,7 @@ Claim-safe by construction (every line is negated/limitation framing, which the 
 
 ## 7.6 R1 — "Boundary decides," never "Fulcrum decides" (truth-discipline record)
 
-"Boundary decides" subject discipline (R1) is preserved throughout; "Fulcrum" appears only in the module path, the proofs-correspondence lineage, and as the upstream owner of `proved`/`human_approved` modes. The three former "Fulcrum decides" residues (`docs/LANGUAGE_SYSTEM.md` lines 11 & 18 and `docs/PUBLIC_RELEASE_COPY.md` line 70) are **reconciled** — those files now read "Boundary decides"; the only remaining occurrences of the phrase are the governed quotes in this language-control spec (R1 rule, §2.1/§7.6). *superseded: those three "Fulcrum decides" instances.* The other pre-launch precision items owned here are **done on this launch-prep branch:** the public-surface guard is widened to every tracked text file (§7.1 Gate 3); `CITATION.cff` is corrected to the launch version (`0.7.0`, resolving the earlier `0.2.0` drift; briefing B-3); the no-package-manager/hosted sweep is reflected in copy (§7.4); the receipt-vs-decision-record term is reconciled to "decision record (hash-verifiable)" (§6.1/§6.3); and README test-count precision is handled by carrying no fragile count in the README (§9). No item from this set remains open.
+"Boundary decides" subject discipline (R1) is preserved throughout; "Fulcrum" appears only in the module path, the proofs-correspondence lineage, and as the upstream owner of `proved`/`human_approved` modes. The three former "Fulcrum decides" residues (`docs/LANGUAGE_SYSTEM.md` lines 11 & 18 and `docs/PUBLIC_RELEASE_COPY.md` line 70) are **reconciled** — those files now read "Boundary decides"; the only remaining occurrences of the phrase are the governed quotes in this language-control spec (R1 rule, §2.1/§7.6). *superseded: those three "Fulcrum decides" instances.* The other pre-launch precision items owned here are **done on this launch-prep branch:** the public-surface guard is widened to every tracked text file (§7.1 Gate 3); `CITATION.cff` is corrected to the launch version (`0.8.0`, resolving the earlier `0.2.0` drift; briefing B-3); the no-package-manager/hosted sweep is reflected in copy (§7.4); the receipt-vs-decision-record term is reconciled to "decision record (hash-verifiable)" (§6.1/§6.3); and README test-count precision is handled by carrying no fragile count in the README (§9). No item from this set remains open.
 
 ---
 

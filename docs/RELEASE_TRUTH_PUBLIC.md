@@ -82,14 +82,14 @@ the test suite, claims tests, policy verification, receipt verification help,
 version`, `boundary demo action-boundary`, `boundary doctor --json`,
 `boundary evidence bundle --include-demo`, and `boundary evidence verify`.
 
-The most recent recorded post-tag install and `@latest` verification is the
-historical `v0.6.1` record in
-[`docs/internal/RELEASE_TRUTH_V061_POSTRELEASE.md`](./internal/RELEASE_TRUTH_V061_POSTRELEASE.md);
-it documents a superseded tag, not `v0.8.0`. Post-tag install and `@latest`
-verification for `v0.8.0` have not been run yet and are not recorded here,
-because that record is written only after the `v0.8.0` tag is pushed; once the
-`v0.8.0` tag post-release checks are run, they will be recorded in a future
-`docs/internal/RELEASE_TRUTH_V080_POSTRELEASE.md`.
+Post-tag install and `@latest` verification for `v0.8.0` have been run and are
+recorded in
+[`docs/internal/RELEASE_TRUTH_V080_POSTRELEASE.md`](./internal/RELEASE_TRUTH_V080_POSTRELEASE.md):
+the annotated `v0.8.0` tag resolves to its release commit, both
+`go install …@v0.8.0` and `…@latest` build and report `Fulcrum Boundary v0.8.0`,
+and a GitHub Release object exists. The prior `v0.6.1` record in
+[`docs/internal/RELEASE_TRUTH_V061_POSTRELEASE.md`](./internal/RELEASE_TRUTH_V061_POSTRELEASE.md)
+documents a superseded tag and survives only as history.
 
 ## README First-Run Status
 
