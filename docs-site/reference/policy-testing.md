@@ -15,8 +15,8 @@ It is local-only: no credentials, no network calls, and no live mutation. The
 JSON envelope is `boundary.test.v1` and includes one result per case plus the
 local-safety flags.
 
-Availability note: this is a post-`v0.8.0` command on `main` after the Phase 1
-policy-testing lane merges. The `@v0.8.0` install does not include it.
+Availability note: this command is included in the `v0.9.0` release. The
+`@v0.9.0` install includes it; the historical `@v0.8.0` install does not.
 
 What it does not prove:
 

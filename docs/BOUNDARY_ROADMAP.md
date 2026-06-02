@@ -8,13 +8,13 @@ decision yourself" — without changing what Boundary actually governs.
 
 Three rules govern this page:
 
-- **Released means in the `v0.8.0` tag.** The baseline below, plus all of Phase
-  0A, is released in `v0.8.0` and is exercised by tests and the two proof-lane
-  demos. The `@v0.8.0` install includes the Phase 0A commands and record fields.
-- **Main can move ahead of the latest tag.** Phase 1 (`boundary test`) is a
-  post-`v0.8.0` main-branch capability once its implementation PR lands. It is
-  not available from `go install ...@v0.8.0`; the next tagged release can promote
-  that install path after the tag exists.
+- **Released means in the `v0.9.0` tag.** The baseline below, all of Phase 0A,
+  and Phase 1 (`boundary test`) are released in `v0.9.0` and exercised by tests
+  and the two proof-lane demos. The `@v0.9.0` install includes the Phase 0A
+  commands, route-context record fields, and the policy-as-code test runner.
+- **History stays history.** `v0.8.0` remains the Phase 0A record-trust tag:
+  `DecisionRecordV2`, `boundary explain`, `boundary replay`, and record-location
+  UX. It does not include `boundary test`.
 - **Planned means planned.** Phase 0B remains forward-looking. Nothing in a
   planned section should be read as a delivered capability or a dated
   commitment.
@@ -53,11 +53,12 @@ corroborated by it. Boundary does not emit `proved` decisions itself.
 
 ---
 
-## Phase 0A — Trust the Record / Evidence UX (shipped in `v0.8.0`)
+## Phase 0A — Trust the Record / Evidence UX (shipped in `v0.8.0`, included in `v0.9.0`)
 
-> **In the `v0.8.0` release.** Everything in this section is released in `v0.8.0`,
-> exercised by tests, and reflected in the claims ledger. The `@v0.8.0` install
-> includes these commands and record fields. Command and field reference:
+> **In the `v0.8.0` release and included in `v0.9.0`.** Everything in this
+> section is released, exercised by tests, and reflected in the claims ledger.
+> The `@v0.9.0` install includes these commands and record fields. Command and
+> field reference:
 > [`docs/CLI_REFERENCE.md`](CLI_REFERENCE.md) (§§10–11) and the route-context
 > section of [`docs/DECISION_RECORDS.md`](DECISION_RECORDS.md).
 
@@ -79,8 +80,8 @@ the decision was made, not only what it decided:
   `executed` today, recorded explicitly rather than as a free field).
 
 Because these fields change the record shape, they arrive as a later schema
-version (`DecisionRecordV2`). `DecisionRecordV2` is released in `v0.8.0`: it is an
-additive superset over `DecisionRecordV1`, and both `schema_version "1"` and
+version (`DecisionRecordV2`). `DecisionRecordV2` is released as an additive
+superset over `DecisionRecordV1`, and both `schema_version "1"` and
 `schema_version "2"` records are emitted and verified. `DecisionRecordV1`
 (`schema_version "1"`) remains valid and unchanged.
 
@@ -89,9 +90,9 @@ additive superset over `DecisionRecordV1`, and both `schema_version "1"` and
 A read-side command that takes an existing decision record and renders a
 human-readable account of the verdict — the matched rule, the reason, the
 decision mode, and the route context above — so a record can be understood
-without reverse-engineering JSON by hand. `boundary explain` is a command in the
-`v0.8.0` release (reference: [`docs/CLI_REFERENCE.md`](CLI_REFERENCE.md) §10),
-included in the `@v0.8.0` install.
+without reverse-engineering JSON by hand. `boundary explain` is a released
+command (reference: [`docs/CLI_REFERENCE.md`](CLI_REFERENCE.md) §10), included
+in the `@v0.9.0` install.
 
 ### `boundary replay <record>`
 
@@ -99,9 +100,9 @@ A command that re-runs the recorded request through the same evaluation path to
 reproduce the verdict locally, so a developer can confirm a record's decision is
 deterministic and recompute it on their own machine. Replay is a local,
 fixture-safe reproduction step. It reproduces the *decision*, not the absence of
-upstream side effects. `boundary replay` is a command in the `v0.8.0` release
-(reference: [`docs/CLI_REFERENCE.md`](CLI_REFERENCE.md) §11), included in the
-`@v0.8.0` install.
+upstream side effects. `boundary replay` is a released command (reference:
+[`docs/CLI_REFERENCE.md`](CLI_REFERENCE.md) §11), included in the `@v0.9.0`
+install.
 
 ### Both proof-lane records are first-class
 
@@ -149,11 +150,10 @@ governed surface and does **not** change any verdict.
 
 ---
 
-## Phase 1 — Policy-as-code testing (post-`v0.8.0` on main)
+## Phase 1 — Policy-as-code testing (shipped in `v0.9.0`)
 
-> **Implemented after `v0.8.0`.** `boundary test` is delivered on `main` after
-> the Phase 1 policy-testing lane merges. The `@v0.8.0` install does not include
-> it; use a source build from `main` or the next tagged release once it exists.
+> **In the `v0.9.0` release.** `boundary test` is delivered in `v0.9.0`; the
+> `@v0.9.0` install includes it. The historical `@v0.8.0` install does not.
 
 `boundary test` is a **local, fixture-only policy-as-code test runner**. It lets
 an operator author request fixtures and expected verdicts against local YAML
@@ -184,11 +184,12 @@ Scope and limits, stated up front:
 This repository mechanically checks that public language matches shipped
 behavior. To keep that contract intact:
 
-- The Baseline and Phase 0A sections describe behavior that is released in
-  `v0.8.0`. `explain`, `replay`, `DecisionRecordV2`, and the route-context
-  fields are released in `v0.8.0`, and the `@v0.8.0` install includes them.
-- Phase 1 describes behavior implemented after `v0.8.0` on `main`. `boundary
-  test` is not in the `@v0.8.0` install path until a later tag includes it.
+- The Baseline, Phase 0A, and Phase 1 sections describe behavior that is
+  released in `v0.9.0`. `explain`, `replay`, `DecisionRecordV2`, the
+  route-context fields, and `boundary test` are released in `v0.9.0`, and the
+  `@v0.9.0` install includes them.
+- `v0.8.0` remains the historical Phase 0A tag and does not include
+  `boundary test`.
 - When any planned item lands, it ships behind the same release gates as the rest
   of the repository — tests, the claims and language gate, a strict docs build,
   and the full release check — and the claims ledger is updated in the same

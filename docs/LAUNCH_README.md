@@ -1,7 +1,9 @@
-# Firewall + Secure GitHub Launch README
+# Boundary v0.9.0 Launch README
 
-This launch surface is for the Fulcrum Boundary Firewall + Secure GitHub MCP
-release train. It is designed to be run locally from a clean checkout.
+This launch surface is for the Fulcrum Boundary developer-trust release train.
+It keeps the Firewall + Secure GitHub MCP proof lane, carries forward the
+Phase 0A record-trust loop, and adds the Phase 1 `boundary test`
+policy-as-code lane. It is designed to be run locally from a clean checkout.
 
 ## Release Truth
 
@@ -21,6 +23,13 @@ Delivered Firewall surfaces:
 - `boundary redteam`
 - `boundary dashboard`
 
+Delivered record and policy trust surfaces:
+
+- `boundary verify-record`
+- `boundary explain`
+- `boundary replay`
+- `boundary test`
+
 Preview:
 
 - Secure GitHub MCP fixture profile
@@ -38,7 +47,7 @@ deployment evidence exists.
 Installed binary:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.8.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0
 boundary --help
 ```
 
@@ -127,6 +136,20 @@ matched rule: deny-github-write-after-taint-fixture
 
 This fixture uses no real secrets and performs no live GitHub mutation.
 
+## Policy-As-Code Test Loop
+
+Run the committed local fixture corpus:
+
+```bash
+boundary test --path tests/fixtures/policy-test/cases
+boundary test --path tests/fixtures/policy-test/cases --format json
+```
+
+This is local-only: no credentials, no network calls, and no live mutation. A
+passing run proves the supplied routed request fixtures produce the expected
+local policy verdicts; it does not prove production route enforcement or
+deployment bypass resistance.
+
 ## Local Dashboard
 
 Render a standalone local HTML dashboard:
@@ -160,6 +183,8 @@ The dashboard is local-only. It reads local files and does not upload telemetry.
 - `boundary redteam --pack github-lethal-trifecta` reports fixture DENY/pass.
 - `boundary secure github serve --fixture --dry-run` reports preview fixture
   status and no live GitHub mutation.
+- `boundary test --path tests/fixtures/policy-test/cases` reports six passing
+  fixture cases and exits zero.
 - `boundary dashboard --format html` writes a local HTML file.
 - Launch copy keeps live GitHub App conformance scoped to the opt-in preview
   harness.
@@ -169,6 +194,10 @@ The dashboard is local-only. It reads local files and does not upload telemetry.
 ## Verification Commands
 
 ```bash
+make release-check
+make docs-build
 go test ./claims/... -count=1
 go test ./... -count=1 -timeout 5m
+go vet ./...
+git ls-files '*.go' | xargs gofmt -l
 ```

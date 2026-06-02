@@ -9,11 +9,11 @@ Requires Go 1.25+.
 ## Go Install
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.8.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0
 boundary selftest
 ```
 
-`@v0.8.0` is the recommended repeatable install target for the current launch
+`@v0.9.0` is the recommended repeatable install target for the current launch
 release. `@latest` resolves to the latest published release after the Go proxy
 refreshes.
 
@@ -55,6 +55,16 @@ boundary demo github-lethal-trifecta
 
 The demo uses fixture data and does not require live GitHub credentials or make
 upstream GitHub mutations.
+
+Run the policy-as-code fixture corpus:
+
+```bash
+boundary test --path tests/fixtures/policy-test/cases
+```
+
+`boundary test` evaluates local policy bundles against routed request fixtures
+and exits non-zero on unexpected verdicts. See
+[`docs/POLICY_TESTING.md`](POLICY_TESTING.md).
 
 ## Uninstall
 

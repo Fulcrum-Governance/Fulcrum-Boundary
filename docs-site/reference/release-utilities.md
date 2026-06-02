@@ -14,6 +14,9 @@ boundary evidence bundle --include-demo --out boundary-evidence
 boundary evidence verify boundary-evidence
 ```
 
+Availability note: `boundary test` is included in the `v0.9.0` release. The
+`@v0.9.0` install includes it; the historical `@v0.8.0` install does not.
+
 These commands are local-first. They do not require credentials, do not make
 live GitHub calls by default, and do not mutate real systems by default.
 

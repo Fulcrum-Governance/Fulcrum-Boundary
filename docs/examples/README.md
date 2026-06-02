@@ -121,16 +121,16 @@ are retained instead of discarded:
 ./bin/boundary demo github-lethal-trifecta --json --out /tmp/bnd-demo/demo.json
 # stdout prints:
 #   decision record id: rec_...
-#   decision record path: /tmp/bnd-demo/github-lethal-trifecta-artifacts/decision-records.jsonl
+#   decision record path: /tmp/bnd-demo/github-lethal-trifecta-artifacts/decision-record.json
+#   decision record log: /tmp/bnd-demo/github-lethal-trifecta-artifacts/decision-records.jsonl
 ```
 
-That JSONL holds two `DecisionRecordV1` objects, one per line (a routed-redteam
-record and a Secure GitHub preview record). `verify-record` takes a single JSON
-object, not a JSONL file, so split out one line before verifying:
+The `decision record path:` file is the single JSON object that `verify-record`
+consumes directly. The JSONL audit log is printed separately as `decision record
+log:` and may hold additional records.
 
 ```bash
-sed -n '1p' /tmp/bnd-demo/github-lethal-trifecta-artifacts/decision-records.jsonl > /tmp/bnd-demo/record.json
-./bin/boundary verify-record /tmp/bnd-demo/record.json
+./bin/boundary verify-record /tmp/bnd-demo/github-lethal-trifecta-artifacts/decision-record.json
 ```
 
 ### Lane 2 — command-secret-exfil
@@ -142,9 +142,9 @@ The Command Boundary proof lane lands its single decision record under the same
 ./bin/boundary demo command-secret-exfil --out /tmp/bnd-demo/cmd.txt
 # stdout prints:
 #   decision record id: rec_...
-#   decision record path: /tmp/bnd-demo/command-secret-exfil-artifacts/decision-records.jsonl
-sed -n '1p' /tmp/bnd-demo/command-secret-exfil-artifacts/decision-records.jsonl > /tmp/bnd-demo/cmd-record.json
-./bin/boundary verify-record /tmp/bnd-demo/cmd-record.json
+#   decision record path: /tmp/bnd-demo/command-secret-exfil-artifacts/decision-record.json
+#   decision record log: /tmp/bnd-demo/command-secret-exfil-artifacts/decision-records.jsonl
+./bin/boundary verify-record /tmp/bnd-demo/command-secret-exfil-artifacts/decision-record.json
 ```
 
 The hashes in your records will differ from the committed example: the timestamp

@@ -24,7 +24,7 @@ matches the [README](../README.md) quickstart; the demos appear in the same
 order there.
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.8.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0
 boundary selftest                                            # Local-only smoke test
 boundary doctor --json                                       # Local-only diagnostics + bypass caveats
 boundary demo github-lethal-trifecta      # Lane 1: MCP, the first production route (Delivered)
@@ -114,10 +114,12 @@ no real `.env`, makes no network call, and executes nothing.
 Both proof-lane demos print a uniform record-location pair —
 `decision record id: rec_...` and, when `--out` writes a file,
 `decision record path: <path>` — and land that file at a predictable
-`*-artifacts/decision-records.jsonl` location for `boundary verify-record`.
+`*-artifacts/decision-record.json` location for `boundary verify-record`.
+They also write a multi-record `decision-records.jsonl` audit log and print it
+as `decision record log: <path>`.
 `boundary demo command-secret-exfil --out demo.txt` writes
-`command-secret-exfil-artifacts/decision-records.jsonl`; without `--out` the
-record is printed to stdout only and no path line appears.
+`command-secret-exfil-artifacts/decision-record.json`; without `--out` the
+record is printed to stdout only and no path or log line appears.
 
 The Action Boundary demo composes fixture-only MCP / Secure GitHub, Command
 Boundary, and Edit Boundary paths. It uses no credentials, no network, and no
@@ -213,10 +215,8 @@ sync before shipping a Boundary release branch.
 
 ## 8A. Policy-as-Code Test Commands
 
-> **Availability:** `boundary test` is a post-`v0.8.0` command on `main` after
-> the Phase 1 policy-testing lane merges. The `@v0.8.0` install does not include
-> it; the next tagged release can promote the install command once that tag
-> exists.
+> **Availability:** `boundary test` is included in the `v0.9.0` release. The
+> `@v0.9.0` install includes it; the historical `@v0.8.0` install does not.
 
 ```bash
 boundary test --path tests/fixtures/policy-test/cases
@@ -244,10 +244,10 @@ bundle.
 
 ## 9. Decision-Record Verification Commands
 
-> **Availability:** `boundary verify-record`, `schema_version "1"` records, and
-> the `schema_version "2"` route-context path described below (along with
-> `boundary explain` / `boundary replay` in sections 10–11) are all in the
-> `v0.8.0` release, so `go install …@v0.8.0` includes them.
+> **Availability:** `boundary verify-record` and `schema_version "1"` records are
+> baseline. The `schema_version "2"` route-context path described below, along
+> with `boundary explain` / `boundary replay` in sections 10–11, shipped in
+> `v0.8.0` and is included in `v0.9.0`; `go install …@v0.9.0` includes them.
 
 ```bash
 boundary verify-record record.json
@@ -270,14 +270,16 @@ record under `--out`:
 
 ```bash
 boundary demo github-lethal-trifecta --json --out demo.json
-# writes github-lethal-trifecta-artifacts/decision-records.jsonl (one record per line)
+# decision record path: github-lethal-trifecta-artifacts/decision-record.json
+# decision record log:  github-lethal-trifecta-artifacts/decision-records.jsonl
 boundary demo command-secret-exfil --out demo.txt
-# writes command-secret-exfil-artifacts/decision-records.jsonl (one record)
+# decision record path: command-secret-exfil-artifacts/decision-record.json
+# decision record log:  command-secret-exfil-artifacts/decision-records.jsonl
 ```
 
-Split that JSONL into one object per file, then run bare `verify-record` on a
-single record. A demo without `--out` prints its records to stdout but persists
-no file, so no `decision record path:` line appears.
+Run bare `verify-record` on the single-record JSON path. A demo without `--out`
+prints its records to stdout but persists no file, so no `decision record path:`
+or `decision record log:` line appears.
 
 Optional cross-check flags bind a record to external inputs:
 
@@ -303,8 +305,8 @@ that actually ran. See [docs/DECISION_RECORDS.md](./DECISION_RECORDS.md) and
 ## 10. Decision-Record Explanation Commands
 
 > **Availability:** `boundary explain` (this section) and `boundary replay`
-> (section 11) are in the `v0.8.0` release, so `go install …@v0.8.0` includes
-> them. They join the rest of the `v0.8.0` first-run path — `selftest`, `doctor`,
+> (section 11) are in the `v0.9.0` release, so `go install …@v0.9.0` includes
+> them. They join the rest of the `v0.9.0` first-run path — `selftest`, `doctor`,
 > the two proof demos, `evidence bundle`/`verify`, and `verify-record` on a
 > `schema_version "1"` or `"2"` record.
 
@@ -340,7 +342,7 @@ bypass a record cannot see. `topology_profile` is asserted, not attested, and
 ## 11. Decision-Record Replay Commands
 
 > **Availability:** like `boundary explain` (section 10), `boundary replay` is
-> in the `v0.8.0` release; `go install …@v0.8.0` includes it.
+> in the `v0.9.0` release; `go install …@v0.9.0` includes it.
 
 ```bash
 boundary replay record.json --request request.json --policies ./policies/

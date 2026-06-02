@@ -1,24 +1,24 @@
 # Final Public Release Truth
 
-Date: 2026-06-01
+Date: 2026-06-02
 
-Branch: `release/v0.8.0`
+Branch: `codex/release-v0.9.0-wrap`
 
-Current release target: `v0.8.0`
+Current release target: `v0.9.0` (candidate until the annotated tag and GitHub
+Release are created)
 
 ## Summary
 
-This report reconciles the public Boundary release surface for the `v0.8.0`
-release. `v0.8.0` is the active tag; the prior `v0.7.0` launch tag is superseded
-as the install target and survives only as history (see
-`docs/internal/RELEASE_TRUTH_V070.md`, `docs/releases/v0.7.0.md`, and the
-changelog).
+This report reconciles the public Boundary release surface for the `v0.9.0`
+release candidate. `v0.8.0` remains the latest published tag until `v0.9.0` is
+tagged and published; after that, `v0.8.0` survives as the Phase 0A history tag
+and `v0.9.0` becomes the repeatable install target.
 
-`v0.8.0` tags the Phase 0A "Trust the Record" record-UX lane already on `main`:
-route-context decision records (`DecisionRecordV2`, `schema_version "2"`),
-`boundary explain`, `boundary replay`, and uniform record-location output. It
-does not add a new governed action surface and does not upgrade any preview
-surface to production.
+`v0.9.0` wraps the Phase 0A "Trust the Record" record-UX lane from `v0.8.0`
+and adds the Phase 1 policy-as-code testing lane: `boundary test`, a local,
+fixture-only runner for operator-authored policy fixtures and expected verdicts.
+It does not add a new governed action surface, does not add a transport adapter,
+and does not upgrade any preview surface to production.
 
 The final public truth is:
 
@@ -49,8 +49,8 @@ The final public truth is:
 - Boundary governs routed tools. Tools that bypass Boundary are outside the
   governed route.
 - The public Go install path requires Go 1.25+.
-- Public install examples use the repeatable `@v0.8.0` release tag.
-- Public action examples use `@v0.8.0` for repeatable CI behavior.
+- Public install examples use the repeatable `@v0.9.0` release tag.
+- Public action examples use `@v0.9.0` for repeatable CI behavior.
 - The user-facing Command Boundary demo lane is `boundary demo
   command-secret-exfil` (the routed `curl -d @.env …` secret-exfil denial,
   `executed=false`); `boundary redteam --pack command-secret-exfil` remains the
@@ -65,6 +65,9 @@ The final public truth is:
 - `boundary replay` reproduces the recorded decision for routed requests against
   the recorded policy bundle; it does not prove enforcement or that no upstream
   bytes moved.
+- `boundary test` reports policy verdicts for routed request fixtures against
+  local policy bundles; it does not prove production route enforcement,
+  deployment bypass resistance, or verdict correctness beyond supplied fixtures.
 
 ## Test Commands
 
@@ -80,14 +83,15 @@ The final public truth is:
 the test suite, claims tests, policy verification, receipt verification help,
 `boundary selftest`, `boundary demo github-lethal-trifecta`, `boundary
 version`, `boundary demo action-boundary`, `boundary doctor --json`,
-`boundary evidence bundle --include-demo`, and `boundary evidence verify`.
+`boundary evidence bundle --include-demo`, `boundary evidence verify`, and
+`boundary test --path tests/fixtures/policy-test/cases`.
 
-Post-tag install and `@latest` verification for `v0.8.0` have been run and are
-recorded in
-[`docs/internal/RELEASE_TRUTH_V080_POSTRELEASE.md`](./internal/RELEASE_TRUTH_V080_POSTRELEASE.md):
-the annotated `v0.8.0` tag resolves to its release commit, both
-`go install …@v0.8.0` and `…@latest` build and report `Fulcrum Boundary v0.8.0`,
-and a GitHub Release object exists. The prior `v0.6.1` record in
+Post-tag install and `@latest` verification for `v0.9.0` are intentionally
+pending until the annotated tag and GitHub Release exist. Record that evidence
+in `docs/internal/RELEASE_TRUTH_V090_POSTRELEASE.md` after publishing. The
+prior `v0.8.0` post-tag evidence remains recorded in
+[`docs/internal/RELEASE_TRUTH_V080_POSTRELEASE.md`](./internal/RELEASE_TRUTH_V080_POSTRELEASE.md).
+The prior `v0.6.1` record in
 [`docs/internal/RELEASE_TRUTH_V061_POSTRELEASE.md`](./internal/RELEASE_TRUTH_V061_POSTRELEASE.md)
 documents a superseded tag and survives only as history.
 
@@ -96,7 +100,7 @@ documents a superseded tag and survives only as history.
 README presents the first-run path before architecture:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.8.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0
 boundary selftest
 ```
 
@@ -143,6 +147,7 @@ mutation.
 | BND-CLAIM-REC-001 | delivered | Decision records carry additive route-context fields; `topology_profile` is asserted not attested and `execution_claim` is an adapter self-report. |
 | BND-CLAIM-EXPLAIN-001 | delivered | `boundary explain` renders a decision record read-only; it does not verify hashes or prove the verdict. |
 | BND-CLAIM-REPLAY-001 | delivered | `boundary replay` reproduces the recorded decision for routed requests; it does not prove enforcement or absence of upstream side effects. |
+| BND-CLAIM-TEST-001 | delivered | `boundary test` runs operator-authored policy-as-code cases against local policy bundles without live mutation; it does not prove production route enforcement or bypass resistance. |
 
 Delivered Secure GitHub, Command Boundary, and Edit Boundary claims are
 delivered preview claims. They do not upgrade those surfaces to production.
@@ -176,6 +181,7 @@ delivered preview claims. They do not upgrade those surfaces to production.
 | `DecisionRecordV2` route-context | delivered | Additive `schema_version "2"` records carry `adapter_id`, `route_id`, `topology_profile`, and `execution_claim` covered by `decision_hash`; `topology_profile` is asserted not attested and `execution_claim` is an adapter self-report not independently corroborated. V1 records stay valid. |
 | `boundary explain` | delivered | Read-only rendering of a decision record (V1 or V2); does not re-verify hashes or prove the verdict was correct or enforced. |
 | `boundary replay` | delivered | Local re-evaluation that reproduces the recorded decision for routed requests against the recorded bundle; does not prove enforcement or the absence of upstream side effects. |
+| `boundary test` | delivered | Local, fixture-only policy-as-code assertions over operator policy bundles and expected verdicts; does not prove production route enforcement, bypass resistance, or global verdict correctness. |
 | Record-location output | delivered | Uniform record-path/`record_id` line and `--out` semantics across `demo`, `redteam`, and `evidence`, so the find → verify → explain → replay loop is copy-paste. |
 
 ## Adapter, Profile, And Surface Status
@@ -198,12 +204,12 @@ delivered preview claims. They do not upgrade those surfaces to production.
 The documented repeatable install path is:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.8.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0
 ```
 
 Requires Go 1.25+.
 
-README keeps `@v0.8.0` as the primary copy/paste command for repeatability. No
+README keeps `@v0.9.0` as the primary copy/paste command for repeatability. No
 Homebrew, package-manager, or hosted distribution channel is claimed.
 
 ## GitHub Action Ref Status
@@ -211,7 +217,7 @@ Homebrew, package-manager, or hosted distribution channel is claimed.
 The MCP audit action examples use:
 
 ```yaml
-- uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.8.0
+- uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.9.0
 ```
 
 Use the release tag for repeatable CI behavior. SARIF upload examples must
@@ -225,15 +231,19 @@ fixture redteams, and denies governed privileged actions before execution when
 those actions route through Boundary. MCP is the first production route; Command
 Boundary, Edit Boundary, Secure GitHub, and the remaining adapters are preview.
 
-Fulcrum Boundary v0.8.0 adds the Phase 0A "Trust the Record" loop over the two
-fixture-only proof lanes — `boundary demo github-lethal-trifecta` (MCP) and
-`boundary demo command-secret-exfil` (Command Boundary). Route-context decision
-records (`DecisionRecordV2`), `boundary explain`, and `boundary replay` let an
-operator find, verify, render, and reproduce a recorded decision. `boundary
-explain` renders read-only and does not verify hashes; `boundary replay`
-reproduces the recorded decision, not enforcement and not the absence of upstream
-side effects; `topology_profile` is asserted, not attested, and `execution_claim`
-is an adapter self-report. v0.8.0 does not add a new governed action surface or
+Fulcrum Boundary v0.9.0 packages the Phase 0A "Trust the Record" loop over the
+two fixture-only proof lanes — `boundary demo github-lethal-trifecta` (MCP) and
+`boundary demo command-secret-exfil` (Command Boundary) — and adds the Phase 1
+policy-as-code test loop. Route-context decision records (`DecisionRecordV2`),
+`boundary explain`, and `boundary replay` let an operator find, verify, render,
+and reproduce a recorded decision. `boundary test` lets an operator assert
+expected verdicts for routed request fixtures against local policy bundles and
+fail CI on drift. `boundary explain` renders read-only and does not verify
+hashes; `boundary replay` reproduces the recorded decision, not enforcement and
+not the absence of upstream side effects; `boundary test` reports local policy
+verdicts for supplied fixtures, not production route enforcement or bypass
+resistance. `topology_profile` is asserted, not attested, and `execution_claim`
+is an adapter self-report. v0.9.0 does not add a new governed action surface or
 upgrade any preview surface to production.
 
 Secure GitHub is preview. Production status still requires deployment bypass
@@ -279,6 +289,10 @@ Do not use these as public capability claims:
 - Do not claim `boundary replay` proves enforcement.
 - Do not claim `boundary explain` verifies hashes or proves the verdict.
 - Do not claim route-context records are cryptographic proof of a runtime verdict.
+- Do not claim `boundary test` proves production route enforcement.
+- Do not claim `boundary test` proves deployment bypass resistance.
+- Do not claim `boundary test` proves a verdict was globally correct beyond the
+  supplied fixture and local policy bundle.
 
 These phrases may appear only in claim-control, language-control, historical,
 or explicit limitation context.
@@ -288,10 +302,11 @@ or explicit limitation context.
 - `README.md`
 - `docs/INSTALL.md`
 - `docs/CLI_REFERENCE.md`
+- `docs/POLICY_TESTING.md`
 - `docs/CLAIMS_LEDGER.md`
 - `claims/boundary_claims.yaml`
 - `docs/ADAPTER_READINESS_MATRIX.md`
-- `docs/releases/v0.8.0.md`
+- `docs/releases/v0.9.0.md`
 - `docs/BOUNDARY_ROADMAP.md`
 - `docs/DECISION_RECORDS.md`
 - `docs/RECEIPTS.md`
@@ -307,17 +322,21 @@ or explicit limitation context.
 - `docs/edit-boundary/`
 - `docs-site/`
 - `docs/firewall/GITHUB_ACTION.md`
+- `actions/mcp-audit/README.md`
 - `actions/mcp-audit/action.yml`
 - `CHANGELOG.md`
 
 ## Drift Fixed
 
-- Updated active public truth to the `v0.8.0` release.
-- Updated active install and GitHub Action examples to `@v0.8.0`; the prior
-  `@v0.7.0` pin is superseded and kept only as history.
+- Updated active public truth to the `v0.9.0` release candidate.
+- Updated active install and GitHub Action examples to `@v0.9.0`; the prior
+  `@v0.8.0` pin is superseded once the `v0.9.0` tag exists and kept as Phase 0A
+  history.
 - Recorded the Phase 0A record-UX additions (route-context `DecisionRecordV2`,
   `boundary explain`, `boundary replay`, record-location UX) as delivered claims
   with asserted-not-attested and self-report-not-corroborated caveats.
+- Recorded the Phase 1 `boundary test` policy-as-code lane as a delivered claim
+  with local-fixture-only and routed-request caveats.
 - Archived the v0.7.0 active truth to `docs/internal/RELEASE_TRUTH_V070.md`.
 - Preserved historical v0.3.0, v0.4.0, v0.5.0, v0.6.1, and v0.7.0 release truth
   artifacts as history.

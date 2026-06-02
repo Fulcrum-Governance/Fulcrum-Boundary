@@ -8,7 +8,7 @@ executes, records the verdict, and governs only routes forced through Boundary.
 ## Try It In One Minute
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.8.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0
 boundary selftest
 boundary demo github-lethal-trifecta
 ```
@@ -30,6 +30,7 @@ available as a no-JS fallback.
 | Secure GitHub | Preview | Fixture proof and opt-in conformance do not close deployment bypasses. |
 | Command Boundary | Delivered preview | Routed command paths only. |
 | Edit Boundary | Delivered preview | Routed edit envelopes only. |
+| Policy-as-code testing | Local-only | `boundary test` checks routed request fixtures against local policy bundles. |
 | Policy generation | Starter policy utility | Requires operator review. |
 | Dashboard | Local artifact visibility | Not hosted monitoring. |
 
@@ -39,6 +40,7 @@ available as a no-JS fallback.
 |---|---|
 | Run the local path | [Quickstart](quickstart.md) |
 | Understand the flagship fixture | [Demo](demo.md) |
+| Test policy behavior in CI | [Policy Testing](reference/policy-testing.md) |
 | Learn the action-boundary model | [Concepts](concepts/action-boundary.md) |
 | Check public claim status | [Claims](reference/claims.md) |
 | Verify release utilities | [Release Utilities](reference/release-utilities.md) |

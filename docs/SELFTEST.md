@@ -42,8 +42,17 @@ Selftest is not a production conformance suite. It proves the local release fixt
 Run the full release gates before a release candidate:
 
 ```bash
+make release-check
+make docs-build
 go test ./internal/selftest/... -count=1 -timeout 5m
 go test ./tests/selftest/... -count=1 -timeout 5m
 go test ./claims/... -count=1
 go test ./... -count=1 -timeout 5m
+go vet ./...
+git ls-files '*.go' | xargs gofmt -l
 ```
+
+`make release-check` is the release superset. It runs the public-surface guards,
+vet, the root and gRPC test suites, claims tests, policy verification,
+`verify-record --help`, `boundary selftest`, the fixture demos, doctor/evidence
+checks, and `boundary test --path tests/fixtures/policy-test/cases`.

@@ -1,8 +1,8 @@
-# Fulcrum Boundary — Authoritative Launch Spec (First Open-Source Release)
+# Fulcrum Boundary — Authoritative Public Surface Spec (Current Release)
 
-> **This is the single authoritative launch spec** for the first open-source release of
+> **This is the single authoritative public-surface spec** for the current public release surface of
 > **Fulcrum Boundary** (Apache-2.0, Go developer tool,
-> `github.com/fulcrum-governance/fulcrum-boundary`, CLI binary `boundary`, target tag `v0.8.0`).
+> `github.com/fulcrum-governance/fulcrum-boundary`, CLI binary `boundary`, target tag `v0.9.0`).
 > It defines what is published and what it is called. It is a language-control document:
 > §12 enumerates the approved and forbidden public language, so it intentionally quotes the
 > forbidden phrases in order to govern them.
@@ -17,7 +17,7 @@
 > `POSITIONING.md`, `TEST_READINESS.md`.
 >
 > **Companion artifact.** `LAUNCH_BLOCKER_CHECKLIST.md` ships beside this spec and holds the full
-> pre-launch gate (B-1…B-4, G1–G8, the PR template, the testing-doc outline). It is referenced
+> release-readiness gate (B-1…B-4, G1–G8, the PR template, the testing-doc outline). It is referenced
 > from **§9** and **§10**; this spec does not re-inline it.
 
 ---
@@ -25,8 +25,8 @@
 ## How to read this spec
 
 **Authority order (tie-breaker for any claim; highest wins).**
-`docs/RELEASE_TRUTH_PUBLIC.md` (v0.8.0) → `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md`
-(**CI-enforced**, the binding floor) → `README.md` (v0.8.0) → most-recent intent
+`docs/RELEASE_TRUTH_PUBLIC.md` (v0.9.0) → `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md`
+(**CI-enforced**, the binding floor) → `README.md` (v0.9.0) → most-recent intent
 (`conductor/2026-05-29-*-reset-{design,plan}.md`, polish only) → the language stack
 (`docs/LANGUAGE_SYSTEM.md` / `docs/COPY_RULES.md` / `docs/LEXICON.md` /
 `docs/BOUNDARY_PRODUCT_PRIMITIVES.md`) → `docs/LAUNCH_TRUTH_FREEZE.md` →
@@ -68,15 +68,16 @@ only once — in its owning section with a `superseded:` predecessor. No section
 | **TOP-LINE** | Boundary is **the action boundary for routed agent tools** (broader than MCP; *routed* carries the honesty). Hero, verbatim: **"See what your AI tools can do. Block what they should not."** | "the action boundary for **MCP-native** agents" (README v0.6.1 line 3) — MCP is the first production route, not the identity | §1.1–§1.2 |
 | **C1** | Category = **DEVELOPER TOOL.** NOT governance / compliance / CISO / "AI Trust Platform." "governance" is internal/ADR/org-name vocabulary only. | "governance kernel / pre-execution control plane" as public identity (`BOUNDARY_SPEC_SERIES.md`, ADR-028) | §1.4 |
 | **C2** | Name = **"Fulcrum Boundary"** (CLI: `boundary`). "MCP Safety Gateway" = **campaign label only**, never the project name. | "GIL / Governance Interception Layer", "Zero-Trust MCP Router", any transport-named title | §1.5 |
-| **C3** | **Standalone OSS, ZERO private-repo dependency** at launch (proven: offline build, empty Fulcrum `go mod graph`). Kernel mode = **documented contract surface only**. | "out-of-process enforcement boundary of the Fulcrum kernel (Redis/NATS/trust/proofs)" | §1.7, §5, §10.7 |
+| **C3** | **Standalone OSS, ZERO private-repo dependency** as a release invariant (proven: offline build, empty Fulcrum `go mod graph`). Kernel mode = **documented contract surface only**. | "out-of-process enforcement boundary of the Fulcrum kernel (Redis/NATS/trust/proofs)" | §1.7, §5, §10.7 |
 | **C4** | The word **"production" is reserved for the MCP route only.** Honest per-surface maturity everywhere else (SDK/CLI/Action = `delivered`, not "production"). | "production-grade pre-execution control plane" (whole tool) | §1.6, §4.0 |
 | **C5** | **The spine = TWO demoed proof lanes**, each fixture-only. All other adapters stay in the honest preview matrix, **not** headline. Cut breadth first, never the proof path. | "broad surface — 6+ adapters + Managed Agents + trust + SQL-AST as headline features" | §1.6, §4.0 |
 | **C6** | Decision artifacts = **"decision records" (hash-verifiable).** NEVER "cryptographic proof of verdict" — no signing ships. | "receipts / cryptographic proof of verdict" as default language | §1.8, §6 |
 | **C7** | Runtime decisions are **`deterministic` / `classified`, NEVER `proved`.** Lean proofs referenced by correspondence only (`docs/PROOF_BOUNDARY.md`). | "proved runtime / decisions proved by Lean" | §1.9, §3.4, §6.5 |
 | **C8** | **Vendor-neutral copy** — no named competitors / third parties. | named-competitor / named-third-party copy (early fixtures/flags/tests) | §1.10, §7.3 |
 | **C9** | **ROUTED-ONLY DOCTRINE** (load-bearing, sharpest for CLI): Boundary governs **only what routes through it**. The CLI lane states (i) how to ENFORCE the route and (ii) the KNOWN BYPASSES. FORBIDDEN: "global shell control", "all CLI activity protected", "governs every way an agent can mutate". | "governs every way an agent can mutate" (Position A) | §1.11, §3.5, §10.0 |
-| **C10** | Distribution = **local + `go install …/cmd/boundary@v0.8.0` only.** No hosted-monitoring / Homebrew / package-manager claims. Dashboard reads local artifacts only. | implied hosted monitoring / package-manager distribution | §1.12, §7.4 |
+| **C10** | Distribution = **local + `go install …/cmd/boundary@v0.9.0` only.** No hosted-monitoring / Homebrew / package-manager claims. Dashboard reads local artifacts only. | implied hosted monitoring / package-manager distribution | §1.12, §7.4 |
 | **R1** | Copy subject = **"Boundary decides", NEVER "Fulcrum decides".** | `docs/LANGUAGE_SYSTEM.md` lines 11 & 18 + `docs/PUBLIC_RELEASE_COPY.md` line 70 | §2.1, §7.6 |
+| **P1** | Developer trust lever = **policy-as-code tests.** `boundary test` is local, fixture-only, and CI-friendly; it reports verdicts for routed request fixtures only. | treating policy behavior as docs-only or claiming policy tests prove deployment enforcement | §2.2, §9, §10 |
 
 > **Honesty-as-a-feature (applies to every section).** The claims ledger, the language lint, the
 > public-surface guard, and the "What It Does NOT Prove" tables are a **differentiator**, not a
@@ -96,7 +97,7 @@ only once — in its owning section with a `superseded:` predecessor. No section
 8. Quickstart & Demos
 9. Testing & Contributing
 10. Limitations & Threat Model
-11. Roadmap (post-launch)
+11. Roadmap (future direction)
 12. Appendix: Lexicon & Forbidden Language
 
 ---
@@ -115,8 +116,8 @@ only once — in its owning section with a `superseded:` predecessor. No section
 > **Hero (verbatim, do not edit): See what your AI tools can do. Block what they should not.**
 
 - The category-defining noun is **"the action boundary."** The qualifier is **"routed agent tools"** — broader than MCP, and the word **"routed"** carries the honesty: Boundary governs only what is forced through it.
-- **One-liner (LOCKED):** *Boundary is the local-first action boundary for your AI agent's tools — see what your tools can actually do, and block the dangerous ones before they run. One `go install`, no account, no cloud, no live calls.* Each clause is `production` for the verified first-run path (`go install …@v0.8.0` → `boundary selftest` 10/10 → `boundary demo github-lethal-trifecta` denies with `upstream_called=false`; evidence: README "Try It In One Minute", briefing §1).
-- The hero ships verbatim in `docs/LANGUAGE_SYSTEM.md` (Developer variant) and the v0.8.0 README. It leads with the action, not the architecture. When copy is MCP-specific, "your MCP tools" / "MCP-native" is correct and preferred **for that lane**.
+- **One-liner (LOCKED):** *Boundary is the local-first action boundary for your AI agent's tools — see what your tools can actually do, and block the dangerous ones before they run. One `go install`, no account, no cloud, no live calls.* Each clause is backed by the repeatable first-run path (`go install …@v0.9.0` → `boundary selftest` 10/10 → `boundary demo github-lethal-trifecta` denies with `upstream_called=false`; evidence: README "Try It In One Minute", briefing §1).
+- The hero ships verbatim in `docs/LANGUAGE_SYSTEM.md` (Developer variant) and the v0.9.0 README. It leads with the action, not the architecture. When copy is MCP-specific, "your MCP tools" / "MCP-native" is correct and preferred **for that lane**.
 - **superseded:** "the action boundary for **MCP-native** agents" (README v0.6.1 line 3 / `docs/LANGUAGE_SYSTEM.md` "Preferred Public Frame"). MCP is now the **first production route**, not the identity, so the Command/CLI lane and future routes fit the same frame without re-scoping.
 
 ## 1.2 The category (LOCKED — resolves C1)
@@ -134,7 +135,7 @@ only once — in its owning section with a `superseded:` predecessor. No section
 
 ## 1.4 The spine — TWO demoed proof lanes (LOCKED — resolves C4/C5)
 
-The launch story is a **tight spine of two flagship proof lanes**, each with a **fixture-only demo** (no credentials, no network, no live mutation). Breadth ships as a labeled preview matrix (§4.2), never as headline features. The canonical spine table is **§4.0**; this is the identity-level statement.
+The release story is a **tight spine of two flagship proof lanes**, each with a **fixture-only demo** (no credentials, no network, no live mutation). Breadth ships as a labeled preview matrix (§4.2), never as headline features. The canonical spine table is **§4.0**; this is the identity-level statement.
 
 - **Lane 1 — MCP, the FIRST PRODUCTION route** (`production`): `boundary demo github-lethal-trifecta` denies a tested write-after-taint action **before upstream** (`upstream_called=false`) with a decision record.
 - **Lane 2 — Command / CLI, a DELIVERED PREVIEW** (`delivered-preview`, routed-only): `boundary demo command-secret-exfil` denies a routed `curl -d @.env …` **before execution** (`executed=false`) with a decision record (underlying fixture/evidence path: `boundary redteam --pack command-secret-exfil`).
@@ -144,8 +145,8 @@ The launch story is a **tight spine of two flagship proof lanes**, each with a *
 
 ## 1.5 Standalone OSS (LOCKED — resolves C3)
 
-- Boundary at launch is a **standalone, downloadable OSS tool** with **zero private-repo dependency** (proven: offline build of all packages, empty `go mod graph` for Fulcrum modules — `CROSS_REPO_DEPS.md`). Policies are local YAML; trust is an in-process interface defaulting to `Trusted` when absent; no Redis/NATS/fulcrum-io required to get value.
-- **Kernel-connected mode = a documented contract surface ONLY** (`BND-CLAIM-010`; `docs/PROOF_BOUNDARY.md`). The launch must not depend on any sibling repo being present. (Full mechanics §5; threat posture §10.7.)
+- Boundary is a **standalone, downloadable OSS tool** with **zero private-repo dependency** (proven: offline build of all packages, empty `go mod graph` for Fulcrum modules — `CROSS_REPO_DEPS.md`). Policies are local YAML; trust is an in-process interface defaulting to `Trusted` when absent; no Redis/NATS/fulcrum-io required to get value.
+- **Kernel-connected mode = a documented contract surface ONLY** (`BND-CLAIM-010`; `docs/PROOF_BOUNDARY.md`). The release must not depend on any sibling repo being present. (Full mechanics §5; threat posture §10.7.)
 - **superseded:** Boundary framed as "the out-of-process enforcement boundary of the Fulcrum kernel (Redis/NATS/trust/proofs)" (`BOUNDARY_SPEC_SERIES.md`).
 
 ## 1.6 Decision artifacts & proof boundary (LOCKED — resolves C6/C7)
@@ -156,7 +157,7 @@ The launch story is a **tight spine of two flagship proof lanes**, each with a *
 ## 1.7 Vendor-neutral (LOCKED — resolves C8)
 
 - **No named competitors or third parties in public copy.** External MCP ingest is Boundary-owned mapping ("external MCP inventory NDJSON," `--source external-mcp`), **not** an official third-party integration or compatibility claim.
-- Competitor framing lives **only** in private market maps with `verified_at` + sources and neutral, category-level trade-off language ("scanners," "policy substrates," "platforms") — **never in launch copy, and never by brand.** No brand name appears in this spec.
+- Competitor framing lives **only** in private market maps with `verified_at` + sources and neutral, category-level trade-off language ("scanners," "policy substrates," "platforms") — **never in public copy, and never by brand.** No brand name appears in this spec.
 - **superseded:** any literal named-competitor / named-third-party copy in early fixtures, flags, or tests (already scrubbed; keep it scrubbed).
 
 ## 1.8 Routed-only doctrine (LOCKED — load-bearing, SHARPEST for CLI — resolves C9)
@@ -169,7 +170,7 @@ The launch story is a **tight spine of two flagship proof lanes**, each with a *
 
 ## 1.9 Distribution (LOCKED — resolves C10)
 
-- **Local + `go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.8.0` ONLY.** Requires Go 1.25+ and a C toolchain (CGO) for the default build (§5.5).
+- **Local + `go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0` ONLY.** Requires Go 1.25+ and a C toolchain (CGO) for the default build (§5.5).
 - **No** hosted-monitoring, **no** Homebrew, **no** package-manager distribution claims. The **dashboard reads local artifacts only** (`local-only`). Full mechanics §7.4.
 - **superseded:** implied hosted monitoring / package-manager distribution (early planning copy).
 
@@ -204,10 +205,10 @@ different entrypoints. (R1)
 
 ## 2.2 Surface A — the `boundary` CLI (command map)
 
-Entry `cmd/boundary/main.go` → dispatcher `internal/boundarycli/cli.go`. **24 top-level commands**
-dispatch (verified: `case` arms at `cli.go:37–85`); several carry subcommands (`policy generate`,
+Entry `cmd/boundary/main.go` → dispatcher `internal/boundarycli/cli.go`. **28 top-level commands**
+dispatch (verified: `case` arms at `cli.go:37–91`); several carry subcommands (`policy generate`,
 `mcp proxy`, `secure github setup|serve`, `demo <4>`, `evidence bundle|verify`, `trust show|reset`),
-giving the **~26 user-facing commands** cited in the research. Per-command status uses the §0 legend
+giving the **~30 user-facing commands** cited in the research. Per-command status uses the §0 legend
 — `delivered` for the local no-mutation tooling, `delivered-preview` for routed-only lanes,
 `starter` for policy generation, `local-only` for the dashboard. The first-value "aha" is
 `inventory` / `graph` against the developer's *own* machine.
@@ -233,10 +234,13 @@ giving the **~26 user-facing commands** cited in the research. Per-command statu
 | `serve` | Start the Boundary **HTTP gateway** (MCP proxy or Postgres demo). | production (MCP) | `cli.go:71`; `adapters/mcp/gateway.go` |
 | `demo` | `action-boundary`, `postgres`, `github-lethal-trifecta`, `trust-degradation` — fixture-only. | delivered | `cli.go:73`; `internal/demo/` |
 | `verify-record` | Verify a **decision record** (`request_hash`, `policy_bundle_hash`, binary digest). | delivered | `cli.go:77` |
-| `doctor` | Local routed-surface diagnostics **+ bypass caveats** (§10.0). | local-only | `cli.go:79`; `internal/doctor/` |
-| `evidence` | `bundle` + `verify` local evidence manifests (SHA-256 artifact hashes). | local-only | `cli.go:81`; `internal/evidence/` |
-| `audit` | Pretty-print structured **decision-record** logs (filter by agent/tool/action). | delivered | `cli.go:83` |
-| `trust` | Inspect / reset adaptive trust state. **Opt-in** (`--trust-mode disabled|standalone|kernel`). | delivered | `cli.go:85`; `governance/trust*.go` |
+| `explain` | Render a decision record read-only: verdict, reason, route context, and hash coverage. | local-only | `cli.go:79`; `internal/explain/` |
+| `replay` | Re-evaluate a recorded request against a supplied policy bundle and reproduce the decision fields. | local-only | `cli.go:81`; `internal/replay/` |
+| `test` | Run operator-authored policy-as-code cases against local policy bundles and expected verdicts. | local-only | `cli.go:83`; `tests/test_runner/`; `docs/POLICY_TESTING.md`; BND-CLAIM-TEST-001 |
+| `doctor` | Local routed-surface diagnostics **+ bypass caveats** (§10.0). | local-only | `cli.go:85`; `internal/doctor/` |
+| `evidence` | `bundle` + `verify` local evidence manifests (SHA-256 artifact hashes). | local-only | `cli.go:87`; `internal/evidence/` |
+| `audit` | Pretty-print structured **decision-record** logs (filter by agent/tool/action). | delivered | `cli.go:89` |
+| `trust` | Inspect / reset adaptive trust state. **Opt-in** (`--trust-mode disabled|standalone|kernel`). | delivered | `cli.go:91`; `governance/trust*.go` |
 
 ## 2.3 Surface B — the Go SDK (`governance` + `policyeval`)
 
@@ -332,7 +336,7 @@ Every decision resolves to **exactly one of five verbs**, all literal outcomes i
 
 ## 3.6 The two-lane proof spine (pointer to §4.0)
 
-The launch is **two demoed lanes**, each fixture-only — not breadth-as-features. The **canonical spine table** (statuses, demos, verified verdict shapes, evidence) is **§4.0**. In short: Lane 1 = **MCP** (`production`, `boundary demo github-lethal-trifecta`, `upstream_called=false`); Lane 2 = **Command/CLI** (`delivered-preview`, `boundary demo command-secret-exfil`, `executed=false`). Do not cut the proof path; cut breadth first. All other adapters remain `delivered-preview`/`preview`, never headline. (C4/C5; see §4.0, §4.2.)
+The release is **two demoed lanes**, each fixture-only — not breadth-as-features. The **canonical spine table** (statuses, demos, verified verdict shapes, evidence) is **§4.0**. In short: Lane 1 = **MCP** (`production`, `boundary demo github-lethal-trifecta`, `upstream_called=false`); Lane 2 = **Command/CLI** (`delivered-preview`, `boundary demo command-secret-exfil`, `executed=false`). Do not cut the proof path; cut breadth first. All other adapters remain `delivered-preview`/`preview`, never headline. (C4/C5; see §4.0, §4.2.)
 
 ## 3.7 One-screen architecture diagram (Mermaid)
 
@@ -393,13 +397,14 @@ flowchart TB
 # 4. Scope & Maturity Matrix
 
 > **Authority order for every claim below** (highest first): `docs/RELEASE_TRUTH_PUBLIC.md`
-> (v0.8.0) → `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md` (CI-enforced) →
-> `docs/ADAPTER_READINESS_MATRIX.md` + `adapters/<x>/readiness.yaml` → `README.md`. Repo verified:
-> HEAD `7a20362`, read-only, 2026-05-30.
+> (v0.9.0) → `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md` (CI-enforced) →
+> `docs/ADAPTER_READINESS_MATRIX.md` + `adapters/<x>/readiness.yaml` → `README.md`. Current
+> release-candidate verification is recorded in `docs/RELEASE_TRUTH_PUBLIC.md`
+> and the release gates; older HEAD-specific audits are provenance only.
 
 ## 4.0 The two-lane spine (CANONICAL — the headline; everything else is honest preview)
 
-Fulcrum Boundary's launch scope is **two demoed proof lanes**, not a breadth-of-adapters feature
+Fulcrum Boundary's current release scope is **two demoed proof lanes**, not a breadth-of-adapters feature
 list. The spine is *what is demonstrated end-to-end with a fixture-only, no-credential, no-network,
 no-live-mutation demo*, and nothing more. **This is the one canonical spine table; §1.4, §3.6,
 §6.4, §8.3, §10.3 cross-reference it rather than restating it.**
@@ -411,7 +416,7 @@ no-live-mutation demo*, and nothing more. **This is the one canonical spine tabl
 
 **C4 (per-surface maturity).** The word **"production" is reserved for the MCP route only.** Every other adapter is `preview`, generated policies are `starter`, the dashboard is `local-only`, and the Go SDK core / CLI mechanics / GitHub Action are `delivered` (not "production"). *superseded: "production-grade pre-execution control plane" (`BOUNDARY_SPEC_SERIES.md`).*
 
-**C5 (tight spine; breadth as labeled previews).** The launch is the **tight proof spine** above (two demoed lanes); all other adapters ship as **honest, individually-labeled previews** (§4.2). We never headline breadth-as-features; the "adapter is the business model" expansion is **post-launch direction** only. *superseded: "broad surface — 6+ adapters + Managed Agents + trust + SQL-AST as headline features."*
+**C5 (tight spine; breadth as labeled previews).** The release is the **tight proof spine** above (two demoed lanes); all other adapters ship as **honest, individually-labeled previews** (§4.2). We never headline breadth-as-features; the "adapter is the business model" expansion is **future direction** only. *superseded: "broad surface — 6+ adapters + Managed Agents + trust + SQL-AST as headline features."*
 
 > Both demos are **fixture-only** (no credentials, no network egress, no live mutation) — enforced product behaviour, not a docs promise: `make release-check` runs `boundary selftest` and `boundary demo github-lethal-trifecta` green, and the redteam packs are declared fixture-only (BND-CLAIM-014, BND-CLAIM-CMD-002, `delivered`).
 
@@ -425,7 +430,7 @@ The ten lifecycle steps: `parse`, `identify`, `evaluate`, `deny`, `forward`, `in
 
 ## 4.2 The honest preview matrix (every adapter except MCP)
 
-The authoritative per-surface status table — the union of the eight `adapters/<x>/readiness.yaml` declarations and the Command/Edit Boundary surfaces in `docs/RELEASE_TRUTH_PUBLIC.md`. **MCP is the only `production` row; it is the spine, not a matrix entry.** Managed Agents carries `target_status: production` but **ships `preview`** — target status is roadmap, never a launch claim.
+The authoritative per-surface status table — the union of the eight `adapters/<x>/readiness.yaml` declarations and the Command/Edit Boundary surfaces in `docs/RELEASE_TRUTH_PUBLIC.md`. **MCP is the only `production` row; it is the spine, not a matrix entry.** Managed Agents carries `target_status: production` but **ships `preview`** — target status is roadmap, never a current release claim.
 
 | Surface | Status | Lifecycle gap holding it below production | Key gap ID | Evidence (readiness.yaml + claim) |
 |---|---|---|---|---|
@@ -462,16 +467,18 @@ Every preview row above is held below `production` by the same thing: **deployme
 
 # 5. Standalone & Integration Contract
 
-> **Locks C3** (with supporting cross-refs to C10). Repo verified: HEAD `7a20362`, read-only,
-> 2026-05-30.
+> **Locks C3** (with supporting cross-refs to C10). Current release-candidate
+> verification is recorded in `docs/RELEASE_TRUTH_PUBLIC.md` and the release
+> gates; older HEAD-specific audits are provenance only.
 
 ## 5.1 Standalone OSS is the product (C3)
 
-The launch ships a **standalone, downloadable Apache-2.0 OSS tool** with **zero private-repo dependency.** Kernel mode survives **only as a documented contract surface**, never as a launch dependency. The launch must not require any sibling repo (fulcrum-io, fulcrum-trust, Fulcrum-Proofs) to be present, built, or reachable. *superseded: the "out-of-process enforcement boundary of the Fulcrum kernel (Redis/NATS/trust/proofs)" framing (`SPEC_RECONCILIATION.md` C3 Position A).*
+The release ships a **standalone, downloadable Apache-2.0 OSS tool** with **zero private-repo dependency.** Kernel mode survives **only as a documented contract surface**, never as a release dependency. The release must not require any sibling repo (fulcrum-io, fulcrum-trust, Fulcrum-Proofs) to be present, built, or reachable. *superseded: the "out-of-process enforcement boundary of the Fulcrum kernel (Redis/NATS/trust/proofs)" framing (`SPEC_RECONCILIATION.md` C3 Position A).*
 
 ## 5.2 Zero private-repo dependency — proven, not asserted
 
-Backed by read-only verification in `CROSS_REPO_DEPS.md` (offline build + empty Fulcrum-module `go mod graph`), re-confirmed against HEAD `7a20362`:
+Backed by read-only verification in `CROSS_REPO_DEPS.md` (offline build + empty
+Fulcrum-module `go mod graph`) and re-confirmed by the current release gate:
 
 | Check | Result |
 |---|---|
@@ -485,7 +492,7 @@ Backed by read-only verification in `CROSS_REPO_DEPS.md` (offline build + empty 
 
 **Why it is decoupled (the `policyeval` story):** Boundary ships its **own complete, self-contained copy** of `policyeval` (8 files, pure stdlib + `testify` test-only) keyed on a **hand-rolled local `EvaluationContext`** rather than fulcrum-io's generated `policyv1.EvaluationContext` proto. That single choice is *why* Boundary has no proto/buf and no io dependency (`CROSS_REPO_DEPS.md`).
 
-**Honest counter-note (truth > agreement):** the same `policyeval` fork that *enables* standalone buildability is, post-launch, a **maintenance liability** — a policy-semantics fix in one repo does not propagate to the other (~68 lines diverged in `evaluator.go`). This is a **maintenance item, not a launch blocker**, and the fix is emphatically **NOT** to make the OSS repo depend on the private repo (§11.2).
+**Honest counter-note (truth > agreement):** the same `policyeval` fork that *enables* standalone buildability is a **maintenance liability** — a policy-semantics fix in one repo does not propagate to the other (~68 lines diverged in `evaluator.go`). This is a **future maintenance item, not a release blocker**, and the fix is emphatically **NOT** to make the OSS repo depend on the private repo (§11.2).
 
 ## 5.3 No runtime dependency on any Fulcrum service
 
@@ -493,33 +500,36 @@ An external user runs Boundary with **no Fulcrum backend at all.** References to
 
 ## 5.4 Kernel mode = documented contract surface only (C3)
 
-Kernel / out-of-process integration is **a contract surface, not a shipped dependency.** Status: `delivered` as a *contract description* (BND-CLAIM-010: "Standalone and kernel integration contracts remain contract surfaces"). The launch product does **not** connect to a kernel, Redis, NATS, or any control plane to deliver value. It **fails hard on incomplete kernel configuration** by design — Boundary must not start half-connected, which could silently turn an intended fail-closed deployment into a local one.
+Kernel / out-of-process integration is **a contract surface, not a shipped dependency.** Status: `delivered` as a *contract description* (BND-CLAIM-010: "Standalone and kernel integration contracts remain contract surfaces"). The release product does **not** connect to a kernel, Redis, NATS, or any control plane to deliver value. It **fails hard on incomplete kernel configuration** by design — Boundary must not start half-connected, which could silently turn an intended fail-closed deployment into a local one.
 
 ## 5.5 Distribution & install contract (supports C3; cross-refs C10)
 
 | Item | Contract | Status | Evidence |
 |---|---|---|---|
-| Install path | `go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.8.0` | `production` (resolves once the public `v0.8.0` tag is pushed) | `docs/RELEASE_TRUTH_PUBLIC.md`; README |
+| Install path | `go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0` | repeatable release target (resolves once the public `v0.9.0` tag is pushed) | `docs/RELEASE_TRUTH_PUBLIC.md`; README |
 | Go toolchain | **Go 1.25+** required | hard requirement | `go.mod` `go 1.25.0` |
-| **C-toolchain prerequisite** | Default `go install` needs a **C compiler present** (CGO on): `cmd/boundary` → `interceptors/sql` → `pganalyze/pg_query_go/v6` is **CGO with no `nocgo` fallback**. `CGO_ENABLED=0` build **fails**. The shipped `Dockerfile` now builds with `CGO_ENABLED=1` plus a C toolchain (fixed on this launch-prep branch); the README states the prerequisite. | build caveat (B-1, resolved) | `CROSS_REPO_DEPS.md` B-1; `Dockerfile` (`CGO_ENABLED=1`, `build-base`); verified `CGO_ENABLED=0 go build ./cmd/boundary` fails (`undefined: pg_query.Parse`) |
+| **C-toolchain prerequisite** | Default `go install` needs a **C compiler present** (CGO on): `cmd/boundary` → `interceptors/sql` → `pganalyze/pg_query_go/v6` is **CGO with no `nocgo` fallback**. `CGO_ENABLED=0` build **fails**. The shipped `Dockerfile` builds with `CGO_ENABLED=1` plus a C toolchain; the README states the prerequisite. | build caveat (B-1, resolved) | `CROSS_REPO_DEPS.md` B-1; `Dockerfile` (`CGO_ENABLED=1`, `build-base`); verified `CGO_ENABLED=0 go build ./cmd/boundary` fails (`undefined: pg_query.Parse`) |
 | Hosted / package-manager distribution | **None claimed** — no Homebrew, no package manager, no hosted monitoring | forbidden to claim | `docs/RELEASE_TRUTH_PUBLIC.md` |
 
-> The README **states the C-toolchain prerequisite** for the default install path, and the `Dockerfile` is **fixed** to build with CGO on (B-1, resolved) — so no broken static-binary promise ships. This was the one engineering touch in an otherwise hygiene-only pre-launch pass; it is done on this launch-prep branch. (See §10.)
+> The README **states the C-toolchain prerequisite** for the default install path,
+> and the `Dockerfile` builds with CGO on (B-1, resolved) — so no broken
+> static-binary promise ships. (See §10.)
 
 ---
 
 # 6. Decision Records & Proof Boundary
 
 > **Section scope:** locks **C6**, **C7**. The Claims & Truth Discipline machinery (C8, C10) is in
-> **§7**. Ground truth: repo (read-only, HEAD `7a20362`), verified 2026-05-30. Written to pass
-> `claims/claims_test.go` and `claims/language_lint_test.go`. (The C6/C7 lock statements are in §1.6
-> and the master table; this section is the mechanics.)
+> **§7**. Ground truth is the current repo plus the release gates recorded in
+> `docs/RELEASE_TRUTH_PUBLIC.md`. This section is written to pass
+> `claims/claims_test.go` and `claims/language_lint_test.go`. (The C6/C7 lock
+> statements are in §1.6 and the master table; this section is the mechanics.)
 
 This is the truth-discipline spine. For Boundary, **honest scope is the product differentiator** — the claims ledger, the language lint, the public-surface guard, and the "what it does NOT prove" tables are features, not disclaimers. Lead with them.
 
 ## 6.1 The decision artifact is a "decision record" (C6)
 
-**Locked term: decision record.** Never "receipt" as the primary noun in launch copy; never "cryptographic proof of verdict"; never "signed receipt."
+**Locked term: decision record.** Never "receipt" as the primary noun in public copy; never "cryptographic proof of verdict"; never "signed receipt."
 
 When Boundary reaches a verdict on a governed route, it emits one structured **decision record**. The record is **hash-verifiable**: it carries a SHA-256 decision hash over a canonical encoding, and `boundary verify-record` recomputes and compares it (and, given the inputs, the request hash, policy-bundle hash, and binary digest). **Status:** `delivered`.
 
@@ -556,7 +566,7 @@ The sharpest honesty point in the section, verified directly in source. A signin
 `BND-CLAIM-005` is internally titled *"Boundary produces receipt-grade decision records."* The owner-confirmed **public** term is **"decision record (hash-verifiable)"**, not "receipt-grade."
 
 - "Receipt-grade" / "receipt" survive as **internal/lineage vocabulary** in the ledger, `docs/RECEIPTS.md`, and the `verify-record` / `evidence` command names — analogous to how "governance" survives internally (C1).
-- **Public launch copy uses "decision record (hash-verifiable)."** The load-bearing constraint both sides share is the **forbidden** list, which is identical: no "cryptographic proof of verdict," no "signed receipt by default."
+- **Public copy uses "decision record (hash-verifiable)."** The load-bearing constraint both sides share is the **forbidden** list, which is identical: no "cryptographic proof of verdict," no "signed receipt by default."
 
 ## 6.4 Both flagship lanes produce a decision record (spine alignment — pointer to §4.0)
 
@@ -610,11 +620,11 @@ Boundary binds public language to repo evidence through **three CI-blocking gate
 
 Controlled rules (verified): generic platform lead (`AI governance platform`, headline-only) · SQL firewall overclaim · universal prompt-injection overclaim · universal agent safety overclaim · runtime proof overclaim (`proved decision[s]`) · secure sandbox overclaim · adapter maturity overclaim (`all/six/seven … production adapters`) · unverified competitive claim · GitHub production overclaim. A line is allowed when it also contains a **negated/controlled** token: `not `, `do not `, `does not `, `must not `, `avoid `, `false`, `forbidden`, `prohibited`, `without `, `unless `, `until ` (the secure-sandbox rule also allows explicit sandbox-caveat phrasing). **This is why the "What It Does Not Prove" tables are safe to write — the limitation framing is exactly what the lint requires.**
 
-**Gate 3 — The public-surface guard (`scripts/assert-no-internal-public-artifacts.sh`).** A CI step (`public-surface` job, verified) that greps public surfaces for **internal planning/session leakage** (paths like `/Users/td`, `CODEX_SESSION_LOG`, `.claude/sprint`, goal-tracking verbs, "Y Combinator", etc.) and **capture-instruction placeholders** ("terminal capture", "asciinema", "demo.tape", "ScreenFlow", etc.), failing on a hit. **Scope (widened during launch-prep):** the guard enumerates **every tracked text file** via `git ls-files` (excluding only binaries, generated site output, and the guard script itself), so internal planning/session artifacts cannot re-accrete in any tracked path — `conductor/`, `scripts/`, `claims/`, `fixtures/`, and root files are all covered.
+**Gate 3 — The public-surface guard (`scripts/assert-no-internal-public-artifacts.sh`).** A CI step (`public-surface` job, verified) that greps public surfaces for **internal planning/session leakage** (paths like `/Users/td`, `CODEX_SESSION_LOG`, `.claude/sprint`, goal-tracking verbs, "Y Combinator", etc.) and **capture-instruction placeholders** ("terminal capture", "asciinema", "demo.tape", "ScreenFlow", etc.), failing on a hit. **Scope:** the guard enumerates **every tracked text file** via `git ls-files` (excluding only binaries, generated site output, and the guard script itself), so internal planning/session artifacts cannot re-accrete in any tracked path — `conductor/`, `scripts/`, `claims/`, `fixtures/`, and root files are all covered.
 
 ## 7.2 Authority order (the tie-breaker)
 
-When two documents disagree about what may be claimed, resolve highest-wins (the canonical chain from the briefing): (1) `docs/RELEASE_TRUTH_PUBLIC.md` (v0.8.0); (2) `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md` (**CI-enforced**; the binding floor); (3) `README.md` (v0.8.0); (4) `conductor/2026-05-29-…-reset-{design,plan}.md` (intent, polish only); (5) the language stack; (6) `docs/LAUNCH_TRUTH_FREEZE.md`; (7) `Fulcrum_Boundary_Vision.md` (direction only).
+When two documents disagree about what may be claimed, resolve highest-wins (the canonical chain from the briefing): (1) `docs/RELEASE_TRUTH_PUBLIC.md` (v0.9.0); (2) `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md` (**CI-enforced**; the binding floor); (3) `README.md` (v0.9.0); (4) `conductor/2026-05-29-…-reset-{design,plan}.md` (intent, polish only); (5) the language stack; (6) `docs/LAUNCH_TRUTH_FREEZE.md`; (7) `Fulcrum_Boundary_Vision.md` (direction only).
 
 **Demote / do not cite as authority:** `BOUNDARY_SPEC_SERIES.md`, the "governance kernel / kernel-connected" framing, all GIL-named material, the per-version `RELEASE_TRUTH_V0xx` history.
 
@@ -622,14 +632,14 @@ When two documents disagree about what may be claimed, resolve highest-wins (the
 
 ## 7.3 Vendor-neutral copy (C8)
 
-Public copy names **no competitors and no third parties** — no brand in README, docs, release notes, or launch copy. Comparisons are framed by **category** ("scanners," "platforms," "policy substrates"), never by brand; the internal positioning lane stays out of the public spec. **External ingestion is Boundary-owned mapping** (e.g. `--source external-mcp`, "external MCP inventory NDJSON"), with the explicit disclaimer: **"not an official third-party integration or compatibility claim."** The `language_lint` "unverified competitive claim" rule backstops this, but the discipline is broader than its two literal phrases — **no brand names at all**, and none appear in this spec. One canonical mental model **may** be cited because it is a named public concept, not a vendor: the **"lethal trifecta"** (private data + untrusted content + external comms), cited to its origin and kept scoped to the tested write-after-taint path. **Forbidden:** any competitor brand; any "vs <vendor>"; any "compatible with / integrates with <vendor>" for external-ingest formats; any "X cannot do this / only we can." *superseded: any earlier named-competitor / named-third-party copy.*
+Public copy names **no competitors and no third parties** — no brand in README, docs, release notes, or other public copy. Comparisons are framed by **category** ("scanners," "platforms," "policy substrates"), never by brand; the internal positioning lane stays out of the public spec. **External ingestion is Boundary-owned mapping** (e.g. `--source external-mcp`, "external MCP inventory NDJSON"), with the explicit disclaimer: **"not an official third-party integration or compatibility claim."** The `language_lint` "unverified competitive claim" rule backstops this, but the discipline is broader than its two literal phrases — **no brand names at all**, and none appear in this spec. One canonical mental model **may** be cited because it is a named public concept, not a vendor: the **"lethal trifecta"** (private data + untrusted content + external comms), cited to its origin and kept scoped to the tested write-after-taint path. **Forbidden:** any competitor brand; any "vs <vendor>"; any "compatible with / integrates with <vendor>" for external-ingest formats; any "X cannot do this / only we can." *superseded: any earlier named-competitor / named-third-party copy.*
 
 ## 7.4 Distribution — local + `go install` only (C10)
 
-The only distribution channel at launch is local build + `go install`. The one canonical install line (matching the install path in the README):
+The only distribution channel for this release is local build + `go install`. The one canonical install line (matching the install path in the README):
 
 ```
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.8.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0
 ```
 
 - **No** "available on Homebrew," `brew install`, `apt`/`yum`/`apk`, `npm install`, `docker pull …`, or any package-manager / registry distribution claim (verified: README contains none).
@@ -665,15 +675,16 @@ Claim-safe by construction (every line is negated/limitation framing, which the 
 
 ## 7.6 R1 — "Boundary decides," never "Fulcrum decides" (truth-discipline record)
 
-"Boundary decides" subject discipline (R1) is preserved throughout; "Fulcrum" appears only in the module path, the proofs-correspondence lineage, and as the upstream owner of `proved`/`human_approved` modes. The three former "Fulcrum decides" residues (`docs/LANGUAGE_SYSTEM.md` lines 11 & 18 and `docs/PUBLIC_RELEASE_COPY.md` line 70) are **reconciled** — those files now read "Boundary decides"; the only remaining occurrences of the phrase are the governed quotes in this language-control spec (R1 rule, §2.1/§7.6). *superseded: those three "Fulcrum decides" instances.* The other pre-launch precision items owned here are **done on this launch-prep branch:** the public-surface guard is widened to every tracked text file (§7.1 Gate 3); `CITATION.cff` is corrected to the launch version (`0.8.0`, resolving the earlier `0.2.0` drift; briefing B-3); the no-package-manager/hosted sweep is reflected in copy (§7.4); the receipt-vs-decision-record term is reconciled to "decision record (hash-verifiable)" (§6.1/§6.3); and README test-count precision is handled by carrying no fragile count in the README (§9). No item from this set remains open.
+"Boundary decides" subject discipline (R1) is preserved throughout; "Fulcrum" appears only in the module path, the proofs-correspondence lineage, and as the upstream owner of `proved`/`human_approved` modes. The three former "Fulcrum decides" residues (`docs/LANGUAGE_SYSTEM.md` lines 11 & 18 and `docs/PUBLIC_RELEASE_COPY.md` line 70) are **reconciled** — those files now read "Boundary decides"; the only remaining occurrences of the phrase are the governed quotes in this language-control spec (R1 rule, §2.1/§7.6). *superseded: those three "Fulcrum decides" instances.* The release-surface precision items remain done in the current tree: the public-surface guard covers every tracked text file (§7.1 Gate 3); `CITATION.cff` is corrected to the release version (`0.9.0`, resolving the earlier `0.2.0` drift; briefing B-3); the no-package-manager/hosted sweep is reflected in copy (§7.4); the receipt-vs-decision-record term is reconciled to "decision record (hash-verifiable)" (§6.1/§6.3); and README test-count precision is handled by carrying no fragile count in the README (§9). No item from this set remains open.
 
 ---
 
 # 8. Quickstart & Demos
 
-> Every command output here was captured live from the built `boundary` binary at HEAD `7a20362`
-> (`v0.6.1-4-g7a20362`) on 2026-05-30 — fixture-only, no credentials, no network, no live mutation.
-> Full transcripts live in the demo docs; the essential lines are excerpted below.
+> The command shapes below are fixture-only, no-credential, no-network, and
+> no-live-mutation paths. Current release verification re-runs the key commands
+> through `make release-check`; full transcripts and examples live in the demo
+> docs.
 
 ## 8.0 What you get, in one screen
 
@@ -688,7 +699,7 @@ Boundary is a single Apache-2.0 Go module (Go 1.25+) installed with one `go inst
 Requires Go 1.25+ and a C toolchain on `PATH` (the SQL classifier links `pganalyze/pg_query_go` via cgo). Distribution is **local + `go install` only** (C10).
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.8.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0
 boundary selftest                       # 10 no-credential local checks (verified 10/10)
 boundary demo github-lethal-trifecta    # fixture-only: no creds, no GitHub calls, no mutation
 ```
@@ -786,8 +797,9 @@ The side-by-side comparison of the two lanes — statuses, demo commands, scenar
 > **Framing.** Boundary's suite is the **reference standard** — the prior due-diligence audit's
 > named "role model" repo. The point is not to argue "is it tested" (it is) but to give an external
 > contributor a **frictionless, trustworthy first run** and to pre-empt one honest coverage-shape
-> question. Source: `research/TEST_READINESS.md`, re-verified at HEAD `7a20362`. The full gap ledger,
-> PR template, and `docs/TESTING.md` outline live in `LAUNCH_BLOCKER_CHECKLIST.md`.
+> question. Source: `research/TEST_READINESS.md`; the current release gate
+> re-runs the contributor-facing checks. The full gap ledger, PR template, and
+> `docs/TESTING.md` outline live in `LAUNCH_BLOCKER_CHECKLIST.md`.
 
 ## 9.1 Testing architecture
 
@@ -829,13 +841,13 @@ Aggregate statement coverage reads **43.8%**, and several security-critical pack
 
 ## 9.4 What CI enforces (and what to witness before announcing)
 
-`.github/workflows/ci.yml` on every PR/push to `main`: **`test`** (`go build`, `go vet`, `go test ./... -count=1 -race -cover` on Go **1.25.0 + 1.26.3**); **`grpc-adapter`** (nested module); **`lint`** (`golangci-lint`, pinned, gofmt formatter); **`security`** (**gosec + govulncheck, blocking**); **`public-surface`** (the Gate-3 guard); plus **CodeQL** (push/PR + weekly) and a strict mkdocs build. `scripts/release-check.sh` is the human-runnable superset that **runs the actual binary** through `verify`, `verify-record`, `version`, `selftest`, `demo github-lethal-trifecta`, `demo action-boundary`, `doctor --json`, and an `evidence bundle`→`verify` round-trip.
+`.github/workflows/ci.yml` on every PR/push to `main`: **`test`** (`go build`, `go vet`, `go test ./... -count=1 -race -cover` on Go **1.25.0 + 1.26.3**); **`grpc-adapter`** (nested module); **`lint`** (`golangci-lint`, pinned, gofmt formatter); **`security`** (**gosec + govulncheck, blocking**); **`public-surface`** (the Gate-3 guard); plus **CodeQL** (push/PR + weekly) and a strict mkdocs build. `scripts/release-check.sh` is the human-runnable superset that **runs the actual binary** through `verify`, `verify-record`, `version`, `selftest`, `demo github-lethal-trifecta`, `demo action-boundary`, `doctor --json`, `boundary test --path tests/fixtures/policy-test/cases`, and an `evidence bundle`→`verify` round-trip.
 
 > **Launch checklist item (G3):** before announcing, **witness a green run on the public default branch** — all required checks across both Go versions, plus blocking gosec / govulncheck / CodeQL. README badges point at the public Actions and must not be red on day one.
 
 ## 9.5 Contributing
 
-CONTRIBUTING.md already states the expectation (fork → branch from `main` → keep commits scoped to one lane → run local checks → describe what changed, why, and what verification you ran; Apache-2.0, **no CLA**). The two contributor artifacts called for here have been **added on this launch-prep branch**:
+CONTRIBUTING.md already states the expectation (fork → branch from `main` → keep commits scoped to one lane → run local checks → describe what changed, why, and what verification you ran; Apache-2.0, **no CLA**). The two contributor artifacts called for here are present in the current tree:
 
 - **G2 — `.github/pull_request_template.md`** (added; issue templates already existed). The template encodes the verification checklist (`make release-check`, `gofmt -l`, `go vet`, `go test ./...`, `go test ./claims/...`) and the **routed-only / fixture-only honesty gates**: no forbidden copy ("global shell control" / "all CLI activity protected" / "governs every way an agent can mutate" / "cryptographic proof of verdict" / any `proved` runtime decision); decisions stay `deterministic`/`classified`; records stay "hash-verifiable."
 - **G8 — `docs/TESTING.md`** (added) covers the test architecture, how to add a red-team fixture / SQL evasion case, the claims-ledger contract, and the §9.3 coverage-attribution caveat.
@@ -851,10 +863,10 @@ CONTRIBUTING.md already states the expectation (fork → branch from `main` → 
 
 # 10. Limitations & Threat Model
 
-> **Authoritative.** Grounds the *honest scope* of the first OSS release. This section is **a
+> **Authoritative.** Grounds the *honest scope* of the current public release. This section is **a
 > differentiator, not a disclaimer**: the "What Boundary Does NOT Prove" tables are the trust
 > feature. **Copy subject is always "Boundary decides", never "Fulcrum decides"** (R1).
-> **Vendor-neutral throughout** (C8). The complete pre-launch gate (B-1…B-4, G1–G8) is
+> **Vendor-neutral throughout** (C8). The complete release-readiness gate (B-1…B-4, G1–G8) is
 > `LAUNCH_BLOCKER_CHECKLIST.md`.
 
 ## 10.0 The doctrine that governs every limit: ROUTED-ONLY (CANONICAL — locks C9)
@@ -927,21 +939,21 @@ The C6/C7 mechanics are canonical in §6; the threat-model-facing summary: **(C6
 
 Only the MCP route is `production`; everything else is honestly labeled. **The spine is the two demoed lanes (§10.3); the per-surface rows are NOT headline features.** The authoritative per-surface table (every adapter, its status, the lifecycle gap, and the ledger anchor) is canonical in **§4.2** and is not restated here; promotion to `production` is uniformly gated on **deployment-bypass proof** (§11.1).
 
-- **Distribution limit (C10):** install is **local + `go install …/cmd/boundary@v0.8.0` only.** No hosted-monitoring, Homebrew, or other package-manager claims. The dashboard reads local artifacts only.
+- **Distribution limit (C10):** install is **local + `go install …/cmd/boundary@v0.9.0` only.** No hosted-monitoring, Homebrew, or other package-manager claims. The dashboard reads local artifacts only.
 
 ## 10.6 Out of scope for this release (stated plainly)
 
-Boundary does **not** claim, and launch copy must not imply: **global shell / system control**, "all CLI activity protected", or "governs every way an agent can mutate" (C9); a **general SQL firewall** or semantic SQL analysis (`BND-CLAIM-004` = `false`); a **universal prompt-injection / "blocks every attack"** defense (fixtures cover *tested* paths only); a **formal-verification product** (proofs are correspondence-only, never the hook — C7); **hosted monitoring or cloud analysis** (local-first; C10); **production status for any non-MCP adapter** (all others preview/starter/local-only pending deployment-bypass proof); **cryptographic receipts / signed proof of verdict** (records are hash-verifiable logs — C6); **the standalone↔kernel contract as a shipped integration** (kernel mode is a documented contract surface only — C3, §10.7).
+Boundary does **not** claim, and public copy must not imply: **global shell / system control**, "all CLI activity protected", or "governs every way an agent can mutate" (C9); a **general SQL firewall** or semantic SQL analysis (`BND-CLAIM-004` = `false`); a **universal prompt-injection / "blocks every attack"** defense (fixtures cover *tested* paths only); a **formal-verification product** (proofs are correspondence-only, never the hook — C7); **hosted monitoring or cloud analysis** (local-first; C10); **production status for any non-MCP adapter** (all others preview/starter/local-only pending deployment-bypass proof); **cryptographic receipts / signed proof of verdict** (records are hash-verifiable logs — C6); **the standalone↔kernel contract as a shipped integration** (kernel mode is a documented contract surface only — C3, §10.7).
 
 ## 10.7 Standalone posture & the kernel contract surface (locks C3 — proof in §5)
 
-**Stated explicitly and exclusively:** the launch ships a **standalone OSS tool with ZERO private-repo dependency** (the offline-build + empty-graph proof and the no-runtime-Fulcrum-call evidence are canonical in §5.2–§5.3). Kernel mode (Redis / Fulcrum API / NATS-backed policy, trust, budget, escalation, audit) is a **documented contract surface only** — `BND-CLAIM-010`, `status: delivered` as a *contract definition* — **not** a shipped, network-connected integration at launch; it **fails hard on incomplete configuration** by design. The `policyeval` fork *enables* standalone buildability and its cross-repo drift is a post-launch maintenance item (§11.2), explicitly **not** to be "fixed" by coupling the OSS repo to the private repo. *superseded: "Boundary is the out-of-process enforcement boundary of the Fulcrum kernel (requires Redis/NATS/fulcrum-io)" as the launch identity — Position A retired.* **Evidence:** `CROSS_REPO_DEPS.md`; `docs/STANDALONE_VS_KERNEL.md`.
+**Stated explicitly and exclusively:** the release ships a **standalone OSS tool with ZERO private-repo dependency** (the offline-build + empty-graph proof and the no-runtime-Fulcrum-call evidence are canonical in §5.2–§5.3). Kernel mode (Redis / Fulcrum API / NATS-backed policy, trust, budget, escalation, audit) is a **documented contract surface only** — `BND-CLAIM-010`, `status: delivered` as a *contract definition* — **not** a shipped, network-connected integration in this release; it **fails hard on incomplete configuration** by design. The `policyeval` fork *enables* standalone buildability and its cross-repo drift is a future maintenance item (§11.2), explicitly **not** to be "fixed" by coupling the OSS repo to the private repo. *superseded: "Boundary is the out-of-process enforcement boundary of the Fulcrum kernel (requires Redis/NATS/fulcrum-io)" as the release identity — Position A retired.* **Evidence:** `CROSS_REPO_DEPS.md`; `docs/STANDALONE_VS_KERNEL.md`.
 
 ---
 
-# 11. Roadmap (post-launch)
+# 11. Roadmap (future direction)
 
-> **Everything in Section 11 is DIRECTION, NOT A CLAIM.** None of it may appear in launch copy as
+> **Everything in Section 11 is DIRECTION, NOT A CLAIM.** None of it may appear in public copy as
 > a current capability, and none of it carries a `delivered`/`production` status. The honest preview
 > matrix (§4.2/§10.5) is the present tense; this is the future tense.
 
@@ -949,13 +961,13 @@ Boundary does **not** claim, and launch copy must not imply: **global shell / sy
 Every preview adapter (Secure GitHub, Command, Edit, gRPC, A2A, CodeExec, Webhook, Managed Agents) has the **same uniform gate: deployment-bypass proof** — evidence that the Boundary route is the *only* relevant route for the protected workflow. Per `docs/command-boundary/BYPASS_MODEL.md` and each `readiness.yaml`: operators intentionally route protected actions through Boundary; shell/shim (or topology) setup is reproducible and reversible; direct bypass paths are blocked by environment policy or documented out of scope; decision records exist for routed attempts; tests prove denied actions do not execute **and** allowed actions execute exactly once; bypass limitations are documented in release truth. Promotion order is demand-led — **not a dated roadmap.**
 
 ## 11.2 Maintenance — `policyeval` de-fork
-Boundary's `policyeval/` and the private control plane's copy are independent and have drifted. For a standalone OSS tool this divergence is *correct posture today* but a standing **maintenance liability** (a policy-semantics fix in one tree does not propagate). The de-fork (a shared, public, contract-tested core, or a documented one-way sync) is a **post-launch maintenance item — not a launch blocker**, and explicitly **not** to be resolved by coupling the OSS repo to the private repo.
+Boundary's `policyeval/` and the private control plane's copy are independent and have drifted. For a standalone OSS tool this divergence is *correct posture today* but a standing **maintenance liability** (a policy-semantics fix in one tree does not propagate). The de-fork (a shared, public, contract-tested core, or a documented one-way sync) is a **future maintenance item — not a release blocker**, and explicitly **not** to be resolved by coupling the OSS repo to the private repo.
 
 ## 11.3 Hardening the policy/evasion surface
 Move destructive-action blocking beyond substring matching toward parse-based classification on the CGO SQL path; widen the evasion corpus; add fuzzing (`FuzzClassifyPostgres` + per-adapter parser fuzz). This *narrows* Surface 2 (§10.2) over time; it does **not** retroactively support a "SQL firewall" claim (that framing stays killed).
 
 ## 11.4 Expansion (demand-gated)
-Broader MCP-client discovery; more starter-policy templates; richer local dashboard views over local artifacts (still **local-only** — no hosted monitoring without an explicit, separately-scoped decision that revisits C10). The "adapter is the business model" expansion is retained as **strategy, post-launch** — not a launch surface.
+Broader MCP-client discovery; more starter-policy templates; richer local dashboard views over local artifacts (still **local-only** — no hosted monitoring without an explicit, separately-scoped decision that revisits C10). The "adapter is the business model" expansion is retained as **strategy and future direction** — not a current release surface.
 
 ## 11.5 Optional integrity upgrade
 Signed decision records / tamper-evident receipts would upgrade Surface 3 (§10.2) from "depends on your log pipeline" to in-artifact tamper-evidence. **Not shipped**; until then, copy stays "decision records (hash-verifiable)", never "cryptographic proof of verdict" (C6).
@@ -1057,7 +1069,7 @@ These may appear ONLY in claim-control, language-control, historical, or explici
 | Forbidden | Replacement |
 |---|---|
 | hosted monitoring / dashboard monitors production deployments | dashboard reads local artifacts only |
-| Homebrew / package-manager availability | local + `go install …@v0.8.0` only |
+| Homebrew / package-manager availability | local + `go install …@v0.9.0` only |
 
 **Vendor (C8)**
 | Forbidden | Replacement |
@@ -1079,7 +1091,7 @@ These may appear ONLY in claim-control, language-control, historical, or explici
 - No "proved" runtime claim; no "cryptographic proof of verdict"; no "global shell control / all CLI activity protected / governs every way an agent can mutate." (C6/C7/C9)
 - Subject is **Boundary**, never Fulcrum, in every capability sentence. (R1)
 - Vendor-neutral: no named third parties; the only named external concept is the public "lethal trifecta" mental model, scoped to the tested path. (C8)
-- Distribution copy asserts only `go install …@v0.8.0` and a `local-only` dashboard. (C10)
+- Distribution copy asserts only `go install …@v0.9.0` and a `local-only` dashboard. (C10)
 - The routed-only doctrine and the two-lane spine are each stated **once canonically** (§10.0 and §4.0); every other reference cross-points to them. Each conflict-resolving section states its chosen side explicitly + exclusively with a `superseded:` predecessor (C1–C10, R1).
 
-**This is the authoritative in-repo launch spec. It is a language-control document (§12 governs public language by quoting the forbidden phrases) and is exempt from the public-surface guard and language lint for that reason, alongside the lexicon and copy-rules docs.**
+**This is the authoritative in-repo public-surface spec. It is a language-control document (§12 governs public language by quoting the forbidden phrases) and is exempt from the public-surface guard and language lint for that reason, alongside the lexicon and copy-rules docs.**
