@@ -62,7 +62,7 @@ the committed example:
   "event_type": "governance_decision",
   "record_id": "rec_a1b2c3d4e5f6",
   "timestamp": "2026-05-31T18:24:07Z",
-  "boundary_version": "0.7.0",
+  "boundary_version": "0.8.0",
   "adapter": "mcp",
   "agent_id": "demo-agent",
   "tenant_id": "demo",

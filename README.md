@@ -37,7 +37,7 @@ The default build links the Postgres SQL classifier (`pganalyze/pg_query_go`)
 via cgo, so `CGO_ENABLED=0` builds fail; `go install` uses cgo by default.
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.7.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.8.0
 boundary selftest
 boundary doctor --json
 boundary demo github-lethal-trifecta      # Lane 1: MCP, the first production route
@@ -48,10 +48,9 @@ boundary evidence verify boundary-evidence
 boundary verify-record <record.json>
 ```
 
-> The commands above ship in `v0.7.0` (the install line). The uniform
-> record-location output described below, plus `boundary explain` /
-> `boundary replay` and `DecisionRecordV2`, were added since `v0.7.0` and are
-> available by building from `main`.
+> The commands above, including the uniform record-location output described
+> below, plus `boundary explain` / `boundary replay` and `DecisionRecordV2`,
+> ship in `v0.8.0` (the install line). The `@v0.8.0` install includes them.
 
 No credentials. No live calls. No real mutations. Every record-emitting command
 prints uniform lines — `decision record id: rec_...` (the record's id) and, when

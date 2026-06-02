@@ -24,7 +24,7 @@ matches the [README](../README.md) quickstart; the demos appear in the same
 order there.
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.7.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.8.0
 boundary selftest                                            # Local-only smoke test
 boundary doctor --json                                       # Local-only diagnostics + bypass caveats
 boundary demo github-lethal-trifecta      # Lane 1: MCP, the first production route (Delivered)
@@ -212,13 +212,10 @@ sync before shipping a Boundary release branch.
 
 ## 9. Decision-Record Verification Commands
 
-> **Availability:** `boundary verify-record` itself, and `schema_version "1"`
-> records, are in the `v0.7.0` release. The `schema_version "2"` route-context path
-> described below (and `boundary explain` / `boundary replay` in sections 10–11) is
-> available on `main` and from-source builds, but is not in the `v0.7.0` release
-> binary, so `go install …@v0.7.0` does not include it. Until a release that includes
-> it is tagged, build from source (`go run ./cmd/boundary …` or `make build`) to
-> verify a `schema_version "2"` record.
+> **Availability:** `boundary verify-record`, `schema_version "1"` records, and
+> the `schema_version "2"` route-context path described below (along with
+> `boundary explain` / `boundary replay` in sections 10–11) are all in the
+> `v0.8.0` release, so `go install …@v0.8.0` includes them.
 
 ```bash
 boundary verify-record record.json
@@ -274,12 +271,10 @@ that actually ran. See [docs/DECISION_RECORDS.md](./DECISION_RECORDS.md) and
 ## 10. Decision-Record Explanation Commands
 
 > **Availability:** `boundary explain` (this section) and `boundary replay`
-> (section 11) are available on `main` and from-source builds. They are not in the
-> `v0.7.0` release binary, so `go install …@v0.7.0` does not include them. Until a
-> release that includes them is tagged, build from source (`go run ./cmd/boundary …`
-> or `make build`) to run them. The `v0.7.0` first-run path — `selftest`, `doctor`,
+> (section 11) are in the `v0.8.0` release, so `go install …@v0.8.0` includes
+> them. They join the rest of the `v0.8.0` first-run path — `selftest`, `doctor`,
 > the two proof demos, `evidence bundle`/`verify`, and `verify-record` on a
-> `schema_version "1"` record — is unaffected.
+> `schema_version "1"` or `"2"` record.
 
 ```bash
 boundary explain record.json
@@ -313,9 +308,7 @@ bypass a record cannot see. `topology_profile` is asserted, not attested, and
 ## 11. Decision-Record Replay Commands
 
 > **Availability:** like `boundary explain` (section 10), `boundary replay` is
-> available on `main` and from-source builds and is not in the `v0.7.0` release
-> binary; `go install …@v0.7.0` does not include it. Build from source until a
-> release that includes it is tagged.
+> in the `v0.8.0` release; `go install …@v0.8.0` includes it.
 
 ```bash
 boundary replay record.json --request request.json --policies ./policies/

@@ -8,7 +8,7 @@ executes, records the verdict, and governs only routes forced through Boundary.
 ## Try It In One Minute
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.7.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.8.0
 boundary selftest
 boundary demo github-lethal-trifecta
 ```
