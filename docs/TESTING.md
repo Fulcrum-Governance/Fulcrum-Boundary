@@ -19,6 +19,21 @@ There is no `-short` mode: there are **zero `testing.Short()` guards** in the
 tree, so `-short` would be a silent no-op. The full suite runs well under five
 minutes.
 
+## Policy-as-code tests
+
+`boundary test` runs local policy-as-code cases against local policy bundles:
+
+```bash
+boundary test --path tests/fixtures/policy-test/cases
+boundary test --path tests/fixtures/policy-test/cases --format json
+```
+
+The committed corpus under `tests/fixtures/policy-test/` covers `allow`, `deny`,
+`warn`, `require_approval`, `escalate`, and an expected `parse_rejection`.
+Failures exit non-zero, so the command is suitable for CI. It is local-only and
+fixture-safe: no credentials, no network, and no live mutation. See
+[`docs/POLICY_TESTING.md`](./POLICY_TESTING.md) for the case format and caveats.
+
 ## Test architecture
 
 Tests are layered, not flat — 492 `func Test` across 107 `_test.go` files in the

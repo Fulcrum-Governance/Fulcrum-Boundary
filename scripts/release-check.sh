@@ -39,6 +39,7 @@ run go test ./tests/... -count=1 -timeout 5m
 run go test ./claims/... -count=1 -timeout 5m
 run go run ./cmd/boundary verify --policies examples/mcp-postgres-gateway/policies
 run go run ./cmd/boundary verify-record --help
+run go run ./cmd/boundary test --path tests/fixtures/policy-test/cases
 run go run ./cmd/boundary version
 run go run ./cmd/boundary selftest
 run go run ./cmd/boundary demo github-lethal-trifecta

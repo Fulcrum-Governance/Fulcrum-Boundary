@@ -1,0 +1,11 @@
+name: escalate-semantic-review
+version: "1"
+rules:
+  - name: escalate-semantic-review
+    tool: ticket.triage
+    action: escalate
+    reason: semantic review required
+    match:
+      field: arguments.semantic_review
+      value: needed
+      type: equals

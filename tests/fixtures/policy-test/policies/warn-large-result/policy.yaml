@@ -1,0 +1,11 @@
+name: warn-large-result
+version: "1"
+rules:
+  - name: warn-large-result
+    tool: search.query
+    action: warn
+    reason: large result set should be reviewed
+    match:
+      field: arguments.result_size
+      value: large
+      type: equals

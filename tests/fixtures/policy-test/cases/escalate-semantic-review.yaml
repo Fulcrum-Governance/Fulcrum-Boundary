@@ -1,0 +1,14 @@
+name: escalate-semantic-review
+policies: ../policies/escalate-semantic-review
+request:
+  transport: mcp
+  tool_name: ticket.triage
+  action: tools/call
+  agent_id: policy-test-agent
+  tenant_id: policy-test-tenant
+  arguments:
+    semantic_review: needed
+    ticket_url: https://example.invalid/tickets/123
+expect:
+  action: escalate
+  reason_contains: semantic review required

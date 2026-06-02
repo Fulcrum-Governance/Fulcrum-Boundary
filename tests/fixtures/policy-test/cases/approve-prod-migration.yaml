@@ -1,0 +1,14 @@
+name: approve-prod-migration
+policies: ../policies/approve-prod-migration
+request:
+  transport: mcp
+  tool_name: deploy.run_migration
+  action: tools/call
+  agent_id: policy-test-agent
+  tenant_id: policy-test-tenant
+  arguments:
+    environment: production
+    migration_id: example.invalid/migrations/2026_06_policy_test
+expect:
+  action: require_approval
+  reason_contains: production migration requires approval

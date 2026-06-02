@@ -6,17 +6,18 @@ record a verdict leaves behind?** Each phase moves the proof lanes from "a
 decision happened" toward "you can locate, read, explain, and re-run that
 decision yourself" — without changing what Boundary actually governs.
 
-Two rules govern this page:
+Three rules govern this page:
 
-- **Shipped means in the `v0.8.0` release.** The baseline below, plus all of
-  Phase 0A, is released in `v0.8.0` and is exercised by tests and the two
-  proof-lane demos. The `@v0.8.0` install includes the Phase 0A commands and
-  record fields, so a reader on `@v0.8.0` has every capability marked shipped on
-  this page.
-- **Planned means planned.** Everything under Phase 0B and Phase 1 is
-  forward-looking. None of it is in the codebase yet, and nothing in those phases
-  should be read as a delivered capability or a dated commitment. If an item is
-  outside the Baseline and Phase 0A (Shipped) sections, it is not shipped.
+- **Released means in the `v0.8.0` tag.** The baseline below, plus all of Phase
+  0A, is released in `v0.8.0` and is exercised by tests and the two proof-lane
+  demos. The `@v0.8.0` install includes the Phase 0A commands and record fields.
+- **Main can move ahead of the latest tag.** Phase 1 (`boundary test`) is a
+  post-`v0.8.0` main-branch capability once its implementation PR lands. It is
+  not available from `go install ...@v0.8.0`; the next tagged release can promote
+  that install path after the tag exists.
+- **Planned means planned.** Phase 0B remains forward-looking. Nothing in a
+  planned section should be read as a delivered capability or a dated
+  commitment.
 
 The product frame does not change across these phases. MCP is the first
 production route, not the identity; Command Boundary is a delivered preview lane
@@ -148,33 +149,33 @@ governed surface and does **not** change any verdict.
 
 ---
 
-## Phase 1 — Policy-as-code testing (deferred)
+## Phase 1 — Policy-as-code testing (post-`v0.8.0` on main)
 
-> **Deferred and planned only.** This lane is scoped but intentionally held back.
-> It is not in the current release and is not a release commitment.
+> **Implemented after `v0.8.0`.** `boundary test` is delivered on `main` after
+> the Phase 1 policy-testing lane merges. The `@v0.8.0` install does not include
+> it; use a source build from `main` or the next tagged release once it exists.
 
-A future `boundary test` lane is conceptually scoped as a **local, fixture-only
-policy-as-code test runner**: it would let an operator author request fixtures
-and expected verdicts against their own YAML policy bundles, evaluate them
-through the existing pipeline, and exit non-zero on any mismatch, unparseable
-bundle, or malformed case — the same hermetic, no-network, no-credential,
-no-live-mutation posture as today's redteam and demo paths.
+`boundary test` is a **local, fixture-only policy-as-code test runner**. It lets
+an operator author request fixtures and expected verdicts against local YAML
+policy bundles, evaluates those fixtures through the existing governance
+pipeline, and exits non-zero on any mismatch, unexpected policy-load error, or
+malformed case. It covers `allow`, `deny`, `warn`, `require_approval`,
+`escalate`, and expected policy `parse_rejection` cases.
 
 Scope and limits, stated up front:
 
 - It introduces **no** new governed action surface and **no** new transport
   adapter, so it adds no readiness entry and promotes no preview surface to
   production.
-- It would emit **no** `proved` decisions. A passing run proves policy verdicts
-  for routed requests only. It does **not** prove that a deployment removed every
-  direct or un-routed path to a tool.
+- It emits **no** `proved` decisions. A passing run reports policy verdicts for
+  routed request fixtures only. It does **not** prove production route
+  enforcement, does **not** prove that a deployment removed every direct or
+  unrouted path to a tool, and does **not** prove the verdict was globally
+  correct beyond the supplied fixture and local policy bundle.
 - It sits in the same local-utility maturity bucket as `selftest`, `doctor`, and
   evidence — a developer-facing local tool, not a hosted or control-plane feature.
-
-This lane is held back because shipping it would require new on-disk test and
-documentation artifacts that do not yet exist, and the claims gate forbids
-asserting a delivered capability until those exist. Until that work lands,
-`boundary test` is **not** a current command.
+- Its committed golden corpus lives under `tests/fixtures/policy-test/`, and the
+  canonical operator reference is [`docs/POLICY_TESTING.md`](POLICY_TESTING.md).
 
 ---
 
@@ -183,10 +184,11 @@ asserting a delivered capability until those exist. Until that work lands,
 This repository mechanically checks that public language matches shipped
 behavior. To keep that contract intact:
 
-- The Baseline and Phase 0A (Shipped) sections describe behavior that is in the
-  codebase. `explain`, `replay`, `DecisionRecordV2`, and the route-context fields
-  are released in `v0.8.0`, and the `@v0.8.0` install includes them. `boundary
-  test` is forward-looking and is not shipped.
+- The Baseline and Phase 0A sections describe behavior that is released in
+  `v0.8.0`. `explain`, `replay`, `DecisionRecordV2`, and the route-context
+  fields are released in `v0.8.0`, and the `@v0.8.0` install includes them.
+- Phase 1 describes behavior implemented after `v0.8.0` on `main`. `boundary
+  test` is not in the `@v0.8.0` install path until a later tag includes it.
 - When any planned item lands, it ships behind the same release gates as the rest
   of the repository — tests, the claims and language gate, a strict docs build,
   and the full release check — and the claims ledger is updated in the same

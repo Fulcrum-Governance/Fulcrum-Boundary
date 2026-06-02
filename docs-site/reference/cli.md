@@ -70,12 +70,28 @@ fields (`action`, `reason`, `decision_mode`, `matched_rule`, `policy_file`) —
 not `action` alone. It reproduces the decision, not enforcement, and does not
 prove that no upstream bytes moved.
 
+Policy test commands:
+
+!!! note "Availability — post-v0.8.0 on main"
+    `boundary test` is a post-`v0.8.0` command on `main` after the Phase 1
+    policy-testing lane merges. The `@v0.8.0` install does not include it.
+
+```bash
+boundary test --path tests/fixtures/policy-test/cases
+boundary test --path tests/fixtures/policy-test/cases --format json
+```
+
+`boundary test` is local-only and fixture-safe. It reports policy verdicts for
+routed request fixtures only; it does not prove production route enforcement or
+deployment bypass resistance.
+
 Release verification commands:
 
 ```bash
 make selftest
 make demo-github
 make release-check
+boundary test --path tests/fixtures/policy-test/cases
 boundary evidence bundle --include-demo --out /tmp/boundary-evidence
 boundary evidence verify /tmp/boundary-evidence
 go test ./claims/... -count=1

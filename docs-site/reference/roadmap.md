@@ -4,8 +4,9 @@ Canonical repository reference:
 [docs/BOUNDARY_ROADMAP.md](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/blob/main/docs/BOUNDARY_ROADMAP.md)
 
 A developer-facing roadmap organized around one question: how far can you trust
-the decision record a verdict leaves behind? It separates what is in the `v0.8.0`
-release from what is planned, and never presents a planned item as current.
+the decision record a verdict leaves behind? It separates what is in the
+`v0.8.0` release, what is implemented on `main` after `v0.8.0`, and what remains
+planned.
 
 The **shipped baseline** in the current `v0.8.0` release is the `DecisionRecordV1`
 structured decision record (`schema_version "1"`), `boundary verify-record`
@@ -19,16 +20,22 @@ in `v0.8.0` and exercised by tests, and the `@v0.8.0` install includes them.
 `boundary replay` reproduces the *decision*, not the absence of upstream side
 effects.
 
-The **planned** phases are forward-looking and are not in the codebase. Phase 0B
-scopes deeper `doctor` environment diagnostics, redacted report output, and
-clearer README and demo hierarchy. Phase 1 describes a deferred, local,
-fixture-only policy-as-code test lane. Neither of these is shipped, and the page
-states its non-goals explicitly: no signing, no cryptographic proof of the
-verdict, no topology attestation, and no independent proof that no upstream bytes
-moved.
+**Post-`v0.8.0` on `main`:** Phase 1 adds `boundary test`, a local,
+fixture-only policy-as-code test runner over local YAML policy bundles and
+request fixtures. It is not in the `@v0.8.0` install path; use a source build
+from `main` or the next tagged release once it exists.
+
+The **planned** Phase 0B work is forward-looking and is not a delivered
+capability: deeper `doctor` environment diagnostics, redacted report output, and
+clearer README and demo hierarchy. The page states its non-goals explicitly: no
+signing, no cryptographic proof of the verdict, no topology attestation, and no
+independent proof that no upstream bytes moved. `boundary test` has its own
+local-only caveat: it reports policy verdicts for routed request fixtures only
+and does not prove production route enforcement or deployment bypass resistance.
 
 Related references:
 [CLI](cli.md) ·
+[Policy Testing](policy-testing.md) ·
 [Route Conformance](route-conformance.md) ·
 [Release Utilities](release-utilities.md) ·
 [Claims](claims.md)
