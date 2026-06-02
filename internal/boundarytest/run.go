@@ -80,6 +80,7 @@ func Run(opts Options) (*Result, error) {
 
 func runCase(path string) CaseResult {
 	name := caseNameFromPath(path)
+	// #nosec G304 -- boundary test intentionally reads operator-selected local fixture files; it evaluates policies only and does not execute or mutate them.
 	body, err := os.ReadFile(path)
 	if err != nil {
 		return CaseResult{Name: name, Status: "fail", ActualAction: "case_parse_error", Error: fmt.Sprintf("read case: %v", err)}
