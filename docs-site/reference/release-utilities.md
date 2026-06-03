@@ -7,6 +7,8 @@ policy-as-code assertions.
 ```bash
 boundary version
 boundary doctor --json
+# source builds after v0.9.0:
+boundary doctor --report
 boundary demo action-boundary
 boundary verify-record record.json
 boundary test --path tests/fixtures/policy-test/cases
@@ -16,6 +18,9 @@ boundary evidence verify boundary-evidence
 
 Availability note: `boundary test` is included in the `v0.9.0` release. The
 `@v0.9.0` install includes it; the historical `@v0.8.0` install does not.
+Source builds after `v0.9.0` also include `boundary doctor --report`, which
+emits redacted JSON for support threads; the pinned `@v0.9.0` install does not
+include that flag until the next release tag.
 
 These commands are local-first. They do not require credentials, do not make
 live GitHub calls by default, and do not mutate real systems by default.
@@ -25,7 +30,8 @@ live GitHub calls by default, and do not mutate real systems by default.
 | Command | Proof |
 | --- | --- |
 | `boundary version` | The binary can report local build metadata, module path, Go runtime, and schema-versioned JSON. |
-| `boundary doctor` | Local routed-surface diagnostics and bypass caveats can be rendered without network calls. |
+| `boundary doctor` | Local first-run diagnostics, routed-surface diagnostics, and bypass caveats can be rendered without network calls. |
+| `boundary doctor --report` | Source builds after `v0.9.0` can emit the same local diagnostics as redacted JSON for support threads. |
 | `boundary demo action-boundary` | Fixture-only MCP / Secure GitHub, Command Boundary, and Edit Boundary paths can be shown together. |
 | `boundary verify-record` | A single decision record can be recomputed for internal hash consistency. |
 | `boundary test` | Local policy bundles can be evaluated against operator-authored request fixtures with expected verdicts. |
