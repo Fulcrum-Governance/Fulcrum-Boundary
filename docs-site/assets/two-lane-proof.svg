@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="720" viewBox="0 0 880 720" role="img" aria-labelledby="t d">
+  <title id="t">Fulcrum Boundary - verified two-lane proof (fixture-safe)</title>
+  <desc id="d">Two equal proof lanes for Boundary, the action boundary for routed agent tools. Lane 1 is the MCP route (first production route): a GitHub write-after-taint action is denied before upstream, upstream_called=false, reason=lethal_trifecta_detected. Lane 2 is the Command Boundary (delivered preview, routed-only): a routed secret-exfiltration command is denied before execution, executed=false, class=C6. Both are fixture-safe demo patterns with no credentials, no network, and no live mutation; each emits a hash-verifiable decision record. Boundary governs only routed actions.</desc>
+  <defs>
+    <style>
+      .bg{fill:#0b0f14}
+      .card{fill:#11161d;stroke:#222c38;stroke-width:1.5}
+      .eval{fill:#101a20;stroke:#2a4a52;stroke-width:1.5}
+      .deny{fill:#1a1012;stroke:#5a2730;stroke-width:1.5}
+      .rec{fill:#0e1714;stroke:#274a39;stroke-width:1.5}
+      .h1{font:700 30px 'JetBrains Mono','SFMono-Regular',Menlo,Consolas,monospace;fill:#eef3f8}
+      .sub{font:400 16px 'JetBrains Mono',Menlo,Consolas,monospace;fill:#8b9bb0}
+      .step{font:700 12px 'JetBrains Mono',Menlo,Consolas,monospace;fill:#5fd0c5;letter-spacing:.22em}
+      .head{font:700 18px 'JetBrains Mono',Menlo,Consolas,monospace;fill:#dfe7f0}
+      .body{font:400 14px 'JetBrains Mono',Menlo,Consolas,monospace;fill:#aebacb}
+      .mono{font:400 13px 'JetBrains Mono',Menlo,Consolas,monospace;fill:#9fb4c7}
+      .key{fill:#7cc0ff}
+      .ok{fill:#a6e3ab}
+      .denyText{font:800 34px 'JetBrains Mono',Menlo,Consolas,monospace;fill:#ff7b86;letter-spacing:.04em}
+      .chipbg{fill:#0b0f14;stroke:#2a3542;stroke-width:1}
+      .chip{font:600 12px 'JetBrains Mono',Menlo,Consolas,monospace;fill:#8b9bb0}
+      .scope{font:400 13px 'JetBrains Mono',Menlo,Consolas,monospace;fill:#6b7c90}
+      .tag{font:600 12px 'JetBrains Mono',Menlo,Consolas,monospace;fill:#5b6b7e}
+    </style>
+  </defs>
+
+  <rect class="bg" width="880" height="720"/>
+
+  <text class="h1" x="44" y="58">Two verified proof lanes - deny before action</text>
+  <text class="sub" x="44" y="86">Fixture-safe demo patterns. Boundary governs routed agent tools only.</text>
+
+  <!-- LANE 1 - MCP (first production route) -->
+  <g transform="translate(44 112)">
+    <rect class="card" width="384" height="540" rx="12"/>
+
+    <text class="step" x="24" y="40">LANE 1 - MCP ROUTE</text>
+    <g transform="translate(202 24)">
+      <rect class="chipbg" width="158" height="26" rx="13"/><text class="chip" x="14" y="18">first production route</text>
+    </g>
+    <text class="head" x="24" y="74">GitHub write-after-taint</text>
+    <text class="body" x="24" y="98">Tainted issue context flows into a</text>
+    <text class="body" x="24" y="118">private-repo mutation request.</text>
+    <text class="tag" x="24" y="146">$ boundary demo github-lethal-trifecta</text>
+
+    <!-- evaluation block -->
+    <g transform="translate(24 162)">
+      <rect class="eval" width="336" height="108" rx="12"/>
+      <text class="step" x="20" y="32">BOUNDARY EVALUATES</text>
+      <text class="mono" x="20" y="58"><tspan class="key">matched rule:</tspan> deny-github-</text>
+      <text class="mono" x="20" y="76">write-after-taint-fixture</text>
+      <text class="mono" x="20" y="96"><tspan class="key">upstream_called=</tspan><tspan class="ok">false</tspan>  <tspan class="key">read=</tspan>true</text>
+    </g>
+
+    <!-- verdict block -->
+    <g transform="translate(24 290)">
+      <rect class="deny" width="336" height="226" rx="12"/>
+      <text class="step" x="20" y="32">VERDICT</text>
+      <text class="denyText" x="20" y="76">DENY</text>
+      <text class="body" x="20" y="106">GitHub is not called.</text>
+      <text class="mono" x="20" y="132"><tspan class="key">actual:</tspan> <tspan class="ok">DENY</tspan>   <tspan class="key">upstream_called:</tspan> false</text>
+      <text class="mono" x="20" y="152"><tspan class="key">reason:</tspan> lethal_trifecta_detected</text>
+      <g transform="translate(20 170)">
+        <rect class="rec" width="296" height="42" rx="8"/>
+        <text class="mono" x="14" y="19"><tspan class="ok">decision record emitted</tspan></text>
+        <text class="mono" x="14" y="35"><tspan class="key">hash:</tspan> sha256:25ffc91f491f62c0...</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- LANE 2 - Command Boundary (delivered preview, routed-only) -->
+  <g transform="translate(452 112)">
+    <rect class="card" width="384" height="540" rx="12"/>
+
+    <text class="step" x="24" y="40">LANE 2 - COMMAND</text>
+    <g transform="translate(232 24)">
+      <rect class="chipbg" width="128" height="26" rx="13"/><text class="chip" x="14" y="18">delivered preview</text>
+    </g>
+    <text class="head" x="24" y="74">Secret exfiltration command</text>
+    <text class="body" x="24" y="98">An untrusted task proposes a routed</text>
+    <text class="body" x="24" y="118">curl that ships a credential file.</text>
+    <text class="tag" x="24" y="146">$ boundary demo command-secret-exfil</text>
+
+    <!-- evaluation block -->
+    <g transform="translate(24 162)">
+      <rect class="eval" width="336" height="108" rx="12"/>
+      <text class="step" x="20" y="32">BOUNDARY EVALUATES</text>
+      <text class="mono" x="20" y="58"><tspan class="key">proposed:</tspan> curl -d <tspan class="ok">[redacted]</tspan></text>
+      <text class="mono" x="20" y="76">https://example.invalid</text>
+      <text class="mono" x="20" y="96"><tspan class="key">class=</tspan>C6  <tspan class="key">risk=</tspan>CRITICAL  <tspan class="key">routed-only</tspan></text>
+    </g>
+
+    <!-- verdict block -->
+    <g transform="translate(24 290)">
+      <rect class="deny" width="336" height="226" rx="12"/>
+      <text class="step" x="20" y="32">VERDICT</text>
+      <text class="denyText" x="20" y="76">DENY</text>
+      <text class="body" x="20" y="106">The command is not executed.</text>
+      <text class="mono" x="20" y="132"><tspan class="key">actual:</tspan> <tspan class="ok">DENY</tspan>   <tspan class="key">executed:</tspan> false</text>
+      <text class="mono" x="20" y="152"><tspan class="key">matched rule:</tspan> command-c6-deny</text>
+      <g transform="translate(20 170)">
+        <rect class="rec" width="296" height="42" rx="8"/>
+        <text class="mono" x="14" y="19"><tspan class="ok">decision record emitted</tspan></text>
+        <text class="mono" x="14" y="35"><tspan class="key">hash:</tspan> sha256:...  <tspan class="key">mode:</tspan> deterministic</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- shared scope / honesty footer -->
+  <line x1="44" y1="668" x2="836" y2="668" stroke="#1c2530" stroke-width="1"/>
+  <text class="scope" x="44" y="694">Both lanes: fixture-only - no credentials - no network - no live mutation - routed paths only.</text>
+  <text class="scope" x="44" y="712">Each emits a hash-verifiable decision record. Not a signed receipt, cryptographic proof, or attestation.</text>
+</svg>

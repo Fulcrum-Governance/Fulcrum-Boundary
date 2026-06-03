@@ -135,7 +135,8 @@ claimed:
 
 Phase 0B sharpens the first-run experience so a developer can tell, quickly,
 whether their local toolchain can run Boundary and read its output. The current
-unreleased slice covers doctor diagnostics and report redaction:
+unreleased work covers doctor diagnostics, report redaction, and demo
+hierarchy:
 
 - **Deeper `doctor` environment diagnostics** for the Go toolchain, the
   cgo / C-toolchain requirement, and `PATH` / `GOBIN` resolution after
@@ -144,9 +145,6 @@ unreleased slice covers doctor diagnostics and report redaction:
 - **Redacted report output**, so a developer can share a `doctor` report for
   help without leaking local environment detail; the report does not include
   secrets or the raw local project path.
-
-Remaining planned Phase 0B follow-up:
-
 - **Visual hierarchy for the README and demo surfaces**, so the two proof lanes
   and the record they leave read clearly on first impression.
 

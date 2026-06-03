@@ -10,10 +10,11 @@ Requires Go 1.25+.
 go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0
 boundary selftest
 boundary demo github-lethal-trifecta
+boundary demo command-secret-exfil
 boundary test --path tests/fixtures/policy-test/cases
 ```
 
-Expected demo success signal:
+Expected MCP demo success signal:
 
 ```text
 actual action: DENY
@@ -21,8 +22,16 @@ reason: lethal_trifecta_detected
 upstream_called=false
 ```
 
+Expected Command Boundary demo success signal:
+
+```text
+actual: DENY
+executed=false
+class=C6
+```
+
 No credentials are required. The selftest and demo use fixture data and do not
-perform live GitHub calls or real system mutation.
+perform live calls or real system mutation.
 
 Boundary governs actions only when the route is forced through Boundary.
 
@@ -37,6 +46,7 @@ git clone https://github.com/Fulcrum-Governance/Fulcrum-Boundary.git
 cd Fulcrum-Boundary
 go run ./cmd/boundary selftest
 go run ./cmd/boundary demo github-lethal-trifecta
+go run ./cmd/boundary demo command-secret-exfil
 go run ./cmd/boundary test --path tests/fixtures/policy-test/cases
 ```
 
