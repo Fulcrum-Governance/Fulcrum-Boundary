@@ -15,9 +15,10 @@ Three rules govern this page:
 - **History stays history.** `v0.8.0` remains the Phase 0A record-trust tag:
   `DecisionRecordV2`, `boundary explain`, `boundary replay`, and record-location
   UX. It does not include `boundary test`.
-- **Planned means planned.** Phase 0B remains forward-looking. Nothing in a
-  planned section should be read as a delivered capability or a dated
-  commitment.
+- **Source-main is not release truth.** Phase 0B slices may land on `main`
+  before the next tag, but they are not installable from `@v0.9.0` until a
+  later release truth update says so. Planned sections still should not be read
+  as delivered capabilities or dated commitments.
 
 The product frame does not change across these phases. MCP is the first
 production route, not the identity; Command Boundary is a delivered preview lane
@@ -127,15 +128,16 @@ claimed:
 
 ---
 
-## Phase 0B - Diagnostics & first-impression clarity (unreleased after `v0.9.0`)
+## Phase 0B - Diagnostics & first-impression clarity (on `main`, not in `v0.9.0`)
 
-> **Not in the `v0.9.0` tag.** This section describes current unreleased Phase
-> 0B work and must not be read as a tagged release capability until the next
-> release truth update.
+> **Not in the `v0.9.0` tag.** These Phase 0B slices have landed on source
+> `main` after `v0.9.0`, but the `@v0.9.0` install does not include them. They
+> must not be read as tagged release capabilities until the next release truth
+> update.
 
 Phase 0B sharpens the first-run experience so a developer can tell, quickly,
-whether their local toolchain can run Boundary and read its output. The current
-unreleased work covers doctor diagnostics, report redaction, and demo
+whether their local toolchain can run Boundary and read its output. The
+source-main work covers doctor diagnostics, report redaction, and demo
 hierarchy:
 
 - **Deeper `doctor` environment diagnostics** for the Go toolchain, the
