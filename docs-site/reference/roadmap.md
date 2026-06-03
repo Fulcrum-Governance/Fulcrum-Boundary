@@ -23,13 +23,14 @@ fixture-only policy-as-code test runner over local YAML policy bundles and
 request fixtures. The `@v0.9.0` install includes it; the historical `@v0.8.0`
 install does not.
 
-The **planned** Phase 0B work is forward-looking and is not a delivered
-capability: deeper `doctor` environment diagnostics, redacted report output, and
-clearer README and demo hierarchy. The page states its non-goals explicitly: no
-signing, no cryptographic proof of the verdict, no topology attestation, and no
-independent proof that no upstream bytes moved. `boundary test` has its own
-local-only caveat: it reports policy verdicts for routed request fixtures only
-and does not prove production route enforcement or deployment bypass resistance.
+Phase 0B source-main work has landed after `v0.9.0`, but it is not in the
+tagged `@v0.9.0` install: deeper `doctor` environment diagnostics, redacted
+report output, and clearer README and demo hierarchy. The page states its
+non-goals explicitly: no signing, no cryptographic proof of the verdict, no
+topology attestation, and no independent proof that no upstream bytes moved.
+`boundary test` has its own local-only caveat: it reports policy verdicts for
+routed request fixtures only and does not prove production route enforcement or
+deployment bypass resistance.
 
 Related references:
 [CLI](cli.md) ·

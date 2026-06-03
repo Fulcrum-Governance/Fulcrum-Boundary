@@ -38,7 +38,8 @@ support threads.
 - No remote runtime verification.
 - No route-bypass closure claim.
 - No release tag in this lane.
-- No README/demo visual hierarchy pass; that remains the next Phase 0B follow-up.
+- No README/demo visual hierarchy pass in this slice; that was delivered in the
+  separate Phase 0B demo hierarchy lane.
 
 ## Verification
 

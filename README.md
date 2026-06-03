@@ -172,6 +172,7 @@ Boundary governs actions only when the route is forced through Boundary.
 | Secure GitHub | Preview | Fixture proof and opt-in conformance do not close deployment bypasses. |
 | Command Boundary | Delivered preview | Routed command paths only. |
 | Edit Boundary | Delivered preview | Routed edit envelopes only. |
+| Policy-as-code testing | Local-only | `boundary test` checks routed request fixtures against local policy bundles. |
 | Policy generation | Starter policy utility | Requires operator review. |
 | Dashboard | Local artifact visibility | Not hosted monitoring. |
 
