@@ -27,7 +27,7 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Quickstart: quickstart.md
-  - Demo: demo.md
+  - Demos: demo.md
   - Concepts:
       - Action Boundary: concepts/action-boundary.md
   - MCP Firewall:

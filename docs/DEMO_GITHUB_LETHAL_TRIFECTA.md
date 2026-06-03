@@ -1,8 +1,16 @@
-# GitHub Lethal-Trifecta Demo
+# Lane 1: MCP Demo - GitHub Lethal-Trifecta
 
-`boundary demo github-lethal-trifecta` runs a local fixture that shows the Secure GitHub preview profile denying a private-repository write after untrusted GitHub context has entered the session.
+`boundary demo github-lethal-trifecta` is Lane 1 of Boundary's two-lane proof
+spine. It exercises the MCP route, the first production route, through a local
+fixture that shows the Secure GitHub preview profile denying a
+private-repository write after untrusted GitHub context has entered the session.
 
 The demo is fixture-only. It does not require credentials, does not call GitHub, and does not mutate a real repository.
+
+For the equal-weight Command Boundary proof lane, run
+`boundary demo command-secret-exfil` and read
+[command-boundary/DEMO.md](./command-boundary/DEMO.md). The two-lane overview is
+[DEMOS.md](./DEMOS.md).
 
 ## Commands
 

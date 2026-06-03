@@ -13,7 +13,7 @@ Your agent is about to touch a real system. Boundary decides before the tool exe
 [![Go Report Card](https://goreportcard.com/badge/github.com/fulcrum-governance/fulcrum-boundary)](https://goreportcard.com/report/github.com/fulcrum-governance/fulcrum-boundary)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 
-[Quickstart](#first-run-in-one-minute) | [Demo](./docs/DEMO_GITHUB_LETHAL_TRIFECTA.md) | [Docs](https://fulcrum-governance.github.io/Fulcrum-Boundary/) | [Claims](./docs/CLAIMS_LEDGER.md) | [Release Truth](./docs/RELEASE_TRUTH_PUBLIC.md) | [Security](./SECURITY.md)
+[Quickstart](#first-run-in-one-minute) | [Demos](./docs/DEMOS.md) | [Docs](https://fulcrum-governance.github.io/Fulcrum-Boundary/) | [Claims](./docs/CLAIMS_LEDGER.md) | [Release Truth](./docs/RELEASE_TRUTH_PUBLIC.md) | [Security](./SECURITY.md)
 
 ## What Boundary Stops
 
@@ -97,8 +97,8 @@ The launch is a tight spine of **two fixture-only proof lanes** — not a breadt
 
 Both lanes are fixture-only: no credentials, no network, no live mutation, each
 emitting a `rec_...` decision record with a `sha256:` decision hash. The static
-poster above renders both lanes at equal weight; if it has not been generated
-yet, the two-lane table above is the canonical proof. A linear, single-lane
+poster above renders both lanes at equal weight; the two-lane table is the
+canonical proof summary. A linear, single-lane
 [deny-before-upstream walkthrough](./docs/assets/boundary-demo-walkthrough.svg)
 is also available as a no-JS fallback for the MCP lane; it is a stylized diagram,
 not a literal capture.

