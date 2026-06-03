@@ -193,7 +193,7 @@ func goInstallPathCheck(gobin, gopath string) Check {
 	return warn("go install PATH", source+" is not on PATH; add it after go install so boundary resolves by name")
 }
 
-func goInstallDir(gobin, gopath string) (string, string) {
+func goInstallDir(gobin, gopath string) (dir string, source string) {
 	if strings.TrimSpace(gobin) != "" {
 		return filepath.Clean(gobin), "GOBIN"
 	}
@@ -227,7 +227,7 @@ func goVersionAtLeast(version string, wantMajor, wantMinor int) bool {
 	return minor >= wantMinor
 }
 
-func parseGoVersion(version string) (int, int, bool) {
+func parseGoVersion(version string) (major int, minor int, ok bool) {
 	version = strings.TrimSpace(strings.TrimPrefix(version, "go"))
 	if version == "" {
 		return 0, 0, false
@@ -240,7 +240,7 @@ func parseGoVersion(version string) (int, int, bool) {
 	if err != nil {
 		return 0, 0, false
 	}
-	minor, err := strconv.Atoi(trimNumeric(parts[1]))
+	minor, err = strconv.Atoi(trimNumeric(parts[1]))
 	if err != nil {
 		return 0, 0, false
 	}
