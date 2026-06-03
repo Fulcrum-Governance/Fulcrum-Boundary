@@ -3,6 +3,7 @@ package doctor_test
 import (
 	"bytes"
 	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 
@@ -23,6 +24,10 @@ func TestDoctorDefaultTextIsLocalOnly(t *testing.T) {
 		"credentials: none",
 		"network: none",
 		"live mutation: none",
+		"Environment diagnostics:",
+		"Go toolchain",
+		"cgo / C toolchain",
+		"go install PATH",
 		"Surface: MCP",
 		"Surface: Command Boundary",
 		"Surface: Edit Boundary",
@@ -55,7 +60,12 @@ func TestDoctorJSONOutput(t *testing.T) {
 		RequiresCredentials bool   `json:"requires_credentials"`
 		RequiresNetwork     bool   `json:"requires_network"`
 		MutatesLiveSystems  bool   `json:"mutates_live_systems"`
-		Surfaces            []struct {
+		Environment         []struct {
+			Name   string `json:"name"`
+			Status string `json:"status"`
+			Detail string `json:"detail"`
+		} `json:"environment"`
+		Surfaces []struct {
 			Surface       string   `json:"surface"`
 			Status        string   `json:"status"`
 			Checks        []any    `json:"checks"`
@@ -71,6 +81,21 @@ func TestDoctorJSONOutput(t *testing.T) {
 	if payload.RequiresCredentials || payload.RequiresNetwork || payload.MutatesLiveSystems {
 		t.Fatalf("doctor must not need credentials, network, or live mutation: %#v", payload)
 	}
+	if len(payload.Environment) < 3 {
+		t.Fatalf("expected first-run environment diagnostics, got %#v", payload.Environment)
+	}
+	for _, want := range []string{"Go toolchain", "cgo / C toolchain", "go install PATH"} {
+		var found bool
+		for _, check := range payload.Environment {
+			if check.Name == want && check.Status != "" && check.Detail != "" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("environment diagnostics missing %q: %#v", want, payload.Environment)
+		}
+	}
 	if len(payload.Surfaces) != 3 {
 		t.Fatalf("expected all three surfaces, got %d: %#v", len(payload.Surfaces), payload.Surfaces)
 	}
@@ -78,6 +103,32 @@ func TestDoctorJSONOutput(t *testing.T) {
 		if surface.Status == "" || len(surface.Checks) == 0 || len(surface.BypassCaveats) == 0 {
 			t.Fatalf("surface missing diagnostics: %#v", surface)
 		}
+	}
+}
+
+func TestDoctorReportRedactsLocalPaths(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := boundarycli.Run([]string{"doctor", "--report"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("doctor report exit = %d, stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+	}
+	output := stdout.String()
+	if !strings.Contains(output, `"report_redacted": true`) {
+		t.Fatalf("doctor report did not mark redaction:\n%s", output)
+	}
+	if strings.Contains(output, wd) {
+		t.Fatalf("doctor report leaked working directory %q:\n%s", wd, output)
+	}
+	if !strings.Contains(output, `"project_root": "<redacted>"`) {
+		t.Fatalf("doctor report did not redact project_root:\n%s", output)
+	}
+	if !strings.Contains(output, `"environment"`) || !strings.Contains(output, `"surfaces"`) {
+		t.Fatalf("doctor report missing diagnostic sections:\n%s", output)
 	}
 }
 
@@ -123,6 +174,7 @@ func TestDoctorHelp(t *testing.T) {
 		"Check local routed-surface diagnostics",
 		"boundary doctor --surface mcp",
 		"boundary doctor --json",
+		"boundary doctor --report",
 		"does not prove production deployment protection",
 	} {
 		if !strings.Contains(output, want) {

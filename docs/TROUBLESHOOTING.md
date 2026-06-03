@@ -152,6 +152,9 @@ the three surfaces (`mcp`, `command`, `edit`) reports `"status": "warn"` on a
 fresh checkout because the optional `.boundary/firewall`, `.boundary/bin`, and
 `.boundary/edit` workspaces do not exist yet. **`warn` here is the expected
 first-run state, not an error** — see "Reading `boundary doctor --json`" below.
+Source builds after `v0.9.0` also include first-run environment diagnostics and
+`boundary doctor --report` for redacted support reports; the pinned `@v0.9.0`
+install does not include that report flag until the next release tag.
 
 - **`boundary: command not found`** — `PATH` issue; see above.
 - **Surfaces show `warn` for missing workspaces** — expected on a clean checkout.
@@ -265,7 +268,11 @@ deployment protection. Full reference: [DOCTOR.md](DOCTOR.md).
 | `requires_credentials` | Always `false` — doctor never needs secrets. |
 | `requires_network` | Always `false` — doctor makes no network calls. |
 | `mutates_live_systems` | Always `false` — doctor performs no live mutation. |
+| `environment[]` | First-run diagnostics for Go 1.25+, cgo / C-toolchain readiness, and `go install` PATH resolution. |
 | `surfaces[]` | One entry per routed surface (`mcp`, `command`, `edit`). |
+
+Source builds after `v0.9.0` can use `boundary doctor --report` to emit the same
+diagnostics with `report_redacted: true` and `project_root: "<redacted>"`.
 
 ### Per-surface fields
 
@@ -297,6 +304,23 @@ real first-run output:
   "requires_credentials": false,
   "requires_network": false,
   "mutates_live_systems": false,
+  "environment": [
+    {
+      "name": "Go toolchain",
+      "status": "pass",
+      "detail": "go1.26.3 detected; Boundary requires Go 1.25+"
+    },
+    {
+      "name": "cgo / C toolchain",
+      "status": "pass",
+      "detail": "CGO_ENABLED=1 and the configured C compiler resolves on PATH"
+    },
+    {
+      "name": "go install PATH",
+      "status": "warn",
+      "detail": "GOPATH/bin is not on PATH; add it after go install so boundary resolves by name"
+    }
+  ],
   "surfaces": [
     {
       "surface": "mcp",

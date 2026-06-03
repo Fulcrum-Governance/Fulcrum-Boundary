@@ -4,6 +4,16 @@ All notable changes to **Fulcrum Boundary** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `boundary doctor` now includes first-run environment diagnostics for the Go
+  toolchain, cgo / C-toolchain readiness, and `go install` PATH resolution.
+- `boundary doctor --report` emits a redacted JSON report for support threads.
+  It removes the local `project_root` while preserving diagnostic statuses,
+  routed-surface caveats, and the local-only/no-network/no-mutation flags.
+
 ## [0.9.0] - 2026-06-02
 
 First release to include the Phase 1 policy-as-code testing lane. `v0.9.0`

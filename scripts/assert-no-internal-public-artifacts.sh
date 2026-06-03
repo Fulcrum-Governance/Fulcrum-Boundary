@@ -34,7 +34,10 @@ SELF_REL="scripts/assert-no-internal-public-artifacts.sh"
 #     filtered defensively)
 #   - this guard script (self-exclude)
 #   - .gitignore (legitimately lists ignore patterns including .claude/sprint/)
-mapfile -t files < <(
+files=()
+while IFS= read -r file; do
+  files+=("$file")
+done < <(
   git ls-files -z \
     | tr '\0' '\n' \
     | grep -viE '\.(gif|mp4|png|jpg|jpeg|webp|ico|pdf)$' \
