@@ -27,6 +27,7 @@ order there.
 go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0
 boundary selftest                                            # Local-only smoke test
 boundary doctor --json                                       # Local-only diagnostics + bypass caveats
+boundary doctor --report                                     # Source builds after v0.9.0: redacted local report
 boundary demo github-lethal-trifecta      # Lane 1: MCP, the first production route (Delivered)
 boundary demo command-secret-exfil        # Lane 2: Command Boundary, a delivered preview (Preview)
 boundary evidence bundle --include-demo --out boundary-evidence   # Local-only evidence bundle
@@ -44,9 +45,13 @@ not cryptographic release provenance.
 local fixtures, does not call the network, and does not perform live mutation.
 
 `boundary doctor --json` (Local-only) reports local routed-surface diagnostics
-and bypass caveats for MCP, Command Boundary, and Edit Boundary. It does not call
-the network. Doctor output is local diagnostics, not proof that every deployment
-route is protected. See [docs/DOCTOR.md](./DOCTOR.md).
+and bypass caveats for MCP, Command Boundary, and Edit Boundary, plus first-run
+environment diagnostics for the Go toolchain, cgo / C-toolchain readiness, and
+`go install` PATH resolution. It does not call the network. Doctor output is
+local diagnostics, not proof that every deployment route is protected. Source
+builds after `v0.9.0` also include `boundary doctor --report`, which emits
+redacted JSON for support threads; the pinned `@v0.9.0` install does not include
+that flag until the next release tag. See [docs/DOCTOR.md](./DOCTOR.md).
 
 `boundary demo github-lethal-trifecta` (Delivered, Lane 1) is the fixture-only
 MCP proof lane: untrusted GitHub issue context flows into a private-repo mutation

@@ -14,25 +14,32 @@ import (
 func runDoctor(args []string, stdout, stderr io.Writer) int {
 	fs := newHelpFlagSet("boundary doctor", stderr, commandHelp{
 		Purpose: "Check local routed-surface diagnostics without credentials, network calls, or live mutation.",
-		Usage:   "boundary doctor [--surface all|mcp|command|edit] [--json]",
+		Usage:   "boundary doctor [--surface all|mcp|command|edit] [--json|--report]",
 		Common: []string{
 			"boundary doctor",
 			"boundary doctor --surface mcp",
 			"boundary doctor --surface command",
 			"boundary doctor --surface edit",
 			"boundary doctor --json",
+			"boundary doctor --report",
 		},
 		Notes: []string{
 			"Doctor reports local readiness and bypass caveats; it does not prove production deployment protection.",
+			"--report emits redacted JSON suitable for sharing in support threads.",
 			"Direct upstream MCP access, direct shell commands, and direct file edits remain bypasses unless operators remove those paths.",
 		},
 	})
 	surface := fs.String("surface", "all", "surface to diagnose: all, mcp, command, or edit")
 	jsonOutput := fs.Bool("json", false, "emit machine-readable JSON")
+	reportOutput := fs.Bool("report", false, "emit redacted machine-readable JSON for support")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return 0
 		}
+		return 1
+	}
+	if *jsonOutput && *reportOutput {
+		fmt.Fprintln(stderr, "doctor: use either --json or --report, not both")
 		return 1
 	}
 	result, err := doctor.Run(doctor.Options{Surface: *surface})
@@ -40,9 +47,13 @@ func runDoctor(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "doctor: %v\n", err)
 		return 1
 	}
-	if *jsonOutput {
+	if *reportOutput {
+		result = doctor.RedactedReport(result)
+	}
+	if *jsonOutput || *reportOutput {
 		encoder := json.NewEncoder(stdout)
 		encoder.SetIndent("", "  ")
+		encoder.SetEscapeHTML(false)
 		if err := encoder.Encode(result); err != nil {
 			fmt.Fprintf(stderr, "doctor: %v\n", err)
 			return 1
@@ -66,6 +77,12 @@ func writeDoctorText(w io.Writer, result *doctor.Result) error {
 	fmt.Fprintln(w, "credentials: none")
 	fmt.Fprintln(w, "network: none")
 	fmt.Fprintln(w, "live mutation: none")
+	if len(result.Environment) > 0 {
+		fmt.Fprintln(w, "\nEnvironment diagnostics:")
+		for _, check := range result.Environment {
+			fmt.Fprintf(w, "- %s %s: %s\n", strings.ToUpper(check.Status), check.Name, check.Detail)
+		}
+	}
 	for _, surface := range result.Surfaces {
 		fmt.Fprintf(w, "\nSurface: %s\n", surface.Label)
 		fmt.Fprintf(w, "status: %s\n", surface.Status)

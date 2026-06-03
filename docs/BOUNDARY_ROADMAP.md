@@ -127,21 +127,26 @@ claimed:
 
 ---
 
-## Phase 0B — Diagnostics & first-impression clarity (planned)
+## Phase 0B - Diagnostics & first-impression clarity (unreleased after `v0.9.0`)
 
-> **Planned, not shipped.** This section describes intended improvements, not
-> current behavior.
+> **Not in the `v0.9.0` tag.** This section describes current unreleased Phase
+> 0B work and must not be read as a tagged release capability until the next
+> release truth update.
 
 Phase 0B sharpens the first-run experience so a developer can tell, quickly,
-whether their local toolchain can run Boundary and read its output:
+whether their local toolchain can run Boundary and read its output. The current
+unreleased slice covers doctor diagnostics and report redaction:
 
 - **Deeper `doctor` environment diagnostics** for the Go toolchain, the
   cgo / C-toolchain requirement, and `PATH` / `GOBIN` resolution after
   `go install` — turning today's common first-run failures into named,
   actionable diagnostics.
-- **Redacted report output when a check is missing or fails**, so a developer can
-  share a `doctor` report for help without leaking local environment detail; the
-  report must not include secrets or raw local paths.
+- **Redacted report output**, so a developer can share a `doctor` report for
+  help without leaking local environment detail; the report does not include
+  secrets or the raw local project path.
+
+Remaining planned Phase 0B follow-up:
+
 - **Visual hierarchy for the README and demo surfaces**, so the two proof lanes
   and the record they leave read clearly on first impression.
 
