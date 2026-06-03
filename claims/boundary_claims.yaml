@@ -506,18 +506,19 @@ claims:
     depends_on: []
 
   - id: BND-CLAIM-UTIL-003
-    claim: "Boundary doctor reports local surface diagnostics and routed-path caveats without remote service checks"
+    claim: "Boundary doctor reports local first-run diagnostics, routed-surface diagnostics, routed-path caveats, and redacted support reports without remote service checks"
     status: delivered
     evidence:
       tests:
         - path: tests/doctor/doctor_test.go
-          assertion: "boundary doctor reports local MCP, Command Boundary, and Edit Boundary diagnostics in text and JSON with bypass caveats"
+          assertion: "boundary doctor reports first-run environment diagnostics, local MCP, Command Boundary, and Edit Boundary diagnostics, JSON output, routed-path caveats, and redacted support reports"
       docs:
         - path: docs/DOCTOR.md
           section: "Boundary Doctor"
     public_language:
       allowed:
-        - "Boundary doctor reports local surface diagnostics and routed-path caveats."
+        - "Boundary doctor reports local first-run diagnostics, routed-surface diagnostics, and routed-path caveats."
+        - "Boundary doctor --report emits redacted local diagnostics for support threads."
         - "Doctor output is local diagnostics, not proof that every deployment route is protected."
       forbidden:
         - "doctor proves all routes protected"
