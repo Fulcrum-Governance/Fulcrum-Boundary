@@ -6,6 +6,8 @@
 // a canonical GovernanceRequest, invoke the shared Pipeline, and return
 // protocol-specific responses.
 //
-// This package has zero imports from any adapter (internal/adapters/*) or
-// transport-specific code (internal/mcpproxy, internal/securemcp).
+// This package is the dependency root: it has zero imports from any transport
+// adapter (the packages under adapters/, e.g. adapters/mcp) or from the CLI
+// (internal/boundarycli). Adapters and the CLI depend on governance, never the
+// reverse.
 package governance

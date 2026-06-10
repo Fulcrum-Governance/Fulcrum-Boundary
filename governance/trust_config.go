@@ -5,20 +5,34 @@ import (
 	"time"
 )
 
+// TrustMode selects which trust backend (if any) the pipeline uses. See
+// docs/TRUST_INTEGRATION.md for the wire-level details of each mode.
 type TrustMode string
 
 const (
-	TrustModeDisabled   TrustMode = "disabled"
+	// TrustModeDisabled skips the trust stage entirely (no backend).
+	TrustModeDisabled TrustMode = "disabled"
+	// TrustModeStandalone uses the in-process Beta evaluator
+	// (StandaloneTrustBackend); no external dependencies.
 	TrustModeStandalone TrustMode = "standalone"
-	TrustModeKernel     TrustMode = "kernel"
+	// TrustModeKernel uses the Redis-backed fulcrum-trust IPC state
+	// (RedisTrustBackend).
+	TrustModeKernel TrustMode = "kernel"
 )
 
+// ProductionTrustConfig is the top-level trust configuration. Mode selects the
+// backend; the matching nested section (Standalone or Kernel) supplies its
+// parameters. The unused section is ignored.
 type ProductionTrustConfig struct {
 	Mode       TrustMode             `yaml:"mode" json:"mode"`
 	Standalone StandaloneTrustConfig `yaml:"standalone" json:"standalone"`
 	Kernel     KernelTrustConfig     `yaml:"kernel" json:"kernel"`
 }
 
+// StandaloneTrustConfig tunes the in-process Beta(alpha,beta) trust evaluator.
+// Zero-valued fields are replaced with documented defaults at construction
+// (see withDefaults); Theta and DegradedThreshold default to
+// DefaultTrustIsolationThreshold and DefaultTrustDegradedThreshold.
 type StandaloneTrustConfig struct {
 	Theta                     float64 `yaml:"theta" json:"theta"`
 	DegradedThreshold         float64 `yaml:"degraded_threshold" json:"degraded_threshold"`
@@ -32,6 +46,11 @@ type StandaloneTrustConfig struct {
 	DegradedFailureMultiplier float64 `yaml:"degraded_failure_multiplier" json:"degraded_failure_multiplier"`
 }
 
+// KernelTrustConfig configures the Redis-backed (kernel) trust backend.
+// RedisURL is the redis://host:port endpoint; IPCPrefix is the agent key prefix
+// (default "agent:"); Timeout is the per-command deadline (derived from
+// TimeoutMS when set, otherwise 100ms). FailClosed is forced true by
+// withDefaults: kernel mode always denies on a store fault by design.
 type KernelTrustConfig struct {
 	RedisURL   string        `yaml:"redis_url" json:"redis_url"`
 	IPCPrefix  string        `yaml:"ipc_prefix" json:"ipc_prefix"`
@@ -40,6 +59,11 @@ type KernelTrustConfig struct {
 	FailClosed bool          `yaml:"fail_closed" json:"fail_closed"`
 }
 
+// NewProductionTrustBackend constructs the TrustBackend selected by cfg.Mode:
+// disabled (or unset) returns (nil, nil) so the pipeline skips the trust stage;
+// standalone returns a StandaloneTrustBackend; kernel returns a
+// RedisTrustBackend (and may error if the Redis URL is invalid). An unknown
+// mode returns an error.
 func NewProductionTrustBackend(cfg ProductionTrustConfig) (TrustBackend, error) {
 	switch cfg.Mode {
 	case "", TrustModeDisabled:
