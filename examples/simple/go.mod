@@ -1,6 +1,6 @@
 module github.com/fulcrum-governance/fulcrum-boundary/examples/simple
 
-go 1.23.0
+go 1.25.0
 
 replace github.com/fulcrum-governance/fulcrum-boundary => ../../
 
