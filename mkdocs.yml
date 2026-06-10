@@ -52,6 +52,7 @@ nav:
       - CLI: reference/cli.md
       - Policy Testing: reference/policy-testing.md
       - Route Conformance: reference/route-conformance.md
+      - How We Keep Ourselves Honest: reference/how-we-keep-ourselves-honest.md
       - Troubleshooting: reference/troubleshooting.md
       - Release Utilities: reference/release-utilities.md
       - Claims: reference/claims.md
