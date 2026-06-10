@@ -52,8 +52,15 @@ func runGitHubLethalTrifectaDemo(args []string, stdout, stderr io.Writer) int {
 	}
 
 	format := demoReportFormat(*outPath, *jsonOutput, *markdownOutput)
+	// Color only the interactive stdout text path. When --out is set the report
+	// is written to a file (and to an evidence-grade buffer), which must stay
+	// plain; the colorizer is gated on the real stdout being a TTY regardless.
+	var color *boundarydemo.Colorizer
+	if *outPath == "" && format == "text" {
+		color = boundarydemo.NewColorizer(stdout)
+	}
 	var report bytes.Buffer
-	if err := writeGitHubDemoReport(&report, result, format); err != nil {
+	if err := writeGitHubDemoReport(&report, result, format, color); err != nil {
 		fmt.Fprintf(stderr, "github lethal-trifecta demo: %v\n", err)
 		return 1
 	}
@@ -98,14 +105,14 @@ func demoReportFormat(outPath string, jsonOutput, markdownOutput bool) string {
 	}
 }
 
-func writeGitHubDemoReport(w io.Writer, result *boundarydemo.GitHubLethalTrifectaResult, format string) error {
+func writeGitHubDemoReport(w io.Writer, result *boundarydemo.GitHubLethalTrifectaResult, format string, color *boundarydemo.Colorizer) error {
 	switch format {
 	case "json":
 		return boundarydemo.WriteGitHubLethalTrifectaJSON(w, result)
 	case "markdown":
 		return boundarydemo.WriteGitHubLethalTrifectaMarkdown(w, result)
 	case "text", "":
-		return boundarydemo.WriteGitHubLethalTrifectaText(w, result)
+		return boundarydemo.WriteGitHubLethalTrifectaTextColor(w, result, color)
 	default:
 		return fmt.Errorf("unsupported report format %q", format)
 	}

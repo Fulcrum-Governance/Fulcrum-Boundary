@@ -69,7 +69,14 @@ func runCommandSecretExfilDemo(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 	} else {
-		writeCommandSecretExfilDemoText(&report, scenario)
+		// Color only the interactive stdout text path; the --out file (and the
+		// jsonl record log) stay plain. The colorizer is additionally gated on
+		// the real stdout being a TTY.
+		var color *boundarydemo.Colorizer
+		if *outPath == "" {
+			color = boundarydemo.NewColorizer(stdout)
+		}
+		writeCommandSecretExfilDemoText(&report, scenario, color)
 	}
 
 	if *outPath == "" {
@@ -134,24 +141,37 @@ func findScenarioResult(result *redteam.RunResult, scenarioID string) (redteam.S
 	return redteam.ScenarioResult{}, false
 }
 
-func writeCommandSecretExfilDemoText(w io.Writer, sr redteam.ScenarioResult) {
-	fmt.Fprintln(w, "Command Boundary demo: secret exfiltration (fixture-only)")
+func writeCommandSecretExfilDemoText(w io.Writer, sr redteam.ScenarioResult, color *boundarydemo.Colorizer) {
+	fmt.Fprintln(w, color.Bold("Command Boundary demo: secret exfiltration (fixture-only)"))
 	fmt.Fprintln(w, "fixture-only: true   credentials: none   network: none   live mutation: none")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "source: untrusted_task")
 	fmt.Fprintf(w, "proposed command: %s\n", sr.Command)
 	fmt.Fprintln(w, "risk signals: secret-access (env-file path) + network-egress (curl) -> secret-access dominates")
 	fmt.Fprintf(w, "class: %s   risk: %s\n", sr.CommandClass, sr.CommandRisk)
-	fmt.Fprintf(w, "expected: %s   actual: %s   result: %s\n", upperVerdict(sr.ExpectedAction), upperVerdict(sr.ActualAction), passLabel(sr.Passed))
+	fmt.Fprintf(w, "expected: %s   actual: %s   result: %s\n",
+		upperVerdict(sr.ExpectedAction),
+		color.Verdict(upperVerdict(sr.ActualAction)),
+		colorPassLabel(color, sr.Passed),
+	)
 	fmt.Fprintf(w, "reason: %s   matched rule: %s\n", sr.Reason, sr.MatchedRule)
 	fmt.Fprintf(w, "executed: %t\n", sr.Executed)
-	fmt.Fprintf(w, "decision record id: %s\n", sr.DecisionRecord.RecordID)
-	fmt.Fprintf(w, "decision hash: %s\n", sr.DecisionRecord.DecisionHash)
+	fmt.Fprintf(w, "decision record id: %s\n", color.Dim(sr.DecisionRecord.RecordID))
+	fmt.Fprintf(w, "decision hash: %s\n", color.Dim(sr.DecisionRecord.DecisionHash))
 	fmt.Fprintf(w, "decision mode: %s\n", sr.DecisionRecord.DecisionMode)
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "The secret-looking argument is redacted in all output. The command is")
 	fmt.Fprintln(w, "denied before execution; it never runs. Command Boundary governs only")
 	fmt.Fprintln(w, "commands routed through Boundary; direct shell, CI, and SSH are bypasses.")
+}
+
+// colorPassLabel styles the pass/fail label used in the command-secret-exfil
+// summary line (green pass, red fail; plain when color is nil).
+func colorPassLabel(c *boundarydemo.Colorizer, passed bool) string {
+	if passed {
+		return c.Pass(passLabel(passed))
+	}
+	return c.Fail(passLabel(passed))
 }
 
 func writeCommandSecretExfilDemoJSON(w io.Writer, sr redteam.ScenarioResult) error {

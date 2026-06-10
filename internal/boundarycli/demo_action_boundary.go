@@ -77,8 +77,12 @@ func runActionBoundaryDemo(args []string, stdout, stderr io.Writer) int {
 	}
 
 	format := demoReportFormat(*outPath, *jsonOutput, *markdownOutput)
+	var color *boundarydemo.Colorizer
+	if *outPath == "" && format == "text" {
+		color = boundarydemo.NewColorizer(stdout)
+	}
 	var report bytes.Buffer
-	if err := writeActionBoundaryDemoReport(&report, result, format); err != nil {
+	if err := writeActionBoundaryDemoReport(&report, result, format, color); err != nil {
 		fmt.Fprintf(stderr, "action-boundary demo: %v\n", err)
 		return 1
 	}
@@ -100,14 +104,14 @@ func runActionBoundaryDemo(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-func writeActionBoundaryDemoReport(w io.Writer, result *boundarydemo.ActionBoundaryResult, format string) error {
+func writeActionBoundaryDemoReport(w io.Writer, result *boundarydemo.ActionBoundaryResult, format string, color *boundarydemo.Colorizer) error {
 	switch format {
 	case "json":
 		return boundarydemo.WriteActionBoundaryJSON(w, result)
 	case "markdown":
 		return boundarydemo.WriteActionBoundaryMarkdown(w, result)
 	case "text", "":
-		return boundarydemo.WriteActionBoundaryText(w, result)
+		return boundarydemo.WriteActionBoundaryTextColor(w, result, color)
 	default:
 		return fmt.Errorf("unsupported report format %q", format)
 	}

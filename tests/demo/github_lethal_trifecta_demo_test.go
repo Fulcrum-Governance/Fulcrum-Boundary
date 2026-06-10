@@ -42,6 +42,37 @@ func TestGitHubLethalTrifectaDemoTextOutput(t *testing.T) {
 	}
 }
 
+func TestGitHubLethalTrifectaDemoSurfacesProposedAction(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := boundarycli.Run([]string{"demo", "github-lethal-trifecta"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("demo exit = %d, stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+	}
+	output := stdout.String()
+	// Captured output must stay plain (no terminal).
+	if strings.ContainsRune(output, '\033') {
+		t.Fatalf("captured demo output must not contain ANSI escapes:\n%q", output)
+	}
+	// The proposed-action block must surface the tainting read and the exact
+	// proposed write tool -> target repo before the verdict, the Lane-2 moment
+	// that makes the output read like a firewall rather than counters.
+	for _, want := range []string{
+		"tainting context:",
+		"-> session tainted",
+		"proposed tool: github.create_or_update_file",
+		"fixture-org/fixture-private-repo",
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("demo output missing proposed-action signal %q:\n%s", want, output)
+		}
+	}
+	// The proposed-action block must come before the verdict line.
+	if idx, vIdx := strings.Index(output, "proposed tool:"), strings.Index(output, "actual action:"); idx == -1 || vIdx == -1 || idx > vIdx {
+		t.Fatalf("proposed tool line must precede the verdict (proposed=%d verdict=%d):\n%s", idx, vIdx, output)
+	}
+}
+
 func TestGitHubLethalTrifectaDemoJSONOutput(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
