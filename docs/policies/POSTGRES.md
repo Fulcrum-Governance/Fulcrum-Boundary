@@ -35,6 +35,22 @@ covers comments, dollar strings, invalid tokens, mixed statements, destructive
 DDL, writes, reads, and administrative statements. The test gate requires at
 least 30 cases and verifies each expected class.
 
+## Build Variants
+
+The classifier links `pg_query_go`, a cgo binding for the PostgreSQL parser,
+so it requires a cgo build. In binaries built with `CGO_ENABLED=0` — the
+prebuilt `_static-nocgo` release archives, the Homebrew formula, and the
+container image (see [`docs/INSTALL.md`](../INSTALL.md)) — the AST parser is
+unavailable: every statement classifies as `UNKNOWN` with the reason
+`sql ast classification unavailable in this build (CGO disabled)`, and the
+guard denies it fail-closed. The static build can deny SQL the cgo build
+would allow (including reads); it never allows SQL the cgo build would deny.
+The `//go:build !cgo` tests in
+[`interceptors/sql/ast_classifier_nocgo_test.go`](../../interceptors/sql/ast_classifier_nocgo_test.go)
+assert that every evasion-corpus case lands in the `UNKNOWN` deny bucket in
+that mode. Deployments that need class distinctions on a SQL route should use
+a cgo build there.
+
 ## Boundary
 
 The guard is parser-based; it does not execute queries, normalize every

@@ -32,12 +32,12 @@ denies a routed secret-exfiltration command before execution.
 
 ## First-Run In One Minute
 
-Requires Go 1.25+ and a C toolchain (a C compiler such as gcc/clang on `PATH`).
-The default build links the Postgres SQL classifier (`pganalyze/pg_query_go`)
-via cgo, so `CGO_ENABLED=0` builds fail; `go install` uses cgo by default.
+Install a prebuilt binary — no Go toolchain, no C compiler:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0
+brew install fulcrum-governance/tap/boundary
+# or: docker run --rm ghcr.io/fulcrum-governance/boundary:latest selftest
+# or: download a release archive + SHA256SUMS (docs/INSTALL.md has the curl lines)
 boundary selftest
 boundary doctor --json
 boundary demo github-lethal-trifecta      # Lane 1: MCP, the first production route
@@ -48,9 +48,20 @@ boundary evidence verify boundary-evidence
 boundary verify-record <record.json>
 ```
 
+> One honest capability split: the prebuilt static binaries, the Homebrew
+> formula, and the container image are `CGO_ENABLED=0` builds, so the Postgres
+> AST classifier (a cgo binding) is unavailable — routed SQL classifies as
+> `UNKNOWN` and the Postgres guard denies it fail-closed. The static build
+> never allows SQL the cgo build would deny. The `_cgo` release archives carry
+> the full classifier; see [docs/INSTALL.md](./docs/INSTALL.md). These channels
+> publish from the tag-gated release pipeline for releases after `v0.9.0`;
+> `v0.9.0` and earlier shipped source-only — use
+> [Build from source](#build-from-source) for those.
+
 > The commands above, including the uniform record-location output described
 > below, plus `boundary explain` / `boundary replay`, `DecisionRecordV2`, and
-> `boundary test`, ship in `v0.9.0` (the install line). The `@v0.9.0` install
+> `boundary test`, ship in `v0.9.0` and later. The source install
+> `go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0`
 > includes them.
 
 No credentials. No live calls. No real mutations. Every record-emitting command
@@ -66,6 +77,20 @@ input. Both proof lanes write the verifiable file under `--out`:
 [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) for the expected first-run
 states (a clean checkout shows `doctor` surfaces as `warn`, and
 `evidence verify` reports `parsed_records: 0` — both are normal).
+
+### Build from source
+
+Requires Go 1.25+. The default build links the full Postgres SQL classifier
+(`pganalyze/pg_query_go`) via cgo, so it also needs a C toolchain (gcc/clang
+on `PATH`):
+
+```bash
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0
+```
+
+Without a C toolchain, `CGO_ENABLED=0 go build ./cmd/boundary` builds the
+static variant described above (routed SQL classifies as `UNKNOWN` and is
+denied fail-closed instead of being classified).
 
 ## Test Policies Like Code
 
