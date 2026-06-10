@@ -131,6 +131,9 @@ func runSecureGitHubServe(args []string, stdout, stderr io.Writer) int {
 		Addr:              *listen,
 		Handler:           securegithub.NewHTTPHandler(adapter),
 		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 	fmt.Fprintf(stderr, "secure github fixture profile listening on %s for %s/%s\n", *listen, *owner, *repo)
 	if err := srv.ListenAndServe(); err != nil {

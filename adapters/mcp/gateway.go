@@ -5,12 +5,21 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
 
 	"github.com/fulcrum-governance/fulcrum-boundary/governance"
 )
+
+// DefaultMaxRequestBytes bounds the inbound JSON-RPC request body the gateway
+// will read before evaluation. The MCP gateway buffers the whole body (the
+// batch path unmarshals the entire array), so an uncapped read on this
+// production path is a memory-exhaustion DoS. 4 MiB comfortably exceeds any
+// legitimate single or batched MCP tool-call envelope while bounding the worst
+// case; operators with larger needs can raise Gateway.MaxRequestBytes.
+const DefaultMaxRequestBytes int64 = 4 << 20
 
 // Gateway is an HTTP JSON-RPC MCP proxy that governs every request before
 // forwarding it to the upstream MCP server.
@@ -19,6 +28,11 @@ type Gateway struct {
 	Adapter         *Adapter
 	DefaultTenantID string
 	UpstreamAddress string
+
+	// MaxRequestBytes caps the inbound request body. Values <= 0 fall back to
+	// DefaultMaxRequestBytes. A body exceeding this limit is rejected with a
+	// JSON-RPC error and an audited parse rejection rather than being buffered.
+	MaxRequestBytes int64
 }
 
 // NewGateway creates a governed MCP JSON-RPC proxy.
@@ -30,11 +44,29 @@ func NewGateway(pipeline *governance.Pipeline, upstream Forwarder, defaultTenant
 	}
 }
 
+// maxRequestBytes returns the configured inbound body cap, or the documented
+// default when unset.
+func (g *Gateway) maxRequestBytes() int64 {
+	if g.MaxRequestBytes > 0 {
+		return g.MaxRequestBytes
+	}
+	return DefaultMaxRequestBytes
+}
+
 // ServeHTTP handles single and batch JSON-RPC requests.
 func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	identity := ExtractIdentity(r, g.DefaultTenantID)
+	limit := g.maxRequestBytes()
+	r.Body = http.MaxBytesReader(w, r.Body, limit)
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			reason := fmt.Sprintf("request body exceeds %d-byte limit", limit)
+			g.publishParseRejection(r.Context(), nil, identity, reason)
+			writeJSONRPCError(w, nil, -32600, "invalid request", reason)
+			return
+		}
 		g.publishParseRejection(r.Context(), nil, identity, err.Error())
 		writeJSONRPCError(w, nil, -32700, "parse error", err.Error())
 		return
