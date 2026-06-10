@@ -57,6 +57,7 @@ func languageLintPaths(t *testing.T, repoRoot string) []string {
 		"docs/secure-mcp/*.md",
 		"docs/policies/*.md",
 		"docs/deployment/*.md",
+		"verifiers/*/README.md",
 	}
 
 	seen := map[string]bool{}
@@ -129,6 +130,24 @@ func publicLanguageRules() []languageRule {
 			terms:     []string{"fully secures GitHub", "production GitHub security", "detects every malicious issue"},
 			allowLine: negatedOrControlled,
 		},
+		{
+			// The decision record's canonicalization is RFC 8785/JCS, so a
+			// claim conformant to that standard is true when SCOPED to the
+			// record. A blanket "Boundary is standards-conformant" is not.
+			// This rule permits the scoped, earned claim and the negated
+			// disclaimer, and rejects the blanket overclaim.
+			name:      "standards conformance overclaim",
+			terms:     []string{"standards-conformant", "standards conformant", "rfc 8785 conformant", "rfc8785 conformant", "jcs conformant", "jcs-conformant", "fully conformant"},
+			allowLine: conformanceScoped,
+		},
+		{
+			// Only a Go binary and a Python verifier ship today. The format is
+			// reproducible by any RFC 8785 implementation, but Boundary does not
+			// provide a verifier in every language.
+			name:      "any-language verification overclaim",
+			terms:     []string{"verify in any language", "verifier in any language", "verify a record in any language", "verify records in any language", "verify any record in any language"},
+			allowLine: negatedOrControlled,
+		},
 	}
 }
 
@@ -186,4 +205,50 @@ func sandboxCaveat(line string) bool {
 		}
 	}
 	return false
+}
+
+// conformanceScoped permits a standards-conformance claim only when it is
+// negated/limitation-framed or scoped to the decision record (the surface that
+// is actually RFC 8785/JCS conformant). A blanket whole-product conformance
+// claim has neither and fails.
+func conformanceScoped(line string) bool {
+	if negatedOrControlled(line) {
+		return true
+	}
+	scoped := []string{
+		"decision record",
+		"decision-record",
+		"decision hash",
+		"decision_hash",
+		"the record",
+		"record's",
+		"record is rfc",
+	}
+	for _, term := range scoped {
+		if strings.Contains(line, term) {
+			return true
+		}
+	}
+	return false
+}
+
+// TestConformanceLintRuleSemantics pins the closing honesty gate: the blanket
+// standards-conformance overclaim is rejected, while the earned record-scoped
+// claim and the negated disclaimer pass.
+func TestConformanceLintRuleSemantics(t *testing.T) {
+	cases := []struct {
+		line  string
+		allow bool
+	}{
+		{"boundary is standards-conformant", false},
+		{"boundary is fully conformant with every standard", false},
+		{"the decision record is rfc 8785 / jcs conformant", true},
+		{"a record's decision_hash is jcs conformant and reproducible", true},
+		{"it is not a claim that boundary as a whole is standards-conformant", true},
+	}
+	for _, tc := range cases {
+		if got := conformanceScoped(strings.ToLower(tc.line)); got != tc.allow {
+			t.Fatalf("conformanceScoped(%q) = %v, want %v", tc.line, got, tc.allow)
+		}
+	}
 }
