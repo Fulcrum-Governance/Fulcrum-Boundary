@@ -40,7 +40,7 @@ const (
 )
 
 // printRecordID writes the uniform record-id line. id is a record_id such as
-// "rec_4b68b9d63c69". The line is omitted entirely when id is empty so commands
+// "rec_acb81071375b". The line is omitted entirely when id is empty so commands
 // that produced no record do not emit a misleading blank identifier.
 func printRecordID(w io.Writer, id string) {
 	if id == "" {
