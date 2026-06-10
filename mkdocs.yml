@@ -27,6 +27,7 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Quickstart: quickstart.md
+  - Govern Your MCP Server: govern-mcp-server.md
   - Demos: demo.md
   - FAQ: faq.md
   - Concepts:

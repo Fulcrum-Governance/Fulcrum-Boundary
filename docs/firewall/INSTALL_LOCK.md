@@ -98,6 +98,12 @@ installed configs route to Boundary rather than silently bypassing it, but live
 forwarding requires a configured Secure MCP profile or another governed runtime
 path. Do not describe a generic install as live runtime protection by itself.
 
+The production live-forwarding path is the MCP gateway
+([`../adapters/MCP.md`](../adapters/MCP.md)): `boundary serve` with an HTTP(S)
+`--upstream` evaluates each request and forwards allowed calls. For the
+end-to-end install-or-gateway journey, see
+[`../GOVERN_MCP_SERVER.md`](../GOVERN_MCP_SERVER.md).
+
 ## Descriptor Lock
 
 Create a descriptor lockfile:
