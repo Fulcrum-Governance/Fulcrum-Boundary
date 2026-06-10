@@ -1,3 +1,8 @@
+//go:build cgo
+
+// These assertions cover the full Postgres AST classifier, which links
+// pg_query_go via cgo. CGO_ENABLED=0 builds use the fail-safe stub covered by
+// interceptors/sql/ast_classifier_nocgo_test.go instead.
 package interceptors_test
 
 import (

@@ -1,4 +1,12 @@
+//go:build cgo
+
 package sql
+
+// This file holds the full Postgres AST classification backed by pg_query_go,
+// the cgo binding for the PostgreSQL parser. It only builds when cgo is
+// enabled; binaries built with CGO_ENABLED=0 use the fail-safe stub in
+// ast_classifier_nocgo.go, which routes every statement to the UNKNOWN (deny)
+// bucket.
 
 import (
 	"fmt"
@@ -7,26 +15,10 @@ import (
 	pg_query "github.com/pganalyze/pg_query_go/v6"
 )
 
-type Class string
-
-const (
-	ClassRead        Class = "READ"
-	ClassWrite       Class = "WRITE"
-	ClassAdmin       Class = "ADMIN"
-	ClassDestructive Class = "DESTRUCTIVE"
-	ClassUnknown     Class = "UNKNOWN"
-)
-
-type Classification struct {
-	Class          Class
-	StatementTypes []string
-	ParseError     string
-}
-
-func (c Classification) Unknown() bool {
-	return c.Class == "" || c.Class == ClassUnknown
-}
-
+// ClassifyPostgres parses sqlText with the PostgreSQL AST parser and returns
+// the highest-severity class across all parsed statements. Empty, invalid, or
+// unparsable SQL classifies as UNKNOWN, which the Postgres guard denies
+// fail-closed.
 func ClassifyPostgres(sqlText string) Classification {
 	if strings.TrimSpace(sqlText) == "" {
 		return Classification{Class: ClassUnknown, ParseError: "empty SQL"}

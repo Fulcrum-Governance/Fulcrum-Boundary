@@ -1,3 +1,9 @@
+//go:build cgo
+
+// The evasion-corpus expectations require the full Postgres AST classifier,
+// which links pg_query_go via cgo. In CGO_ENABLED=0 builds the same corpus is
+// swept by interceptors/sql/ast_classifier_nocgo_test.go, which requires every
+// case to land in the UNKNOWN (deny) bucket.
 package interceptors_test
 
 import (
