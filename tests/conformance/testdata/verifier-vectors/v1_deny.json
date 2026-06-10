@@ -1,0 +1,17 @@
+{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "rec_9494aaf9a7e6",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-deny",
+  "tool": "github.create_or_update_file",
+  "action": "deny",
+  "reason": "protected private-repo write denied before upstream execution",
+  "decision_mode": "deterministic",
+  "matched_rule": "deny-github-write-after-taint-fixture",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "sha256:9494aaf9a7e64f14232bd9e2e1886eddad4a3506104df005cab673a51c7bb32d",
+  "trust_score": 1,
+  "trust_state": "TRUSTED"
+}
