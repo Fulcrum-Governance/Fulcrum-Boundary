@@ -5,6 +5,11 @@ JSON-RPC MCP requests, evaluates each action through `governance.Pipeline`,
 forwards allowed requests to an upstream MCP server, and returns protocol-shaped
 denials before a blocked request reaches the upstream.
 
+> For the end-to-end "put Boundary in front of my MCP server" walkthrough —
+> discover, install a route or run this gateway, trigger a denial, uninstall —
+> see [`../GOVERN_MCP_SERVER.md`](../GOVERN_MCP_SERVER.md). The reversible
+> client-config install path is [`../firewall/INSTALL_LOCK.md`](../firewall/INSTALL_LOCK.md).
+
 ## Lifecycle
 
 1. Parse JSON-RPC `tools/call` or `tools/list`.
