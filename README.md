@@ -275,6 +275,8 @@ Adapter maturity is declared in `adapters/<adapter>/readiness.yaml` and summariz
 | First-run troubleshooting | [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) |
 | Demo | [docs/DEMO_GITHUB_LETHAL_TRIFECTA.md](./docs/DEMO_GITHUB_LETHAL_TRIFECTA.md) |
 | Govern your MCP server — put Boundary in front of an MCP client, trigger a denial, uninstall | [docs/GOVERN_MCP_SERVER.md](./docs/GOVERN_MCP_SERVER.md) |
+| Where Boundary fits — vs scanners, gateways, guardrail libraries, authz engines | [docs/COMPARISON.md](./docs/COMPARISON.md) |
+| Standards & incident mapping — OWASP Agentic, NSA MCP CSI, Five Eyes | [docs/STANDARDS_MAPPING.md](./docs/STANDARDS_MAPPING.md) |
 | Full spec | [docs/BOUNDARY_SPEC.md](./docs/BOUNDARY_SPEC.md) |
 | Claims | [docs/CLAIMS_LEDGER.md](./docs/CLAIMS_LEDGER.md) |
 | Testing | [docs/TESTING.md](./docs/TESTING.md) |
@@ -288,6 +290,7 @@ Adapter maturity is declared in `adapters/<adapter>/readiness.yaml` and summariz
 | Secure GitHub | [docs/secure-mcp/GITHUB.md](./docs/secure-mcp/GITHUB.md) |
 | Command Boundary | [docs/command-boundary/README.md](./docs/command-boundary/README.md) |
 | Edit Boundary | [docs/edit-boundary/README.md](./docs/edit-boundary/README.md) |
+| Govern Claude Code tool calls (PreToolUse hook) | [docs/integrations/CLAUDE_CODE_HOOK.md](./docs/integrations/CLAUDE_CODE_HOOK.md) |
 | Security | [SECURITY.md](./SECURITY.md) |
 
 ## Development
