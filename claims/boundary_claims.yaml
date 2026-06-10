@@ -169,6 +169,54 @@ claims:
     gaps: []
     depends_on: []
 
+  - id: BND-CLAIM-BUILD-001
+    claim: "Boundary builds with CGO_ENABLED=0, and in no-cgo builds the Postgres AST classifier is unavailable so every routed SQL statement classifies as UNKNOWN and the Postgres guard denies it fail-closed"
+    status: delivered
+    evidence:
+      tests:
+        - path: interceptors/sql/ast_classifier_nocgo_test.go
+          assertion: "In !cgo builds, SQL the cgo build would allow, destructive SQL, unparsable SQL, and every evasion-corpus case classify as UNKNOWN with a CGO-disabled reason, and the Postgres guard denies fail-closed with that reason"
+      docs:
+        - path: docs/INSTALL.md
+          section: "Static Vs Cgo Builds"
+        - path: docs/policies/POSTGRES.md
+          section: "Build Variants"
+    public_language:
+      allowed:
+        - "Static (CGO_ENABLED=0) Boundary builds classify every routed SQL statement as UNKNOWN, which the Postgres guard denies fail-closed; the full AST classifier requires a cgo build."
+        - "The static build never allows SQL the cgo build would deny."
+        - "The static build's reduction is classification capability, not deny posture."
+      forbidden:
+        - "Static builds carry the full Postgres AST classifier"
+        - "Static builds classify SQL statements by class"
+        - "The static and cgo builds behave identically on SQL routes"
+    gaps: []
+    depends_on:
+      - BND-CLAIM-008
+
+  - id: BND-CLAIM-DIST-001
+    claim: "Boundary publishes one-command install channels (Homebrew tap formula, prebuilt static and native-cgo archives with SHA256 checksum manifests, container image) from a tag-gated release pipeline"
+    status: partial
+    evidence:
+      tests: []
+      docs:
+        - path: docs/INSTALL.md
+          section: "Install Channels"
+    public_language:
+      allowed:
+        - "A tag-gated release pipeline builds static (CGO_ENABLED=0) archives for darwin, linux, and windows on amd64 and arm64, native-cgo full-classifier archives, SHA256 checksum manifests, a Homebrew formula, and a container image."
+        - "Install channels publish with releases after v0.9.0; v0.9.0 and earlier releases are source-only."
+      forbidden:
+        - "Prebuilt binaries are available for v0.9.0 and earlier"
+        - "The Homebrew tap is installable before the first pipeline-published release"
+        - "Windows native-cgo archives are published"
+    gaps:
+      - id: BND-DIST-001
+        description: "The first tag-gated release carrying binary assets, SHA256SUMS, SHA256SUMS-cgo, the Homebrew formula push, _cgo archives, the evidence-bundle tarball, and the container image has not yet been published; the channels go live with the first tag after v0.9.0."
+        spec: "KEYSTONE install pipeline (launch/w1-foundation)"
+    depends_on:
+      - BND-CLAIM-BUILD-001
+
   - id: BND-CLAIM-009
     claim: "Boundary provides standalone trust integration and adaptive termination for protected adapters"
     status: delivered
