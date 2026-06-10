@@ -1,0 +1,50 @@
+{
+  "description": "Frozen decision-record conformance corpus. Each file's decision_hash is reproduced by governance.ComputeDecisionHash (Go) and by a stock RFC 8785 / JCS verifier (see verifiers/python). Regenerate with BOUNDARY_WRITE_VECTORS=1.",
+  "vectors": [
+    {
+      "file": "parse_rejection.json",
+      "decision_hash": "sha256:d596b226bb89d87e11faf4e9de0112cdc69d6331f2919f95d55fff6389d61352",
+      "why": "parse_rejected shape: event_type=parse_rejected, raw_shape_hash set, request_hash absent; still hashes through ComputeDecisionHash"
+    },
+    {
+      "file": "v1_allow.json",
+      "decision_hash": "sha256:04f26fb888aad12b244ed3350a0e6e5cd0d139e438a401f42d6c88ca230ddfc7",
+      "why": "schema_version 1 (no route-context); action=allow"
+    },
+    {
+      "file": "v1_deny.json",
+      "decision_hash": "sha256:9494aaf9a7e64f14232bd9e2e1886eddad4a3506104df005cab673a51c7bb32d",
+      "why": "schema_version 1; action=deny"
+    },
+    {
+      "file": "v1_escalate.json",
+      "decision_hash": "sha256:2ce5fc610bc11143fb2d7ef9ffd793faff4ad908fbbe31e8818ab01eb4f923af",
+      "why": "schema_version 1; action=escalate"
+    },
+    {
+      "file": "v1_float_trust_score.json",
+      "decision_hash": "sha256:749a05ec9252e584e01e78f7ef2219511725b5d5664f9d01300e0edee860722f",
+      "why": "ECMAScript number formatting: non-trivial float64 trust_score (1.0/3.0) must serialize as 0.3333333333333333"
+    },
+    {
+      "file": "v1_reason_html_chars.json",
+      "decision_hash": "sha256:81bd0fe976ea3bfe3d19f521b69c8ce00dd4b65ceadb1453c8645b2388f1aa0f",
+      "why": "HTML-escape coverage: reason contains \u0026 \u003c \u003e which JCS keeps literal (Go's encoder would escape them)"
+    },
+    {
+      "file": "v1_require_approval.json",
+      "decision_hash": "sha256:1c8fe9a532d0ae2da09526c997b676614a69b7f91690aacc37a2c554cd666364",
+      "why": "schema_version 1; action=require_approval"
+    },
+    {
+      "file": "v1_warn.json",
+      "decision_hash": "sha256:da32782017ae39dd2813b21f3be1072a42cd3b3b6af39bcae289dd50de12e46b",
+      "why": "schema_version 1; action=warn"
+    },
+    {
+      "file": "v2_route_context.json",
+      "decision_hash": "sha256:fc31166d1a013cf3cc1f65ad3db28a352f3706815e4080fac5997e14a5b7371a",
+      "why": "schema_version 2: route-context fields populated and covered by decision_hash; includes execution_claim self-report"
+    }
+  ]
+}

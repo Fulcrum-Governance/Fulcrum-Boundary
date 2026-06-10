@@ -1,0 +1,14 @@
+{
+  "schema_version": "1",
+  "event_type": "parse_rejected",
+  "record_id": "rec_d596b226bb89",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "action": "deny",
+  "reason": "malformed tools/call payload rejected before parsing",
+  "decision_mode": "deterministic",
+  "raw_shape_hash": "sha256:af4d4da9f58a003dd856fb633b9210fd3f6071091b6e1b27da0f5a5b95c2c5fe",
+  "decision_hash": "sha256:d596b226bb89d87e11faf4e9de0112cdc69d6331f2919f95d55fff6389d61352",
+  "trust_score": 0,
+  "trust_state": "TRUSTED"
+}
