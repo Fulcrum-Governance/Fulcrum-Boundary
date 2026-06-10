@@ -28,6 +28,7 @@ nav:
   - Home: index.md
   - Quickstart: quickstart.md
   - Govern Your MCP Server: govern-mcp-server.md
+  - Where Boundary Fits: comparison.md
   - Demos: demo.md
   - FAQ: faq.md
   - Concepts:
@@ -50,6 +51,8 @@ nav:
       - Apply: edit-boundary/apply.md
       - Redteam: edit-boundary/redteam.md
       - Demo: edit-boundary/demo.md
+  - Integrations:
+      - Claude Code Hook: claude-code-hook.md
   - Reference:
       - CLI: reference/cli.md
       - Policy Testing: reference/policy-testing.md
@@ -58,4 +61,5 @@ nav:
       - Troubleshooting: reference/troubleshooting.md
       - Release Utilities: reference/release-utilities.md
       - Claims: reference/claims.md
+      - Standards & Incident Mapping: standards-mapping.md
       - Roadmap: reference/roadmap.md
