@@ -9,6 +9,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// PolicySchemaVersionV1 is the required schema_version value for a v1 YAML
+// policy document.
 const PolicySchemaVersionV1 = "1"
 
 // PolicyV1Document is the canonical v1 YAML policy envelope.
@@ -18,6 +20,8 @@ type PolicyV1Document struct {
 	Metadata      map[string]any `yaml:"metadata,omitempty" json:"metadata,omitempty"`
 }
 
+// PolicyV1Block is the policy body of a v1 YAML document: its identity and the
+// ordered list of rules.
 type PolicyV1Block struct {
 	Name      string         `yaml:"name" json:"name"`
 	Version   string         `yaml:"version" json:"version"`
@@ -25,6 +29,8 @@ type PolicyV1Block struct {
 	Rules     []PolicyV1Rule `yaml:"rules" json:"rules"`
 }
 
+// PolicyV1Rule is a single rule within a v1 YAML policy: the tool it targets,
+// the action it takes, and the conditions that must match.
 type PolicyV1Rule struct {
 	Name         string              `yaml:"name" json:"name"`
 	Tool         string              `yaml:"tool" json:"tool"`
@@ -39,6 +45,9 @@ type PolicyV1Rule struct {
 	Metadata     map[string]string   `yaml:"metadata,omitempty" json:"metadata,omitempty"`
 }
 
+// PolicyV1Condition is a single match clause within a v1 YAML rule. Type
+// defaults to "contains" when empty; Regex/Value/Contains supply the pattern
+// for "regex".
 type PolicyV1Condition struct {
 	Type            string   `yaml:"type,omitempty" json:"type,omitempty"`
 	Field           string   `yaml:"field,omitempty" json:"field,omitempty"`

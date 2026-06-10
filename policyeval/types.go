@@ -1,4 +1,5 @@
-// Package policyeval types.go defines the policy model used by the evaluator.
+// This file (types.go) defines the policy model used by the evaluator. The
+// canonical package doc lives in decision.go.
 //
 // These types are inlined plain-Go equivalents of the protobuf messages
 // previously generated from fulcrum/policy/v1/policy_service.proto.
@@ -25,6 +26,7 @@ const (
 	PolicyStatus_POLICY_STATUS_ARCHIVED    PolicyStatus = 4
 )
 
+// String returns the canonical POLICY_STATUS_* name for the status.
 func (s PolicyStatus) String() string {
 	switch s {
 	case PolicyStatus_POLICY_STATUS_UNSPECIFIED:
@@ -60,6 +62,7 @@ const (
 	ConditionType_CONDITION_TYPE_SEMANTIC          ConditionType = 11
 )
 
+// String returns the canonical CONDITION_TYPE_* name for the condition type.
 func (t ConditionType) String() string {
 	switch t {
 	case ConditionType_CONDITION_TYPE_UNSPECIFIED:
@@ -108,6 +111,7 @@ const (
 	ConditionOperator_CONDITION_OPERATOR_NOT_IN        ConditionOperator = 10
 )
 
+// String returns the canonical CONDITION_OPERATOR_* name for the operator.
 func (o ConditionOperator) String() string {
 	switch o {
 	case ConditionOperator_CONDITION_OPERATOR_UNSPECIFIED:
@@ -147,6 +151,7 @@ const (
 	LogicalOperator_LOGICAL_OPERATOR_NOT         LogicalOperator = 3
 )
 
+// String returns the canonical LOGICAL_OPERATOR_* name for the operator.
 func (o LogicalOperator) String() string {
 	switch o {
 	case LogicalOperator_LOGICAL_OPERATOR_UNSPECIFIED:
@@ -181,6 +186,7 @@ const (
 	PolicyActionType_ACTION_TYPE_NOTIFY           PolicyActionType = 9
 )
 
+// String returns the canonical ACTION_TYPE_* name for the action type.
 func (a PolicyActionType) String() string {
 	switch a {
 	case PolicyActionType_ACTION_TYPE_UNSPECIFIED:
@@ -221,6 +227,7 @@ const (
 	ExecutionPhase_EXECUTION_PHASE_POST_EXECUTION ExecutionPhase = 6
 )
 
+// String returns the canonical EXECUTION_PHASE_* name for the phase.
 func (p ExecutionPhase) String() string {
 	switch p {
 	case ExecutionPhase_EXECUTION_PHASE_UNSPECIFIED:

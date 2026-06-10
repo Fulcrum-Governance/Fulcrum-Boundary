@@ -1628,6 +1628,11 @@ func TestEvaluatePolicyWithConditionError(t *testing.T) {
 	if decision.Action != ActionAllow {
 		t.Errorf("expected allow (condition error), got %v", decision.Action)
 	}
+
+	// The skipped faulting rule must be surfaced at Warn, not swallowed.
+	if len(logger.getWarnings()) == 0 {
+		t.Error("expected a Warn log for the skipped faulting rule, got none")
+	}
 }
 
 func TestEvaluatePolicyErrorLogging(t *testing.T) {
@@ -1657,9 +1662,18 @@ func TestEvaluatePolicyErrorLogging(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Should allow because rule condition errored
+	// Should allow because rule condition errored (default non-strict behavior:
+	// the faulting rule is skipped, not enforced).
 	if decision.Action != ActionAllow {
 		t.Errorf("expected allow (condition error), got %v", decision.Action)
+	}
+
+	// The skip must be visible: the condition fault is now logged at Warn (it
+	// was previously a silent Debug). This is the signal an operator needs to
+	// notice that a deny rule never fired.
+	warnings := logger.getWarnings()
+	if len(warnings) == 0 {
+		t.Error("expected a Warn log for the skipped faulting rule, got none")
 	}
 }
 

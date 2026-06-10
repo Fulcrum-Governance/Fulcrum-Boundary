@@ -8,13 +8,20 @@ import (
 	"time"
 )
 
-// Evaluator provides thread-safe policy evaluation with no infrastructure dependencies.
+// Evaluator provides thread-safe policy evaluation with a single yaml.v3 import
+// for optional YAML schema parsing and no other infrastructure dependencies.
 // It is designed to be embedded in MCP proxies, SDKs, and the Fulcrum server.
 type Evaluator struct {
 	// policies is the in-memory policy set, sorted by priority (highest first).
 	policies []*Policy
 
-	// mu protects concurrent access to policies.
+	// strictErr is non-nil when strict mode is enabled and the most recently
+	// loaded policy set failed validation. While set, Evaluate fails closed
+	// (denies) instead of evaluating a known-invalid policy set. It is guarded
+	// by mu alongside policies.
+	strictErr error
+
+	// mu protects concurrent access to policies and strictErr.
 	mu sync.RWMutex
 
 	// Configuration
@@ -22,9 +29,19 @@ type Evaluator struct {
 	logger               Logger
 	externalCallsEnabled bool
 	stopOnDeny           bool
+	strictPolicies       bool
 }
 
 // NewEvaluator creates a new policy evaluator with the provided policies.
+//
+// By default invalid policies are not rejected here: a malformed rule (bad
+// regex, unknown field, unsupported type) is skipped at evaluation time with a
+// Warn-level log, and evaluation continues with the remaining rules. This keeps
+// behavior backward-compatible but visible. To reject invalid policies up front
+// and propagate the error, use NewEvaluatorStrict, or pass WithStrictPolicies
+// (which makes this constructor fail closed — see WithStrictPolicies — without
+// changing the signature). Embedders that cannot tolerate silent skips should
+// call ValidateAllPolicies (or use the strict path) before serving traffic.
 func NewEvaluator(policies []*Policy, opts ...Option) *Evaluator {
 	e := &Evaluator{
 		maxEvaluationTime:    10 * time.Millisecond,
@@ -41,10 +58,62 @@ func NewEvaluator(policies []*Policy, opts ...Option) *Evaluator {
 	return e
 }
 
+// NewEvaluatorStrict creates an evaluator and validates the provided policies
+// (including compiling every regex pattern) before returning. If any policy is
+// invalid it returns a nil-safe evaluator together with the validation error,
+// so a typo'd deny rule fails loudly at construction instead of silently
+// allowing requests at evaluation time. WithStrictPolicies is implied; passing
+// it again is harmless.
+//
+// The returned evaluator is non-nil even on error so callers may inspect it,
+// but when err != nil it holds the (rejected) policy set and fails closed
+// (denies) on Evaluate until UpdatePoliciesStrict succeeds.
+func NewEvaluatorStrict(policies []*Policy, opts ...Option) (*Evaluator, error) {
+	e := &Evaluator{
+		maxEvaluationTime:    10 * time.Millisecond,
+		logger:               noopLogger{},
+		externalCallsEnabled: false,
+		stopOnDeny:           true,
+		strictPolicies:       true,
+	}
+
+	for _, opt := range opts {
+		opt(e)
+	}
+	e.strictPolicies = true // enforce regardless of option ordering
+
+	return e, e.UpdatePoliciesStrict(policies)
+}
+
 // UpdatePolicies replaces the policy set with a new set.
 // This is used for cache synchronization from the server.
 // Policies are sorted by priority (highest first) for correct evaluation order.
+//
+// In strict mode (WithStrictPolicies) this validates the new set and, if it is
+// invalid, logs the error and arms the fail-closed state so that subsequent
+// Evaluate calls deny until a valid set is loaded. The signature is unchanged
+// for backward compatibility; use UpdatePoliciesStrict to receive the error
+// directly.
 func (e *Evaluator) UpdatePolicies(policies []*Policy) {
+	if err := e.UpdatePoliciesStrict(policies); err != nil {
+		// Non-strict callers cannot receive this error; UpdatePoliciesStrict has
+		// already logged it and armed the fail-closed state when strict.
+		_ = err
+	}
+}
+
+// UpdatePoliciesStrict replaces the policy set and reports any validation error.
+//
+// The policies are always installed (sorted by priority) so the evaluator's
+// loaded state is observable. The return value reflects validation:
+//   - In strict mode, an invalid set returns the validation error AND arms the
+//     fail-closed state (Evaluate denies until a valid set is loaded).
+//   - In non-strict mode, validation still runs and the error is returned for
+//     the caller to inspect, but the fail-closed state is NOT armed and
+//     Evaluate keeps its default skip-with-Warn behavior.
+//
+// A nil/empty policy set is always valid (it allows everything by default).
+func (e *Evaluator) UpdatePoliciesStrict(policies []*Policy) error {
 	// Sort by priority descending (higher priority = evaluated first)
 	sorted := make([]*Policy, len(policies))
 	copy(sorted, policies)
@@ -52,9 +121,51 @@ func (e *Evaluator) UpdatePolicies(policies []*Policy) {
 		return sorted[i].Priority > sorted[j].Priority
 	})
 
+	validationErr := validatePolicySet(sorted)
+
 	e.mu.Lock()
 	e.policies = sorted
+	if e.strictPolicies {
+		e.strictErr = validationErr
+	} else {
+		e.strictErr = nil
+	}
 	e.mu.Unlock()
+
+	if validationErr != nil && e.strictPolicies {
+		e.logger.Warn("strict policy validation failed; evaluator will fail closed (deny) until a valid policy set is loaded",
+			Field{Key: "error", Value: validationErr.Error()})
+	}
+
+	return validationErr
+}
+
+// ValidateAllPolicies validates every currently-loaded policy, including
+// compiling each regex pattern. It returns the first validation error, or nil
+// if the whole set is valid. Embedders can call this after NewEvaluator (or
+// after UpdatePolicies) to detect a typo'd rule that would otherwise be
+// silently skipped at evaluation time. It does not change the loaded set or the
+// fail-closed state.
+func (e *Evaluator) ValidateAllPolicies() error {
+	e.mu.RLock()
+	policies := e.policies
+	e.mu.RUnlock()
+	return validatePolicySet(policies)
+}
+
+// validatePolicySet validates each policy in the set, returning the first error.
+// A nil or empty set is valid.
+func validatePolicySet(policies []*Policy) error {
+	for _, policy := range policies {
+		if err := ValidatePolicy(policy); err != nil {
+			id := "<nil>"
+			if policy != nil {
+				id = policy.PolicyId
+			}
+			return fmt.Errorf("policy %q invalid: %w", id, err)
+		}
+	}
+	return nil
 }
 
 // Policies returns a copy of the current policy set.
@@ -86,7 +197,21 @@ func (e *Evaluator) Evaluate(ctx context.Context, req *EvaluationRequest) (*Deci
 
 	e.mu.RLock()
 	policies := e.policies
+	strictErr := e.strictErr
 	e.mu.RUnlock()
+
+	// Strict mode fail-closed: if the loaded policy set failed validation we
+	// refuse to evaluate it (a partially-skipped invalid set could allow a
+	// request a corrected policy would deny) and deny instead.
+	if strictErr != nil {
+		e.logger.Warn("denying request: strict policy validation failed",
+			Field{Key: "error", Value: strictErr.Error()})
+		return &Decision{
+			Action:               ActionDeny,
+			Reason:               fmt.Sprintf("strict policy validation failed: %v", strictErr),
+			EvaluationDurationMs: time.Since(startTime).Milliseconds(),
+		}, nil
+	}
 
 	var allActions []*PolicyAction
 	var matchedRules []*RuleMatch
@@ -109,7 +234,11 @@ policyLoop:
 		// Evaluate the policy
 		decision, err := e.evaluatePolicy(ctx, policy, evalCtx)
 		if err != nil {
-			e.logger.Debug("policy evaluation error",
+			// Surface the skip at Warn (visible on a default slog logger): a
+			// faulting policy is silently dropped here, which can turn a typo'd
+			// deny rule into an allow. Strict mode (WithStrictPolicies) rejects
+			// such policies up front instead.
+			e.logger.Warn("policy evaluation error; policy skipped (request may be allowed by default)",
 				Field{Key: "policy_id", Value: policy.PolicyId},
 				Field{Key: "error", Value: err.Error()})
 			continue
@@ -215,7 +344,13 @@ func (e *Evaluator) evaluatePolicy(ctx context.Context, policy *Policy, evalCtx 
 		// Evaluate all conditions in the rule
 		ruleMatches, escalate, escReason, err := e.evaluateRule(ctx, rule, evalCtx)
 		if err != nil {
-			e.logger.Debug("rule evaluation error",
+			// Surface the skip at Warn (visible on a default slog logger). A
+			// condition fault (invalid regex, unknown field, unsupported type)
+			// drops this rule, so a typo'd deny rule silently never fires and
+			// the request can be allowed by default. Strict mode
+			// (WithStrictPolicies / NewEvaluatorStrict) rejects such rules up
+			// front instead of skipping them here.
+			e.logger.Warn("rule evaluation error; rule skipped (a deny rule may silently not fire)",
 				Field{Key: "rule_id", Value: rule.RuleId},
 				Field{Key: "error", Value: err.Error()})
 			continue
@@ -479,9 +614,18 @@ func ValidateCondition(condition *PolicyCondition) error {
 		return nil
 	}
 
-	// Non-logical conditions must have a field (except external call)
-	if condition.Field == "" && condition.ConditionType != ConditionType_CONDITION_TYPE_EXTERNAL_CALL {
-		return fmt.Errorf("condition field is required")
+	// Non-logical conditions must reference a field (except external call, whose
+	// Field names a key in the HTTP response body rather than a context field).
+	// For everything else the field must be a well-formed, resolvable path: a
+	// typo'd field never matches at runtime, which would silently weaken a deny
+	// rule, so we reject it here.
+	if condition.ConditionType != ConditionType_CONDITION_TYPE_EXTERNAL_CALL {
+		if condition.Field == "" {
+			return fmt.Errorf("condition field is required")
+		}
+		if err := validateFieldPath(condition.Field); err != nil {
+			return fmt.Errorf("condition field invalid: %w", err)
+		}
 	}
 
 	// IN/NOT_IN conditions must have values list
@@ -489,6 +633,24 @@ func ValidateCondition(condition *PolicyCondition) error {
 		condition.Operator == ConditionOperator_CONDITION_OPERATOR_NOT_IN {
 		if len(condition.Values) == 0 {
 			return fmt.Errorf("IN/NOT_IN conditions require values list")
+		}
+	}
+
+	// REGEX conditions must carry a string value that compiles. We compile via
+	// the same cache the evaluator uses, so a pattern that validates here is the
+	// exact pattern that will run at evaluation time (and the cache is warmed as
+	// a side effect). Catching a bad pattern here is what prevents the
+	// "typo in a deny rule => rule silently skipped => request allowed" failure.
+	if condition.ConditionType == ConditionType_CONDITION_TYPE_REGEX {
+		strVal, ok := condition.Value.(*PolicyCondition_StringValue)
+		if !ok {
+			return fmt.Errorf("regex condition requires a string value")
+		}
+		if strVal.StringValue == "" {
+			return fmt.Errorf("regex condition requires a non-empty pattern")
+		}
+		if _, err := getCompiledRegex(strVal.StringValue); err != nil {
+			return fmt.Errorf("invalid regex pattern %q: %w", strVal.StringValue, err)
 		}
 	}
 

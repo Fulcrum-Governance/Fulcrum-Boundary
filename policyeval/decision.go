@@ -1,10 +1,27 @@
-// Package policyeval provides a portable, dependency-free policy evaluation engine.
+// Package policyeval provides a portable policy evaluation engine with no
+// infrastructure dependencies (single yaml.v3 import for optional YAML schema).
 //
 // This package is designed to be embedded in MCP proxies, SDKs, and the main Fulcrum server,
 // ensuring consistent policy evaluation behavior across all deployment contexts.
 //
 // The evaluator operates entirely in-memory with no database, Redis, or NATS dependencies.
-// Policies are loaded via UpdatePolicies() and evaluated synchronously.
+// Policies are loaded via UpdatePolicies (or, to reject invalid policies up
+// front, NewEvaluatorStrict / UpdatePoliciesStrict) and evaluated synchronously.
+//
+// # Invalid policies: default skip-with-warn vs strict fail-closed
+//
+// By default a rule whose condition cannot be evaluated (an invalid regex, an
+// unknown field, or an unsupported type) is skipped at evaluation time and the
+// skip is logged at Warn. Evaluation then continues with the remaining rules,
+// so a typo'd deny rule does not fire and the request can be allowed by
+// default. This is backward-compatible but, by design, visible on the logger.
+//
+// To reject such policies before they can affect a decision, enable strict mode
+// with WithStrictPolicies (or use NewEvaluatorStrict). In strict mode the
+// policy set is validated — including compiling every regex pattern — whenever
+// it is loaded; an invalid set is reported as an error to the strict
+// constructor/updater and arms a fail-closed state in which Evaluate denies
+// every request until a valid set is loaded.
 package policyeval
 
 // ActionType represents the outcome of policy evaluation.
