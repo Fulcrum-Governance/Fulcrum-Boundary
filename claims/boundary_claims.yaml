@@ -826,3 +826,56 @@ claims:
         - "Boundary proves universal file safety"
     gaps: []
     depends_on: []
+
+  - id: BND-CLAIM-REC-002
+    claim: "Boundary's decision record is canonicalized with RFC 8785 (JSON Canonicalization Scheme), so its decision hash is reproducible by a stock RFC 8785 implementation independent of Boundary's code"
+    status: delivered
+    evidence:
+      tests:
+        - path: governance/canonicaljson_test.go
+          assertion: "the record canonicalizer emits RFC 8785/JCS bytes (lexicographic UTF-16 key order, literal < > & with no HTML escaping, ECMAScript number form) pinned against reference vectors, including a record whose reason contains & < > and one with a non-trivial float trust_score"
+        - path: tests/conformance/verifier_vectors_test.go
+          assertion: "a committed corpus of records (every action type, parse_rejection, schema v1 and v2, an HTML-special reason, a float trust_score) recomputes to its committed decision_hash via governance.ComputeDecisionHash"
+      docs:
+        - path: verifiers/python/README.md
+          section: "What it checks"
+        - path: CHANGELOG.md
+          section: "Unreleased / Changed"
+    public_language:
+      allowed:
+        - "Boundary's decision record is RFC 8785 / JCS canonicalized."
+        - "A stock RFC 8785 implementation can recompute a record's decision hash."
+        - "The decision record is RFC 8785 / JCS conformant; verify it with the Go binary or a stock RFC 8785 verifier."
+      forbidden:
+        - "Boundary is standards-conformant"
+        - "Boundary's records are tamper-proof"
+        - "The decision hash proves authenticity"
+        - "Verify a Boundary record in any language"
+    gaps: []
+    depends_on:
+      - BND-CLAIM-REC-001
+      - BND-CLAIM-005
+
+  - id: BND-CLAIM-VERIFY-002
+    claim: "A standalone non-Go verifier recomputes a decision record's hash and detects a one-field forgery, pinned to the Go implementation by a shared conformance-vector corpus"
+    status: delivered
+    evidence:
+      tests:
+        - path: tests/conformance/verifier_vectors_test.go
+          assertion: "the committed verifier-vector corpus is the shared source of truth both implementations assert against; the Go gate asserts every vector recomputes to its committed decision_hash"
+        - path: verifiers/python/test_boundary_verify.py
+          assertion: "the standalone Python verifier recomputes every corpus record's decision_hash and reports a one-field forgery as a decision_hash mismatch with exit 1"
+      docs:
+        - path: verifiers/python/README.md
+          section: "Tests"
+    public_language:
+      allowed:
+        - "A standalone Python verifier recomputes a decision record's hash offline, pinned to the Go implementation by shared conformance vectors."
+        - "Verify a record with the Go binary or a stock RFC 8785 verifier."
+      forbidden:
+        - "Verify a Boundary record in any language"
+        - "The standalone verifier proves authenticity"
+        - "The standalone verifier makes records tamper-proof"
+    gaps: []
+    depends_on:
+      - BND-CLAIM-REC-002
