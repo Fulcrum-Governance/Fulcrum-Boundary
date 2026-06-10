@@ -15,6 +15,17 @@ Your agent is about to touch a real system. Boundary decides before the tool exe
 
 [Quickstart](#first-run-in-one-minute) | [Demos](./docs/DEMOS.md) | [Docs](https://fulcrum-governance.github.io/Fulcrum-Boundary/) | [Claims](./docs/CLAIMS_LEDGER.md) | [Release Truth](./docs/RELEASE_TRUTH_PUBLIC.md) | [Security](./SECURITY.md)
 
+## Terminal Receipt — See the MCP Lane Run
+
+This recording is a real run of `boundary demo github-lethal-trifecta`, the
+Lane 1 (MCP) demo below. It shows untrusted GitHub issue context flowing into a
+private-repo mutation attempt; Boundary denies the routed action before GitHub
+is touched, reports `upstream_called=false`, and emits a hash-verifiable decision
+record. No credentials, live calls, or real mutations are used. For the Lane 2
+(Command Boundary) run, use `boundary demo command-secret-exfil`.
+
+![Boundary denies a GitHub write-after-taint action before upstream execution, with upstream_called=false and a hash-verifiable decision record](./docs/assets/github-lethal-trifecta-demo.gif)
+
 ## What Boundary Stops
 
 A coding agent reads an untrusted GitHub issue, then proposes a write to a
@@ -38,14 +49,17 @@ Install a prebuilt binary — no Go toolchain, no C compiler:
 brew install fulcrum-governance/tap/boundary
 # or: docker run --rm ghcr.io/fulcrum-governance/boundary:latest selftest
 # or: download a release archive + SHA256SUMS (docs/INSTALL.md has the curl lines)
+
+# see the MCP servers your agents can already reach — read-only, nothing is modified:
+boundary init --dry-run
 boundary selftest
 boundary doctor --json
-boundary demo github-lethal-trifecta      # Lane 1: MCP, the first production route
-boundary demo command-secret-exfil        # Lane 2: Command Boundary, a delivered preview
+boundary demo github-lethal-trifecta --out lane1.txt   # Lane 1: MCP, the first production route
+boundary demo command-secret-exfil --out lane2.txt     # Lane 2: Command Boundary, a delivered preview
 boundary evidence bundle --include-demo --out boundary-evidence
 boundary evidence verify boundary-evidence
-# when a demo or evidence artifact prints a decision-record path:
-boundary verify-record <record.json>
+# each demo printed `decision record path:` — check the Lane 1 record by recomputation:
+boundary verify-record github-lethal-trifecta-artifacts/decision-record.json
 ```
 
 > One honest capability split: the prebuilt static binaries, the Homebrew
@@ -78,6 +92,39 @@ input. Both proof lanes write the verifiable file under `--out`:
 states (a clean checkout shows `doctor` surfaces as `warn`, and
 `evidence verify` reports `parsed_records: 0` — both are normal).
 
+One quickstart command reports on your machine rather than the fixtures:
+`boundary init --dry-run` reads the MCP client configs your agents already use
+and prints `configs discovered`, `servers discovered`, `high-risk servers`, and
+`mcp config mutation: none`. It is read-only — it writes no files and edits no
+configs.
+
+### Forge the receipt
+
+A standing challenge. The Lane 1 demo above landed its verdict in a
+hash-verifiable decision record; `boundary verify-record` recomputes the
+decision hash from the record's own fields and compares it to the stored one.
+A plain audit log can be quietly edited. Try that here — fixture-only, like the
+demos: no credentials, no live calls, no real mutations:
+
+```bash
+boundary demo github-lethal-trifecta --out lane1.txt
+boundary verify-record github-lethal-trifecta-artifacts/decision-record.json
+# -> record verification: ok
+
+# forge it: open the record and change "action": "deny" to "action": "allow"
+boundary verify-record github-lethal-trifecta-artifacts/decision-record.json
+# -> record verification failed: decision_hash mismatch: got sha256:... want sha256:...
+#    exit code 1
+```
+
+The edited verdict fails recomputation — you did not have to trust this repo to
+check it. The same discipline gates the words you are reading: from a source
+checkout, `go test ./claims/...` runs the claims-ledger and language-lint gate,
+and this repo's CI fails the build if the README claims more than the tests
+prove. Hash-verifiable means exactly that — an edited record fails
+recomputation. What the record does and does not establish is covered in
+[The Record It Leaves](#the-record-it-leaves).
+
 ### Build from source
 
 Requires Go 1.25+. The default build links the full Postgres SQL classifier
@@ -101,8 +148,10 @@ mismatch, malformed case, unexpected policy-load error, or failed
 `parse_rejection` expectation.
 
 ```bash
+# from a source checkout — the sample corpus is not shipped in the binary archives:
 boundary test --path tests/fixtures/policy-test/cases
 boundary test --path tests/fixtures/policy-test/cases --format json
+# in CI, point --path at your own case directory
 ```
 
 It reports policy verdicts for routed request fixtures only. Passing tests do
@@ -127,17 +176,6 @@ canonical proof summary. A linear, single-lane
 [deny-before-upstream walkthrough](./docs/assets/boundary-demo-walkthrough.svg)
 is also available as a no-JS fallback for the MCP lane; it is a stylized diagram,
 not a literal capture.
-
-## Terminal Receipt — See the MCP Lane Run
-
-This recording is a real run of `boundary demo github-lethal-trifecta`, the
-Lane 1 (MCP) demo above. It shows untrusted GitHub issue context flowing into a
-private-repo mutation attempt; Boundary denies the routed action before GitHub
-is touched, reports `upstream_called=false`, and emits a hash-verifiable decision
-record. No credentials, live calls, or real mutations are used. For the Lane 2
-(Command Boundary) run, use `boundary demo command-secret-exfil`.
-
-![Boundary denies a GitHub write-after-taint action before upstream execution, with upstream_called=false and a hash-verifiable decision record](./docs/assets/github-lethal-trifecta-demo.gif)
 
 ## The Record It Leaves
 
@@ -236,6 +274,7 @@ Adapter maturity is declared in `adapters/<adapter>/readiness.yaml` and summariz
 | Install | [docs/INSTALL.md](./docs/INSTALL.md) |
 | First-run troubleshooting | [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) |
 | Demo | [docs/DEMO_GITHUB_LETHAL_TRIFECTA.md](./docs/DEMO_GITHUB_LETHAL_TRIFECTA.md) |
+| Govern your MCP server — put Boundary in front of an MCP client, trigger a denial, uninstall | [docs/GOVERN_MCP_SERVER.md](./docs/GOVERN_MCP_SERVER.md) |
 | Full spec | [docs/BOUNDARY_SPEC.md](./docs/BOUNDARY_SPEC.md) |
 | Claims | [docs/CLAIMS_LEDGER.md](./docs/CLAIMS_LEDGER.md) |
 | Testing | [docs/TESTING.md](./docs/TESTING.md) |
