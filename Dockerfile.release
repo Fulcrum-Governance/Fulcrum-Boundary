@@ -1,0 +1,16 @@
+# Release image assembled by goreleaser (.goreleaser.yaml `dockers:`).
+# It copies the prebuilt static (CGO_ENABLED=0) boundary binary — no build
+# steps run here, which keeps multi-arch assembly emulation-free.
+#
+# The static build's Postgres AST classifier is unavailable: routed SQL
+# classifies as UNKNOWN and the Postgres guard denies it fail-closed. Use a
+# `_cgo` release archive or build from source for the full classifier.
+FROM gcr.io/distroless/static-debian12:nonroot
+
+COPY boundary /usr/local/bin/boundary
+
+USER nonroot
+WORKDIR /home/nonroot
+
+ENTRYPOINT ["/usr/local/bin/boundary"]
+CMD ["selftest"]
