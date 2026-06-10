@@ -1,0 +1,229 @@
+name: Release
+
+# Tag-gated release pipeline. Nothing here runs on branch pushes or PRs.
+#
+# On a `v*` tag push it:
+#   1. runs the full `make release-check` gate;
+#   2. builds the universal static (CGO_ENABLED=0) matrix with goreleaser,
+#      publishes the GitHub release with SHA256SUMS, the evidence-bundle
+#      tarball, the container images, and pushes the Homebrew formula to
+#      fulcrum-governance/homebrew-tap (requires the HOMEBREW_TAP_GITHUB_TOKEN
+#      repo secret: a token with write access to that tap repo);
+#   3. builds the native-cgo full-SQL-classifier binaries per runner and
+#      uploads them to the same release with a `_cgo` suffix plus a
+#      SHA256SUMS-cgo manifest.
+#
+# `workflow_dispatch` runs are dry-runs: goreleaser runs in snapshot mode
+# (publishing skipped), the cgo matrix builds, and everything lands as
+# workflow artifacts only. No release, tap push, or image push happens.
+#
+# Variant truth (see .goreleaser.yaml and docs/INSTALL.md): static binaries
+# cannot classify SQL (the Postgres AST classifier links pg_query_go via cgo),
+# so routed SQL classifies UNKNOWN and the Postgres guard denies it
+# fail-closed; `_cgo` binaries carry the full classifier. Windows `_cgo`
+# binaries are not produced (no MSYS2 toolchain here); Windows users get the
+# static variant.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-check:
+    name: release-check gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: '1.26.4'
+          cache: true
+      - name: make release-check
+        run: make release-check
+
+  goreleaser:
+    name: static matrix + release publish
+    needs: release-check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the GitHub release and upload assets
+      packages: write # push container images to ghcr.io
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0 # goreleaser changelog needs history and tags
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: '1.26.4'
+          cache: true
+      - name: Log in to ghcr.io
+        if: github.ref_type == 'tag'
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Build evidence bundle (local-only, fixture-safe)
+        run: |
+          go run ./cmd/boundary evidence bundle --include-demo --out .release-extras/boundary-evidence
+          go run ./cmd/boundary evidence verify .release-extras/boundary-evidence
+          tar -czf .release-extras/boundary-evidence.tar.gz -C .release-extras boundary-evidence
+      - name: goreleaser release (tag)
+        if: github.ref_type == 'tag'
+        uses: goreleaser/goreleaser-action@5daf1e915a5f0af01ddbcd89a43b8061ff4f1a89 # v7.2.2
+        with:
+          distribution: goreleaser
+          version: '~> v2'
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+      - name: goreleaser snapshot dry-run (manual dispatch)
+        if: github.ref_type != 'tag'
+        uses: goreleaser/goreleaser-action@5daf1e915a5f0af01ddbcd89a43b8061ff4f1a89 # v7.2.2
+        with:
+          distribution: goreleaser
+          version: '~> v2'
+          args: release --clean --snapshot
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload snapshot artifacts (manual dispatch)
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: static-snapshot
+          path: |
+            dist/*_static-nocgo.*
+            dist/SHA256SUMS
+          retention-days: 7
+
+  cgo-binaries:
+    name: cgo ${{ matrix.goos }}/${{ matrix.goarch }}
+    needs: goreleaser
+    permissions:
+      contents: write # upload assets to the release created by goreleaser
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-latest
+            goos: darwin
+            goarch: arm64
+            native: true
+          # cgo cross-arch on macOS: the darwin toolchain drives clang with
+          # -arch x86_64, so the amd64 slice builds on the arm64 runner.
+          - runner: macos-latest
+            goos: darwin
+            goarch: amd64
+            native: false
+          - runner: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            native: true
+          - runner: ubuntu-24.04-arm
+            goos: linux
+            goarch: arm64
+            native: true
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: '1.26.4'
+          cache: true
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            tag="${GITHUB_REF_NAME}"
+          else
+            tag="$(git describe --tags --always)"
+          fi
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+      - name: Build native-cgo binary (full SQL classifier)
+        env:
+          CGO_ENABLED: '1'
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          go build -trimpath \
+            -ldflags "-s -w \
+              -X github.com/fulcrum-governance/fulcrum-boundary/internal/versioninfo.Version=${{ steps.version.outputs.tag }} \
+              -X github.com/fulcrum-governance/fulcrum-boundary/internal/versioninfo.Commit=${GITHUB_SHA} \
+              -X github.com/fulcrum-governance/fulcrum-boundary/internal/versioninfo.BuildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            -o build-cgo/boundary ./cmd/boundary
+      - name: Assert the binary really is the cgo variant
+        run: |
+          go version -m build-cgo/boundary | grep -E 'CGO_ENABLED=1' \
+            || { echo "binary was not built with cgo; refusing to ship it as _cgo"; exit 1; }
+      - name: Run selftest on native binaries
+        if: matrix.native
+        run: |
+          ./build-cgo/boundary version
+          ./build-cgo/boundary selftest
+      - name: Package archive
+        id: package
+        run: |
+          name="boundary_${{ steps.version.outputs.version }}_${{ matrix.goos }}_${{ matrix.goarch }}_cgo"
+          staging="dist-cgo/${name}"
+          mkdir -p "${staging}"
+          cp build-cgo/boundary LICENSE README.md LIMITATIONS.md "${staging}/"
+          cp docs/INSTALL.md "${staging}/INSTALL.md"
+          tar -czf "dist-cgo/${name}.tar.gz" -C dist-cgo "${name}"
+          if command -v sha256sum >/dev/null 2>&1; then
+            (cd dist-cgo && sha256sum "${name}.tar.gz" > "${name}.tar.gz.sha256")
+          else
+            (cd dist-cgo && shasum -a 256 "${name}.tar.gz" > "${name}.tar.gz.sha256")
+          fi
+          echo "archive=dist-cgo/${name}.tar.gz" >> "$GITHUB_OUTPUT"
+          echo "checksum=dist-cgo/${name}.tar.gz.sha256" >> "$GITHUB_OUTPUT"
+      - name: Upload to the GitHub release (tag)
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${GITHUB_REF_NAME}" \
+            "${{ steps.package.outputs.archive }}" --clobber
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cgo-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: |
+            ${{ steps.package.outputs.archive }}
+            ${{ steps.package.outputs.checksum }}
+          retention-days: 7
+
+  cgo-checksums:
+    name: SHA256SUMS-cgo
+    needs: cgo-binaries
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: cgo-*
+          merge-multiple: true
+      - name: Assemble SHA256SUMS-cgo
+        run: |
+          cat ./*.tar.gz.sha256 | sort -k2 > SHA256SUMS-cgo
+          cat SHA256SUMS-cgo
+      - name: Upload to the GitHub release (tag)
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${GITHUB_REF_NAME}" SHA256SUMS-cgo --clobber --repo "${GITHUB_REPOSITORY}"
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: SHA256SUMS-cgo
+          path: SHA256SUMS-cgo
+          retention-days: 7
