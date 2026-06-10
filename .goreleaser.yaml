@@ -1,0 +1,199 @@
+# GoReleaser configuration for Fulcrum Boundary.
+#
+# This file builds the UNIVERSAL STATIC (CGO_ENABLED=0) artifact family:
+# binaries that build and run everywhere, including hosts with no C
+# toolchain, with one honestly-labeled reduction — the Postgres AST
+# classifier (pg_query_go, a cgo binding) is unavailable, so every routed SQL
+# statement classifies as UNKNOWN and the Postgres guard denies it
+# fail-closed. The static build never allows SQL the cgo build would deny.
+#
+# The NATIVE-CGO FULL-CLASSIFIER binaries (suffix `_cgo`) are NOT built here:
+# cgo cannot be cross-compiled portably from one runner, so the release
+# workflow (.github/workflows/release.yml, job `cgo-binaries`) builds them
+# per-runner (macos-latest, ubuntu-latest, ubuntu-24.04-arm) and uploads them
+# to the same GitHub release alongside a SHA256SUMS-cgo manifest.
+#
+# Validate with: goreleaser check
+# Dry-run with:  goreleaser release --snapshot --clean --skip=publish,docker
+version: 2
+
+project_name: boundary
+
+before:
+  hooks:
+    - go mod download
+
+builds:
+  - id: boundary-static
+    main: ./cmd/boundary
+    binary: boundary
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s
+      - -w
+      - -X github.com/fulcrum-governance/fulcrum-boundary/internal/versioninfo.Version=v{{ .Version }}
+      - -X github.com/fulcrum-governance/fulcrum-boundary/internal/versioninfo.Commit={{ .FullCommit }}
+      - -X github.com/fulcrum-governance/fulcrum-boundary/internal/versioninfo.BuildDate={{ .Date }}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  # `_static-nocgo` in the archive name marks the reduced-capability variant
+  # so it is identifiable next to the per-runner `_cgo` full-classifier
+  # archives uploaded by the release workflow.
+  - id: static-archives
+    ids:
+      - boundary-static
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}_static-nocgo"
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    files:
+      - LICENSE
+      - README.md
+      - LIMITATIONS.md
+      - docs/INSTALL.md
+
+checksum:
+  name_template: SHA256SUMS
+  algorithm: sha256
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^chore"
+      - "^ci:"
+      - "^test"
+
+release:
+  github:
+    owner: Fulcrum-Governance
+    name: Fulcrum-Boundary
+  draft: false
+  prerelease: auto
+  # The release workflow writes the evidence-bundle tarball into
+  # .release-extras/ before invoking goreleaser (boundary evidence bundle is
+  # local-only and fixture-safe; see docs/EVIDENCE_BUNDLE.md).
+  extra_files:
+    - glob: .release-extras/boundary-evidence.tar.gz
+  header: |
+    ## Install
+
+    ```bash
+    brew install fulcrum-governance/tap/boundary
+    ```
+
+    Or download a binary below, verify it against `SHA256SUMS` (static
+    archives) or `SHA256SUMS-cgo` (cgo archives), and put `boundary` on your
+    `PATH`. See [docs/INSTALL.md](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/blob/main/docs/INSTALL.md).
+
+    ## Two binary variants, one honest difference
+
+    | Variant | Archive suffix | SQL classification |
+    |---|---|---|
+    | Static (`CGO_ENABLED=0`) | `_static-nocgo` | The Postgres AST classifier is unavailable in this build. Every routed SQL statement classifies as `UNKNOWN` and the Postgres guard denies it fail-closed, with the reason `sql ast classification unavailable in this build (CGO disabled)`. The static build never allows SQL the cgo build would deny. |
+    | Native cgo | `_cgo` | Full Postgres AST classifier (`pg_query_go`): statements classify as `READ`/`WRITE`/`ADMIN`/`DESTRUCTIVE`/`UNKNOWN` per `docs/policies/POSTGRES.md`. |
+
+    Everything else — the four-stage pipeline, decision records, demos,
+    `selftest`, `doctor`, `evidence` — behaves identically in both variants.
+    The Homebrew formula and the container image ship the static variant; use
+    a `_cgo` archive (or build from source with a C toolchain) for the full
+    classifier. The attached `boundary-evidence.tar.gz` is the local-only,
+    fixture-safe output of `boundary evidence bundle` for this release; it
+    does not prove production deployment safety by itself.
+
+# The container image ships the static (reduced SQL classification) variant;
+# the image notes above apply to it as well.
+dockers:
+  - id: boundary-docker-amd64
+    ids:
+      - boundary-static
+    goos: linux
+    goarch: amd64
+    use: buildx
+    dockerfile: Dockerfile.release
+    image_templates:
+      - ghcr.io/fulcrum-governance/boundary:v{{ .Version }}-amd64
+    build_flag_templates:
+      - --platform=linux/amd64
+      - --label=org.opencontainers.image.title=boundary
+      - --label=org.opencontainers.image.description=Pre-execution action boundary for routed AI-agent tool calls (static build; reduced SQL classification)
+      - --label=org.opencontainers.image.source=https://github.com/Fulcrum-Governance/Fulcrum-Boundary
+      - --label=org.opencontainers.image.version=v{{ .Version }}
+      - --label=org.opencontainers.image.revision={{ .FullCommit }}
+      - --label=org.opencontainers.image.licenses=Apache-2.0
+  - id: boundary-docker-arm64
+    ids:
+      - boundary-static
+    goos: linux
+    goarch: arm64
+    use: buildx
+    dockerfile: Dockerfile.release
+    image_templates:
+      - ghcr.io/fulcrum-governance/boundary:v{{ .Version }}-arm64
+    build_flag_templates:
+      - --platform=linux/arm64
+      - --label=org.opencontainers.image.title=boundary
+      - --label=org.opencontainers.image.description=Pre-execution action boundary for routed AI-agent tool calls (static build; reduced SQL classification)
+      - --label=org.opencontainers.image.source=https://github.com/Fulcrum-Governance/Fulcrum-Boundary
+      - --label=org.opencontainers.image.version=v{{ .Version }}
+      - --label=org.opencontainers.image.revision={{ .FullCommit }}
+      - --label=org.opencontainers.image.licenses=Apache-2.0
+
+docker_manifests:
+  - name_template: ghcr.io/fulcrum-governance/boundary:v{{ .Version }}
+    image_templates:
+      - ghcr.io/fulcrum-governance/boundary:v{{ .Version }}-amd64
+      - ghcr.io/fulcrum-governance/boundary:v{{ .Version }}-arm64
+  - name_template: ghcr.io/fulcrum-governance/boundary:latest
+    image_templates:
+      - ghcr.io/fulcrum-governance/boundary:v{{ .Version }}-amd64
+      - ghcr.io/fulcrum-governance/boundary:v{{ .Version }}-arm64
+
+# Homebrew formula for `brew install fulcrum-governance/tap/boundary`.
+# The formula installs the static (reduced SQL classification) archives built
+# above; the per-runner `_cgo` full-classifier archives are workflow-built
+# release assets and are not referenced by the formula.
+brews:
+  - name: boundary
+    ids:
+      - static-archives
+    repository:
+      owner: fulcrum-governance
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    directory: Formula
+    homepage: https://github.com/Fulcrum-Governance/Fulcrum-Boundary
+    description: Pre-execution action boundary for routed AI-agent tool calls
+    license: Apache-2.0
+    skip_upload: auto
+    commit_author:
+      name: Tony Diefenbach
+      email: tonydiefenbach@gmail.com
+    commit_msg_template: "boundary {{ .Tag }}"
+    test: |
+      system "#{bin}/boundary", "version"
+    caveats: |
+      This formula installs the static (CGO_ENABLED=0) build. Its Postgres
+      AST classifier is unavailable: every routed SQL statement classifies as
+      UNKNOWN and the Postgres guard denies it fail-closed. For the full SQL
+      classifier, download a `_cgo` release archive or build from source with
+      Go 1.25+ and a C toolchain. See docs/INSTALL.md.
