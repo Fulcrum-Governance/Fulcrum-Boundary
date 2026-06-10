@@ -125,6 +125,9 @@ func serveDashboard(listen string, options firewall.DashboardOptions, stdout, st
 		Addr:              listen,
 		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 	fmt.Fprintf(stdout, "dashboard: http://%s\n", listen)
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {

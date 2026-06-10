@@ -35,7 +35,21 @@ type MiddlewareConfig struct {
 	// canonical governance requests before the downstream handler runs. If set,
 	// the middleware uses it instead of the default header/path mapping.
 	RequestBuilder func(*http.Request) (*GovernanceRequest, error)
+
+	// MaxRequestBytes caps the inbound request body the middleware will buffer
+	// when a RequestBuilder reads it. Values <= 0 fall back to
+	// DefaultMaxRequestBytes. A body exceeding the limit is rejected with HTTP
+	// 400 rather than being read unbounded.
+	MaxRequestBytes int64
 }
+
+// DefaultMaxRequestBytes bounds the inbound request body the governance HTTP
+// front will buffer. The body is read into memory by RequestBuilder-based
+// gateways, so an uncapped read is a memory-exhaustion DoS on the component
+// that is meant to be more trustworthy than the actions it governs. 4 MiB
+// exceeds any legitimate routed tool-call envelope while bounding the worst
+// case; raise MiddlewareConfig.MaxRequestBytes for larger needs.
+const DefaultMaxRequestBytes int64 = 4 << 20
 
 // Response header names. These are also written on deny responses so that
 // clients always see the governance verdict in the same fields.
@@ -86,6 +100,10 @@ func NewMiddleware(pipeline *Pipeline, next http.Handler, cfg MiddlewareConfig) 
 // response headers and either forwards to Next or returns the decision as
 // JSON when Next is nil.
 func (m *GovernanceMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Body != nil {
+		r.Body = http.MaxBytesReader(w, r.Body, m.maxRequestBytes())
+	}
+
 	agentID, agentHeader := readConfiguredIdentityHeader(r.Header, m.Config.AgentIDHeader, HeaderLegacyAgentID)
 	tenantID, tenantHeader := readConfiguredIdentityHeader(r.Header, m.Config.TenantIDHeader, HeaderLegacyTenantID)
 
@@ -170,6 +188,15 @@ func (m *GovernanceMiddleware) buildGovernanceRequest(r *http.Request, agentID, 
 		AgentID:   agentID,
 		TenantID:  tenantID,
 	}, nil
+}
+
+// maxRequestBytes returns the configured inbound body cap, or the documented
+// default when unset.
+func (m *GovernanceMiddleware) maxRequestBytes() int64 {
+	if m.Config.MaxRequestBytes > 0 {
+		return m.Config.MaxRequestBytes
+	}
+	return DefaultMaxRequestBytes
 }
 
 func readConfiguredIdentityHeader(headers http.Header, primaryHeader, legacyHeader string) (value string, source string) {
