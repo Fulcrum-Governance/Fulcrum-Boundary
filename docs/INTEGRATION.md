@@ -3,7 +3,7 @@
 Boundary runs in two modes:
 
 - `standalone`: local policy files, in-process trust, in-process budget checks, and JSON decision records.
-- `kernel`: Boundary keeps the same pre-execution adapter surface but loads policy, trust, budget, escalation, audit, and envelope signals from Fulcrum services.
+- `kernel`: Boundary keeps the same pre-execution adapter surface and **defines integration contracts for all six seams** (policy, trust, budget, escalation, audit, envelope). It validates all six seam configs at startup and currently **wires the trust seam** (Redis IPC via `fulcrum-trust`). The remaining seam configs (policy engine, budget, escalation, audit, envelope) are validated configuration contracts; the binary does not yet consume them — local policies and slog audit remain in effect. Operators will see a startup notice when running in kernel mode.
 
 ## Interface Contracts
 

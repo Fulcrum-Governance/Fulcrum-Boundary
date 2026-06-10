@@ -244,6 +244,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 			*trustMode = string(governance.TrustModeKernel)
 			*trustRedisURL = cfg.Kernel.Trust.RedisURL
 			*policyDir = "./policies/"
+			fmt.Fprintf(stderr, "boundary serve: kernel mode — policy seam not yet wired; using local policy dir %q (only trust seam connects to Fulcrum services)\n", *policyDir)
 		}
 		if cfg.Security.RequireAgentID {
 			*requireAgentID = true
