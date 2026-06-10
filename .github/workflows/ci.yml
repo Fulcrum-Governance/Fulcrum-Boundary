@@ -66,6 +66,26 @@ jobs:
             fi
           done
 
+  cross-verifier:
+    name: cross-language record verifier
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.4'
+          cache: true
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: install stock RFC 8785 implementation
+        run: pip install rfc8785
+      - name: Go and stock RFC 8785 (Python) must agree on record hashes
+        run: |
+          go test ./tests/conformance/... -count=1
+          python3 verifiers/python/test_boundary_verify.py
+          python3 verifiers/python/boundary_verify.py docs/examples/decision-record.example.json
+
   lint:
     name: golangci-lint
     runs-on: ubuntu-latest
