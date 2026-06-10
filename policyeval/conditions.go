@@ -110,6 +110,50 @@ func evaluateLogicalCondition(condition *PolicyCondition, ctx *EvaluationContext
 	}
 }
 
+// knownFields maps each supported "category.name" field reference to true. It
+// is the single source of truth shared by extractFieldValue (runtime
+// resolution) and validateFieldPath (static validation), so a field that
+// validates is exactly a field the evaluator can resolve. The "attribute."
+// category is dynamic and handled separately (any subpath is permitted).
+var knownFields = map[string]bool{
+	"user.id":     true,
+	"user.role":   true,
+	"user.roles":  true,
+	"model.id":    true,
+	"tool.name":   true,
+	"tool.names":  true,
+	"workflow.id": true,
+	"tenant.id":   true,
+	"envelope.id": true,
+	"phase.type":  true,
+	"input.text":  true,
+	"output.text": true,
+}
+
+// validateFieldPath reports whether field is a well-formed, resolvable field
+// reference. It accepts the known category.name fields and any "attribute.*"
+// path; everything else is rejected so a typo'd field (which would otherwise
+// never match and silently weaken a deny rule) is caught by strict validation.
+func validateFieldPath(field string) error {
+	if field == "" {
+		return fmt.Errorf("field is empty")
+	}
+	parts := strings.Split(field, ".")
+	if len(parts) < 2 {
+		return fmt.Errorf("invalid field format: %s (expected category.name)", field)
+	}
+	if parts[0] == "attribute" {
+		// The attribute category is dynamic: extractFieldValue resolves
+		// attribute.* references (looking up parts[2:] in Attributes) and never
+		// errors on them, so any well-formed attribute.* path is accepted here.
+		return nil
+	}
+	if !knownFields[parts[0]+"."+parts[1]] {
+		return fmt.Errorf("unknown field: %s", field)
+	}
+	return nil
+}
+
 func extractFieldValue(field string, ctx *EvaluationContext) (string, error) {
 	if field == "" {
 		return "", fmt.Errorf("field is empty")
