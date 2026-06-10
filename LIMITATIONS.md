@@ -41,6 +41,14 @@ policy evaluation. It is not a general SQL firewall and does not prevent all SQL
 injection; dialect-specific syntax and semantic analysis are outside it unless a
 test explicitly covers them.
 
+The classifier links `pg_query_go` via cgo. Static (`CGO_ENABLED=0`) builds —
+the prebuilt `_static-nocgo` release archives, the Homebrew formula, and the
+container image — do not carry it: routed SQL classifies as `UNKNOWN` and the
+Postgres guard denies it fail-closed instead of classifying it. The static
+build never allows SQL the cgo build would deny; use a `_cgo` release archive
+or a cgo source build for class-based SQL policy. See
+[`docs/INSTALL.md`](docs/INSTALL.md).
+
 ## Evidence and diagnostics
 
 `boundary doctor`, `boundary evidence bundle`, and `boundary evidence verify`
