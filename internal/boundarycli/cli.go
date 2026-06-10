@@ -23,6 +23,7 @@ import (
 	"github.com/fulcrum-governance/fulcrum-boundary/adapters/mcp"
 	"github.com/fulcrum-governance/fulcrum-boundary/governance"
 	sqlguard "github.com/fulcrum-governance/fulcrum-boundary/interceptors/sql"
+	boundarydemo "github.com/fulcrum-governance/fulcrum-boundary/internal/demo"
 )
 
 var Version = "unknown"
@@ -390,15 +391,18 @@ Common usage:
   boundary demo github-lethal-trifecta
   boundary demo github-lethal-trifecta --markdown --out demo.md
   boundary demo command-secret-exfil
+  boundary demo tamper-evidence
   boundary demo postgres --gateway http://localhost:8080/mcp
   boundary demo trust-degradation
+  boundary demo trust-degradation --show-records
 
 Demos:
   action-boundary          Fixture-only cross-surface action-boundary demo
   postgres                 Exercise allow, deny, and direct-bypass checks against a running gateway
   github-lethal-trifecta   Fixture-only Secure GitHub denial demo
   command-secret-exfil     Fixture-only Command Boundary secret-exfil denial demo
-  trust-degradation        Local adaptive-trust degradation demo
+  tamper-evidence          Fixture-only forge-the-receipt hash-verification demo
+  trust-degradation        Local adaptive-trust degradation demo (--show-records streams audit JSON to stderr)
 
 Notes:
   - Fixture demos use no credentials, no network, and no live mutation.
@@ -407,13 +411,16 @@ Notes:
 		return 0
 	}
 	if args[0] == "trust-degradation" {
-		return runTrustDegradationDemo(stdout, stderr)
+		return runTrustDegradationDemo(args[1:], stdout, stderr)
 	}
 	if args[0] == "github-lethal-trifecta" {
 		return runGitHubLethalTrifectaDemo(args[1:], stdout, stderr)
 	}
 	if args[0] == "command-secret-exfil" {
 		return runCommandSecretExfilDemo(args[1:], stdout, stderr)
+	}
+	if args[0] == "tamper-evidence" {
+		return runTamperEvidenceDemo(args[1:], stdout, stderr)
 	}
 	if args[0] == "action-boundary" {
 		return runActionBoundaryDemo(args[1:], stdout, stderr)
@@ -829,8 +836,15 @@ func runTrustShow(args []string, stdout, stderr io.Writer) int {
 }
 
 func printTrustSnapshot(w io.Writer, snapshot governance.TrustSnapshot) {
+	printTrustSnapshotColor(w, snapshot, nil)
+}
+
+// printTrustSnapshotColor prints a trust snapshot, styling the state line
+// through color (a nil colorizer renders plain, preserving the exact output the
+// `trust show` command and its tests expect).
+func printTrustSnapshotColor(w io.Writer, snapshot governance.TrustSnapshot, color *boundarydemo.Colorizer) {
 	fmt.Fprintf(w, "agent_id: %s\n", snapshot.AgentID)
-	fmt.Fprintf(w, "state: %s\n", snapshot.State)
+	fmt.Fprintf(w, "state: %s\n", colorTrustState(color, snapshot.State.String()))
 	fmt.Fprintf(w, "score: %.3f\n", snapshot.Score)
 	if snapshot.Known {
 		fmt.Fprintf(w, "alpha: %.3f\n", snapshot.Alpha)
@@ -841,8 +855,36 @@ func printTrustSnapshot(w io.Writer, snapshot governance.TrustSnapshot) {
 	}
 }
 
-func runTrustDegradationDemo(stdout, stderr io.Writer) int {
-	auditor := governance.NewSlogAuditPublisher(slog.New(slog.NewJSONHandler(stdout, &slog.HandlerOptions{Level: slog.LevelInfo})))
+func runTrustDegradationDemo(args []string, stdout, stderr io.Writer) int {
+	fs := newHelpFlagSet("boundary demo trust-degradation", stderr, commandHelp{
+		Purpose: "Run a local adaptive-trust degradation demo: repeated denied actions drive an agent from TRUSTED to ISOLATED.",
+		Usage:   "boundary demo trust-degradation [--show-records]",
+		Common: []string{
+			"boundary demo trust-degradation",
+			"boundary demo trust-degradation --show-records",
+		},
+		Notes: []string{
+			"Local-only: no credentials, no network, no live mutation.",
+			"By default the raw governance_decision audit records are suppressed so the narrative reads clean; --show-records streams them (JSON) to stderr.",
+		},
+	})
+	showRecords := fs.Bool("show-records", false, "stream the raw governance_decision audit records (JSON) to stderr")
+	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
+		return 1
+	}
+
+	// The audit stream is the per-decision governance_decision JSON. It used to
+	// be wired to stdout, where ~1KB blobs buried every narrative line. Default
+	// it to io.Discard so the narrative table is the demo's face; --show-records
+	// sends it to stderr (still off stdout) for operators who want the records.
+	auditSink := io.Discard
+	if *showRecords {
+		auditSink = stderr
+	}
+	auditor := governance.NewSlogAuditPublisher(slog.New(slog.NewJSONHandler(auditSink, &slog.HandlerOptions{Level: slog.LevelInfo})))
 	trust := governance.NewStandaloneTrustBackend(governance.StandaloneTrustConfig{
 		InitialAlpha: 5,
 		InitialBeta:  1,
@@ -866,6 +908,7 @@ func runTrustDegradationDemo(stdout, stderr io.Writer) int {
 	}, trust, nil, auditor)
 	ctx := context.Background()
 	agentID := "demo-agent"
+	color := boundarydemo.NewColorizer(stdout)
 	queries := []string{
 		"SELECT 1",
 		"DROP TABLE users",
@@ -879,7 +922,18 @@ func runTrustDegradationDemo(stdout, stderr io.Writer) int {
 		"DROP TABLE users",
 		"SELECT 2",
 	}
-	for _, sqlText := range queries {
+
+	fmt.Fprintln(stdout, color.Bold("Adaptive-trust degradation demo (local-only)"))
+	fmt.Fprintln(stdout, "fixture-only: true   credentials: none   network: none   live mutation: none")
+	fmt.Fprintln(stdout)
+	fmt.Fprintln(stdout, "Repeated denied actions degrade the agent's trust until it is isolated.")
+	fmt.Fprintln(stdout)
+	// A tidy fixed-width table reads far better than the prior key=value soup
+	// (each line used to also carry a ~1KB JSON audit blob). Columns are padded
+	// against the plain token width and then colored, so ANSI bytes never throw
+	// off alignment and a piped run is column-clean.
+	fmt.Fprintf(stdout, "%-3s  %-20s  %-7s  %-6s  %s\n", "#", "query", "action", "trust", "state")
+	for i, sqlText := range queries {
 		req := &governance.GovernanceRequest{
 			Transport: governance.TransportMCP,
 			AgentID:   agentID,
@@ -894,12 +948,69 @@ func runTrustDegradationDemo(stdout, stderr io.Writer) int {
 			return 1
 		}
 		snapshot, _ := trust.GetAgentTrust(ctx, agentID)
-		fmt.Fprintf(stdout, "query=%q action=%s trust=%.2f state=%s reason=%s\n", sqlText, decision.Action, snapshot.Score, snapshot.State, decision.Reason)
+		fmt.Fprintf(stdout, "%-3d  %-20s  %s  %-6.2f  %s\n",
+			i+1,
+			truncateTrustQuery(sqlText, 20),
+			padColored(colorTrustAction(color, decision.Action), decision.Action, 7),
+			snapshot.Score,
+			colorTrustState(color, snapshot.State.String()),
+		)
 	}
 	snapshot, _ := trust.GetAgentTrust(ctx, agentID)
-	fmt.Fprintln(stdout, "\nCurrent trust:")
-	printTrustSnapshot(stdout, snapshot)
+	fmt.Fprintln(stdout, "\n"+color.Bold("Final trust:"))
+	printTrustSnapshotColor(stdout, snapshot, color)
 	return 0
+}
+
+// truncateTrustQuery clamps a query string to width columns for the trust
+// table, appending an ellipsis marker when it overflows so the table stays
+// aligned without hiding that the value was cut.
+func truncateTrustQuery(s string, width int) string {
+	if len(s) <= width {
+		return s
+	}
+	if width <= 3 {
+		return s[:width]
+	}
+	return s[:width-3] + "..."
+}
+
+// padColored left-aligns a (possibly ANSI-wrapped) token to width visible
+// columns, computing the pad from plain (the unstyled token) so color escape
+// bytes never count toward the column width. It is the small piece that keeps
+// the trust table aligned whether or not color is enabled.
+func padColored(colored, plain string, width int) string {
+	if pad := width - len(plain); pad > 0 {
+		return colored + strings.Repeat(" ", pad)
+	}
+	return colored
+}
+
+// colorTrustAction styles a pipeline action token in the trust table: deny in
+// red, allow in green, other verdicts uncolored. A disabled colorizer returns
+// the plain token.
+func colorTrustAction(c *boundarydemo.Colorizer, action string) string {
+	switch action {
+	case "deny":
+		return c.Deny(action)
+	case "allow":
+		return c.Pass(action)
+	default:
+		return action
+	}
+}
+
+// colorTrustState styles a trust-state token: ISOLATED/TERMINATED in red (the
+// agent has lost trust), TRUSTED in green, EVALUATING and others uncolored.
+func colorTrustState(c *boundarydemo.Colorizer, state string) string {
+	switch state {
+	case "ISOLATED", "TERMINATED":
+		return c.Deny(state)
+	case "TRUSTED":
+		return c.Pass(state)
+	default:
+		return state
+	}
 }
 
 func recordMatches(record map[string]any, key, want string) bool {

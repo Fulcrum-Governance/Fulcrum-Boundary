@@ -49,6 +49,38 @@ classified as secret exfiltration and denied before execution.
 Read the lane detail:
 [command-boundary/DEMO.md](./command-boundary/DEMO.md).
 
+## Supporting demos
+
+These run alongside the two-lane proof spine. They are fixture-only, require no
+credentials, and make no network calls or live mutations.
+
+### Tamper-evidence (forge the receipt)
+
+`boundary demo tamper-evidence` runs the "forge the receipt" sequence as one
+command: it emits a hash-verifiable decision record, verifies it, tampers a
+single field (the verdict, `deny` -> `allow`), and shows that re-verification
+fails with the exact `decision_hash mismatch: got ... want ...` line. It is the
+one-command form of the manual sequence; the README documents the manual steps
+as well.
+
+```bash
+boundary demo tamper-evidence
+boundary demo tamper-evidence --json
+```
+
+This demonstrates **hash-verifiable** tamper detection. It is **not**
+tamper-proof or immutable storage: it detects a forged record, it does not
+prevent one from being written elsewhere, and it does not attest that the
+deployment topology forced the route through Boundary.
+
+### Adaptive-trust degradation
+
+`boundary demo trust-degradation` is a local-only demo in which repeated denied
+actions degrade an agent's trust from TRUSTED to ISOLATED. By default the raw
+`governance_decision` audit records are suppressed so the narrative table reads
+clean; `boundary demo trust-degradation --show-records` streams them (JSON) to
+stderr.
+
 ## What These Demos Prove
 
 - Boundary can deny the two tested dangerous action patterns when the route is
@@ -56,6 +88,8 @@ Read the lane detail:
 - The MCP lane can deny write-after-taint before upstream execution.
 - The Command Boundary lane can deny a routed command before local execution.
 - Both lanes emit a hash-verifiable decision record for the governed verdict.
+- The tamper-evidence demo shows a forged decision record fails re-verification
+  on a decision_hash mismatch.
 
 ## What They Do Not Prove
 
@@ -65,3 +99,5 @@ Read the lane detail:
 - They do not promote Command Boundary, Edit Boundary, Secure GitHub, or any
   other preview surface to production.
 - They do not make live network calls or mutate real systems.
+- The tamper-evidence demo does not prove tamper-proof or immutable storage; it
+  detects a forged record, it does not prevent one from being written elsewhere.
