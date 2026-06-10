@@ -14,6 +14,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   It removes the local `project_root` while preserving diagnostic statuses,
   routed-surface caveats, and the local-only/no-network/no-mutation flags.
 
+### Changed
+
+- Decision-record canonicalization now follows RFC 8785 (JSON Canonicalization
+  Scheme) instead of Go's default `encoding/json` output. The canonical
+  preimage behind every stable hash — `decision_hash`, `request_hash`, the raw
+  request-hash counterpart, and `policy_bundle_hash` — is now produced with
+  lexicographic (UTF-16 code unit) key ordering, literal `<`, `>`, and `&` (no
+  HTML escaping), and ECMAScript shortest-round-trip number formatting. This is
+  a **pre-1.0 format change**: it recomputes decision hashes, so a record
+  emitted by an older build no longer verifies under this build, and the
+  committed `docs/examples/decision-record*.example.json` fixtures were
+  regenerated to the new hashes. The on-the-wire record shape (field set and
+  types) is unchanged. The benefit is reproducibility: an independent, stock
+  RFC 8785 / JCS implementation can now recompute a record's `decision_hash`
+  from the record bytes, and a standalone Python verifier ships under
+  `verifiers/python/`.
+
 ## [0.9.0] - 2026-06-02
 
 First release to include the Phase 1 policy-as-code testing lane. `v0.9.0`

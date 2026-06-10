@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gowebpki/jcs"
 	"gopkg.in/yaml.v3"
 )
 
@@ -269,12 +270,36 @@ func normalizeYAML(value any) any {
 	}
 }
 
+// mustCanonicalJSON returns the RFC 8785 (JSON Canonicalization Scheme)
+// canonical form of value. It is the single canonicalization helper behind
+// every stable hash in this package (ComputeDecisionHash, ComputeRequestHash,
+// ComputeRawRequestHash, and PolicyBundleHashFromDir), so all of them produce
+// digests an independent, stock JCS implementation in any language can
+// reproduce.
+//
+// The two ways Go's default encoder diverges from JCS are corrected by routing
+// through jcs.Transform: object keys are reordered lexicographically by UTF-16
+// code unit (Go emits struct-declaration order), and the HTML escaping
+// json.Marshal applies to "<", ">", and "&" is undone (JCS leaves those bytes
+// literal). Numbers are re-emitted with the ECMAScript Number-to-string
+// (shortest round-trip) algorithm rather than Go's, which matters for arbitrary
+// float64 values such as a non-trivial trust_score. Field declaration order in
+// the structs is irrelevant: JCS sorts at encode time, so the on-the-wire shape
+// of a record is unchanged.
+//
+// It panics only on inputs json.Marshal itself cannot encode (the same failure
+// mode as before) or if the marshaled bytes are not valid JSON for Transform,
+// which cannot happen for json.Marshal output; callers pass marshalable values.
 func mustCanonicalJSON(value any) []byte {
 	encoded, err := json.Marshal(value)
 	if err != nil {
 		panic(err)
 	}
-	return encoded
+	canonical, err := jcs.Transform(encoded)
+	if err != nil {
+		panic(err)
+	}
+	return canonical
 }
 
 func recordID(hash string) string {

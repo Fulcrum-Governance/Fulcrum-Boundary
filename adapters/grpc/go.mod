@@ -13,6 +13,7 @@ require (
 )
 
 require (
+	github.com/gowebpki/jcs v1.0.1 // indirect
 	golang.org/x/net v0.51.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
