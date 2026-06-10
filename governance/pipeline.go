@@ -167,16 +167,24 @@ func toolMatches(pattern, toolName string) bool {
 	return matched
 }
 
-// Evaluate runs the full governance pipeline for a request.
+// Evaluate runs the full governance pipeline for a request. It executes four
+// stages in order; each may return a terminal decision (typically a deny),
+// otherwise control falls through to the next stage:
 //
-// The four stages mirror the existing securemcp.GovernancePipeline:
-//  1. Trust Check (Redis IPC bridge)
-//  2. Static Policy Rules
-//  3. Domain Interceptors
-//  4. PolicyEval Engine
+//  1. Trust Check — the configured TrustChecker (in-process Beta evaluator in
+//     standalone mode, or the Redis-backed backend in kernel mode). Skipped
+//     when no checker is set or AgentID is empty. Isolated/Terminated → deny;
+//     Evaluating → score 0.5; a checker error denies (fail-closed).
+//  2. Static Policy Rules — linear scan; the first matching deny terminates.
+//  3. Domain Interceptors — per-tool hooks; an interceptor error denies
+//     (fail-closed).
+//  4. PolicyEval Engine — the portable evaluator. An evaluator error is
+//     per-transport: transports in FailClosedTransports deny, others fall
+//     through and allow.
 //
-// Audit is emitted exactly once per call via a deferred hook. Dry-run
-// conversion happens AFTER audit so logs always reflect the real decision.
+// Audit is emitted exactly once per call via a deferred hook (plus a
+// trust_transition event when the trust state changes). Dry-run conversion
+// happens AFTER audit so logs always reflect the real decision.
 func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*GovernanceDecision, error) {
 	start := time.Now()
 
