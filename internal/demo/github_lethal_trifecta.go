@@ -74,8 +74,15 @@ type GitHubDemoScenario struct {
 	TargetRepo         string `json:"target_repo"`
 	TaintSource        string `json:"taint_source"`
 	MutationClass      string `json:"mutation_class"`
-	DecisionRecordID   string `json:"decision_record_id"`
-	DecisionHash       string `json:"decision_hash"`
+	// TaintTool is the read tool whose untrusted result tainted the session
+	// (e.g. "github.get_issue"). ProposedTool is the write tool the agent then
+	// proposed (e.g. "github.create_or_update_file"). They are surfaced so the
+	// text output can show the firewall's input — the exact tainting read and
+	// the exact proposed write — before the verdict, instead of only counters.
+	TaintTool        string `json:"taint_tool"`
+	ProposedTool     string `json:"proposed_tool"`
+	DecisionRecordID string `json:"decision_record_id"`
+	DecisionHash     string `json:"decision_hash"`
 }
 
 type GitHubDemoCheck struct {
@@ -260,6 +267,8 @@ func RunGitHubLethalTrifecta(ctx context.Context, opts GitHubLethalTrifectaOptio
 			TargetRepo:         secureProof.write.Envelope.TargetRepo(),
 			TaintSource:        firstString(secureProof.write.Envelope.TaintSources),
 			MutationClass:      secureProof.write.Envelope.MutationClass,
+			TaintTool:          qualifyGitHubTool(secureProof.read.Envelope.ToolName),
+			ProposedTool:       qualifyGitHubTool(secureProof.write.Envelope.ToolName),
 			DecisionRecordID:   secureProof.write.DecisionRecord.RecordID,
 			DecisionHash:       secureProof.write.DecisionRecord.DecisionHash,
 		},
@@ -290,23 +299,43 @@ func WriteGitHubLethalTrifectaJSON(w io.Writer, result *GitHubLethalTrifectaResu
 }
 
 func WriteGitHubLethalTrifectaText(w io.Writer, result *GitHubLethalTrifectaResult) error {
+	// The exported entry point keeps its plain-output contract (no colorizer);
+	// the demo CLI uses WriteGitHubLethalTrifectaTextColor to opt into TTY color.
+	return WriteGitHubLethalTrifectaTextColor(w, result, nil)
+}
+
+// WriteGitHubLethalTrifectaTextColor renders the human-readable lane report,
+// applying terminal styling through c (a nil *Colorizer renders plain). Beyond
+// color, it surfaces the firewall's input before the verdict — the untrusted
+// read that tainted the session and the exact write tool the agent then
+// proposed — so the lane reads as a blocked action, not a counter dump.
+func WriteGitHubLethalTrifectaTextColor(w io.Writer, result *GitHubLethalTrifectaResult, c *Colorizer) error {
 	if result == nil {
 		return fmt.Errorf("demo result is required")
 	}
-	fmt.Fprintln(w, "GitHub lethal-trifecta demo")
+	fmt.Fprintln(w, c.Bold("GitHub lethal-trifecta demo"))
 	fmt.Fprintf(w, "status: %s\n", result.Status)
 	fmt.Fprintf(w, "fixture-only: %t\n", result.FixtureOnly)
 	fmt.Fprintf(w, "credentials: none\n")
 	fmt.Fprintf(w, "network: none\n")
 	fmt.Fprintf(w, "live mutation: none\n")
-	fmt.Fprintf(w, "expected action: %s\n", result.Scenario.ExpectedAction)
-	fmt.Fprintf(w, "actual action: %s\n", result.Scenario.ActualAction)
+	// Proposed-action block: show what the firewall saw before it decided. This
+	// mirrors Lane 2's "proposed command:" moment — the one line where the
+	// output reads like a firewall stopping a specific action.
+	if taint := githubTaintLine(result.Scenario); taint != "" {
+		fmt.Fprintf(w, "tainting context: %s\n", taint)
+	}
+	if proposed := githubProposedToolLine(result.Scenario); proposed != "" {
+		fmt.Fprintf(w, "proposed tool: %s\n", proposed)
+	}
+	fmt.Fprintf(w, "expected action: %s\n", displayAction(result.Scenario.ExpectedAction))
+	fmt.Fprintf(w, "actual action: %s\n", c.Verdict(displayAction(result.Scenario.ActualAction)))
 	fmt.Fprintf(w, "reason: %s\n", result.Scenario.Reason)
 	fmt.Fprintf(w, "matched rule: %s\n", result.Scenario.MatchedRule)
 	fmt.Fprintf(w, "upstream_called=%t\n", result.Scenario.UpstreamCalled)
 	fmt.Fprintf(w, "read_upstream_called=%t\n", result.Scenario.ReadUpstreamCalled)
-	fmt.Fprintf(w, "decision record id: %s\n", result.Scenario.DecisionRecordID)
-	fmt.Fprintf(w, "decision hash: %s\n", result.Scenario.DecisionHash)
+	fmt.Fprintf(w, "decision record id: %s\n", c.Dim(result.Scenario.DecisionRecordID))
+	fmt.Fprintf(w, "decision hash: %s\n", c.Dim(result.Scenario.DecisionHash))
 	// Only advertise the record path when the workspace is retained (--out or
 	// --dashboard). Without retention the workspace is a temp directory that is
 	// deleted on return, so printing its path would point at a file that no
@@ -342,19 +371,70 @@ func WriteGitHubLethalTrifectaText(w io.Writer, result *GitHubLethalTrifectaResu
 	if result.DashboardPath != "" {
 		fmt.Fprintf(w, "dashboard: %s\n", result.DashboardPath)
 	}
-	fmt.Fprintln(w, "\nChecks:")
+	fmt.Fprintln(w, "\n"+c.Bold("Checks:"))
 	for _, check := range result.Checks {
-		fmt.Fprintf(w, "- [%s] %s: %s\n", check.Status, check.ID, check.Detail)
+		fmt.Fprintf(w, "- [%s] %s: %s\n", colorCheckStatus(c, check.Status), check.ID, check.Detail)
 	}
-	fmt.Fprintln(w, "\nWhat this proves:")
+	fmt.Fprintln(w, "\n"+c.Bold("What this proves:"))
 	for _, proof := range result.Proof {
 		fmt.Fprintf(w, "- %s\n", proof)
 	}
-	fmt.Fprintln(w, "\nWhat this does not prove:")
+	fmt.Fprintln(w, "\n"+c.Bold("What this does not prove:"))
 	for _, limitation := range result.Limitations {
 		fmt.Fprintf(w, "- %s\n", limitation)
 	}
 	return nil
+}
+
+// githubTaintLine renders the tainting-context line for the proposed-action
+// block, e.g. "external_collaborator via github.get_issue -> session tainted".
+// It returns "" when neither the taint source nor the tainting tool is known so
+// the block stays quiet rather than printing an empty arrow.
+func githubTaintLine(s GitHubDemoScenario) string {
+	switch {
+	case s.TaintSource != "" && s.TaintTool != "":
+		return fmt.Sprintf("%s via %s -> session tainted", s.TaintSource, s.TaintTool)
+	case s.TaintSource != "":
+		return fmt.Sprintf("%s -> session tainted", s.TaintSource)
+	case s.TaintTool != "":
+		return fmt.Sprintf("%s -> session tainted", s.TaintTool)
+	default:
+		return ""
+	}
+}
+
+// githubProposedToolLine renders the proposed write the agent attempted after
+// the taint, e.g.
+// "github.create_or_update_file -> owner/repo (private, private_repo_content_write)".
+// It returns "" when the proposed tool is unknown.
+func githubProposedToolLine(s GitHubDemoScenario) string {
+	if s.ProposedTool == "" {
+		return ""
+	}
+	line := s.ProposedTool
+	if s.TargetRepo != "" && s.TargetRepo != "/" {
+		line += " -> " + s.TargetRepo
+	}
+	qualifiers := make([]string, 0, 2)
+	if strings.Contains(s.MutationClass, "private") || strings.Contains(s.TaintSource, "private") {
+		qualifiers = append(qualifiers, "private")
+	}
+	if s.MutationClass != "" && s.MutationClass != "none" {
+		qualifiers = append(qualifiers, s.MutationClass)
+	}
+	if len(qualifiers) > 0 {
+		line += " (" + strings.Join(qualifiers, ", ") + ")"
+	}
+	return line
+}
+
+// colorCheckStatus styles a demo check's pass/fail token: green for pass, red
+// for anything else (fail). A nil colorizer returns the token unchanged.
+func colorCheckStatus(c *Colorizer, status string) string {
+	if status == "pass" {
+		return c.Pass(status)
+	}
+	return c.Fail(status)
 }
 
 func WriteGitHubLethalTrifectaMarkdown(w io.Writer, result *GitHubLethalTrifectaResult) error {
@@ -559,4 +639,20 @@ func firstString(values []string) string {
 		return ""
 	}
 	return values[0]
+}
+
+// qualifyGitHubTool renders an envelope tool name as the agent-facing MCP tool
+// call ("github.<tool>"), matching the convention the Secure GitHub adapter
+// uses when it builds the governance request. It returns "" for an empty tool
+// name and leaves an already-qualified name untouched so the surfaced
+// "proposed tool:" line reads like the call the agent actually proposed.
+func qualifyGitHubTool(tool string) string {
+	tool = strings.TrimSpace(tool)
+	if tool == "" {
+		return ""
+	}
+	if strings.Contains(tool, ".") {
+		return tool
+	}
+	return "github." + tool
 }

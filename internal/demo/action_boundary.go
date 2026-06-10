@@ -149,17 +149,25 @@ func WriteActionBoundaryJSON(w io.Writer, result *ActionBoundaryResult) error {
 }
 
 func WriteActionBoundaryText(w io.Writer, result *ActionBoundaryResult) error {
+	// Plain-output entry point (no colorizer) — preserves the exact bytes the
+	// evidence bundle embeds. The demo CLI uses WriteActionBoundaryTextColor.
+	return WriteActionBoundaryTextColor(w, result, nil)
+}
+
+// WriteActionBoundaryTextColor renders the cross-surface report, styling
+// verdicts and pass/fail tokens through c (nil renders plain).
+func WriteActionBoundaryTextColor(w io.Writer, result *ActionBoundaryResult, c *Colorizer) error {
 	if result == nil {
 		return fmt.Errorf("action boundary result is required")
 	}
-	fmt.Fprintln(w, "Action Boundary demo")
+	fmt.Fprintln(w, c.Bold("Action Boundary demo"))
 	fmt.Fprintf(w, "status: %s\n", result.Status)
 	fmt.Fprintf(w, "fixture-only: %t\n", result.FixtureOnly)
 	fmt.Fprintln(w, "credentials: none")
 	fmt.Fprintln(w, "network: none")
 	fmt.Fprintln(w, "live mutation: none")
 	for _, surface := range result.Surfaces {
-		fmt.Fprintf(w, "\nSurface: %s\n", surface.Label)
+		fmt.Fprintf(w, "\nSurface: %s\n", c.Bold(surface.Label))
 		fmt.Fprintf(w, "scenario: %s\n", surface.Scenario)
 		if surface.Command != "" {
 			fmt.Fprintf(w, "command: %s\n", surface.Command)
@@ -174,7 +182,7 @@ func WriteActionBoundaryText(w io.Writer, result *ActionBoundaryResult) error {
 			fmt.Fprintf(w, "recommended action: %s\n", surface.RecommendedAction)
 		}
 		fmt.Fprintf(w, "expected action: %s\n", displayAction(surface.ExpectedAction))
-		fmt.Fprintf(w, "actual action: %s\n", displayAction(surface.ActualAction))
+		fmt.Fprintf(w, "actual action: %s\n", c.Verdict(displayAction(surface.ActualAction)))
 		fmt.Fprintf(w, "reason: %s\n", surface.Reason)
 		if surface.Surface == "mcp_secure_github" {
 			fmt.Fprintf(w, "upstream_called=%t\n", surface.UpstreamCalled)
@@ -186,17 +194,26 @@ func WriteActionBoundaryText(w io.Writer, result *ActionBoundaryResult) error {
 		if surface.Surface == "edit_boundary" {
 			fmt.Fprintf(w, "applied=%t\n", surface.Applied)
 		}
-		fmt.Fprintf(w, "result: %s\n", passFail(surface.Passed))
+		fmt.Fprintf(w, "result: %s\n", colorPassFail(c, surface.Passed))
 	}
-	fmt.Fprintln(w, "\nWhat this proves:")
+	fmt.Fprintln(w, "\n"+c.Bold("What this proves:"))
 	for _, proof := range result.Proof {
 		fmt.Fprintf(w, "- %s\n", proof)
 	}
-	fmt.Fprintln(w, "\nWhat this does not prove:")
+	fmt.Fprintln(w, "\n"+c.Bold("What this does not prove:"))
 	for _, limitation := range result.Limitations {
 		fmt.Fprintf(w, "- %s\n", limitation)
 	}
 	return nil
+}
+
+// colorPassFail styles a pass/fail token: green for pass, red for fail. A nil
+// colorizer returns the plain "pass"/"fail" string.
+func colorPassFail(c *Colorizer, passed bool) string {
+	if passed {
+		return c.Pass(passFail(passed))
+	}
+	return c.Fail(passFail(passed))
 }
 
 func WriteActionBoundaryMarkdown(w io.Writer, result *ActionBoundaryResult) error {
