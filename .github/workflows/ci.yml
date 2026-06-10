@@ -48,6 +48,24 @@ jobs:
         working-directory: adapters/grpc
         run: go test ./... -count=1 -race -cover
 
+  examples:
+    name: build examples
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.0'
+          cache: true
+      - name: build all example modules
+        run: |
+          for dir in examples/*/; do
+            if [ -f "$dir/go.mod" ]; then
+              echo "Building $dir"
+              (cd "$dir" && go build ./...)
+            fi
+          done
+
   lint:
     name: golangci-lint
     runs-on: ubuntu-latest
