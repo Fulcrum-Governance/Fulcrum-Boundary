@@ -6,13 +6,44 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-06-11
+
 ### Added
 
+- Prebuilt distribution: a tag-gated release pipeline builds static
+  (`CGO_ENABLED=0`) archives for macOS and Linux with checksums, publishes a
+  container image, and pushes a Homebrew formula to
+  `fulcrum-governance/homebrew-tap`. v0.10.0 is the first release published
+  through it; releases up to and including v0.9.0 shipped source-only.
+- Static `CGO_ENABLED=0` builds are now supported. Without cgo the Postgres AST
+  classifier is unavailable: every routed SQL statement classifies as `UNKNOWN`
+  and is denied fail-closed, so the static build never allows SQL the cgo build
+  would deny. The `_cgo` release archives carry the full classifier.
+- A standalone Python decision-record verifier under `verifiers/python/`
+  recomputes `decision_hash` with the stock `rfc8785` package. Committed
+  conformance vectors under `tests/conformance/` pin the Go and Python
+  implementations to the same canonical bytes, enforced by a CI job.
+- `boundary demo tamper-evidence`: a fixture-only forge-the-receipt demo —
+  mutate a recorded verdict and watch `boundary verify-record` refuse it.
+  Demos gained TTY color and a guided firewall narrative.
+- A Claude Code `PreToolUse` hook integration routes hook-delivered tool calls
+  through `boundary command classify` before execution. Routed-only: the hook
+  governs only the calls Claude Code sends through it.
+- CLI: `--version`/`-v` aliases; `boundary help <topic...>` routes to the leaf
+  command's help (compound topics included); rich structured help on `init`,
+  `lock`, `verify-lock`, `redteam`, `serve`, `verify`, `verify-record`,
+  `audit`, and `trust`; `--json` on `verify` (`boundary.verify.v1`) and
+  `verify-record` (`boundary.verify_record.v1`) with unchanged exit codes.
 - `boundary doctor` now includes first-run environment diagnostics for the Go
   toolchain, cgo / C-toolchain readiness, and `go install` PATH resolution.
 - `boundary doctor --report` emits a redacted JSON report for support threads.
   It removes the local `project_root` while preserving diagnostic statuses,
   routed-surface caveats, and the local-only/no-network/no-mutation flags.
+- Docs: a skeptic's FAQ; a "Where Boundary Fits" category comparison; a
+  standards and incident mapping; a "Govern Your MCP Server" guide; a "How we
+  keep ourselves honest" page; and a CLI reference command map covering all 28
+  top-level commands with new `mcp proxy`, `serve`, `audit`, and `trust`
+  sections.
 
 ### Changed
 
@@ -30,6 +61,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   RFC 8785 / JCS implementation can now recompute a record's `decision_hash`
   from the record bytes, and a standalone Python verifier ships under
   `verifiers/python/`.
+- The README first-run and install paths now lead with prebuilt binaries and
+  the record-trust loop; `docs/INSTALL.md` documents the static-vs-cgo choice.
+- The gateway now bounds inbound HTTP request bodies and sets server
+  read/write timeouts.
+- Policy-evaluator faults are surfaced instead of silently swallowed, with
+  opt-in fail-closed routing per transport; malformed static-policy match
+  blocks now fail closed.
+- The Go toolchain floor is `go1.26.4` for the patched standard library.
+- The public-language lint now scans `docs-site/` recursively (Go's
+  `filepath.Glob` has no `**`) plus the Command Boundary, Edit Boundary, and
+  release-notes doc trees.
+
+### Fixed
+
+- `boundary help` with a compound topic (for example `help policy generate`)
+  reaches the leaf command's help instead of stopping at the parent
+  dispatcher.
+- The CLI reference no longer claims `trust reset` accepts Redis backend
+  flags; reset operates on the in-process standalone backend only.
 
 ## [0.9.0] - 2026-06-02
 
@@ -324,7 +374,8 @@ Initial public release of the project now known as Fulcrum Boundary.
 
 ---
 
-[Unreleased]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.6.1...v0.7.0
