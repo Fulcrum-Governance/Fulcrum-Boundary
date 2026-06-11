@@ -37,13 +37,17 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		printRootHelp(stdout)
 		return 0
 	case "help":
-		// `boundary help` prints the root help; `boundary help <topic>` routes to
-		// the topic's own --help so a single help surface backs both spellings.
+		// `boundary help` prints the root help; `boundary help <topic...>` routes
+		// to the topic's own --help so a single help surface backs both
+		// spellings. --help is appended after every topic word so compound
+		// topics (`help policy generate`, `help demo postgres`) reach the leaf
+		// command's help rather than stopping at the parent dispatcher.
 		if len(args) == 1 {
 			printRootHelp(stdout)
 			return 0
 		}
-		return Run(append([]string{args[1], "--help"}, args[2:]...), stdout, stderr)
+		topic := append([]string{}, args[1:]...)
+		return Run(append(topic, "--help"), stdout, stderr)
 	case "--version", "-v":
 		// `--version`/`-v` are aliases for the version command so the standard CLI
 		// idiom reports the same build metadata (and the same JSON with --json).
