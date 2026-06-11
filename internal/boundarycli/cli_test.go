@@ -2,6 +2,8 @@ package boundarycli
 
 import (
 	"bytes"
+	"crypto/ed25519"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -9,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/fulcrum-governance/fulcrum-boundary/governance"
 )
@@ -330,6 +333,113 @@ func TestRun_VerifyRecordAcceptsValidAndRejectsTampered(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "decision_hash mismatch") {
 		t.Fatalf("expected decision hash failure, got %s", stderr.String())
+	}
+}
+
+func TestRun_VerifyRecordVerifiesSignature(t *testing.T) {
+	dir := t.TempDir()
+
+	// A deterministic seed -> signer -> public key, so the test is reproducible.
+	seed := make([]byte, 32)
+	for i := range seed {
+		seed[i] = byte(i + 1)
+	}
+	signer, err := governance.NewEd25519SignerFromSeed(seed, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pub := ed25519.NewKeyFromSeed(seed).Public().(ed25519.PublicKey)
+	pubHex := hex.EncodeToString(pub)
+
+	record := governance.BuildDecisionRecord(governance.AuditEvent{
+		Transport:  governance.TransportMCP,
+		ToolName:   "query",
+		Action:     "deny",
+		Reason:     "blocked",
+		TrustScore: 1,
+		TrustState: governance.TrustStateTrusted.String(),
+		Timestamp:  time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC),
+	})
+	signature, err := signer.Sign(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.Signature = signature
+	record.SignatureKeyID = signer.KeyID()
+
+	recordPath := filepath.Join(dir, "record.json")
+	writeRecordFile(t, recordPath, record)
+
+	// Valid signature with --public-key as a literal hex key: passes.
+	var stdout bytes.Buffer
+	code := Run([]string{"verify-record", "--verify-signature", "--public-key", pubHex, recordPath}, &stdout, &bytes.Buffer{})
+	if code != 0 {
+		t.Fatalf("expected signed record to verify, got exit %d: %s", code, stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "record verification: ok") {
+		t.Fatalf("missing success output: %s", stdout.String())
+	}
+
+	// --public-key as a file path: also passes.
+	pubFile := filepath.Join(dir, "key.pub")
+	writeJSONFile(t, pubFile, []byte(pubHex+"\n"))
+	stdout.Reset()
+	code = Run([]string{"verify-record", "--verify-signature", "--public-key", pubFile, recordPath}, &stdout, &bytes.Buffer{})
+	if code != 0 {
+		t.Fatalf("expected file public key to verify, got exit %d: %s", code, stdout.String())
+	}
+
+	// --verify-signature without --public-key fails closed.
+	var stderr bytes.Buffer
+	code = Run([]string{"verify-record", "--verify-signature", recordPath}, &bytes.Buffer{}, &stderr)
+	if code == 0 {
+		t.Fatal("expected --verify-signature without --public-key to fail")
+	}
+	if !strings.Contains(stderr.String(), "requires --public-key") {
+		t.Fatalf("expected missing-key error, got %s", stderr.String())
+	}
+
+	// Wrong public key fails closed.
+	otherSeed := make([]byte, 32)
+	for i := range otherSeed {
+		otherSeed[i] = byte(0xff - i)
+	}
+	otherPub := ed25519.NewKeyFromSeed(otherSeed).Public().(ed25519.PublicKey)
+	stderr.Reset()
+	code = Run([]string{"verify-record", "--verify-signature", "--public-key", hex.EncodeToString(otherPub), recordPath}, &bytes.Buffer{}, &stderr)
+	if code == 0 {
+		t.Fatal("expected wrong public key to fail signature verification")
+	}
+	if !strings.Contains(stderr.String(), "signature verification failed") {
+		t.Fatalf("expected signature failure, got %s", stderr.String())
+	}
+
+	// Tampering a covered field fails (decision_hash mismatch is caught first).
+	record.Action = "allow"
+	writeRecordFile(t, recordPath, record)
+	stderr.Reset()
+	code = Run([]string{"verify-record", "--verify-signature", "--public-key", pubHex, recordPath}, &bytes.Buffer{}, &stderr)
+	if code == 0 {
+		t.Fatal("expected tampered signed record to fail")
+	}
+
+	// Default verification (no --verify-signature) ignores the signature: an
+	// unsigned record still verifies, so signing stays opt-in.
+	unsigned := governance.BuildDecisionRecord(governance.AuditEvent{
+		Transport:  governance.TransportMCP,
+		ToolName:   "query",
+		Action:     "deny",
+		Reason:     "blocked",
+		TrustScore: 1,
+		TrustState: governance.TrustStateTrusted.String(),
+		Timestamp:  time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC),
+	})
+	unsignedPath := filepath.Join(dir, "unsigned.json")
+	writeRecordFile(t, unsignedPath, unsigned)
+	stdout.Reset()
+	code = Run([]string{"verify-record", unsignedPath}, &stdout, &bytes.Buffer{})
+	if code != 0 {
+		t.Fatalf("expected unsigned record to verify without --verify-signature, got %d: %s", code, stdout.String())
 	}
 }
 

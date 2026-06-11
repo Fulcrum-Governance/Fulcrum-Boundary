@@ -76,6 +76,13 @@ type PipelineConfig struct {
 	// in the decision reason. The audit event is emitted with the ORIGINAL
 	// deny action, so logs reflect what governance would have blocked.
 	DryRun bool
+
+	// ReceiptSigner, when non-nil, signs every emitted decision record: the
+	// audit event carries signature and signature_key_id populated from this
+	// signer over the record's decision_hash. It is opt-in integrity for key
+	// holders, not authenticity of the verdict — see ReceiptSigner. Nil (the
+	// default) leaves records unsigned and byte-identical to the unsigned path.
+	ReceiptSigner ReceiptSigner
 }
 
 // PolicyEvaluator is the abstract dependency the pipeline has on the policy
@@ -108,6 +115,7 @@ type Pipeline struct {
 	requireAgentID   bool
 	failClosed       map[TransportType]bool
 	dryRun           bool
+	signer           ReceiptSigner
 }
 
 // NewPipeline creates a governance pipeline.
@@ -144,6 +152,7 @@ func NewPipeline(cfg PipelineConfig, trust TrustChecker, evaluator PolicyEvaluat
 		requireAgentID:   cfg.RequireAgentID,
 		failClosed:       fc,
 		dryRun:           cfg.DryRun,
+		signer:           cfg.ReceiptSigner,
 	}
 }
 
@@ -383,7 +392,7 @@ func routeID(req *GovernanceRequest) string {
 }
 
 func (p *Pipeline) emitAudit(ctx context.Context, req *GovernanceRequest, decision *GovernanceDecision) {
-	p.auditor.Publish(ctx, AuditEvent{
+	event := AuditEvent{
 		RequestID:           req.RequestID,
 		Transport:           req.Transport,
 		ToolName:            req.ToolName,
@@ -412,7 +421,34 @@ func (p *Pipeline) emitAudit(ctx context.Context, req *GovernanceRequest, decisi
 		AdapterID:       string(req.Transport),
 		RouteID:         routeID(req),
 		TopologyProfile: p.topologyProfile,
-	})
+	}
+	p.signAuditEvent(&event)
+	p.auditor.Publish(ctx, event)
+}
+
+// signAuditEvent populates event.Signature and event.SignatureKeyID when a
+// ReceiptSigner is configured, so the decision record BuildDecisionRecord
+// renders from this event carries the operator signature. It builds the record
+// the publisher will build (with the signature fields still empty), signs over
+// its decision_hash, and writes the signature back onto the event. Because
+// ComputeDecisionHash blanks the signature fields, carrying the signature does
+// not perturb decision_hash: a signed record verifies to the identical
+// decision_hash as the unsigned record. With no signer this is a no-op and the
+// event (and its record) is byte-identical to the unsigned path. A signing error
+// is treated as fail-closed for the signature: the event is published unsigned
+// rather than with a partial or bogus signature, so an unsigned record never
+// masquerades as signed.
+func (p *Pipeline) signAuditEvent(event *AuditEvent) {
+	if p.signer == nil {
+		return
+	}
+	record := BuildDecisionRecord(*event)
+	signature, err := p.signer.Sign(record)
+	if err != nil {
+		return
+	}
+	event.Signature = signature
+	event.SignatureKeyID = p.signer.KeyID()
 }
 
 func (p *Pipeline) recordTrustDecision(ctx context.Context, req *GovernanceRequest, decision *GovernanceDecision) (*TrustDecisionUpdate, error) {
@@ -434,7 +470,7 @@ func (p *Pipeline) recordTrustDecision(ctx context.Context, req *GovernanceReque
 }
 
 func (p *Pipeline) emitTrustTransition(ctx context.Context, req *GovernanceRequest, decision *GovernanceDecision, update TrustDecisionUpdate) {
-	p.auditor.Publish(ctx, AuditEvent{
+	event := AuditEvent{
 		EventType:           "trust_transition",
 		RequestID:           req.RequestID,
 		Transport:           req.Transport,
@@ -463,5 +499,7 @@ func (p *Pipeline) emitTrustTransition(ctx context.Context, req *GovernanceReque
 			"trust_after":  update.After.State.String(),
 			"outcome":      string(update.Outcome),
 		},
-	})
+	}
+	p.signAuditEvent(&event)
+	p.auditor.Publish(ctx, event)
 }
