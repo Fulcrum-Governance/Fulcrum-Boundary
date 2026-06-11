@@ -1,6 +1,7 @@
 package governance
 
 import (
+	"context"
 	"crypto/ed25519"
 	"encoding/hex"
 	"encoding/json"
@@ -297,5 +298,41 @@ func TestVerifyReceiptSignature_FailClosedShapes(t *testing.T) {
 	shortSig.Signature = "ed25519:AAAA"
 	if err := VerifyReceiptSignature(shortSig, pub); err == nil {
 		t.Fatal("wrong-length signature payload must fail closed")
+	}
+}
+
+func TestPublishParseRejection_SignedWhenSignerConfigured(t *testing.T) {
+	seed := make([]byte, ed25519.SeedSize)
+	for i := range seed {
+		seed[i] = byte(i + 1)
+	}
+	signer, err := NewEd25519SignerFromSeed(seed, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	auditor := &collectingAuditor{}
+	pipeline := NewPipeline(PipelineConfig{
+		GatewayVersion: "test-version",
+		ReceiptSigner:  signer,
+	}, nil, nil, auditor)
+
+	pipeline.PublishParseRejection(context.Background(), ParseRejectionEvent{
+		Adapter:         TransportMCP,
+		RawPayload:      []byte(`{"not":"parseable as a tool call"}`),
+		RejectionReason: "malformed envelope",
+	})
+
+	events := auditor.Events()
+	if len(events) != 1 {
+		t.Fatalf("expected 1 audit event, got %d", len(events))
+	}
+	event := events[0]
+	if event.Signature == "" || event.SignatureKeyID == "" {
+		t.Fatalf("parse-rejection event must carry a signature when a signer is configured: %+v", event)
+	}
+	record := BuildDecisionRecord(event)
+	pub := signer.PrivateKey.Public().(ed25519.PublicKey)
+	if err := VerifyReceiptSignature(record, pub); err != nil {
+		t.Fatalf("signed parse-rejection record must verify: %v", err)
 	}
 }
