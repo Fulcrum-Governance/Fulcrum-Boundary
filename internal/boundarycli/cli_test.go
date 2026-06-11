@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"encoding/hex"
 	"encoding/json"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -509,4 +510,118 @@ func writeRecordFile(t *testing.T, path string, record governance.DecisionRecord
 		t.Fatal(err)
 	}
 	writeJSONFile(t, path, body)
+}
+
+// TestRun_ServeHelpListsReceiptSeed asserts the serve help advertises the
+// opt-in signing flag and keeps the honest authorship caveat alongside it.
+func TestRun_ServeHelpListsReceiptSeed(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	if code := Run([]string{"serve", "--help"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("expected exit 0, got %d", code)
+	}
+	combined := stdout.String() + stderr.String()
+	for _, want := range []string{
+		"--receipt-seed",
+		"signing is off by default",
+		"proves who signed the record, not the verdict",
+	} {
+		if !strings.Contains(combined, want) {
+			t.Fatalf("serve help missing %q:\n%s", want, combined)
+		}
+	}
+}
+
+// TestRun_ServeReceiptSeedFailsClosed verifies that requesting signing with a
+// missing, short, or non-hex seed file makes `serve` exit 1 with the signing
+// error on stderr and never reaches the listen step — i.e. it does not serve
+// unsigned when signing was requested. To prove the listener is never opened,
+// each case is handed a --listen address that is already bound: if runServe
+// reached http.Server.ListenAndServe it would surface a bind error ("server
+// error") or the "listening" banner, neither of which may appear.
+func TestRun_ServeReceiptSeedFailsClosed(t *testing.T) {
+	// Empty policy dir so policy load + trust backend succeed and the only
+	// remaining failure is the seed (an empty dir reads as zero rules).
+	policyDir := t.TempDir()
+
+	shortSeed := filepath.Join(t.TempDir(), "short.seed")
+	if err := os.WriteFile(shortSeed, []byte("deadbeef"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	nonHexSeed := filepath.Join(t.TempDir(), "nonhex.seed")
+	if err := os.WriteFile(nonHexSeed, []byte(strings.Repeat("z", 64)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	cases := []struct {
+		name string
+		seed string
+	}{
+		{"missing", filepath.Join(t.TempDir(), "does-not-exist.seed")},
+		{"short", shortSeed},
+		{"non-hex", nonHexSeed},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Occupy a real port and feed it as --listen; ListenAndServe must
+			// never run, so this address stays the only thing bound to it.
+			ln, err := net.Listen("tcp", "127.0.0.1:0")
+			if err != nil {
+				t.Fatalf("reserve port: %v", err)
+			}
+			defer ln.Close()
+
+			var stdout, stderr bytes.Buffer
+			code := Run([]string{
+				"serve",
+				"--policies", policyDir,
+				"--listen", ln.Addr().String(),
+				"--receipt-seed", tc.seed,
+			}, &stdout, &stderr)
+			if code != 1 {
+				t.Fatalf("expected exit 1 (fail closed), got %d; stderr=%s", code, stderr.String())
+			}
+			if !strings.Contains(stderr.String(), "receipt signing requested but seed could not be loaded") {
+				t.Fatalf("stderr missing fail-closed signing error:\n%s", stderr.String())
+			}
+			// Proof the listen step was never reached: no bind error, no banner.
+			if strings.Contains(stderr.String(), "server error") || strings.Contains(stderr.String(), "listening on") {
+				t.Fatalf("serve reached the listen step despite a bad seed:\n%s", stderr.String())
+			}
+		})
+	}
+}
+
+// TestRun_ServeReceiptSeedValidParsesAndSigns is a flag-parse + wiring check for
+// the success path: a valid 64-hex seed is accepted (no signing-load error) and
+// the resulting signer signs decision records. It does not start the server
+// (ListenAndServe blocks); the served-deny-emits-signed-record end-to-end is not
+// covered here because runServe does not surface its handler or chosen port —
+// signing emission itself is covered at the pipeline level. This builds the same
+// signer runServe would build from the flag and exercises it directly.
+func TestRun_ServeReceiptSeedValidParsesAndSigns(t *testing.T) {
+	_, priv, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seedHex := hex.EncodeToString(priv.Seed())
+	seedPath := filepath.Join(t.TempDir(), "valid.seed")
+	if err := os.WriteFile(seedPath, []byte(seedHex+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	signer, err := governance.NewEd25519SignerFromSeedFile(seedPath, "")
+	if err != nil {
+		t.Fatalf("valid seed must load, got: %v", err)
+	}
+	rec := governance.DecisionRecordV1{DecisionHash: "sha256:" + strings.Repeat("ab", 32)}
+	sig, err := signer.Sign(rec)
+	if err != nil {
+		t.Fatalf("signer must sign, got: %v", err)
+	}
+	if !strings.HasPrefix(sig, "ed25519:") {
+		t.Fatalf("signature missing ed25519 prefix: %q", sig)
+	}
+	if signer.KeyID() == "" {
+		t.Fatal("signer must expose a non-empty key id")
+	}
 }

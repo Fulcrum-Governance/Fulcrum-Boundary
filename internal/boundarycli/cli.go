@@ -112,6 +112,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runAudit(args[1:], os.Stdin, stdout, stderr)
 	case "trust":
 		return runTrust(args[1:], stdout, stderr)
+	case "completion":
+		return runCompletion(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "unknown command %q\n\n", args[0])
 		printRootHelp(stderr)
@@ -161,6 +163,7 @@ Commands:
   evidence        Bundle and verify local Boundary evidence artifacts
   audit           Pretty-print structured decision records
   trust           Inspect or reset trust state
+  completion      Print a bash, zsh, or fish completion script
 
 Use "boundary <command> --help" for command flags.
 `)
@@ -234,17 +237,20 @@ func newHelpFlagSet(name string, stderr io.Writer, help commandHelp) *flag.FlagS
 func runServe(args []string, stdout, stderr io.Writer) int {
 	fs := newHelpFlagSet("boundary serve", stderr, commandHelp{
 		Purpose: "Start the Boundary gateway that governs routed tools before privileged execution.",
-		Usage:   "boundary serve [--config FILE] [--listen ADDR] [--policies DIR] [--upstream URL|DSN] [--trust-mode MODE] [--require-agent-id]",
+		Usage:   "boundary serve [--config FILE] [--listen ADDR] [--policies DIR] [--upstream URL|DSN] [--trust-mode MODE] [--require-agent-id] [--receipt-seed FILE]",
 		Common: []string{
 			"boundary serve --policies ./policies/ --listen :8080",
 			"boundary serve --upstream http://localhost:9000/mcp",
 			"boundary serve --config boundary.yaml",
+			"boundary serve --policies ./policies/ --receipt-seed ./boundary-receipt.seed",
 		},
 		Notes: []string{
 			"Boundary governs only routes forced through it; direct access to the same tool is a bypass unless deployment topology removes that path.",
 			"MCP is the only production route; other transports remain preview.",
 			"--trust-mode kernel connects only the trust seam to Fulcrum services; the policy seam still loads the local policy dir.",
 			"Evaluator faults fail closed for the configured transports and otherwise fall through; a policy deny is a decision, a backend fault is not.",
+			"--receipt-seed signs every emitted decision record with the Ed25519 seed in FILE (64 hex chars); signing is off by default, and a startup error here fails closed (exit 1) rather than serving unsigned.",
+			"A signature proves who signed the record, not the verdict or that execution happened; key custody is the operator's (see docs/SIGNING.md).",
 		},
 	})
 	configPath := fs.String("config", "", "Boundary runtime config file")
@@ -254,6 +260,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	trustMode := fs.String("trust-mode", "disabled", "trust mode: disabled, standalone, or kernel")
 	trustRedisURL := fs.String("trust-redis-url", "redis://localhost:6379", "Redis URL for kernel trust mode")
 	requireAgentID := fs.Bool("require-agent-id", false, "deny protected adapter requests without agent identity")
+	receiptSeed := fs.String("receipt-seed", "", "path to a 64-hex Ed25519 seed; when set, signs every emitted decision record (off by default)")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return 0
@@ -312,11 +319,28 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "trust backend: %v\n", err)
 		return 1
 	}
+
+	// Optional receipt signing. When --receipt-seed is given we MUST fail closed
+	// on a missing/short/non-hex seed rather than serve unsigned: requesting
+	// signing and silently emitting unsigned records would misrepresent record
+	// authorship. The signature attests who signed the record, not the verdict
+	// or that execution happened; key custody is the operator's (docs/SIGNING.md).
+	var receiptSigner governance.ReceiptSigner
+	if *receiptSeed != "" {
+		signer, err := governance.NewEd25519SignerFromSeedFile(*receiptSeed, "")
+		if err != nil {
+			fmt.Fprintf(stderr, "receipt signing requested but seed could not be loaded: %v\n", err)
+			return 1
+		}
+		receiptSigner = signer
+	}
+
 	pipeline := governance.NewPipeline(governance.PipelineConfig{
 		StaticPolicies:   policyResult.Rules,
 		GatewayVersion:   currentGatewayVersion(),
 		PolicyBundleHash: policyHash,
 		RequireAgentID:   *requireAgentID,
+		ReceiptSigner:    receiptSigner,
 	}, trustBackend, nil, governance.NewSlogAuditPublisher(logger))
 	pipeline.RegisterInterceptor("query", sqlguard.NewPostgresInterceptor())
 
