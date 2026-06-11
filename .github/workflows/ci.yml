@@ -85,6 +85,22 @@ jobs:
           go test ./tests/conformance/... -count=1
           python3 verifiers/python/test_boundary_verify.py
           python3 verifiers/python/boundary_verify.py docs/examples/decision-record.example.json
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: verifiers/typescript/package-lock.json
+      - name: stock RFC 8785 (TypeScript) must agree on record hashes
+        working-directory: verifiers/typescript
+        run: |
+          npm ci
+          node --experimental-strip-types --test boundary_verify.test.ts
+          node --experimental-strip-types boundary_verify.ts ../../docs/examples/decision-record.example.json
+      - uses: dtolnay/rust-toolchain@stable
+      - name: stock RFC 8785 (Rust) must agree on record hashes
+        run: |
+          cargo test --manifest-path verifiers/rust/Cargo.toml
+          cargo run --manifest-path verifiers/rust/Cargo.toml -- docs/examples/decision-record.example.json
 
   lint:
     name: golangci-lint
