@@ -606,22 +606,27 @@ type verifyRecordResultJSON struct {
 func runVerifyRecord(args []string, stdout, stderr io.Writer) int {
 	fs := newHelpFlagSet("boundary verify-record", stderr, commandHelp{
 		Purpose: "Verify a receipt-grade decision record's integrity over its covered inputs.",
-		Usage:   "boundary verify-record [--request request.json] [--policies DIR] [--binary-digest sha256:...] [--json] <record.json>",
+		Usage:   "boundary verify-record [--request request.json] [--policies DIR] [--binary-digest sha256:...] [--verify-signature --public-key HEX|FILE] [--json] <record.json>",
 		Common: []string{
 			"boundary verify-record record.json",
 			"boundary verify-record --request request.json --policies ./policies/ record.json",
+			"boundary verify-record --verify-signature --public-key ./boundary-receipt.pub record.json",
 			"boundary verify-record --json record.json",
 		},
 		Notes: []string{
 			"record.json is required: a single-record decision-record JSON object (not a multi-record .jsonl log).",
 			"Verification recomputes decision_hash always, request_hash when --request is given, and policy_bundle_hash when --policies is given.",
 			"This is hash-verifiable integrity over the covered inputs, not proof the action was executed, prevented, or that the verdict was correct.",
+			"--verify-signature additionally checks the record's optional signature over the recomputed decision_hash against --public-key (64-hex key or a file holding one); it fails closed on a mismatch or a missing signature.",
+			"A valid signature proves the record was signed by the holder of that key — it does not prove the verdict was correct, that the action executed or was prevented, or solve key custody. Without --verify-signature the signature fields are ignored for integrity and unsigned records remain the default.",
 			"--json emits a versioned boundary.verify_record.v1 object with ok/error fields; the exit code is non-zero on a verification failure.",
 		},
 	})
 	requestPath := fs.String("request", "", "request JSON body used to verify request_hash")
 	policyDir := fs.String("policies", "", "policy directory used to verify policy_bundle_hash")
 	binaryDigest := fs.String("binary-digest", "", "expected boundary build digest")
+	verifySignature := fs.Bool("verify-signature", false, "additionally verify the record's ed25519 signature over decision_hash (requires --public-key)")
+	publicKey := fs.String("public-key", "", "ed25519 public key (64 hex chars) or path to a file holding one, used with --verify-signature")
 	jsonOutput := fs.Bool("json", false, "emit machine-readable boundary.verify_record.v1 JSON")
 	// Allow the positional record path in any position (flags may follow it) by
 	// collecting positionals in one pass, mirroring `boundary replay`.
@@ -633,7 +638,7 @@ func runVerifyRecord(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	if len(positionals) != 1 {
-		fmt.Fprintln(stderr, "usage: boundary verify-record [--request request.json] [--policies dir] [--binary-digest sha256:...] [--json] record.json")
+		fmt.Fprintln(stderr, "usage: boundary verify-record [--request request.json] [--policies dir] [--binary-digest sha256:...] [--verify-signature --public-key hex|file] [--json] record.json")
 		return 1
 	}
 
@@ -656,6 +661,18 @@ func runVerifyRecord(args []string, stdout, stderr io.Writer) int {
 
 	if err := governance.VerifyDecisionRecord(record, rawRequest, *policyDir, *binaryDigest); err != nil {
 		return failVerifyRecord(stdout, stderr, *jsonOutput, record.RecordID, fmt.Sprintf("record verification failed: %v", err))
+	}
+	if *verifySignature {
+		if *publicKey == "" {
+			return failVerifyRecord(stdout, stderr, *jsonOutput, record.RecordID, "signature verification failed: --verify-signature requires --public-key")
+		}
+		pub, err := governance.ParseEd25519PublicKey(*publicKey)
+		if err != nil {
+			return failVerifyRecord(stdout, stderr, *jsonOutput, record.RecordID, fmt.Sprintf("signature verification failed: %v", err))
+		}
+		if err := governance.VerifyReceiptSignature(record, pub); err != nil {
+			return failVerifyRecord(stdout, stderr, *jsonOutput, record.RecordID, fmt.Sprintf("signature verification failed: %v", err))
+		}
 	}
 	if *jsonOutput {
 		if err := writeIndentedJSON(stdout, verifyRecordResultJSON{
