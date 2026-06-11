@@ -1,6 +1,7 @@
 package claims
 
 import (
+	"io/fs"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -60,30 +61,44 @@ func languageLintPaths(t *testing.T, repoRoot string) []string {
 		"docs/command-boundary/*.md",
 		"docs/edit-boundary/*.md",
 		"docs/releases/*.md",
-		"docs-site/*.md",
-		"docs-site/**/*.md",
 		"verifiers/*/README.md",
 	}
 
 	seen := map[string]bool{}
 	var paths []string
+	add := func(match string) {
+		rel, err := filepath.Rel(repoRoot, match)
+		if err != nil {
+			t.Fatalf("rel path for %s: %v", match, err)
+		}
+		rel = filepath.ToSlash(rel)
+		if seen[rel] {
+			return
+		}
+		seen[rel] = true
+		paths = append(paths, rel)
+	}
 	for _, pattern := range patterns {
 		matches, err := filepath.Glob(filepath.Join(repoRoot, pattern))
 		if err != nil {
 			t.Fatalf("glob %s: %v", pattern, err)
 		}
 		for _, match := range matches {
-			rel, err := filepath.Rel(repoRoot, match)
-			if err != nil {
-				t.Fatalf("rel path for %s: %v", match, err)
-			}
-			rel = filepath.ToSlash(rel)
-			if seen[rel] {
-				continue
-			}
-			seen[rel] = true
-			paths = append(paths, rel)
+			add(match)
 		}
+	}
+	// filepath.Glob has no recursive `**` (it matches like a single `*`), so the
+	// docs-site tree is walked explicitly to lint nested pages at any depth.
+	if err := filepath.WalkDir(filepath.Join(repoRoot, "docs-site"), func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() && strings.HasSuffix(d.Name(), ".md") {
+			add(path)
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("walk docs-site: %v", err)
 	}
 	return paths
 }
