@@ -67,6 +67,15 @@ jobs:
       - name: Log in to ghcr.io
         if: github.ref_type == 'tag'
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Preflight tap token (tag publish)
+        if: github.ref_type == 'tag'
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+        run: |
+          if [ -z "$TAP_TOKEN" ]; then
+            echo "::error::HOMEBREW_TAP_GITHUB_TOKEN is empty or unset; the Homebrew formula push would fail after the full build. Set the repo secret and re-run."
+            exit 1
+          fi
       - name: Build evidence bundle (local-only, fixture-safe)
         run: |
           go run ./cmd/boundary evidence bundle --include-demo --out .release-extras/boundary-evidence

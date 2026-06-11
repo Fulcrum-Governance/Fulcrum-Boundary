@@ -20,6 +20,7 @@ coverage.html
 # Local tooling
 /bin/
 /dist/
+/.release-extras/
 /site/
 .boundary/
 

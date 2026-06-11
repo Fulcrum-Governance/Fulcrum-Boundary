@@ -68,14 +68,14 @@ boundary verify-record github-lethal-trifecta-artifacts/decision-record.json
 > `UNKNOWN` and the Postgres guard denies it fail-closed. The static build
 > never allows SQL the cgo build would deny. The `_cgo` release archives carry
 > the full classifier; see [docs/INSTALL.md](./docs/INSTALL.md). These channels
-> publish from the tag-gated release pipeline for releases after `v0.9.0`;
-> `v0.9.0` and earlier shipped source-only — use
+> publish from the tag-gated release pipeline for `v0.10.1` and later;
+> `v0.10.0` and earlier shipped source-only — use
 > [Build from source](#build-from-source) for those.
 
 > The commands above, including the uniform record-location output described
 > below, plus `boundary explain` / `boundary replay`, `DecisionRecordV2`, and
 > `boundary test`, ship in `v0.9.0` and later. The source install
-> `go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.10.0`
+> `go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.10.1`
 > includes them.
 
 No credentials. No live calls. No real mutations. Every record-emitting command
@@ -137,7 +137,7 @@ Requires Go 1.25+. The default build links the full Postgres SQL classifier
 on `PATH`):
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.10.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.10.1
 ```
 
 Without a C toolchain, `CGO_ENABLED=0 go build ./cmd/boundary` builds the
