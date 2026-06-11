@@ -58,6 +58,16 @@ func TestRun_HelpTopicRouting(t *testing.T) {
 		t.Fatalf("bare help: expected root help: %s", stdout.String())
 	}
 
+	stdout.Reset()
+	helpErr.Reset()
+	code = Run([]string{"help", "demo", "postgres"}, &stdout, &helpErr)
+	if code != 0 {
+		t.Fatalf("help demo postgres: expected exit 0, got %d", code)
+	}
+	if combined := stdout.String() + helpErr.String(); !strings.Contains(combined, "Run the Postgres allow, deny, and bypass demo") {
+		t.Fatalf("compound help topic must reach the leaf command's help: %s", combined)
+	}
+
 	var stderr bytes.Buffer
 	code = Run([]string{"help", "no-such-command"}, &bytes.Buffer{}, &stderr)
 	if code == 0 {
