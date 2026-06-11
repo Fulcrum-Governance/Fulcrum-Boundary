@@ -12,7 +12,20 @@ import (
 )
 
 func runFirewallLock(args []string, stdout, stderr io.Writer) int {
-	fs := newFlagSet("boundary lock", stderr)
+	fs := newHelpFlagSet("boundary lock", stderr, commandHelp{
+		Purpose: "Record a descriptor lockfile for the MCP servers in a config so later drift is detectable.",
+		Usage:   "boundary lock --config PATH [--client TYPE] [--server NAME] [--out PATH] [--format text|json] [--dry-run]",
+		Common: []string{
+			"boundary lock --config ./mcp.json",
+			"boundary lock --config ./mcp.json --server github --client claude",
+			"boundary lock --config ./mcp.json --dry-run",
+		},
+		Notes: []string{
+			"The lockfile records server descriptors as observed at lock time; drift is detected when verify-lock runs, not continuously.",
+			"Locking does not prevent edits to the underlying MCP config; it makes them visible to verify-lock.",
+			"--dry-run prints the lockfile content without writing it.",
+		},
+	})
 	configPath := fs.String("config", "", "MCP config path to lock")
 	clientFlag := fs.String("client", "custom", "client type recorded in the lock: claude, cursor, vscode, repo, or custom")
 	out := fs.String("out", ".boundary/firewall/locks/descriptor-lock.json", "descriptor lockfile path")
@@ -70,7 +83,20 @@ func runFirewallLock(args []string, stdout, stderr io.Writer) int {
 }
 
 func runFirewallVerifyLock(args []string, stdout, stderr io.Writer) int {
-	fs := newFlagSet("boundary verify-lock", stderr)
+	fs := newHelpFlagSet("boundary verify-lock", stderr, commandHelp{
+		Purpose: "Compare current MCP server descriptors against a descriptor lockfile and report drift.",
+		Usage:   "boundary verify-lock [--lock PATH] [--config PATH] [--on-change warn|require_approval|deny] [--format text|json]",
+		Common: []string{
+			"boundary verify-lock",
+			"boundary verify-lock --lock .boundary/firewall/locks/descriptor-lock.json",
+			"boundary verify-lock --on-change warn --format json",
+		},
+		Notes: []string{
+			"Detection happens at run time: drift between runs is only visible once verify-lock executes.",
+			"Exit code is non-zero when drift is found and --on-change resolves to deny.",
+			"--config overrides the config path recorded in the lockfile.",
+		},
+	})
 	lockPath := fs.String("lock", ".boundary/firewall/locks/descriptor-lock.json", "descriptor lockfile path")
 	configPath := fs.String("config", "", "override MCP config path to verify against")
 	onChange := fs.String("on-change", "deny", "descriptor drift behavior: warn, require_approval, or deny")

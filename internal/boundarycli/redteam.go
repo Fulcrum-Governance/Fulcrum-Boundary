@@ -12,7 +12,20 @@ import (
 )
 
 func runRedteam(args []string, stdout, stderr io.Writer) int {
-	fs := newFlagSet("boundary redteam", stderr)
+	fs := newHelpFlagSet("boundary redteam", stderr, commandHelp{
+		Purpose: "Run Boundary's synthetic red-team fixture packs and report the verdict for each case.",
+		Usage:   "boundary redteam [--pack ID] [--mode fixture] [--format text|json] [--list]",
+		Common: []string{
+			"boundary redteam --list",
+			"boundary redteam --pack " + redteam.DefaultPackID,
+			"boundary redteam --format json",
+		},
+		Notes: []string{
+			"Fixture-only: every pack is synthetic, nothing executes against real systems, and no fixture command actually runs.",
+			"Only --mode fixture is supported; there is no live-target mode.",
+			"Pack results assert the expected verdict and that execution did not occur.",
+		},
+	})
 	packID := fs.String("pack", redteam.DefaultPackID, "redteam fixture pack to run")
 	mode := fs.String("mode", redteam.ModeFixture, "redteam mode; only fixture is supported")
 	format := fs.String("format", "text", "output format: text or json")

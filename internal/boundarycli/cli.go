@@ -28,9 +28,26 @@ import (
 var Version = "unknown"
 
 func Run(args []string, stdout, stderr io.Writer) int {
-	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
+	if len(args) == 0 {
 		printRootHelp(stdout)
 		return 0
+	}
+	switch args[0] {
+	case "--help", "-h":
+		printRootHelp(stdout)
+		return 0
+	case "help":
+		// `boundary help` prints the root help; `boundary help <topic>` routes to
+		// the topic's own --help so a single help surface backs both spellings.
+		if len(args) == 1 {
+			printRootHelp(stdout)
+			return 0
+		}
+		return Run(append([]string{args[1], "--help"}, args[2:]...), stdout, stderr)
+	case "--version", "-v":
+		// `--version`/`-v` are aliases for the version command so the standard CLI
+		// idiom reports the same build metadata (and the same JSON with --json).
+		return runVersion(args[1:], stdout, stderr)
 	}
 
 	switch args[0] {
@@ -210,7 +227,21 @@ func newHelpFlagSet(name string, stderr io.Writer, help commandHelp) *flag.FlagS
 }
 
 func runServe(args []string, stdout, stderr io.Writer) int {
-	fs := newFlagSet("boundary serve", stderr)
+	fs := newHelpFlagSet("boundary serve", stderr, commandHelp{
+		Purpose: "Start the Boundary gateway that governs routed tools before privileged execution.",
+		Usage:   "boundary serve [--config FILE] [--listen ADDR] [--policies DIR] [--upstream URL|DSN] [--trust-mode MODE] [--require-agent-id]",
+		Common: []string{
+			"boundary serve --policies ./policies/ --listen :8080",
+			"boundary serve --upstream http://localhost:9000/mcp",
+			"boundary serve --config boundary.yaml",
+		},
+		Notes: []string{
+			"Boundary governs only routes forced through it; direct access to the same tool is a bypass unless deployment topology removes that path.",
+			"MCP is the only production route; other transports remain preview.",
+			"--trust-mode kernel connects only the trust seam to Fulcrum services; the policy seam still loads the local policy dir.",
+			"Evaluator faults fail closed for the configured transports and otherwise fall through; a policy deny is a decision, a backend fault is not.",
+		},
+	})
 	configPath := fs.String("config", "", "Boundary runtime config file")
 	listen := fs.String("listen", ":8080", "HTTP listen address")
 	policyDir := fs.String("policies", "./policies/", "directory containing YAML policy files")
@@ -384,7 +415,7 @@ Notes:
 		return runActionBoundaryDemo(args[1:], stdout, stderr)
 	}
 	if args[0] != "postgres" {
-		fmt.Fprintf(stderr, "unknown demo %q\n", args[0])
+		fmt.Fprintf(stderr, "unknown demo %q; expected action-boundary, postgres, github-lethal-trifecta, command-secret-exfil, or trust-degradation\n", args[0])
 		return 1
 	}
 	fs := newHelpFlagSet("boundary demo postgres", stderr, commandHelp{
@@ -469,9 +500,33 @@ func demoRequest(endpoint, sqlText string, wantStatus int, stdout io.Writer) err
 	return nil
 }
 
+// verifyResultJSON is the versioned-schema payload emitted by `boundary verify
+// --json`. ok reports whether the policy bundle parsed; error carries the parse
+// failure message when ok is false. Counts and warnings mirror the text output.
+type verifyResultJSON struct {
+	SchemaVersion string   `json:"schema_version"`
+	OK            bool     `json:"ok"`
+	Error         string   `json:"error,omitempty"`
+	PolicyFiles   int      `json:"policy_files"`
+	Rules         int      `json:"rules"`
+	Warnings      []string `json:"warnings"`
+}
+
 func runVerify(args []string, stdout, stderr io.Writer) int {
-	fs := newFlagSet("boundary verify", stderr)
+	fs := newHelpFlagSet("boundary verify", stderr, commandHelp{
+		Purpose: "Validate YAML policy files and report rule counts and parse warnings.",
+		Usage:   "boundary verify [--policies DIR] [--json]",
+		Common: []string{
+			"boundary verify --policies ./policies/",
+			"boundary verify --policies ./policies/ --json",
+		},
+		Notes: []string{
+			"Verify checks that the policy bundle parses; it does not prove the policies are correct or that a route enforces them.",
+			"--json emits a versioned boundary.verify.v1 object with ok/error fields; the exit code is non-zero on a parse failure.",
+		},
+	})
 	policyDir := fs.String("policies", "./policies/", "directory containing YAML policy files")
+	jsonOutput := fs.Bool("json", false, "emit machine-readable boundary.verify.v1 JSON")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return 0
@@ -480,8 +535,36 @@ func runVerify(args []string, stdout, stderr io.Writer) int {
 	}
 	result, err := governance.LoadStaticPolicyFiles(*policyDir)
 	if err != nil {
+		if *jsonOutput {
+			if encErr := writeIndentedJSON(stdout, verifyResultJSON{
+				SchemaVersion: "boundary.verify.v1",
+				OK:            false,
+				Error:         err.Error(),
+				Warnings:      []string{},
+			}); encErr != nil {
+				fmt.Fprintf(stderr, "verify: %v\n", encErr)
+			}
+			return 1
+		}
 		fmt.Fprintf(stderr, "policy parse failed: %v\n", err)
 		return 1
+	}
+	if *jsonOutput {
+		warnings := result.Warnings
+		if warnings == nil {
+			warnings = []string{}
+		}
+		if err := writeIndentedJSON(stdout, verifyResultJSON{
+			SchemaVersion: "boundary.verify.v1",
+			OK:            true,
+			PolicyFiles:   len(result.Files),
+			Rules:         len(result.Rules),
+			Warnings:      warnings,
+		}); err != nil {
+			fmt.Fprintf(stderr, "verify: %v\n", err)
+			return 1
+		}
+		return 0
 	}
 	fmt.Fprintf(stdout, "policy files: %d\n", len(result.Files))
 	fmt.Fprintf(stdout, "rules: %d\n", len(result.Rules))
@@ -496,53 +579,122 @@ func runVerify(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
+// verifyRecordResultJSON is the versioned-schema payload emitted by `boundary
+// verify-record --json`. ok reports whether the record passed integrity
+// verification over the covered inputs; error carries the first failing check
+// when ok is false. record_id echoes the record's identifier when present. A
+// passing check is hash-verifiable integrity over the covered inputs, not proof
+// the action was executed, prevented, or that the verdict was correct.
+type verifyRecordResultJSON struct {
+	SchemaVersion string `json:"schema_version"`
+	OK            bool   `json:"ok"`
+	Error         string `json:"error,omitempty"`
+	RecordID      string `json:"record_id,omitempty"`
+}
+
 func runVerifyRecord(args []string, stdout, stderr io.Writer) int {
-	fs := newFlagSet("boundary verify-record", stderr)
+	fs := newHelpFlagSet("boundary verify-record", stderr, commandHelp{
+		Purpose: "Verify a receipt-grade decision record's integrity over its covered inputs.",
+		Usage:   "boundary verify-record [--request request.json] [--policies DIR] [--binary-digest sha256:...] [--json] <record.json>",
+		Common: []string{
+			"boundary verify-record record.json",
+			"boundary verify-record --request request.json --policies ./policies/ record.json",
+			"boundary verify-record --json record.json",
+		},
+		Notes: []string{
+			"record.json is required: a single-record decision-record JSON object (not a multi-record .jsonl log).",
+			"Verification recomputes decision_hash always, request_hash when --request is given, and policy_bundle_hash when --policies is given.",
+			"This is hash-verifiable integrity over the covered inputs, not proof the action was executed, prevented, or that the verdict was correct.",
+			"--json emits a versioned boundary.verify_record.v1 object with ok/error fields; the exit code is non-zero on a verification failure.",
+		},
+	})
 	requestPath := fs.String("request", "", "request JSON body used to verify request_hash")
 	policyDir := fs.String("policies", "", "policy directory used to verify policy_bundle_hash")
 	binaryDigest := fs.String("binary-digest", "", "expected boundary build digest")
-	if err := fs.Parse(args); err != nil {
+	jsonOutput := fs.Bool("json", false, "emit machine-readable boundary.verify_record.v1 JSON")
+	// Allow the positional record path in any position (flags may follow it) by
+	// collecting positionals in one pass, mirroring `boundary replay`.
+	positionals, err := parseInterspersed(fs, args)
+	if err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return 0
 		}
 		return 1
 	}
-	if fs.NArg() != 1 {
-		fmt.Fprintln(stderr, "usage: boundary verify-record [--request request.json] [--policies dir] [--binary-digest sha256:...] record.json")
+	if len(positionals) != 1 {
+		fmt.Fprintln(stderr, "usage: boundary verify-record [--request request.json] [--policies dir] [--binary-digest sha256:...] [--json] record.json")
 		return 1
 	}
 
-	body, err := os.ReadFile(fs.Arg(0))
+	body, err := os.ReadFile(positionals[0])
 	if err != nil {
-		fmt.Fprintf(stderr, "read record: %v\n", err)
-		return 1
+		return failVerifyRecord(stdout, stderr, *jsonOutput, "", fmt.Sprintf("read record: %v", err))
 	}
 	var record governance.DecisionRecordV1
 	if err := json.Unmarshal(body, &record); err != nil {
-		fmt.Fprintf(stderr, "parse record: %v\n", err)
-		return 1
+		return failVerifyRecord(stdout, stderr, *jsonOutput, "", fmt.Sprintf("parse record: %v", err))
 	}
 
 	var rawRequest []byte
 	if *requestPath != "" {
 		rawRequest, err = os.ReadFile(*requestPath)
 		if err != nil {
-			fmt.Fprintf(stderr, "read request: %v\n", err)
-			return 1
+			return failVerifyRecord(stdout, stderr, *jsonOutput, record.RecordID, fmt.Sprintf("read request: %v", err))
 		}
 	}
 
 	if err := governance.VerifyDecisionRecord(record, rawRequest, *policyDir, *binaryDigest); err != nil {
-		fmt.Fprintf(stderr, "record verification failed: %v\n", err)
-		return 1
+		return failVerifyRecord(stdout, stderr, *jsonOutput, record.RecordID, fmt.Sprintf("record verification failed: %v", err))
+	}
+	if *jsonOutput {
+		if err := writeIndentedJSON(stdout, verifyRecordResultJSON{
+			SchemaVersion: "boundary.verify_record.v1",
+			OK:            true,
+			RecordID:      record.RecordID,
+		}); err != nil {
+			fmt.Fprintf(stderr, "verify-record: %v\n", err)
+			return 1
+		}
+		return 0
 	}
 	fmt.Fprintln(stdout, "record verification: ok")
 	fmt.Fprintf(stdout, "record_id: %s\n", record.RecordID)
 	return 0
 }
 
+// failVerifyRecord renders a verify-record failure as either the versioned JSON
+// object (ok=false with the message in error) or the legacy stderr line, then
+// returns exit code 1 so the JSON and text paths share one failure shape.
+func failVerifyRecord(stdout, stderr io.Writer, jsonOutput bool, recordID, message string) int {
+	if jsonOutput {
+		if err := writeIndentedJSON(stdout, verifyRecordResultJSON{
+			SchemaVersion: "boundary.verify_record.v1",
+			OK:            false,
+			Error:         message,
+			RecordID:      recordID,
+		}); err != nil {
+			fmt.Fprintf(stderr, "verify-record: %v\n", err)
+		}
+		return 1
+	}
+	fmt.Fprintln(stderr, message)
+	return 1
+}
+
 func runAudit(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
-	fs := newFlagSet("boundary audit", stderr)
+	fs := newHelpFlagSet("boundary audit", stderr, commandHelp{
+		Purpose: "Pretty-print structured decision records from a log file or stdin.",
+		Usage:   "boundary audit [--file LOG] [--filter-agent ID] [--filter-tool NAME] [--filter-action ACTION]",
+		Common: []string{
+			"boundary audit --file .boundary/decisions.jsonl",
+			"cat decisions.jsonl | boundary audit --filter-action deny",
+			"boundary audit --file decisions.jsonl --filter-tool query",
+		},
+		Notes: []string{
+			"Audit reads a multi-record decision-record log (one JSON record per line); lines that do not parse are skipped.",
+			"Audit displays recorded verdicts; it does not re-verify record hashes (use verify-record) or prove the action was executed or prevented.",
+		},
+	})
 	filePath := fs.String("file", "", "decision record log file; stdin is used when empty")
 	filterAgent := fs.String("filter-agent", "", "only show records for this agent_id")
 	filterTool := fs.String("filter-tool", "", "only show records for this tool_name")
@@ -590,8 +742,22 @@ func runAudit(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 
 func runTrust(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" {
-		fmt.Fprintln(stdout, "Usage: boundary trust show [--redis-url URL] [--ipc-prefix PREFIX] <agent-id>")
-		fmt.Fprintln(stdout, "       boundary trust reset <agent-id>")
+		fmt.Fprint(stdout, `Inspect or reset the trust state Boundary consults during stage-1 evaluation.
+
+Usage:
+  boundary trust show [--redis-url URL] [--ipc-prefix PREFIX] <agent-id>
+  boundary trust reset <agent-id>
+
+Common usage:
+  boundary trust show demo-agent
+  boundary trust show --redis-url redis://localhost:6379 demo-agent
+  boundary trust reset demo-agent
+
+Notes:
+  - With --redis-url, show reads kernel trust state over Redis IPC; otherwise an in-process standalone backend is used.
+  - reset operates on the in-process standalone backend only.
+  - An absent trust record is not an error; unknown agents report known: false.
+`)
 		return 0
 	}
 	switch args[0] {
@@ -611,7 +777,7 @@ func runTrust(args []string, stdout, stderr io.Writer) int {
 		printTrustSnapshot(stdout, snapshot)
 		return 0
 	default:
-		fmt.Fprintf(stderr, "unknown trust command %q\n", args[0])
+		fmt.Fprintf(stderr, "unknown trust command %q (valid: show, reset)\n", args[0])
 		return 1
 	}
 }
