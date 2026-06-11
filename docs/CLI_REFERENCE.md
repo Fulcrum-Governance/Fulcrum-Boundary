@@ -19,7 +19,7 @@ Every command below carries one of these maturity labels. They match
 
 ## Command Map
 
-All 28 top-level commands. Sub-commands and compound entries (`demo <name>`,
+All 29 top-level commands. Sub-commands and compound entries (`demo <name>`,
 `policy generate`, `mcp proxy`) are noted in the Purpose column. Status follows
 [README Current Release Truth](../README.md#current-release-truth) and
 [docs/ADAPTER_READINESS_MATRIX.md](./ADAPTER_READINESS_MATRIX.md).
@@ -54,6 +54,7 @@ All 28 top-level commands. Sub-commands and compound entries (`demo <name>`,
 | `evidence` | Bundle and verify local Boundary evidence artifacts (`evidence bundle`, `evidence verify`). | Local-only | This file §1, [docs/EVIDENCE_BUNDLE.md](./EVIDENCE_BUNDLE.md) |
 | `audit` | Pretty-print structured decision records from a log file or stdin. | Local-only | This file §14 |
 | `trust` | Inspect or reset trust state for an agent (`trust show`, `trust reset`). | Local-only | This file §15 |
+| `completion` | Print a static shell completion script (`completion bash`, `completion zsh`, `completion fish`). | Local-only | This file §16 |
 
 ## 1. First-Run Commands
 
@@ -491,6 +492,7 @@ Flags (transcribed from `boundary serve --help`):
 | `--trust-mode` | `disabled` | Trust mode: `disabled`, `standalone`, or `kernel`. |
 | `--trust-redis-url` | `redis://localhost:6379` | Redis URL for kernel trust mode. |
 | `--require-agent-id` | `false` | Deny protected adapter requests without agent identity. |
+| `--receipt-seed` | _(unset)_ | Path to a 64-hex Ed25519 seed; when set, signs every emitted decision record (off by default). A missing/short/non-hex seed fails closed: error to stderr, exit 1, before the listener opens. See [docs/SIGNING.md](./SIGNING.md). |
 
 `boundary serve` governs only requests that arrive through the served route.
 Direct access to the upstream MCP server is a deployment bypass unless network
@@ -562,3 +564,20 @@ trust record; it accepts `--redis-url` to target a kernel-mode Redis backend and
 state for the agent and operates on the in-process standalone backend only — it
 accepts no backend flags. These commands are diagnostic utilities; they do not
 alter governance policy or affect running pipeline evaluations directly.
+
+## 16. Completion Command
+
+```bash
+boundary completion bash   # print a static bash completion script
+boundary completion zsh
+boundary completion fish
+```
+
+`boundary completion <shell>` (Local-only) prints a static completion script
+for `bash`, `zsh`, or `fish` covering the top-level commands and the compound
+subcommands (`policy generate`, `mcp proxy`, `demo <name>`, `evidence
+bundle|verify`, `trust show|reset`, and the Command/Edit Boundary
+subcommands). The scripts are generated from the binary's own command table
+and are static: re-run the command after upgrading Boundary (or rely on your
+package manager's completion install) to pick up new commands. An unknown
+shell name exits 1 and enumerates the valid options.

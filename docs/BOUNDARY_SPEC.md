@@ -193,7 +193,7 @@ different entrypoints. (R1)
 
 | # | Surface | One-line developer value | Status | Evidence pointer |
 |---|---------|---------------------------|--------|------------------|
-| **A** | **CLI — `boundary`** (~28 commands) | "See what your AI tools can do, then block the dangerous action before it runs — from one local binary, no account." | **delivered** (CLI mechanics; per-command status in §2.2) | `internal/boundarycli/cli.go`; `cmd/boundary/main.go` |
+| **A** | **CLI — `boundary`** (~29 commands) | "See what your AI tools can do, then block the dangerous action before it runs — from one local binary, no account." | **delivered** (CLI mechanics; per-command status in §2.2) | `internal/boundarycli/cli.go`; `cmd/boundary/main.go` |
 | **B** | **Go SDK** — `governance` + `policyeval` | "Embed the same fail-closed decision pipeline in three lines, with a portable, zero-infra policy evaluator (no DB/Redis/NATS)." | **delivered** (production-grade core) | `governance/pipeline.go`; `policyeval/`; `examples/*/main.go`; BND-CLAIM-002/008 (`delivered`) |
 | **C** | **HTTP MCP gateway** — `boundary serve` / `adapters/mcp.Gateway` | "Drop a governed JSON-RPC proxy in front of an MCP server: every tool call is decided before forwarding, `tools/list` is filtered, fails closed." | **production** (the one production adapter) | `adapters/mcp/gateway.go`; `adapters/mcp/readiness.yaml` (`status: production`); BND-CLAIM-006 |
 | **D** | **GitHub Action** — `actions/mcp-audit` | "Run the MCP inventory + risk graph in CI and get a GitHub-rendered SARIF report on every PR." | **delivered (CI-local)** | `actions/mcp-audit/action.yml`; `scripts/actions/mcp-audit.sh`; BND-CLAIM-017 (`delivered`) |
@@ -205,10 +205,10 @@ different entrypoints. (R1)
 
 ## 2.2 Surface A — the `boundary` CLI (command map)
 
-Entry `cmd/boundary/main.go` → dispatcher `internal/boundarycli/cli.go`. **28 top-level commands**
-dispatch (verified: `case` arms at `cli.go:37–92`); several carry subcommands (`policy generate`,
+Entry `cmd/boundary/main.go` → dispatcher `internal/boundarycli/cli.go`. **29 top-level commands**
+dispatch (verified: the dispatch switch in `internal/boundarycli/cli.go`, `Run`); several carry subcommands (`policy generate`,
 `mcp proxy`, `secure github setup|serve`, `demo <6>`, `evidence bundle|verify`, `trust show|reset`),
-giving the **~30 user-facing commands** cited in the research. Per-command status uses the §0 legend
+giving the **~31 user-facing commands** cited in the research. Per-command status uses the §0 legend
 — `delivered` for the local no-mutation tooling, `delivered-preview` for routed-only lanes,
 `starter` for policy generation, `local-only` for the dashboard. The first-value "aha" is
 `inventory` / `graph` against the developer's *own* machine.
@@ -343,7 +343,7 @@ The release is **two demoed lanes**, each fixture-only — not breadth-as-featur
 ```mermaid
 flowchart TB
     subgraph Entrypoints["Four surfaces — one decision core"]
-        CLI["A. boundary CLI<br/>(~28 commands · delivered)"]
+        CLI["A. boundary CLI<br/>(~29 commands · delivered)"]
         SDK["B. Go SDK<br/>(governance + policyeval · delivered)"]
         GW["C. HTTP MCP Gateway<br/>(boundary serve · production)"]
         GHA["D. GitHub Action<br/>(mcp-audit → SARIF · delivered CI-local)"]

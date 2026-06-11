@@ -978,10 +978,12 @@ claims:
         - path: governance/receipt_signer_test.go
           assertion: "sign/verify round-trips; a tampered covered field and a wrong key both fail closed; a record signed by a configured signer hashes to the identical decision_hash as its unsigned twin; seed-file loading rejects missing, short, and non-hex seeds; VerifyReceiptSignature fails closed on missing signature, wrong-length key, missing ed25519 prefix, malformed base64, and wrong-length signature"
         - path: internal/boundarycli/cli_test.go
-          assertion: "boundary verify-record --verify-signature verifies a signed record against a 64-hex public key and a key file, fails closed when --public-key is omitted, on a wrong key, and on a tampered field, and still verifies an unsigned record by default without --verify-signature"
+          assertion: "boundary verify-record --verify-signature verifies a signed record against a 64-hex public key and a key file, fails closed when --public-key is omitted, on a wrong key, and on a tampered field, and still verifies an unsigned record by default without --verify-signature; boundary serve --receipt-seed fails closed before the listener opens on a missing, short, or non-hex seed, and a flag-built signer signs with the ed25519: prefix"
       docs:
         - path: docs/SIGNING.md
           section: "Verifying a signature"
+        - path: docs/SIGNING.md
+          section: "Enable at serve"
     public_language:
       allowed:
         - "Boundary can optionally sign decision records; signing is off by default and unsigned records remain the default."
