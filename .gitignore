@@ -23,6 +23,8 @@ coverage.html
 /.release-extras/
 /site/
 .boundary/
+verifiers/typescript/node_modules/
+verifiers/rust/target/
 
 # Local agent/session planning artifacts
 *_SESSION_LOG.md
