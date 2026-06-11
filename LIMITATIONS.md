@@ -29,7 +29,11 @@ Decision records are receipt-grade when they carry the request, policy-bundle,
 and decision hashes: tampering after emission is detectable by recomputation
 with `boundary verify-record`. These hashes are unkeyed SHA-256 over canonical
 bytes — integrity, not authenticity. They are not cryptographic proof that a
-verdict was correct or that it was enforced; signatures are off by default; and
+verdict was correct or that it was enforced. Optional Ed25519 signing (off by
+default) adds authorship for holders who manage keys —
+`boundary verify-record --verify-signature` checks it and fails closed — but a
+signature proves only who signed the record, not the verdict, execution, or
+key custody (see [`docs/SIGNING.md`](docs/SIGNING.md)).
 `upstream_called=false` / `executed=false` are adapter self-reports, not fields
 of the hashed record. See [`docs/RECEIPTS.md`](docs/RECEIPTS.md) and
 [`docs/DECISION_RECORDS.md`](docs/DECISION_RECORDS.md).

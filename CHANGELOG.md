@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Standalone TypeScript (`verifiers/typescript/`) and Rust (`verifiers/rust/`)
+  decision-record verifiers, each recomputing `decision_hash` via a stock
+  RFC 8785 / JCS implementation (`canonicalize` npm package; `serde_jcs`
+  crate) and pinned to the Go implementation by the shared conformance-vector
+  corpus, enforced in CI. Records now verify in Go, Python, TypeScript, or
+  Rust; the verifiers check integrity only, not authenticity.
+- Optional Ed25519 signing of decision records (off by default) via
+  `PipelineConfig.ReceiptSigner`, with `boundary verify-record
+  --verify-signature --public-key <hex|file>` to check the signature over the
+  recomputed `decision_hash`, failing closed on mismatch or missing
+  signature. Signing never changes `decision_hash`; the Python/TypeScript/Rust
+  verifiers remain integrity-only and do not check signatures. See
+  `docs/SIGNING.md` for setup and the key-custody caveat.
+
 ## [0.10.1] - 2026-06-11
 
 ### Fixed

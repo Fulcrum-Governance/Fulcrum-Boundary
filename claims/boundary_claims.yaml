@@ -927,3 +927,71 @@ claims:
     gaps: []
     depends_on:
       - BND-CLAIM-REC-002
+
+  - id: BND-CLAIM-VERIFY-003
+    claim: "A standalone TypeScript verifier recomputes a decision record's hash via a stock RFC 8785 / JCS implementation and detects a one-field forgery, pinned to the Go implementation by the shared conformance-vector corpus"
+    status: delivered
+    evidence:
+      tests:
+        - path: verifiers/typescript/boundary_verify.test.ts
+          assertion: "all 9 conformance corpus vectors recompute to their committed decision_hash; a tampered action and a tampered reason fail with exit 1; signature fields are excluded from the hash"
+      docs:
+        - path: verifiers/typescript/README.md
+          section: "What it verifies"
+    public_language:
+      allowed:
+        - "A standalone TypeScript verifier recomputes a decision record's hash offline, pinned to the Go implementation by shared conformance vectors."
+        - "Verify a record in Go, Python, TypeScript, or Rust."
+      forbidden:
+        - "Verify a Boundary record in any language"
+        - "The standalone verifier proves authenticity"
+    gaps: []
+    depends_on:
+      - BND-CLAIM-VERIFY-002
+
+  - id: BND-CLAIM-VERIFY-004
+    claim: "A standalone Rust verifier (boundary-verify) recomputes a decision record's hash via the stock serde_jcs RFC 8785 crate and detects a one-field forgery, pinned to the Go implementation by the shared conformance-vector corpus including the ECMAScript float round-trip vector"
+    status: delivered
+    evidence:
+      tests:
+        - path: verifiers/rust/src/main.rs
+          assertion: "the crate's test module recomputes all 9 conformance corpus vectors to their committed decision_hash including v1_float_trust_score.json; tampered records fail; signature fields are excluded from the hash"
+      docs:
+        - path: verifiers/rust/README.md
+          section: "What it verifies"
+    public_language:
+      allowed:
+        - "A standalone Rust verifier recomputes a decision record's hash offline, pinned to the Go implementation by shared conformance vectors."
+        - "Verify a record in Go, Python, TypeScript, or Rust."
+      forbidden:
+        - "Verify a Boundary record in any language"
+        - "The standalone verifier proves authenticity"
+    gaps: []
+    depends_on:
+      - BND-CLAIM-VERIFY-002
+
+  - id: BND-CLAIM-SIGN-001
+    claim: "Boundary optionally signs decision records with Ed25519 (off by default); boundary verify-record --verify-signature checks the signature over the recomputed decision_hash and fails closed, while unsigned records remain the default and signing never changes decision_hash"
+    status: delivered
+    evidence:
+      tests:
+        - path: governance/receipt_signer_test.go
+          assertion: "sign/verify round-trips; a tampered covered field and a wrong key both fail closed; a record signed by a configured signer hashes to the identical decision_hash as its unsigned twin; seed-file loading rejects missing, short, and non-hex seeds; VerifyReceiptSignature fails closed on missing signature, wrong-length key, missing ed25519 prefix, malformed base64, and wrong-length signature"
+        - path: internal/boundarycli/cli_test.go
+          assertion: "boundary verify-record --verify-signature verifies a signed record against a 64-hex public key and a key file, fails closed when --public-key is omitted, on a wrong key, and on a tampered field, and still verifies an unsigned record by default without --verify-signature"
+      docs:
+        - path: docs/SIGNING.md
+          section: "Verifying a signature"
+    public_language:
+      allowed:
+        - "Boundary can optionally sign decision records; signing is off by default and unsigned records remain the default."
+        - "A valid signature proves the record was signed by the holder of that key; it does not prove the verdict was correct, that the action executed or was prevented, or solve key custody."
+        - "boundary verify-record --verify-signature checks a record's signature over its recomputed decision_hash and fails closed on a mismatch or missing signature."
+      forbidden:
+        - "signed receipt by default"
+        - "signatures prove the verdict"
+        - "signing makes records tamper-proof"
+        - "the signature proves the action was prevented"
+    gaps: []
+    depends_on:
+      - BND-CLAIM-005

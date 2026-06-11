@@ -104,10 +104,19 @@ A standing challenge. The Lane 1 demo above landed its verdict in a
 hash-verifiable decision record; `boundary verify-record` recomputes the
 decision hash from the record's own fields and compares it to the stored one.
 The record's canonical bytes follow RFC 8785 (JCS), so an independent, stock
-RFC 8785 implementation recomputes the same `decision_hash` — a standalone
-Python verifier ships under [`verifiers/python/`](./verifiers/python/). That
+RFC 8785 implementation recomputes the same `decision_hash` — standalone
+verifiers ship in [Python](./verifiers/python/),
+[TypeScript](./verifiers/typescript/), and [Rust](./verifiers/rust/), each
+pinned to the Go implementation by the same committed conformance vectors, so
+you can verify a record in Go, Python, TypeScript, or Rust. That
 conformance statement is scoped to the decision record;
 it is not a claim that Boundary as a whole is standards-conformant.
+Records can also be signed with Ed25519 — off by default;
+`boundary verify-record --verify-signature --public-key <key>` checks the
+signature over the recomputed `decision_hash` and fails closed. A valid
+signature proves only that the holder of that key signed the record, not that
+the verdict was correct or the action prevented, and it does not solve key
+custody ([`docs/SIGNING.md`](./docs/SIGNING.md)).
 A plain audit log can be quietly edited. Try that here — fixture-only, like the
 demos: no credentials, no live calls, no real mutations:
 
