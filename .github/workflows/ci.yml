@@ -117,3 +117,25 @@ jobs:
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./...
+
+  ci-ok:
+    name: ci-ok
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - public-surface
+      - test
+      - grpc-adapter
+      - examples
+      - cross-verifier
+      - lint
+      - security
+    steps:
+      - name: check all jobs passed
+        run: |
+          results='${{ toJSON(needs.*.result) }}'
+          if echo "$results" | grep -qE '"(failure|cancelled)"'; then
+            echo "One or more required jobs failed or were cancelled."
+            exit 1
+          fi
+          echo "All required jobs passed."
