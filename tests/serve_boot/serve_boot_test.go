@@ -17,6 +17,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -102,9 +104,9 @@ func TestServeBoot_DenyBeforeUpstream(t *testing.T) {
 	addr := freePort(t)
 
 	// --- upstream stub -------------------------------------------------
-	var upstreamCalls int
+	var upstreamCalls atomic.Int64
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		upstreamCalls++
+		upstreamCalls.Add(1)
 		var req map[string]any
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, "bad json", http.StatusBadRequest)
@@ -131,7 +133,7 @@ func TestServeBoot_DenyBeforeUpstream(t *testing.T) {
 		"--policies", policyDir,
 		"--upstream", upstream.URL,
 	)
-	var stderrBuf bytes.Buffer
+	var stderrBuf syncBuffer
 	cmd.Stderr = &stderrBuf
 
 	if err := cmd.Start(); err != nil {
@@ -176,10 +178,10 @@ func TestServeBoot_DenyBeforeUpstream(t *testing.T) {
 	if msg != "governance denied" {
 		t.Fatalf("expected message %q, got %q; body=%s", "governance denied", msg, deniedResp)
 	}
-	if upstreamCalls != 0 {
-		t.Fatalf("denied request reached upstream %d time(s)", upstreamCalls)
+	if n := upstreamCalls.Load(); n != 0 {
+		t.Fatalf("denied request reached upstream %d time(s)", n)
 	}
-	t.Logf("PASS: deny asserted — code=%.0f message=%q upstream_calls=%d", code, msg, upstreamCalls)
+	t.Logf("PASS: deny asserted — code=%.0f message=%q upstream_calls=%d", code, msg, upstreamCalls.Load())
 
 	// --- allowed call --------------------------------------------------
 	allowedBody := `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"allowed_tool","arguments":{}}}`
@@ -194,10 +196,10 @@ func TestServeBoot_DenyBeforeUpstream(t *testing.T) {
 	if _, hasError := allowedObj["error"]; hasError {
 		t.Fatalf("allowed tool call returned an error: %s", allowedResp)
 	}
-	if upstreamCalls != 1 {
-		t.Fatalf("allowed request: upstream call count = %d, want 1", upstreamCalls)
+	if n := upstreamCalls.Load(); n != 1 {
+		t.Fatalf("allowed request: upstream call count = %d, want 1", n)
 	}
-	t.Logf("PASS: allow forwarded — upstream_calls=%d", upstreamCalls)
+	t.Logf("PASS: allow forwarded — upstream_calls=%d", upstreamCalls.Load())
 
 	// Verify the listening banner reached stderr (shows the server booted)
 	if !strings.Contains(stderrBuf.String(), "listening on") {
@@ -226,4 +228,24 @@ func postMCP(t *testing.T, base, body string) []byte {
 		t.Fatalf("read response: %v", err)
 	}
 	return buf.Bytes()
+}
+
+// syncBuffer is a goroutine-safe buffer: exec's copier goroutine writes the
+// subprocess's stderr while the test reads it for the listen banner and error
+// reporting, which the race detector correctly flags on a plain bytes.Buffer.
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *syncBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
 }
