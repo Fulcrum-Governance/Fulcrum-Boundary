@@ -1,0 +1,15 @@
+[package]
+name = "boundary-verify"
+version = "0.1.0"
+edition = "2021"
+description = "Standalone verifier for Fulcrum Boundary decision records"
+
+[[bin]]
+name = "boundary-verify"
+path = "src/main.rs"
+
+[dependencies]
+serde_json = "1.0"
+serde_jcs = "0.2"
+sha2 = "0.10"
+hex = "0.4"

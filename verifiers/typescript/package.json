@@ -1,0 +1,12 @@
+{
+  "name": "boundary-verify-ts",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Standalone TypeScript decision-record verifier for Fulcrum Boundary",
+  "scripts": {
+    "test": "node --experimental-strip-types --test boundary_verify.test.ts"
+  },
+  "dependencies": {
+    "canonicalize": "^3.0.0"
+  }
+}
