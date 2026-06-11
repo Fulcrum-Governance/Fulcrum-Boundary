@@ -557,8 +557,8 @@ boundary trust reset <agent-id>
 
 `boundary trust` (Local-only) inspects or resets trust state for a named agent.
 `trust show` queries the configured trust backend and prints the agent's current
-trust record. `trust reset` clears accumulated trust state for the agent. Both
-sub-commands accept `--redis-url` to target a kernel-mode Redis backend and
-`--ipc-prefix` for IPC prefix override. These commands are diagnostic utilities;
-they do not alter governance policy or affect running pipeline evaluations
-directly.
+trust record; it accepts `--redis-url` to target a kernel-mode Redis backend and
+`--ipc-prefix` for IPC prefix override. `trust reset` clears accumulated trust
+state for the agent and operates on the in-process standalone backend only — it
+accepts no backend flags. These commands are diagnostic utilities; they do not
+alter governance policy or affect running pipeline evaluations directly.
