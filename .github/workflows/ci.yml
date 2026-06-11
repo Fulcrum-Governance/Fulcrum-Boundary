@@ -134,6 +134,25 @@ jobs:
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./...
 
+  fuzz:
+    name: fuzz (smoke)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.4'
+          cache: true
+      # Native Go fuzz targets, sequential, 60s each. Seeds also run on every
+      # `go test ./...`; this job exercises the mutation engine. The SQL
+      # classifier target needs cgo (gcc is present on ubuntu-latest).
+      - name: Fuzz decision-record canonicalization stability
+        run: go test ./governance/ -run '^$' -fuzz '^FuzzDecisionRecordRoundTrip$' -fuzztime=60s
+      - name: Fuzz static-policy parse
+        run: go test ./governance/ -run '^$' -fuzz '^FuzzPolicyParse$' -fuzztime=60s
+      - name: Fuzz Postgres SQL classifier
+        run: go test ./interceptors/sql/ -run '^$' -fuzz '^FuzzSQLClassifier$' -fuzztime=60s
+
   ci-ok:
     name: ci-ok
     runs-on: ubuntu-latest
@@ -146,6 +165,7 @@ jobs:
       - cross-verifier
       - lint
       - security
+      - fuzz
     steps:
       - name: check all jobs passed
         run: |

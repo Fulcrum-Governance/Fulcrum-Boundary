@@ -8,6 +8,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- `boundary serve --receipt-seed FILE`: opt-in Ed25519 signing of every
+  emitted decision record using the 64-hex seed in FILE. Off by default;
+  startup fails closed (exit 1, error on stderr, before the listener opens) on
+  a missing, short, or non-hex seed, so Boundary never serves unsigned when
+  signing was requested. A signature attests who signed the record, not the
+  verdict or execution; key custody is the operator's. `mcp proxy` /
+  install-time enablement is not yet wired (#143 scope note in
+  `docs/SIGNING.md`).
+- `boundary completion bash|zsh|fish`: static shell completion scripts for the
+  top-level and compound commands, generated from the binary's own command
+  table. Static by design — regenerate after upgrades.
+- Native Go fuzz targets for the three byte-level parse/hash surfaces:
+  `FuzzDecisionRecordRoundTrip` (decision-hash canonicalization stability,
+  seeded with the conformance vectors), `FuzzPolicyParse` (static-policy YAML
+  load), and `FuzzSQLClassifier` (Postgres AST classifier fail-safe). Seeds
+  run on every `go test ./...`; a separate CI `fuzz` job runs the mutation
+  engine for 60s per target.
+- Hermetic serve-boot integration test (`tests/serve_boot/`) asserting the
+  governed deny (JSON-RPC `-32001`) before upstream on a real binary boot,
+  and RESP codec unit tests for the kernel trust path's hand-rolled Redis
+  protocol (`governance/trust_redis_codec_test.go`), covering encode/decode
+  edges, partial-read boundaries, and malformed-input error paths.
+- `docs/ADAPTER_PRODUCTION_BAR.md`: contributor-facing guide explaining the
+  mechanical bar (lifecycle steps, bypass-proof delegation, fail-closed
+  transports, on-disk test evidence) and the process for advancing an adapter
+  from `preview` to `production`, with a worked `mcp`-vs-`webhook` example.
 - Standalone TypeScript (`verifiers/typescript/`) and Rust (`verifiers/rust/`)
   decision-record verifiers, each recomputing `decision_hash` via a stock
   RFC 8785 / JCS implementation (`canonicalize` npm package; `serde_jcs`

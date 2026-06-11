@@ -8,7 +8,10 @@ The machine-readable declarations live next to each adapter as
 `adapters/<adapter>/readiness.yaml`. The reusable gate in
 [`tests/adapter_conformance`](../tests/adapter_conformance) fails when an
 adapter is missing a declaration, omits one of the ten lifecycle steps, or is
-listed as production without conformance evidence.
+listed as production without conformance evidence. The contributor-facing
+guide that explains the production bar field by field and the process for
+advancing an adapter is
+[`docs/ADAPTER_PRODUCTION_BAR.md`](./ADAPTER_PRODUCTION_BAR.md).
 
 ## Lifecycle Steps
 

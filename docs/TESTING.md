@@ -66,6 +66,17 @@ main module, plus the `adapters/grpc` nested module.
 - **The claims spine** — `claims/claims_test.go` enforces the ledger per status
   and `claims/language_lint_test.go` lints public language.
 
+Three native Go fuzz targets guard the byte-level parse/hash surfaces:
+`governance/fuzz_record_test.go` (`FuzzDecisionRecordRoundTrip`) pins that
+`ComputeDecisionHash` is panic-free and stable across a marshal/unmarshal
+cycle, `governance/fuzz_policy_test.go` (`FuzzPolicyParse`) pins that
+`ParseStaticPolicyDocument` rejects malformed YAML with an error rather than a
+crash, and `interceptors/sql/fuzz_classifier_test.go` (`FuzzSQLClassifier`)
+pins that the classifier never panics and that empty or invalid input
+classifies `UNKNOWN` (the fail-safe floor — never a more permissive class).
+Their seed corpora run as ordinary unit tests under `go test ./...`; the CI
+`fuzz` job runs each target under the mutation engine for 60 seconds.
+
 ### Determinism / flake posture
 
 `-count=1` (no retries), no `t.Parallel()`, and no `//go:build` tags on test
@@ -102,6 +113,8 @@ Mapping of the 0.0% source packages to the black-box suite that covers them:
 | `internal/doctor` | `tests/doctor/` |
 | `internal/evidence` | `tests/evidence/` |
 | `governance/standalone` | `tests/integration/` standalone bundle tests |
+| `cmd/boundary` (serve path) | `tests/serve_boot/` (black-box binary boot + deny assertion) |
+| `governance` RESP codec (`trust_redis.go` unexported) | `governance/trust_redis_codec_test.go` (white-box same-package suite) |
 
 Guidance:
 
