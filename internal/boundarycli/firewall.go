@@ -31,7 +31,20 @@ func (f *pathListFlag) Set(value string) error {
 }
 
 func runFirewallInit(args []string, stdout, stderr io.Writer) int {
-	fs := newFlagSet("boundary init", stderr)
+	fs := newHelpFlagSet("boundary init", stderr, commandHelp{
+		Purpose: "Inventory the MCP configs reachable from this machine and create the Boundary-owned firewall workspace.",
+		Usage:   "boundary init [--root DIR] [--home DIR] [--out DIR] [--config PATH] [--include-defaults] [--dry-run]",
+		Common: []string{
+			"boundary init --dry-run",
+			"boundary init --root . --out .boundary/firewall",
+			"boundary init --config ./mcp.json --include-defaults=false",
+		},
+		Notes: []string{
+			"Read-only against MCP configs: writes only the Boundary-owned workspace under --out and never edits client configs.",
+			"--dry-run prints the discovery summary without writing any files.",
+			"Inventory covers the configs it can discover from --root, --home, and --config; configs outside those paths are not seen.",
+		},
+	})
 	root := fs.String("root", ".", "project root to inspect for repo-local MCP configs")
 	home := fs.String("home", "", "home directory to inspect for user MCP configs")
 	outDir := fs.String("out", ".boundary/firewall", "Boundary-owned firewall workspace directory")

@@ -26,6 +26,184 @@ func TestRun_HelpListsCommands(t *testing.T) {
 	}
 }
 
+func TestRun_VersionFlagAliases(t *testing.T) {
+	for _, alias := range []string{"--version", "-v"} {
+		var stdout bytes.Buffer
+		code := Run([]string{alias}, &stdout, &bytes.Buffer{})
+		if code != 0 {
+			t.Fatalf("%s: expected exit 0, got %d", alias, code)
+		}
+		if !strings.Contains(stdout.String(), "Fulcrum Boundary ") {
+			t.Fatalf("%s: missing version output: %s", alias, stdout.String())
+		}
+	}
+}
+
+func TestRun_HelpTopicRouting(t *testing.T) {
+	var stdout, helpErr bytes.Buffer
+	code := Run([]string{"help", "version"}, &stdout, &helpErr)
+	if code != 0 {
+		t.Fatalf("help version: expected exit 0, got %d", code)
+	}
+	if combined := stdout.String() + helpErr.String(); !strings.Contains(combined, "Print Boundary version and build metadata.") {
+		t.Fatalf("help version: missing rich help purpose: %s", combined)
+	}
+
+	stdout.Reset()
+	code = Run([]string{"help"}, &stdout, &bytes.Buffer{})
+	if code != 0 {
+		t.Fatalf("bare help: expected exit 0, got %d", code)
+	}
+	if !strings.Contains(stdout.String(), `Use "boundary <command> --help"`) {
+		t.Fatalf("bare help: expected root help: %s", stdout.String())
+	}
+
+	var stderr bytes.Buffer
+	code = Run([]string{"help", "no-such-command"}, &bytes.Buffer{}, &stderr)
+	if code == 0 {
+		t.Fatalf("help with unknown topic: expected non-zero exit")
+	}
+}
+
+func TestRun_BareCommandHelpBackfill(t *testing.T) {
+	cases := []struct {
+		args []string
+		want string
+	}{
+		{[]string{"init", "--help"}, "Inventory the MCP configs"},
+		{[]string{"lock", "--help"}, "descriptor lockfile"},
+		{[]string{"verify-lock", "--help"}, "report drift"},
+		{[]string{"redteam", "--help"}, "synthetic red-team fixture packs"},
+		{[]string{"serve", "--help"}, "governs routed tools"},
+		{[]string{"verify", "--help"}, "Validate YAML policy files"},
+		{[]string{"verify-record", "--help"}, "record.json is required"},
+		{[]string{"audit", "--help"}, "Pretty-print structured decision records"},
+		{[]string{"trust", "--help"}, "trust state Boundary consults"},
+	}
+	for _, tc := range cases {
+		var stdout, stderr bytes.Buffer
+		code := Run(tc.args, &stdout, &stderr)
+		if code != 0 {
+			t.Fatalf("%v: expected exit 0, got %d", tc.args, code)
+		}
+		combined := stdout.String() + stderr.String()
+		if !strings.Contains(combined, tc.want) {
+			t.Fatalf("%v: help missing %q:\n%s", tc.args, tc.want, combined)
+		}
+		if !strings.Contains(combined, "Usage:") {
+			t.Fatalf("%v: help missing Usage section:\n%s", tc.args, combined)
+		}
+	}
+}
+
+func TestRun_VerifyJSONOutput(t *testing.T) {
+	dir := t.TempDir()
+	writeTestPolicy(t, dir)
+
+	var stdout bytes.Buffer
+	code := Run([]string{"verify", "--policies", dir, "--json"}, &stdout, &bytes.Buffer{})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d: %s", code, stdout.String())
+	}
+	var payload struct {
+		SchemaVersion string   `json:"schema_version"`
+		OK            bool     `json:"ok"`
+		Error         string   `json:"error"`
+		PolicyFiles   int      `json:"policy_files"`
+		Rules         int      `json:"rules"`
+		Warnings      []string `json:"warnings"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
+		t.Fatalf("verify --json did not parse: %v\n%s", err, stdout.String())
+	}
+	if payload.SchemaVersion != "boundary.verify.v1" {
+		t.Fatalf("schema_version = %q", payload.SchemaVersion)
+	}
+	if !payload.OK || payload.PolicyFiles != 1 || payload.Rules != 1 {
+		t.Fatalf("unexpected payload: %+v", payload)
+	}
+	if payload.Warnings == nil {
+		t.Fatalf("warnings must encode as an array, not null: %s", stdout.String())
+	}
+
+	empty := t.TempDir()
+	if err := os.WriteFile(filepath.Join(empty, "broken.yaml"), []byte(":\tnot yaml"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	stdout.Reset()
+	code = Run([]string{"verify", "--policies", empty, "--json"}, &stdout, &bytes.Buffer{})
+	if code == 0 {
+		t.Fatalf("expected parse failure to exit non-zero")
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
+		t.Fatalf("failure JSON did not parse: %v\n%s", err, stdout.String())
+	}
+	if payload.OK || payload.Error == "" {
+		t.Fatalf("failure payload must set ok=false with error: %+v", payload)
+	}
+}
+
+func TestRun_VerifyRecordJSONOutput(t *testing.T) {
+	dir := t.TempDir()
+	writeTestPolicy(t, dir)
+	requestBody := []byte(`{"agent_id":"agent-1","arguments":{"sql":"SELECT 1"},"tenant_id":"tenant-1","tool_name":"query"}`)
+	requestHash, err := governance.ComputeRawRequestHash(requestBody)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policyHash, err := governance.PolicyBundleHashFromDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record := governance.BuildDecisionRecord(governance.AuditEvent{
+		Transport:           governance.TransportMCP,
+		ToolName:            "query",
+		Action:              "allow",
+		PolicyBundleHash:    policyHash,
+		RequestHash:         requestHash,
+		BoundaryBuildDigest: "sha256:test-build",
+		TrustScore:          1,
+		TrustState:          governance.TrustStateTrusted.String(),
+	})
+	recordPath := filepath.Join(dir, "record.json")
+	writeRecordFile(t, recordPath, record)
+
+	var stdout bytes.Buffer
+	code := Run([]string{"verify-record", "--json", recordPath}, &stdout, &bytes.Buffer{})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d: %s", code, stdout.String())
+	}
+	var payload struct {
+		SchemaVersion string `json:"schema_version"`
+		OK            bool   `json:"ok"`
+		Error         string `json:"error"`
+		RecordID      string `json:"record_id"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
+		t.Fatalf("verify-record --json did not parse: %v\n%s", err, stdout.String())
+	}
+	if payload.SchemaVersion != "boundary.verify_record.v1" {
+		t.Fatalf("schema_version = %q", payload.SchemaVersion)
+	}
+	if !payload.OK || payload.RecordID == "" {
+		t.Fatalf("unexpected payload: %+v", payload)
+	}
+
+	record.Action = "deny"
+	writeRecordFile(t, recordPath, record)
+	stdout.Reset()
+	code = Run([]string{"verify-record", "--json", recordPath}, &stdout, &bytes.Buffer{})
+	if code == 0 {
+		t.Fatalf("expected tampered record to exit non-zero")
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
+		t.Fatalf("failure JSON did not parse: %v\n%s", err, stdout.String())
+	}
+	if payload.OK || !strings.Contains(payload.Error, "decision_hash") {
+		t.Fatalf("failure payload must set ok=false with decision_hash error: %+v", payload)
+	}
+}
+
 func writeTestPolicy(t *testing.T, dir string) {
 	t.Helper()
 	policy := []byte(`name: test-policy
