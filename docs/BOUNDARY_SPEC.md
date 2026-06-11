@@ -193,7 +193,7 @@ different entrypoints. (R1)
 
 | # | Surface | One-line developer value | Status | Evidence pointer |
 |---|---------|---------------------------|--------|------------------|
-| **A** | **CLI — `boundary`** (~26 commands) | "See what your AI tools can do, then block the dangerous action before it runs — from one local binary, no account." | **delivered** (CLI mechanics; per-command status in §2.2) | `internal/boundarycli/cli.go`; `cmd/boundary/main.go` |
+| **A** | **CLI — `boundary`** (~28 commands) | "See what your AI tools can do, then block the dangerous action before it runs — from one local binary, no account." | **delivered** (CLI mechanics; per-command status in §2.2) | `internal/boundarycli/cli.go`; `cmd/boundary/main.go` |
 | **B** | **Go SDK** — `governance` + `policyeval` | "Embed the same fail-closed decision pipeline in three lines, with a portable, zero-infra policy evaluator (no DB/Redis/NATS)." | **delivered** (production-grade core) | `governance/pipeline.go`; `policyeval/`; `examples/*/main.go`; BND-CLAIM-002/008 (`delivered`) |
 | **C** | **HTTP MCP gateway** — `boundary serve` / `adapters/mcp.Gateway` | "Drop a governed JSON-RPC proxy in front of an MCP server: every tool call is decided before forwarding, `tools/list` is filtered, fails closed." | **production** (the one production adapter) | `adapters/mcp/gateway.go`; `adapters/mcp/readiness.yaml` (`status: production`); BND-CLAIM-006 |
 | **D** | **GitHub Action** — `actions/mcp-audit` | "Run the MCP inventory + risk graph in CI and get a GitHub-rendered SARIF report on every PR." | **delivered (CI-local)** | `actions/mcp-audit/action.yml`; `scripts/actions/mcp-audit.sh`; BND-CLAIM-017 (`delivered`) |
@@ -206,8 +206,8 @@ different entrypoints. (R1)
 ## 2.2 Surface A — the `boundary` CLI (command map)
 
 Entry `cmd/boundary/main.go` → dispatcher `internal/boundarycli/cli.go`. **28 top-level commands**
-dispatch (verified: `case` arms at `cli.go:37–91`); several carry subcommands (`policy generate`,
-`mcp proxy`, `secure github setup|serve`, `demo <4>`, `evidence bundle|verify`, `trust show|reset`),
+dispatch (verified: `case` arms at `cli.go:37–92`); several carry subcommands (`policy generate`,
+`mcp proxy`, `secure github setup|serve`, `demo <5>`, `evidence bundle|verify`, `trust show|reset`),
 giving the **~30 user-facing commands** cited in the research. Per-command status uses the §0 legend
 — `delivered` for the local no-mutation tooling, `delivered-preview` for routed-only lanes,
 `starter` for policy generation, `local-only` for the dashboard. The first-value "aha" is
@@ -232,7 +232,7 @@ giving the **~30 user-facing commands** cited in the research. Per-command statu
 | `verify` | Validate YAML policy files (parse + warnings). | delivered | `cli.go:75` |
 | `mcp proxy` | Fail-closed generic MCP proxy entrypoint for installed routes. | production (MCP) | `cli.go:69`; `adapters/mcp/` |
 | `serve` | Start the Boundary **HTTP gateway** (MCP proxy or Postgres demo). | production (MCP) | `cli.go:71`; `adapters/mcp/gateway.go` |
-| `demo` | `action-boundary`, `postgres`, `github-lethal-trifecta`, `trust-degradation` — fixture-only. | delivered | `cli.go:73`; `internal/demo/` |
+| `demo` | `action-boundary`, `postgres`, `github-lethal-trifecta`, `command-secret-exfil`, `trust-degradation` — fixture-only (5 demos). | delivered | `cli.go:73`; `internal/demo/` |
 | `verify-record` | Verify a **decision record** (`request_hash`, `policy_bundle_hash`, binary digest). | delivered | `cli.go:77` |
 | `explain` | Render a decision record read-only: verdict, reason, route context, and hash coverage. | local-only | `cli.go:79`; `internal/explain/` |
 | `replay` | Re-evaluate a recorded request against a supplied policy bundle and reproduce the decision fields. | local-only | `cli.go:81`; `internal/replay/` |
@@ -252,7 +252,7 @@ decision, _ := pipeline.Evaluate(ctx, &governance.GovernanceRequest{ /* … */ }
 if !decision.Allowed() { /* block before the tool runs */ }
 ```
 
-- **`governance`** — the four-stage pipeline (§3). All `NewPipeline` args are optional; pass `nil` for components you do not have (`governance/pipeline.go:106–139`).
+- **`governance`** — the four-stage pipeline (§3). All `NewPipeline` args are optional; pass `nil` for components you do not have (`governance/pipeline.go`, `NewPipeline`).
 - **`policyeval`** — a **portable, in-memory, zero-infra** evaluator (README: **no DB / Redis / NATS**). 11 condition types (FIELD_MATCH, REGEX, RANGE, IN_LIST, CONTAINS, STARTS_WITH, ENDS_WITH, STATISTICAL_SPIKE, EXTERNAL_CALL [disabled by default, SSRF-guarded], SEMANTIC [escalates — fail-closed for LLM], LOGICAL).
 - **6 compilable examples:** `simple`, `mcp-proxy`, `custom-interceptor`, `rate-limit`, `redis-trust`, `http-middleware`.
 
@@ -293,16 +293,16 @@ The three-beat story Boundary already ships and the launch leads with.
 
 | Stage | Name | What it does | Terminal behavior | Evidence (`pipeline.go`) |
 |-------|------|--------------|-------------------|--------------------------|
-| **1** | **Trust check** (`TrustChecker`) | Skipped when checker `nil` or `AgentID==""`. Isolated/Terminated → `deny`; Evaluating → score 0.5; enforces `RequireAgentID` for protected transports. | checker **error → fail-closed `deny`** | `:232–260` |
-| **2** | **Static policies** | Linear scan of `StaticPolicyRule`s. Tool matches by exact name, `*`/`""`, or `path.Match` glob (malformed → silent non-match). Supports field matches (e.g. `arguments.sql contains "DROP TABLE"`). | first matching `deny`/`warn`/`escalate`/`require_approval` is terminal | `:262–297`, `toolMatches :150–159` |
-| **3** | **Domain interceptors** (`Interceptor` registry, one fn/tool) | Where SQL parsing, path allow-lists, rate limits live. `nil,nil` declines; `Allowed=false` blocks. | interceptor **error → fail-closed `deny`** | `:299–313` |
-| **4** | **PolicyEval engine** (`policyeval.Evaluator`) | Full policy evaluation. Maps `ActionDeny/Escalate/RequireApproval/Warn`. | evaluator **error → per-transport: fail-closed transports `deny`, others fail-open** | `:315–351` |
+| **1** | **Trust check** (`TrustChecker`) | Skipped when checker `nil` or `AgentID==""`. Isolated/Terminated → `deny`; Evaluating → score 0.5; enforces `RequireAgentID` for protected transports. | checker **error → fail-closed `deny`** | `Evaluate`, stage 1 trust check |
+| **2** | **Static policies** | Linear scan of `StaticPolicyRule`s. Tool matches by exact name, `*`/`""`, or `path.Match` glob (malformed → silent non-match). Supports field matches (e.g. `arguments.sql contains "DROP TABLE"`). | first matching `deny`/`warn`/`escalate`/`require_approval` is terminal | `Evaluate`, stage 2 static policies; `toolMatches` |
+| **3** | **Domain interceptors** (`Interceptor` registry, one fn/tool) | Where SQL parsing, path allow-lists, rate limits live. `nil,nil` declines; `Allowed=false` blocks. | interceptor **error → fail-closed `deny`** | `Evaluate`, stage 3 domain interceptors |
+| **4** | **PolicyEval engine** (`policyeval.Evaluator`) | Full policy evaluation. Maps `ActionDeny/Escalate/RequireApproval/Warn`. | evaluator **error → per-transport: fail-closed transports `deny`, others fail-open** | `Evaluate`, stage 4 PolicyEval engine |
 
-> The doc comment still references `securemcp.GovernancePipeline` and a "Redis IPC bridge" for Stage 1 (`pipeline.go:163–166`); for the OSS dev-tool spec, **trust is opt-in and defaults to absent** — Stage 1 is a no-op unless the developer enables `--trust-mode`. Treat the kernel/Redis framing as an internal implementation note. (C3)
+> The `Evaluate` doc comment notes standalone vs Redis-backed trust modes for Stage 1 (`governance/pipeline.go`, `Evaluate`); for the OSS dev-tool spec, **trust is opt-in and defaults to absent** — Stage 1 is a no-op unless the developer enables `--trust-mode`. Treat the kernel/Redis framing as an internal implementation note. (C3)
 
-**Audit-once guarantee.** Audit emits **exactly once** per call via a deferred hook, **after** the real decision is computed but **before** dry-run conversion — so logs always reflect the true verdict (`pipeline.go:197–229, 354–376`). An adaptive-trust transition emits a second `trust_transition` event.
+**Audit-once guarantee.** Audit emits **exactly once** per call via a deferred hook, **after** the real decision is computed but **before** dry-run conversion — so logs always reflect the true verdict (`governance/pipeline.go`, `Evaluate` deferred hook; `emitAudit`). An adaptive-trust transition emits a second `trust_transition` event.
 
-**Dry-run / shadow mode** (`PipelineConfig.DryRun`): runs all four stages, audits the *real* decision, then converts a `deny` to `allow` with reason prefixed `DRY-RUN would deny:` — the canonical audit-only rollout before enforcing (`pipeline.go:220–228`).
+**Dry-run / shadow mode** (`PipelineConfig.DryRun`): runs all four stages, audits the *real* decision, then converts a `deny` to `allow` with reason prefixed `DRY-RUN would deny:` — the canonical audit-only rollout before enforcing (`governance/pipeline.go`, `Evaluate` dry-run conversion).
 
 ## 3.3 The five-verb verdict (fail-closed)
 
@@ -316,17 +316,17 @@ Every decision resolves to **exactly one of five verbs**, all literal outcomes i
 | **`escalate`** | Could not resolve deterministically; route to follow-up. | **`classified`** |
 | **`require_approval`** | Hold for an approver. | `deterministic` |
 
-*Evidence:* literal verbs at `pipeline.go:183,204,207,273–296,329–345`; `Allowed()` at `governance/request.go:97`.
+*Evidence:* literal verbs at `governance/pipeline.go`, `Evaluate` (verdict assignments); `Allowed()` at `governance/request.go:97`.
 
-**Fail-closed by default.** On a stage error, the **fail-closed transports** deny rather than allow. The default set (`DefaultFailClosedTransports`, `pipeline.go:29–36`): **`mcp`, `managed_agents`, `cli`, `code_exec`, `grpc`, `a2a`**. A `nil` `FailClosedTransports` applies this secure default; a **non-nil empty slice is an explicit opt-out to fail-open**; a populated slice fail-closes exactly the listed transports. (Transport constants: `governance/request.go:9–15`.)
+**Fail-closed by default.** On a stage error, the **fail-closed transports** deny rather than allow. The default set (`DefaultFailClosedTransports`, `governance/pipeline.go`): **`mcp`, `managed_agents`, `cli`, `code_exec`, `grpc`, `a2a`**. A `nil` `FailClosedTransports` applies this secure default; a **non-nil empty slice is an explicit opt-out to fail-open**; a populated slice fail-closes exactly the listed transports. (Transport constants: `governance/request.go:9–15`.)
 
 ## 3.4 Decision modes — Boundary never says "proved" (C7)
 
 `DecisionMode` labels the epistemic confidence of a verdict. Four modes exist, but **Boundary emits only two**:
 
 - **`deterministic`** — static rule / deterministic code path (the default for every Boundary outcome).
-- **`classified`** — set when PolicyEval returns `Escalate` (`pipeline.go:331–338`).
-- **`proved`** and **`human_approved`** are **reserved for the upstream Foundry layer (fulcrum-io)** and, per the code comment, **"never originate here"** (`governance/decision_mode.go:14–17`, `pipeline.go:187–192`).
+- **`classified`** — set when PolicyEval returns `Escalate` (`governance/pipeline.go`, `Evaluate` stage 4 escalate path).
+- **`proved`** and **`human_approved`** are **reserved for the upstream Foundry layer (fulcrum-io)** and, per the code comment, **"never originate here"** (`governance/decision_mode.go:14–17`; `governance/pipeline.go`, `Evaluate`).
 
 > **Hard rule for all copy.** Runtime decisions are **"deterministic" / "classified," never "proved."** Lean proofs are referenced **by correspondence only** (`docs/PROOF_BOUNDARY.md`). (C7; full treatment §6.5.)
 
@@ -343,7 +343,7 @@ The release is **two demoed lanes**, each fixture-only — not breadth-as-featur
 ```mermaid
 flowchart TB
     subgraph Entrypoints["Four surfaces — one decision core"]
-        CLI["A. boundary CLI<br/>(~26 commands · delivered)"]
+        CLI["A. boundary CLI<br/>(~28 commands · delivered)"]
         SDK["B. Go SDK<br/>(governance + policyeval · delivered)"]
         GW["C. HTTP MCP Gateway<br/>(boundary serve · production)"]
         GHA["D. GitHub Action<br/>(mcp-audit → SARIF · delivered CI-local)"]
@@ -506,7 +506,7 @@ Kernel / out-of-process integration is **a contract surface, not a shipped depen
 
 | Item | Contract | Status | Evidence |
 |---|---|---|---|
-| Install path | `go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0` | repeatable release target (resolves once the public `v0.9.0` tag is pushed) | `docs/RELEASE_TRUTH_PUBLIC.md`; README |
+| Install path | `go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0` | repeatable release target | `docs/RELEASE_TRUTH_PUBLIC.md`; README |
 | Go toolchain | **Go 1.25+** required | hard requirement | `go.mod` `go 1.25.0` |
 | **C-toolchain prerequisite** | Default `go install` needs a **C compiler present** (CGO on): `cmd/boundary` → `interceptors/sql` → `pganalyze/pg_query_go/v6` is **CGO with no `nocgo` fallback**. `CGO_ENABLED=0` build **fails**. The shipped `Dockerfile` builds with `CGO_ENABLED=1` plus a C toolchain; the README states the prerequisite. | build caveat (B-1, resolved) | `CROSS_REPO_DEPS.md` B-1; `Dockerfile` (`CGO_ENABLED=1`, `build-base`); verified `CGO_ENABLED=0 go build ./cmd/boundary` fails (`undefined: pg_query.Parse`) |
 | Hosted / package-manager distribution | **None claimed** — no Homebrew, no package manager, no hosted monitoring | forbidden to claim | `docs/RELEASE_TRUTH_PUBLIC.md` |
@@ -578,7 +578,7 @@ The decision record is the **shared proof artifact** across both lanes (canonica
 
 **Locked term:** Boundary runtime decisions carry **`deterministic`** or **`classified`** modes; Boundary **never emits `proved`** (nor `human_approved`). Formal proofs are referenced **by correspondence only**.
 
-**Verified in source (`governance/decision_mode.go`, `pipeline.go`):** the taxonomy defines four modes; the doc comment states *"The Boundary pipeline produces only deterministic and classified decisions. The proved and human_approved modes are set by the upstream Foundry layer (fulcrum-io)…"* `Pipeline.Evaluate` initializes every decision to `DecisionModeDeterministic` and flips to `classified` **only** for the PolicyEval `ActionEscalate` path.
+**Verified in source (`governance/decision_mode.go`, `governance/pipeline.go`):** the taxonomy defines four modes; the code comment in `Evaluate` states the `proved` and `human_approved` modes are set by the upstream Foundry layer and "never originate here." `Pipeline.Evaluate` initializes every decision to `DecisionModeDeterministic` and flips to `classified` **only** for the PolicyEval `ActionEscalate` path.
 
 **Proof by correspondence.** `docs/PROOF_BOUNDARY.md` is the authority; its first sentence is the rule: *"Boundary uses proof correspondence as a design constraint, not as a runtime certificate. Boundary does not emit `proved` decisions."* The correspondence table maps Boundary behaviors (budget-denial; trust-isolation/termination bands at 0.30 / 0.60; privilege-subset; absorbing terminated state) to named Lean 4 theorems in the **separate** `Fulcrum-Proofs` repo, all correspondence type **`design`** — *"the runtime behavior was designed to satisfy the proved invariant; it does not mean the Go implementation was mechanically extracted from Lean."* The proofs repo is **not** a build or runtime dependency of the OSS release (C3).
 
