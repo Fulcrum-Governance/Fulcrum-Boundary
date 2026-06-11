@@ -91,6 +91,30 @@ With the signer set, emitted decision records carry `signature` and
 record **unsigned** rather than with a partial or bogus signature, so an unsigned
 record never masquerades as signed.
 
+### Enable at serve
+
+`boundary serve` exposes the same seam as an operator flag. Point
+`--receipt-seed` at the 64-hex seed file and every emitted decision record is
+signed:
+
+```bash
+boundary serve --policies ./policies/ --receipt-seed ./boundary-receipt.seed
+```
+
+Signing is **off by default** (no flag = unsigned records, byte-identical to the
+unsigned path). When the flag *is* given, startup **fails closed**: a missing,
+short, or non-hex seed prints the loader error to stderr and exits non-zero
+**before the listener is opened**, so Boundary never serves unsigned when signing
+was requested. As elsewhere, a signature proves who signed the record, not that
+the verdict was correct or that the governed action executed, and key custody is
+the operator's.
+
+Scope note (issue #143): `serve --receipt-seed` is the only enablement wired
+today. The `mcp proxy` path and an `install`-time receipt-signing option are
+**not yet wired** — running those does not sign records even if a seed is present
+in the environment. Until they are, sign by routing through `serve`, or
+construct the signer in-process via `PipelineConfig.ReceiptSigner` (above).
+
 ## Verifying a signature
 
 `boundary verify-record` checks `decision_hash` (and, when given, `request_hash`,
