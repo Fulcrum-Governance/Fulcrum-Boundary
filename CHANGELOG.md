@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-06-11
+
+### Fixed
+
+- The v0.10.0 release-pipeline run failed before publishing any assets:
+  goreleaser refused the runner's dirty git state because the evidence bundle
+  is staged in an untracked `.release-extras/` directory. That directory is
+  now gitignored, and the pipeline fails fast with a clear error when the
+  Homebrew tap token secret is empty instead of failing after the full build.
+  `v0.10.0` remains a valid source-install tag (it has no release assets);
+  `v0.10.1` is content-identical plus this fix and is the first release
+  published with prebuilt binaries.
+
 ## [0.10.0] - 2026-06-11
 
 ### Added
@@ -374,7 +387,8 @@ Initial public release of the project now known as Fulcrum Boundary.
 
 ---
 
-[Unreleased]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.10.1...HEAD
+[0.10.1]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.7.0...v0.8.0

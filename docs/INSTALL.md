@@ -16,8 +16,9 @@ Fulcrum Boundary ships the `boundary` CLI from the Go module
 
 Channel availability: prebuilt binaries, the tap formula, the container image,
 and both checksum manifests publish from the tag-gated release workflow
-(`.github/workflows/release.yml`) for releases after `v0.9.0`. Releases up to
-and including `v0.9.0` shipped source-only; for those, use
+(`.github/workflows/release.yml`) for `v0.10.1` and later. Releases up to and
+including `v0.10.0` shipped source-only (the v0.10.0 pipeline run failed
+before publishing assets); for those, use
 [Build From Source](#build-from-source-full-classifier).
 
 ## Homebrew
@@ -107,11 +108,11 @@ Requires Go 1.25+ and, for the default cgo build, a C toolchain (a C compiler
 such as gcc/clang on `PATH`):
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.10.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.10.1
 boundary selftest
 ```
 
-`@v0.10.0` is the recommended repeatable install target for the current launch
+`@v0.10.1` is the recommended repeatable install target for the current launch
 release. `@latest` resolves to the latest published release after the Go proxy
 refreshes.
 
