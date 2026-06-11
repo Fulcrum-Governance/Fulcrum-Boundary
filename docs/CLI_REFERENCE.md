@@ -17,6 +17,44 @@ Every command below carries one of these maturity labels. They match
 | **Preview** | A labeled preview surface (Command Boundary, Edit Boundary, Secure GitHub, and the remaining adapters). Preview does not mean production. |
 | **Local-only** | A local diagnostic, inventory, evidence, or visibility command. Local-only output does not prove that any deployment route is protected. |
 
+## Command Map
+
+All 28 top-level commands. Sub-commands and compound entries (`demo <name>`,
+`policy generate`, `mcp proxy`) are noted in the Purpose column. Status follows
+[README Current Release Truth](../README.md#current-release-truth) and
+[docs/ADAPTER_READINESS_MATRIX.md](./ADAPTER_READINESS_MATRIX.md).
+
+| Command | Purpose | Status | Owning doc |
+| --- | --- | --- | --- |
+| `version` | Print build metadata (version, commit, date). | Local-only | This file §1 |
+| `init` | Initialize a `.boundary/firewall` workspace; discovers MCP configs. | Local-only | This file §6 |
+| `inventory` | Discover MCP configs (`inventory`) or ingest NDJSON records (`inventory ingest`). | Local-only | This file §2, §5 |
+| `graph` | Render inventory-derived MCP risk paths (text / Mermaid). | Local-only | This file §2 |
+| `dashboard` | Render a local-only firewall dashboard (HTML file or HTTP serve). | Local-only | This file §7 |
+| `install` | Rewrite selected MCP config entries to route through Boundary. | Preview / production-route config | This file §6 |
+| `uninstall` | Restore an MCP config from a Boundary install receipt. | Preview / production-route config | This file §6 |
+| `lock` | Create a descriptor lockfile for MCP server descriptors. | Local-only | [docs/firewall/INSTALL_LOCK.md](./firewall/INSTALL_LOCK.md) |
+| `verify-lock` | Verify MCP server descriptors against a lockfile; drift triggers configurable action. | Local-only | [docs/firewall/INSTALL_LOCK.md](./firewall/INSTALL_LOCK.md) |
+| `redteam` | Run safe fixture-only attacks and report expected deny records. | Local-only | [docs/firewall/REDTEAM.md](./firewall/REDTEAM.md) |
+| `selftest` | Run local no-credential release smoke checks. | Local-only | This file §1 |
+| `secure` | Manage Secure MCP preview profiles (`secure github …`). | Preview | This file §4 |
+| `command` | Classify and govern project-local command paths (`command classify`, `command run`, `command install`, `command uninstall`). | Delivered preview | [docs/command-boundary/README.md](./command-boundary/README.md) |
+| `edit` | Classify proposed file mutations routed through Boundary edit envelopes (`edit inspect`, `edit apply`). | Delivered preview | [docs/edit-boundary/README.md](./edit-boundary/README.md) |
+| `shell` | Launch a project-local Command Boundary subshell with `.boundary/bin` prepended to PATH. | Delivered preview | [docs/command-boundary/SHELL.md](./command-boundary/SHELL.md) |
+| `policy` | Generate starter YAML firewall policies (`policy generate`). | Local-only | This file §2 |
+| `mcp` | Fail-closed generic MCP proxy entrypoint for installed routes (`mcp proxy`). | Production-route | This file §12 |
+| `serve` | Start the Boundary HTTP gateway — the production MCP route. | Production-route | This file §13, [docs/adapters/MCP.md](./adapters/MCP.md) |
+| `demo` | Run fixture-only or live demos (`demo action-boundary`, `demo github-lethal-trifecta`, `demo command-secret-exfil`, `demo trust-degradation`, `demo postgres`). | Mixed (see §3) | This file §3 |
+| `verify` | Validate YAML policy files. | Local-only | This file §8 |
+| `verify-record` | Verify a decision record's internal hash consistency. | Local-only | This file §9 |
+| `explain` | Describe a decision record (read-only render, no hash recomputation). | Local-only | This file §10 |
+| `replay` | Re-evaluate a recorded request and compare reproduced decision fields. | Local-only | This file §11 |
+| `test` | Run local policy-as-code test cases against policy bundles. | Local-only | This file §8A |
+| `doctor` | Check local routed-surface diagnostics and bypass caveats. | Local-only | This file §1, [docs/DOCTOR.md](./DOCTOR.md) |
+| `evidence` | Bundle and verify local Boundary evidence artifacts (`evidence bundle`, `evidence verify`). | Local-only | This file §1, [docs/EVIDENCE_BUNDLE.md](./EVIDENCE_BUNDLE.md) |
+| `audit` | Pretty-print structured decision records from a log file or stdin. | Local-only | This file §14 |
+| `trust` | Inspect or reset trust state for an agent (`trust show`, `trust reset`). | Local-only | This file §15 |
+
 ## 1. First-Run Commands
 
 Run this exact sequence after install. It is the canonical first-run path and
@@ -211,9 +249,16 @@ make release-check
 go test ./claims/... -count=1
 go test ./... -count=1 -timeout 5m
 boundary test --path tests/fixtures/policy-test/cases
+boundary verify --policies ./policies/ --json
 boundary evidence bundle --include-demo --out /tmp/boundary-evidence
 boundary evidence verify /tmp/boundary-evidence
 ```
+
+`boundary verify` (Local-only) checks that a YAML policy bundle parses and
+reports file/rule counts and warnings; it does not prove the policies are
+correct or that any route enforces them. `--json` emits a versioned
+`boundary.verify.v1` object (`ok`, `error`, `policy_files`, `rules`,
+`warnings`); exit codes are unchanged.
 
 These checks keep public language, claims, docs, examples, and release gates in
 sync before shipping a Boundary release branch.
@@ -257,6 +302,7 @@ bundle.
 ```bash
 boundary verify-record record.json
 boundary verify-record --binary-digest fixture-only record.json
+boundary verify-record --json record.json
 ```
 
 `boundary verify-record` (Local-only) reads one decision-record JSON object,
@@ -267,7 +313,9 @@ route-context) and `schema_version "2"` (additive route-context: `adapter_id`,
 covered by `decision_hash`, so altering one fails verification, but they are not
 attestation — see [`docs/DECISION_RECORDS.md`](DECISION_RECORDS.md). With no
 flags it confirms only that the record is internally hash-consistent and
-unmodified since emission.
+unmodified since emission. `--json` emits a versioned
+`boundary.verify_record.v1` object (`ok`, `error`, `record_id`); exit codes are
+unchanged.
 
 The first-run demos and evidence steps print a uniform `decision record path:`
 line whenever they write a record file. Either proof lane produces a committable
@@ -386,3 +434,131 @@ direct access to the same tool is a bypass a record cannot see; and a match does
 reproduce the same decision. No upstream tool is called and nothing is mutated.
 See [docs/DECISION_RECORDS.md](./DECISION_RECORDS.md) and
 [docs/RECEIPTS.md](./RECEIPTS.md).
+
+## 12. MCP Proxy Command
+
+```bash
+boundary mcp proxy \
+  --install-receipt .boundary/firewall/install-receipts/example.json \
+  --server my-server \
+  --mode balanced
+```
+
+`boundary mcp proxy` (Production-route) is the fail-closed stdio MCP proxy
+entrypoint used by installed routes. It is spawned by the MCP client as a
+subprocess — not invoked interactively — and its flags are written into the MCP
+config entry by `boundary install`. Operators do not typically invoke it
+directly.
+
+Flags (transcribed from `boundary mcp proxy --help`):
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--install-receipt` | _(required)_ | Path to the Boundary install receipt written by `boundary install`. |
+| `--server` | _(required)_ | MCP server name from the install receipt. |
+| `--mode` | `balanced` | Policy mode recorded during install; passed through for audit context. |
+
+`mcp proxy` governs only MCP tool calls that arrive through the installed route.
+Direct client access to the upstream MCP server is a bypass unless the
+deployment removes that path. See [docs/adapters/MCP.md](./adapters/MCP.md) for
+the adapter lifecycle and bypass model.
+
+## 13. Serve Command
+
+```bash
+boundary serve \
+  --listen :8080 \
+  --policies ./policies/ \
+  --upstream http://127.0.0.1:9000/mcp
+```
+
+`boundary serve` (Production-route) starts the Boundary HTTP MCP gateway — the
+primary path for MCP routes forced through Boundary. It accepts HTTP JSON-RPC
+MCP requests, evaluates each action through the governance pipeline, and either
+returns a JSON-RPC error `-32001` before forwarding (deny) or proxies the
+request to the configured upstream MCP server. The legacy Postgres demo path is
+still available when `--upstream` is a Postgres DSN; production deployments use
+an HTTP(S) upstream URL.
+
+Flags (transcribed from `boundary serve --help`):
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--listen` | `:8080` | HTTP listen address for the gateway. |
+| `--policies` | `./policies/` | Directory containing YAML policy files. |
+| `--upstream` | _(Postgres demo DSN)_ | Upstream MCP HTTP URL or Postgres demo DSN. |
+| `--config` | _(none)_ | Boundary runtime config file. |
+| `--trust-mode` | `disabled` | Trust mode: `disabled`, `standalone`, or `kernel`. |
+| `--trust-redis-url` | `redis://localhost:6379` | Redis URL for kernel trust mode. |
+| `--require-agent-id` | `false` | Deny protected adapter requests without agent identity. |
+
+`boundary serve` governs only requests that arrive through the served route.
+Direct access to the upstream MCP server is a deployment bypass unless network
+policy, service mesh rules, or private networking blocks that path. Boundary
+enforces policy only for the routed path; it does not govern what arrives at the
+upstream directly. See [docs/adapters/MCP.md](./adapters/MCP.md) for the full
+adapter lifecycle, bypass model, and policy shape.
+
+## 14. Audit Command
+
+```bash
+boundary audit --file decision-records.jsonl
+boundary audit --file decision-records.jsonl --filter-action deny
+boundary audit --file decision-records.jsonl --filter-agent my-agent
+boundary audit --file decision-records.jsonl --filter-tool create_or_update_file
+# stdin: omit --file to read from stdin
+boundary audit < decision-records.jsonl
+```
+
+`boundary audit` (Local-only) pretty-prints structured decision records. It
+reads newline-delimited JSON records (JSONL) — one compact JSON object per line
+— from a file (`--file`) or from stdin when `--file` is omitted. Each record
+is rendered as a color-coded one-line summary: action (DENY in red, ALLOW in
+default), tool name, agent ID, matched rule, reason, and request ID.
+
+Behavioral observations (from running against fixture and demo logs):
+
+- Accepts both `schema_version "1"` and `schema_version "2"` records in the
+  same file.
+- The demo `decision-records.jsonl` files produced by `boundary demo
+  github-lethal-trifecta --out <dir>` and `boundary demo
+  command-secret-exfil --out <dir>` are valid input.
+- `docs/examples/decision-record.example.json` and
+  `docs/examples/decision-record-v2.example.json` are single-line compact JSON
+  and are valid input directly.
+- Pretty-printed multi-line JSON (as produced by some tools) is not valid JSONL
+  input; compact each record to one line first.
+- Empty input produces no output and exits zero.
+
+Flags (transcribed from `boundary audit --help`):
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--file` | _(stdin)_ | Decision record log file; stdin is used when empty. |
+| `--filter-action` | _(all)_ | Only show records for this action (e.g. `deny`, `allow`). |
+| `--filter-agent` | _(all)_ | Only show records for this `agent_id`. |
+| `--filter-tool` | _(all)_ | Only show records for this `tool_name`. |
+
+`audit` is a local read-only display utility. It does not verify hashes (use
+`boundary verify-record` for that), does not recompute decisions, and does not
+call the network. A `DENY` line in audit output is a record of a decision Boundary
+made; it is not proof that the action was blocked — direct access to the same
+tool is a bypass a record cannot see. See
+[docs/DECISION_RECORDS.md](./DECISION_RECORDS.md).
+
+## 15. Trust Command
+
+```bash
+boundary trust show <agent-id>
+boundary trust show --redis-url redis://localhost:6379 <agent-id>
+boundary trust show --ipc-prefix myprefix <agent-id>
+boundary trust reset <agent-id>
+```
+
+`boundary trust` (Local-only) inspects or resets trust state for a named agent.
+`trust show` queries the configured trust backend and prints the agent's current
+trust record. `trust reset` clears accumulated trust state for the agent. Both
+sub-commands accept `--redis-url` to target a kernel-mode Redis backend and
+`--ipc-prefix` for IPC prefix override. These commands are diagnostic utilities;
+they do not alter governance policy or affect running pipeline evaluations
+directly.
