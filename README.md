@@ -75,7 +75,7 @@ boundary verify-record github-lethal-trifecta-artifacts/decision-record.json
 > The commands above, including the uniform record-location output described
 > below, plus `boundary explain` / `boundary replay`, `DecisionRecordV2`, and
 > `boundary test`, ship in `v0.9.0` and later. The source install
-> `go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0`
+> `go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.10.0`
 > includes them.
 
 No credentials. No live calls. No real mutations. Every record-emitting command
@@ -103,6 +103,11 @@ configs.
 A standing challenge. The Lane 1 demo above landed its verdict in a
 hash-verifiable decision record; `boundary verify-record` recomputes the
 decision hash from the record's own fields and compares it to the stored one.
+The record's canonical bytes follow RFC 8785 (JCS), so an independent, stock
+RFC 8785 implementation recomputes the same `decision_hash` — a standalone
+Python verifier ships under [`verifiers/python/`](./verifiers/python/). That
+conformance statement is scoped to the decision record;
+it is not a claim that Boundary as a whole is standards-conformant.
 A plain audit log can be quietly edited. Try that here — fixture-only, like the
 demos: no credentials, no live calls, no real mutations:
 
@@ -132,7 +137,7 @@ Requires Go 1.25+. The default build links the full Postgres SQL classifier
 on `PATH`):
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.10.0
 ```
 
 Without a C toolchain, `CGO_ENABLED=0 go build ./cmd/boundary` builds the

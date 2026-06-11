@@ -207,7 +207,7 @@ different entrypoints. (R1)
 
 Entry `cmd/boundary/main.go` → dispatcher `internal/boundarycli/cli.go`. **28 top-level commands**
 dispatch (verified: `case` arms at `cli.go:37–92`); several carry subcommands (`policy generate`,
-`mcp proxy`, `secure github setup|serve`, `demo <5>`, `evidence bundle|verify`, `trust show|reset`),
+`mcp proxy`, `secure github setup|serve`, `demo <6>`, `evidence bundle|verify`, `trust show|reset`),
 giving the **~30 user-facing commands** cited in the research. Per-command status uses the §0 legend
 — `delivered` for the local no-mutation tooling, `delivered-preview` for routed-only lanes,
 `starter` for policy generation, `local-only` for the dashboard. The first-value "aha" is
@@ -232,7 +232,7 @@ giving the **~30 user-facing commands** cited in the research. Per-command statu
 | `verify` | Validate YAML policy files (parse + warnings). | delivered | `cli.go:75` |
 | `mcp proxy` | Fail-closed generic MCP proxy entrypoint for installed routes. | production (MCP) | `cli.go:69`; `adapters/mcp/` |
 | `serve` | Start the Boundary **HTTP gateway** (MCP proxy or Postgres demo). | production (MCP) | `cli.go:71`; `adapters/mcp/gateway.go` |
-| `demo` | `action-boundary`, `postgres`, `github-lethal-trifecta`, `command-secret-exfil`, `trust-degradation` — fixture-only (5 demos). | delivered | `cli.go:73`; `internal/demo/` |
+| `demo` | `action-boundary`, `postgres`, `github-lethal-trifecta`, `command-secret-exfil`, `tamper-evidence`, `trust-degradation` — fixture-only (6 demos). | delivered | `cli.go:73`; `internal/demo/` |
 | `verify-record` | Verify a **decision record** (`request_hash`, `policy_bundle_hash`, binary digest). | delivered | `cli.go:77` |
 | `explain` | Render a decision record read-only: verdict, reason, route context, and hash coverage. | local-only | `cli.go:79`; `internal/explain/` |
 | `replay` | Re-evaluate a recorded request against a supplied policy bundle and reproduce the decision fields. | local-only | `cli.go:81`; `internal/replay/` |
