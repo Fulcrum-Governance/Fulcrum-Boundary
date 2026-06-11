@@ -16,10 +16,11 @@ Key mechanisms:
   `partial` claim must list structured gaps; every `false` claim must not appear
   in `README.md`.
 - **Language lint gate** (`claims/language_lint_test.go`): controlled overclaim
-  phrases (`SQL firewall`, `proves all prompt injection`, `proved decisions`,
-  `secure sandbox`, `all adapters production`, `fully secures GitHub`, and
-  others) fail the build on any non-negated, non-limitation-framed line in
-  scanned public docs.
+  phrases fail the build on any non-negated, non-limitation-framed line in
+  scanned public docs. For example, the build does not allow `SQL firewall`,
+  does not allow `proved decisions`, does not allow `secure sandbox`, does not
+  allow `all adapters production`, and does not allow `fully secures GitHub`
+  unless the line is negated or limitation-framed.
 - **Adapter readiness gate** (`tests/adapter_conformance/`): a `production`
   label requires non-stub lifecycle steps, a `bypass_proof` step that is
   `implemented` or formally delegated, at least one fail-closed transport, and

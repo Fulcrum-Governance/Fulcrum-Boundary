@@ -57,6 +57,11 @@ func languageLintPaths(t *testing.T, repoRoot string) []string {
 		"docs/secure-mcp/*.md",
 		"docs/policies/*.md",
 		"docs/deployment/*.md",
+		"docs/command-boundary/*.md",
+		"docs/edit-boundary/*.md",
+		"docs/releases/*.md",
+		"docs-site/*.md",
+		"docs-site/**/*.md",
 		"verifiers/*/README.md",
 	}
 
