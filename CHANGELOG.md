@@ -6,16 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-06-11
+
 ### Added
 
-- `boundary serve --receipt-seed FILE`: opt-in Ed25519 signing of every
-  emitted decision record using the 64-hex seed in FILE. Off by default;
-  startup fails closed (exit 1, error on stderr, before the listener opens) on
-  a missing, short, or non-hex seed, so Boundary never serves unsigned when
-  signing was requested. A signature attests who signed the record, not the
-  verdict or execution; key custody is the operator's. `mcp proxy` /
-  install-time enablement is not yet wired (#143 scope note in
-  `docs/SIGNING.md`).
 - `boundary completion bash|zsh|fish`: static shell completion scripts for the
   top-level and compound commands, generated from the binary's own command
   table. Static by design — regenerate after upgrades.
@@ -41,12 +35,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   corpus, enforced in CI. Records now verify in Go, Python, TypeScript, or
   Rust; the verifiers check integrity only, not authenticity.
 - Optional Ed25519 signing of decision records (off by default) via
-  `PipelineConfig.ReceiptSigner`, with `boundary verify-record
-  --verify-signature --public-key <hex|file>` to check the signature over the
-  recomputed `decision_hash`, failing closed on mismatch or missing
-  signature. Signing never changes `decision_hash`; the Python/TypeScript/Rust
-  verifiers remain integrity-only and do not check signatures. See
-  `docs/SIGNING.md` for setup and the key-custody caveat.
+  `PipelineConfig.ReceiptSigner` and `boundary serve --receipt-seed FILE`
+  (the 64-hex seed in FILE), with `boundary verify-record --verify-signature
+  --public-key <hex|file>` to check the signature over the recomputed
+  `decision_hash`, failing closed on mismatch or missing signature. `serve`
+  startup also fails closed (exit 1, error on stderr, before the listener
+  opens) on a missing, short, or non-hex seed, so Boundary never serves
+  unsigned when signing was requested. Signing never changes `decision_hash`;
+  a signature attests who signed the record, not the verdict or execution, and
+  key custody is the operator's; the Python/TypeScript/Rust verifiers remain
+  integrity-only and do not check signatures. `mcp proxy` / install-time
+  enablement is not yet wired (#143). See `docs/SIGNING.md` for setup and the
+  key-custody caveat.
 
 ## [0.10.1] - 2026-06-11
 
@@ -429,7 +429,8 @@ Initial public release of the project now known as Fulcrum Boundary.
 
 ---
 
-[Unreleased]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.10.1...HEAD
+[Unreleased]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.10.1...v0.11.0
 [0.10.1]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.8.0...v0.9.0
