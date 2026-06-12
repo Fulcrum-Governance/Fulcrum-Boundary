@@ -1,71 +1,108 @@
 # Final Public Release Truth
 
-Date: 2026-06-02
+Date: 2026-06-11
 
 Branch: `main`
 
-Current release target: `v0.9.0`
+Current release target: `v0.10.1`
 
 ## Summary
 
 This report reconciles the public Boundary release surface for the published
-`v0.9.0` release. `v0.9.0` is the current release tag and repeatable install
-target; `v0.8.0` survives as the Phase 0A history tag.
+`v0.10.1` release — the first release published with prebuilt binaries — and
+records, in a separate fenced section, what has merged to `main` since the tag
+and is not yet part of any release. `v0.9.0` survives as the prior history
+tag. `v0.10.0` exists as a valid source-install tag with no release assets:
+its release-pipeline run failed before publishing, and `v0.10.1` is
+content-identical plus the pipeline fix (the failure and the fix are recorded
+in `CHANGELOG.md` and `docs/releases/v0.10.0.md`).
 
-`v0.9.0` wraps the Phase 0A "Trust the Record" record-UX lane from `v0.8.0`
-and adds the Phase 1 policy-as-code testing lane: `boundary test`, a local,
-fixture-only runner for operator-authored policy fixtures and expected verdicts.
-It does not add a new governed action surface, does not add a transport adapter,
-and does not upgrade any preview surface to production.
+`v0.10.1` packages three lanes on top of the `v0.9.0` surface:
+
+- **Distribution.** A tag-gated release pipeline publishes static
+  (`CGO_ENABLED=0`) archives for macOS/Linux/Windows with checksums, `_cgo`
+  full-classifier variants for macOS/Linux, a Homebrew tap formula, a container
+  image, and an evidence bundle. In the static build the Postgres AST
+  classifier is unavailable: routed SQL classifies as `UNKNOWN` and is denied
+  fail-closed, so the static build never allows SQL the cgo build would deny.
+- **RFC 8785 canonical decision records.** The canonical preimage behind every
+  stable record hash follows RFC 8785 (JCS). This is a pre-1.0 format change:
+  records emitted by older builds no longer verify under `v0.10.x` builds. The
+  conformance statement is scoped to the decision record;
+  it is not a claim that Boundary as a whole is standards-conformant.
+- **Independent verification.** A standalone Python verifier
+  (`verifiers/python/`) recomputes `decision_hash` with the stock `rfc8785`
+  package, pinned to the Go implementation by a committed conformance-vector
+  corpus enforced in CI. Verification confirms record integrity over covered
+  inputs; it does not prove the verdict was correct, the action executed or
+  prevented, or who produced the record.
+
+`v0.10.1` adds no new governed action surface, adds no transport adapter, and
+upgrades no preview surface to production.
 
 The final public truth is:
 
 - MCP remains the production adapter path.
-- Secure GitHub remains preview.
-- Secure GitHub has fixture proof plus an opt-in live GitHub App conformance
-  harness for read-taint evidence and denied write-after-taint no-mutation
-  proof.
+- Secure GitHub remains preview, with fixture proof plus an opt-in live GitHub
+  App conformance harness.
 - Command Boundary remains delivered preview and routed-path-only.
-- Edit Boundary is delivered preview and routed-edit-envelope-only.
-- CLI, CodeExec, gRPC, Managed Agents, Webhook, A2A, Secure GitHub, and Command
-  Boundary remain preview adapter/profile/surface areas. Edit Boundary is a
-  preview routed edit-envelope surface.
-- The default first-run demo is fixture-only: no credentials, no live GitHub
-  calls, and no real mutations.
-- The opt-in live Secure GitHub conformance path is credential-gated, skips by
-  default, and fails closed when enabled without required GitHub App
-  environment.
-- Secure GitHub production still requires deployment bypass evidence and
-  broader live coverage.
-- Edit Boundary production still requires deployment evidence that edit
-  proposals route through Boundary-controlled envelopes.
-- Generated policies are starter policies for operator review.
-- Dashboard output is local-only artifact visibility, not hosted monitoring.
-- External inventory ingest is Boundary-owned MCP inventory mapping, not an
-  official third-party scanner integration or compatibility claim.
-- The GitHub Action is repo-local CI audit/reporting only.
-- Boundary governs routed tools. Tools that bypass Boundary are outside the
-  governed route.
-- The public Go install path requires Go 1.25+.
-- Public install examples use the repeatable `@v0.9.0` release tag.
-- Public action examples use `@v0.9.0` for repeatable CI behavior.
-- The user-facing Command Boundary demo lane is `boundary demo
-  command-secret-exfil` (the routed `curl -d @.env …` secret-exfil denial,
-  `executed=false`); `boundary redteam --pack command-secret-exfil` remains the
-  underlying fixture/evidence path.
-- `DecisionRecordV2` adds route-context (`adapter_id`, `route_id`,
-  `topology_profile`, `execution_claim`) in `schema_version "2"` records covered
-  by `decision_hash`; `topology_profile` is asserted, not attested, and
-  `execution_claim` is an adapter self-report not independently corroborated.
-  `schema_version "1"` records remain valid.
-- `boundary explain` renders a decision record read-only; it does not re-verify
-  hashes or prove the verdict was correct or enforced.
-- `boundary replay` reproduces the recorded decision for routed requests against
-  the recorded policy bundle; it does not prove enforcement or that no upstream
-  bytes moved.
+- Edit Boundary remains delivered preview and routed-edit-envelope-only.
+- CLI, CodeExec, gRPC, Managed Agents, Webhook, and A2A remain preview.
+- Decision records are hash-verifiable: unkeyed SHA-256 over RFC 8785
+  canonical bytes — integrity, not authenticity. In `v0.10.1`, signing is not
+  available; signed receipts are not claimed in any form.
+- `boundary explain` renders a decision record read-only; it does not
+  re-verify hashes or prove the verdict was correct or enforced.
+- `boundary replay` reproduces the recorded decision for routed requests; it
+  does not prove enforcement or that no upstream bytes moved.
 - `boundary test` reports policy verdicts for routed request fixtures against
   local policy bundles; it does not prove production route enforcement,
-  deployment bypass resistance, or verdict correctness beyond supplied fixtures.
+  deployment bypass resistance, or verdict correctness beyond supplied
+  fixtures.
+
+## Shipped On Main, Unreleased
+
+> Everything in this section merged to `main` after the `v0.10.1` tag and is
+> **not part of any released tag**. Do not cite any of it as released
+> capability. It is recorded here so downstream truth documents (including the
+> Fulcrum-IO claims lock) can reference Boundary's main-branch state with the
+> correct status. These items become release truth only when the next tag
+> ships and this document is reconciled again.
+
+- **TypeScript and Rust standalone verifiers** (`verifiers/typescript/`,
+  `verifiers/rust/`), each recomputing `decision_hash` via a stock RFC 8785
+  implementation and pinned to Go by the same conformance vectors, enforced in
+  CI. With these, a record verifies in Go, Python, TypeScript, or Rust — that
+  enumerated list, never "any language." Ledger: `BND-CLAIM-VERIFY-003`,
+  `BND-CLAIM-VERIFY-004` (main).
+- **Opt-in Ed25519 record signing**, off by default: a configured signer
+  populates `signature`/`signature_key_id` on emitted records (parse
+  rejections included), `boundary serve --receipt-seed FILE` enables it at
+  serve (failing closed before the listener opens on a bad seed), and
+  `boundary verify-record --verify-signature --public-key <hex|file>` checks
+  the signature over the recomputed `decision_hash`, failing closed. Signing
+  never changes `decision_hash`. A valid signature attests who signed the
+  record; it does not prove the verdict was correct, that the action executed
+  or was prevented, and it does not solve key custody. The Python, TypeScript,
+  and Rust verifiers remain integrity-only and do not check signatures.
+  Ledger: `BND-CLAIM-SIGN-001` (main).
+- **CLI and docs polish**: `--version`/`-v`, `boundary help <topic>`, rich
+  help across previously bare commands, `--json` on `verify`/`verify-record`,
+  `boundary completion bash|zsh|fish`, a skeptic FAQ, a complete CLI reference
+  command map, and the adapter production-bar contributor doc.
+- **Test and robustness depth**: native Go fuzz targets (record
+  canonicalization round-trip, policy parse, SQL classifier) wired into the
+  required CI set; a hermetic black-box `boundary serve` boot test asserting
+  the governed deny before upstream; RESP codec unit tests for the kernel
+  trust path.
+
+On the standards question, stated once and precisely: Boundary's per-record
+canonicalization (RFC 8785/JCS) and SHA-256 hashing match the per-record
+algorithms in `draft-sharif-agent-audit-trail-00`, an individual,
+non-WG-adopted Internet-Draft; Boundary does not implement that draft's
+defining `prev_hash` inter-record session chain, and Boundary does not claim
+alignment with the draft. Any future session-chain support would be a
+documented, additive change.
 
 ## Test Commands
 
@@ -77,144 +114,112 @@ The final public truth is:
 | `go test ./claims/... -count=1` | Pass |
 | `go test ./... -count=1 -timeout 5m` | Pass |
 
-`make release-check` also runs the root suite, the gRPC nested module suite,
-the test suite, claims tests, policy verification, receipt verification help,
-`boundary selftest`, `boundary demo github-lethal-trifecta`, `boundary
-version`, `boundary demo action-boundary`, `boundary doctor --json`,
-`boundary evidence bundle --include-demo`, `boundary evidence verify`, and
-`boundary test --path tests/fixtures/policy-test/cases`.
+Verified 2026-06-11 at `main` commit `f0e3041` (post-tag main; the `v0.10.1`
+tag itself shipped with `make release-check` exit 0 at `7ac56b3`, and the
+release workflow's `release-check` gate job passed before publish).
 
-Post-tag install and `@latest` verification for `v0.9.0` are recorded in
-[`docs/internal/RELEASE_TRUTH_V090_POSTRELEASE.md`](./internal/RELEASE_TRUTH_V090_POSTRELEASE.md).
-The prior `v0.8.0` post-tag evidence remains recorded in
-[`docs/internal/RELEASE_TRUTH_V080_POSTRELEASE.md`](./internal/RELEASE_TRUTH_V080_POSTRELEASE.md).
-The prior `v0.6.1` record in
-[`docs/internal/RELEASE_TRUTH_V061_POSTRELEASE.md`](./internal/RELEASE_TRUTH_V061_POSTRELEASE.md)
-documents a superseded tag and survives only as history.
+`make release-check` runs the root suite, the gRPC nested module suite, the
+`tests/` and `claims/` suites, policy verification, receipt verification help,
+`boundary selftest`, both fixture demos, `boundary version`,
+`boundary doctor --json`, `boundary evidence bundle --include-demo`,
+`boundary evidence verify`, and the policy-as-code corpus.
+
+Post-tag verification for `v0.10.1` (recorded 2026-06-11): all 7 release jobs
+green; 13 release assets published (5-platform static archives, 4 `_cgo`
+archives, `SHA256SUMS`, `SHA256SUMS-cgo`, evidence bundle); the Homebrew
+formula landed in `fulcrum-governance/homebrew-tap`; the container image is
+publicly pullable at `ghcr.io/fulcrum-governance/boundary:v0.10.1`
+(multi-arch manifest verified anonymously); `brew install
+fulcrum-governance/tap/boundary` followed by `boundary version` and
+`boundary selftest` passed end-to-end on a real machine. Prior post-tag
+evidence for `v0.9.0` and earlier remains in `docs/internal/`.
 
 ## README First-Run Status
 
-README presents the first-run path before architecture:
+README presents install before architecture, leading with the binary
+channels:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0
+brew install fulcrum-governance/tap/boundary
 boundary selftest
+boundary demo github-lethal-trifecta
+boundary demo tamper-evidence
 ```
 
-It also gives the fixture-only demo path:
+The source path remains:
 
 ```bash
-boundary demo github-lethal-trifecta
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.10.1
 ```
 
-The demo remains credential-free and performs no live GitHub calls or real
-mutation.
+All demos remain credential-free and perform no live calls or real mutations.
+`v0.10.1` ships six demos: `action-boundary`, `postgres`,
+`github-lethal-trifecta`, `command-secret-exfil`, `tamper-evidence`, and
+`trust-degradation`.
 
 ## Claims Status
 
-| Claim | Status | Final release truth |
-| --- | --- | --- |
-| BND-CLAIM-001 | delivered | MCP Safety Gateway requests are governed before execution only when the route passes through Boundary. |
-| BND-CLAIM-002 | delivered | Structured decision records are emitted for governed verdicts. |
-| BND-CLAIM-003 | partial | Boundary ships one production MCP adapter and seven preview adapter/profile packages tracked per adapter. |
-| BND-CLAIM-004 | false | Boundary is not a SQL firewall. |
-| BND-CLAIM-005 | delivered | Receipt-grade decision records are hash-verifiable; signed receipts are not implied by default. |
-| BND-CLAIM-006 | delivered | Production MCP JSON-RPC proxy adapter remains supported. |
-| BND-CLAIM-007 | partial | Managed Agents remains preview until live upstream conformance is recorded. |
-| BND-CLAIM-008 | delivered | Postgres AST guard is statement classification before PolicyEval, not universal SQL protection. |
-| BND-CLAIM-009 | delivered | Trust integration and adaptive termination remain scoped to protected adapters. |
-| BND-CLAIM-010 | delivered | Standalone and kernel integration contracts remain contract surfaces. |
-| BND-CLAIM-011 | delivered | Local MCP config inventory is read-only and classification-only. |
-| BND-CLAIM-012 | delivered | Risk graphs and generated policies are starter/operator-review surfaces. |
-| BND-CLAIM-013 | delivered | Install/uninstall and descriptor locks are local, reversible, and receipt-backed. |
-| BND-CLAIM-014 | delivered | Redteam packs are fixture-only and do not use live secrets or live mutation. |
-| BND-CLAIM-015 | delivered | Secure GitHub remains a preview fixture profile for write-after-taint denial before upstream GitHub mutation. |
-| BND-CLAIM-016 | delivered | Dashboard is local-only visibility over local artifacts. |
-| BND-CLAIM-017 | delivered | GitHub Action audits repo-local MCP configs and emits Markdown/SARIF reports. |
-| BND-CLAIM-018 | delivered | Secure GitHub provides an opt-in live conformance harness for read-taint evidence and denied write-after-taint no-mutation proof. |
-| BND-CLAIM-019 | partial | Operator-owned live Secure GitHub conformance has not yet been recorded in release evidence. |
-| BND-CLAIM-CMD-001 | delivered | Boundary provides preview project-local command governance for routed commands only. |
-| BND-CLAIM-CMD-002 | delivered | Command Boundary redteam packs are fixture-only and perform no live mutation. |
-| BND-CLAIM-EDIT-001 | delivered | Boundary provides preview Edit Boundary governance for proposed file mutations routed through Boundary edit envelopes. |
-| BND-CLAIM-EDIT-002 | delivered | Edit Boundary redteam packs are fixture-only and perform no live project mutation. |
-| BND-CLAIM-UTIL-001 | delivered | Boundary reports local version and build metadata; this is not cryptographic provenance. |
-| BND-CLAIM-UTIL-002 | delivered | Boundary runs a fixture-only action-boundary demo across routed MCP / Secure GitHub, Command Boundary, and Edit Boundary paths. |
-| BND-CLAIM-UTIL-003 | delivered | Boundary reports local routed-surface diagnostics and bypass caveats without proving production route protection. |
-| BND-CLAIM-UTIL-004 | delivered | Boundary creates and verifies local evidence bundles; evidence bundles do not prove production deployment safety. |
-| BND-CLAIM-REC-001 | delivered | Decision records carry additive route-context fields; `topology_profile` is asserted not attested and `execution_claim` is an adapter self-report. |
-| BND-CLAIM-EXPLAIN-001 | delivered | `boundary explain` renders a decision record read-only; it does not verify hashes or prove the verdict. |
-| BND-CLAIM-REPLAY-001 | delivered | `boundary replay` reproduces the recorded decision for routed requests; it does not prove enforcement or absence of upstream side effects. |
-| BND-CLAIM-TEST-001 | delivered | `boundary test` runs operator-authored policy-as-code cases against local policy bundles without live mutation; it does not prove production route enforcement or bypass resistance. |
+The `v0.9.0` claims table in
+[`docs/internal/RELEASE_TRUTH_V090.md`](./internal/RELEASE_TRUTH_V090.md)
+remains accurate for the carried-over claims; no carried claim changed status
+in `v0.10.x`. New claims recorded since `v0.9.0`:
 
-Delivered Secure GitHub, Command Boundary, and Edit Boundary claims are
-delivered preview claims. They do not upgrade those surfaces to production.
+| Claim | Status | Release truth |
+| --- | --- | --- |
+| BND-CLAIM-BUILD-001 | delivered (v0.10.1) | Static `CGO_ENABLED=0` builds are supported; the Postgres AST classifier is unavailable in them, routed SQL classifies `UNKNOWN` and is denied fail-closed, and the static build never allows SQL the cgo build would deny. |
+| BND-CLAIM-DIST-001 | delivered (v0.10.1) | Prebuilt distribution channels (release archives + checksums, Homebrew tap, container image, `go install`) publish from the tag-gated pipeline for `v0.10.1` and later; releases up to and including `v0.10.0` shipped source-only. |
+| BND-CLAIM-REC-002 | delivered (v0.10.1) | Decision-record hashes are computed over RFC 8785 (JCS) canonical bytes; the conformance statement is record-scoped and is not a whole-product standards claim. |
+| BND-CLAIM-VERIFY-002 | delivered (v0.10.1) | A standalone non-Go (Python) verifier recomputes a record's hash and detects a one-field forgery, pinned to Go by the shared conformance-vector corpus. |
+| BND-CLAIM-VERIFY-003 | main, unreleased | TypeScript verifier, vector-pinned. Not part of any released tag. |
+| BND-CLAIM-VERIFY-004 | main, unreleased | Rust verifier, vector-pinned. Not part of any released tag. |
+| BND-CLAIM-SIGN-001 | main, unreleased | Opt-in Ed25519 record signing, off by default; signature attests the signer, not the verdict. Not part of any released tag. |
 
 ## Feature Status
 
+The `v0.9.0` feature table in
+[`docs/internal/RELEASE_TRUTH_V090.md`](./internal/RELEASE_TRUTH_V090.md)
+carries forward unchanged. Added in `v0.10.1`:
+
 | Feature | Status | Release truth |
 | --- | --- | --- |
-| `boundary selftest` | delivered | No-credential local smoke test over inventory, risk graph, starter policies, descriptor drift, redteam, Secure GitHub live fail-closed behavior, and decision records. |
-| `boundary demo github-lethal-trifecta` | delivered | Fixture-only demo of write-after-taint denial before upstream GitHub mutation. |
-| Secure GitHub fixture proof | delivered preview | Fixture setup/serve and redteam prove the tested deny path without credentials or live mutation. |
-| Secure GitHub live conformance harness | delivered preview | Opt-in GitHub App path records sanitized read-taint evidence and denied write-after-taint no-mutation proof. |
-| Inventory JSON/Markdown/SARIF | delivered | Local MCP inventory reporting surfaces. |
-| Inventory NDJSON | delivered | Versioned record stream for tool ingestion. |
-| External inventory ingest | delivered | Boundary, generic, and external MCP inventory NDJSON mapping. |
-| GitHub Action MCP audit | delivered | Repo-local MCP config audit with Markdown and optional SARIF. |
-| Install/release workflow | delivered | `make selftest`, `make demo-github`, `make release-check`, and `docs/INSTALL.md`. |
-| Local dashboard | delivered | Local-only artifact view. |
-| Command classification | delivered preview | Classifies command argv without execution and redacts secret-looking arguments. |
-| Command run wrapper | delivered preview | Evaluates wrapper-routed commands before execution and blocks denied or approval-required commands. |
-| Project shims and shell | delivered preview | Routes selected project-local commands through Boundary without global shell mutation. |
-| Command redteam packs | delivered preview | Fixture-only cleanup, secret-exfiltration, and repo-mutation packs. |
-| Edit inspect | delivered preview | Classifies proposed patch bytes without applying them. |
-| Edit apply wrapper | delivered preview | Evaluates routed edit envelopes before applying file mutations. |
-| Edit redteam packs | delivered preview | Fixture-only secret-bearing, package-script, CI/deploy, destructive-delete, and cross-scope mutation packs. |
-| `boundary version` | delivered | Local build metadata in text and JSON form. |
-| `boundary demo action-boundary` | delivered | Fixture-only cross-surface demo across MCP / Secure GitHub, Command Boundary, and Edit Boundary. |
-| `boundary doctor` | delivered | Local routed-surface diagnostics and bypass caveats. |
-| `boundary evidence bundle` | delivered | Local evidence manifest, SHA-256 hashes, and fixture-safe utility outputs. |
-| `boundary evidence verify` | delivered | Local manifest, hash, schema, summary, and artifact reference checks. |
-| `DecisionRecordV2` route-context | delivered | Additive `schema_version "2"` records carry `adapter_id`, `route_id`, `topology_profile`, and `execution_claim` covered by `decision_hash`; `topology_profile` is asserted not attested and `execution_claim` is an adapter self-report not independently corroborated. V1 records stay valid. |
-| `boundary explain` | delivered | Read-only rendering of a decision record (V1 or V2); does not re-verify hashes or prove the verdict was correct or enforced. |
-| `boundary replay` | delivered | Local re-evaluation that reproduces the recorded decision for routed requests against the recorded bundle; does not prove enforcement or the absence of upstream side effects. |
-| `boundary test` | delivered | Local, fixture-only policy-as-code assertions over operator policy bundles and expected verdicts; does not prove production route enforcement, bypass resistance, or global verdict correctness. |
-| Record-location output | delivered | Uniform record-path/`record_id` line and `--out` semantics across `demo`, `redteam`, and `evidence`, so the find → verify → explain → replay loop is copy-paste. |
+| Prebuilt release pipeline | delivered | Tag-gated goreleaser publish: static archives + checksums, `_cgo` variants, tap formula, container image, evidence bundle. |
+| Static build variant | delivered | `CGO_ENABLED=0` builds work; SQL classification degrades to fail-safe `UNKNOWN`-deny; `_cgo` archives carry the full classifier. |
+| RFC 8785 record canonicalization | delivered | Record-scoped JCS canonical preimage behind all stable hashes; committed conformance vectors; older-build records no longer verify (pre-1.0 format change). |
+| Python standalone verifier | delivered | `verifiers/python/` recomputes `decision_hash` via the stock `rfc8785` package; integrity only, not authenticity. |
+| Cross-language CI verification gate | delivered | CI requires Go and the stock Python implementation to agree on record hashes every run. |
+| `boundary demo tamper-evidence` | delivered | Fixture-only forge-the-receipt demo: mutate a recorded verdict, watch `verify-record` refuse it. |
+| First-run / quickstart rework | delivered | README and quickstart lead with install + the record-trust loop; uniform record-location output retained. |
+| Comparison and standards docs | delivered | "Where Boundary Fits" category comparison and the standards/incident mapping pages, in the limitation-framed register. |
+| Claude Code `PreToolUse` hook | delivered preview | Routes hook-delivered tool calls through `boundary command classify` before execution; governs only the calls the hook delivers — routed-only. |
 
 ## Adapter, Profile, And Surface Status
 
-| Adapter/Profile/Surface | Status | Release truth |
-| --- | --- | --- |
-| MCP | production | Production JSON-RPC MCP proxy path with lifecycle tests; deployment bypass proof remains an operator topology requirement. |
-| CLI | preview | Governed wrapper execution works; production requires sole-wrapper deployment evidence. |
-| CodeExec | preview | Policy-gated execution works; secure sandboxing is not claimed without a real named boundary. |
-| gRPC | preview | Unary lifecycle works with governance trailers; streaming workloads remain preview. |
-| Managed Agents | preview | Preview proxy and conformance harness exist; production requires live upstream conformance. |
-| Webhook | preview | Informational and execution modes are split; production requires sole-path deployment evidence. |
-| A2A | preview | Governed lifecycle exists against a documented snapshot; production requires live protocol conformance. |
-| Secure GitHub | preview | Fixture proof plus opt-in live GitHub App conformance harness; production requires deployment bypass evidence and broader live coverage. |
-| Command Boundary | preview | Project-local command governance for commands routed through `boundary command run`, `boundary shell`, or project-local shims. |
-| Edit Boundary | preview | Proposed file mutation governance for edits routed through Boundary edit envelopes. |
+Unchanged from `v0.9.0` — no surface changed maturity in `v0.10.x`. MCP is
+production; CLI, CodeExec, gRPC, Managed Agents, Webhook, A2A, Secure GitHub,
+Command Boundary, and Edit Boundary are preview. The full table is in
+[`docs/internal/RELEASE_TRUTH_V090.md`](./internal/RELEASE_TRUTH_V090.md).
 
 ## User-Install Status
 
-The documented repeatable install path is:
+The documented install channels for `v0.10.1` and later:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0
+brew install fulcrum-governance/tap/boundary          # static build
+docker pull ghcr.io/fulcrum-governance/boundary:v0.10.1
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.10.1
 ```
 
-Requires Go 1.25+.
-
-README keeps `@v0.9.0` as the primary copy/paste command for repeatability. No
-Homebrew, package-manager, or hosted distribution channel is claimed.
+Plus release archives with `SHA256SUMS` / `SHA256SUMS-cgo` manifests. Releases
+up to and including `v0.10.0` shipped source-only. The formula and archives
+install the static build; the `_cgo` archives and the source build carry the
+full SQL classifier (Go 1.25+ and a C toolchain required for source).
 
 ## GitHub Action Ref Status
 
 The MCP audit action examples use:
 
 ```yaml
-- uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.9.0
+- uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.10.1
 ```
 
 Use the release tag for repeatable CI behavior. SARIF upload examples must
@@ -225,36 +230,44 @@ include `contents: read` and `security-events: write` permissions.
 Fulcrum Boundary is the action boundary for routed agent tools. It inventories
 local MCP tool paths, renders risk paths, generates starter policies, runs safe
 fixture redteams, and denies governed privileged actions before execution when
-those actions route through Boundary. MCP is the first production route; Command
-Boundary, Edit Boundary, Secure GitHub, and the remaining adapters are preview.
+those actions route through Boundary. MCP is the first production route;
+Command Boundary, Edit Boundary, Secure GitHub, and the remaining adapters are
+preview.
 
-Fulcrum Boundary v0.9.0 packages the Phase 0A "Trust the Record" loop over the
-two fixture-only proof lanes — `boundary demo github-lethal-trifecta` (MCP) and
-`boundary demo command-secret-exfil` (Command Boundary) — and adds the Phase 1
-policy-as-code test loop. Route-context decision records (`DecisionRecordV2`),
-`boundary explain`, and `boundary replay` let an operator find, verify, render,
-and reproduce a recorded decision. `boundary test` lets an operator assert
-expected verdicts for routed request fixtures against local policy bundles and
-fail CI on drift. `boundary explain` renders read-only and does not verify
-hashes; `boundary replay` reproduces the recorded decision, not enforcement and
-not the absence of upstream side effects; `boundary test` reports local policy
-verdicts for supplied fixtures, not production route enforcement or bypass
-resistance. `topology_profile` is asserted, not attested, and `execution_claim`
-is an adapter self-report. v0.9.0 does not add a new governed action surface or
-upgrade any preview surface to production.
+Fulcrum Boundary v0.10.1 is the first release with prebuilt binaries: a
+one-command Homebrew install, release archives with checksums, a container
+image, and `go install`. Decision-record hashes are computed over RFC 8785
+(JCS) canonical bytes — that statement is scoped to the decision record and
+is not a claim that Boundary as a whole is standards-conformant. A record can
+be verified with the Go binary or with the standalone Python verifier built on
+the stock `rfc8785` package, pinned to the Go implementation by a committed
+conformance-vector corpus. The hashes are unkeyed SHA-256: integrity, not
+authenticity. Verification confirms the record was not altered after emission;
+it does not prove the verdict was correct, the action executed or prevented,
+or who produced the record. The fixture demos — including
+`boundary demo tamper-evidence`, which forges a recorded verdict and shows
+verification refuse it — use no credentials, make no live calls, and perform
+no real mutations. v0.10.1 adds no new governed action surface and upgrades no
+preview surface to production.
 
 Secure GitHub is preview. Production status still requires deployment bypass
 evidence and broader live coverage.
 
 Command Boundary remains preview. Direct shell access, CI jobs, and SSH
 sessions remain outside Command Boundary unless routed through Boundary command
-wrappers or project-local shims. Direct file edits are covered only by Edit
-Boundary when they route through edit envelopes.
+wrappers or project-local shims.
 
 Edit Boundary remains preview. Direct editor writes, direct filesystem writes,
 direct `git apply`, shell redirection, IDE saves, CI jobs, and arbitrary
 processes remain outside Boundary unless routed through Boundary edit
 envelopes.
+
+For the next tagged release (when the main-unreleased items above ship), the
+pre-approved additions are: records verify in Go, Python, TypeScript, or Rust
+(always the enumerated list); and Ed25519 signing is opt-in and off by
+default, a signature attests who signed the record and not the verdict or
+execution, and key custody is the operator's. Neither sentence may be used as
+released-capability language before that tag exists.
 
 ## Forbidden Release Language
 
@@ -290,59 +303,64 @@ Do not use these as public capability claims:
 - Do not claim `boundary test` proves deployment bypass resistance.
 - Do not claim `boundary test` proves a verdict was globally correct beyond the
   supplied fixture and local policy bundle.
+- Do not claim records are tamper-proof, immutable, or non-repudiable; the
+  approved properties are hash-verifiable and tamper-evident over covered
+  inputs.
+- Do not claim Boundary as a whole is standards-conformant; the RFC 8785
+  statement is record-scoped with the scope on the same line.
+- Do not claim a Boundary record verifies in any language; the verifier list
+  is always enumerated, and TypeScript/Rust remain unreleased until the next
+  tag.
+- Do not claim signed receipts or signing by default; in `v0.10.1` signing
+  does not exist, and on main it is opt-in, off by default, and attests the
+  signer rather than the verdict.
+- Do not claim Boundary aligns with or implements
+  `draft-sharif-agent-audit-trail`; the shared per-record algorithms and the
+  unimplemented `prev_hash` session chain must be stated together or not at
+  all.
 
 These phrases may appear only in claim-control, language-control, historical,
 or explicit limitation context.
 
 ## Docs Checked
 
-- `README.md`
-- `docs/INSTALL.md`
+This 2026-06-11 revision verified, against the `v0.10.1` tag and `main`
+(`f0e3041`):
+
+- `README.md` (install channels, first-run, forge-the-receipt language)
+- `docs/INSTALL.md` (channel availability, `@v0.10.1` targets)
+- `CHANGELOG.md` (`[0.10.0]`/`[0.10.1]` history, `[Unreleased]` content)
+- `docs/releases/v0.10.0.md` and `docs/releases/v0.10.1.md`
+- `claims/boundary_claims.yaml` (claim diff `v0.9.0..v0.10.1` and
+  `v0.10.1..main`)
+- `verifiers/python/README.md`
+- `docs/SIGNING.md` (main, unreleased)
 - `docs/CLI_REFERENCE.md`
-- `docs/POLICY_TESTING.md`
-- `docs/CLAIMS_LEDGER.md`
-- `claims/boundary_claims.yaml`
-- `docs/ADAPTER_READINESS_MATRIX.md`
-- `docs/releases/v0.9.0.md`
-- `docs/internal/RELEASE_TRUTH_V090_POSTRELEASE.md`
-- `docs/BOUNDARY_ROADMAP.md`
-- `docs/DECISION_RECORDS.md`
-- `docs/RECEIPTS.md`
-- `docs/examples/README.md`
-- `docs/internal/RELEASE_TRUTH_V060.md`
-- `docs/internal/RELEASE_TRUTH_V061.md`
-- `docs/internal/RELEASE_TRUTH_V070.md`
-- `docs/internal/RELEASE_TRUTH_REPO_POLISH.md`
-- `docs/internal/LAUNCH_TRUTH_FREEZE.md`
-- `docs/PUBLIC_RELEASE_COPY.md`
-- `docs/secure-mcp/`
-- `docs/command-boundary/`
-- `docs/edit-boundary/`
-- `docs-site/`
-- `docs/firewall/GITHUB_ACTION.md`
-- `actions/mcp-audit/README.md`
-- `actions/mcp-audit/action.yml`
-- `CHANGELOG.md`
+- Release assets, tap formula, and container image (post-tag evidence above)
+
+The `v0.9.0` reconciliation's full docs-checked list is preserved in
+[`docs/internal/RELEASE_TRUTH_V090.md`](./internal/RELEASE_TRUTH_V090.md).
 
 ## Drift Fixed
 
-- Updated active public truth to the published `v0.9.0` release.
-- Recorded the `v0.9.0` post-tag evidence: annotated tag, GitHub Release,
-  pinned `@v0.9.0` install, `@latest` install, and installed `boundary test`
-  availability.
-- Updated active install and GitHub Action examples to `@v0.9.0`; the prior
-  `@v0.8.0` pin is now superseded and kept as Phase 0A history.
-- Recorded the Phase 0A record-UX additions (route-context `DecisionRecordV2`,
-  `boundary explain`, `boundary replay`, record-location UX) as delivered claims
-  with asserted-not-attested and self-report-not-corroborated caveats.
-- Recorded the Phase 1 `boundary test` policy-as-code lane as a delivered claim
-  with local-fixture-only and routed-request caveats.
-- Archived the v0.7.0 active truth to `docs/internal/RELEASE_TRUTH_V070.md`.
-- Preserved historical v0.3.0, v0.4.0, v0.5.0, v0.6.1, and v0.7.0 release truth
-  artifacts as history.
-- Clarified that Edit Boundary is delivered preview while direct editor writes,
-  direct filesystem writes, shell redirection, direct `git apply`, and
-  filesystem sandboxing remain out of scope.
-- Clarified that version, doctor, action-boundary demo, evidence, `explain`, and
-  `replay` commands are local utility surfaces and do not prove production route
-  enforcement.
+- Updated active public truth from `v0.9.0` to the published `v0.10.1`
+  release; archived the prior active truth to
+  `docs/internal/RELEASE_TRUTH_V090.md`.
+- Recorded the `v0.10.0` history honestly: a valid source-install tag whose
+  pipeline run failed before publishing assets; `v0.10.1` is
+  content-identical plus the fix.
+- Recorded the `v0.10.1` post-tag evidence: 7/7 release jobs, 13 assets, tap
+  formula, public multi-arch container image, and an end-to-end
+  `brew install` + `selftest` pass.
+- Recorded the distribution, static-build, RFC 8785 record, and Python
+  verifier claims as delivered at `v0.10.1` with their caveats.
+- Added the fenced "Shipped On Main, Unreleased" section so downstream truth
+  documents can cite Boundary's main-branch state (TypeScript/Rust verifiers,
+  opt-in Ed25519 signing, CLI polish, fuzz/boot-test depth) without
+  presenting it as released capability.
+- Stated the `draft-sharif-agent-audit-trail` position once and precisely:
+  shared per-record algorithms, unimplemented session chain, no alignment
+  claim.
+- Extended the forbidden-language list with the records-era rules:
+  tamper-proof/immutable/non-repudiable, blanket standards conformance,
+  any-language verification, signed-by-default, and draft-alignment claims.
