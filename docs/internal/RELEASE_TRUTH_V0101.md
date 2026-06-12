@@ -4,35 +4,20 @@ Date: 2026-06-11
 
 Branch: `main`
 
-Current release target: `v0.11.0`
+Current release target: `v0.10.1`
 
 ## Summary
 
 This report reconciles the public Boundary release surface for the published
-`v0.11.0` release — the verifiable-records-breadth release. `v0.10.1` (the
-first binary release) survives as the prior history tag; its full
-reconciliation is archived at
-[`docs/internal/RELEASE_TRUTH_V0101.md`](./internal/RELEASE_TRUTH_V0101.md).
-`v0.10.0` remains a valid source-install tag with no release assets (history
+`v0.10.1` release — the first release published with prebuilt binaries — and
+records, in a separate fenced section, what has merged to `main` since the tag
+and is not yet part of any release. `v0.9.0` survives as the prior history
+tag. `v0.10.0` exists as a valid source-install tag with no release assets:
+its release-pipeline run failed before publishing, and `v0.10.1` is
+content-identical plus the pipeline fix (the failure and the fix are recorded
 in `CHANGELOG.md` and `docs/releases/v0.10.0.md`).
 
-`v0.11.0` packages, on top of the `v0.10.1` surface: standalone TypeScript
-and Rust decision-record verifiers, each recomputing `decision_hash` via a
-stock RFC 8785 implementation and pinned to Go by the committed
-conformance-vector corpus enforced in CI — a record now verifies in Go,
-Python, TypeScript, or Rust (always that enumerated list); opt-in Ed25519
-record signing, off by default — `boundary serve --receipt-seed FILE` enables
-it (failing closed before the listener opens on a bad seed) and
-`boundary verify-record --verify-signature --public-key <hex|file>` checks
-the signature over the recomputed `decision_hash`, failing closed; signing
-never changes `decision_hash`, a valid signature attests who signed the
-record and not the verdict or execution, key custody is the operator's, and
-the non-Go verifiers remain integrity-only; shell completions, rich help and
-`--json` verbs; three native fuzz targets in the required CI set; a hermetic
-serve-boot test and RESP codec coverage; and the adapter production-bar
-contributor doc.
-
-`v0.10.1` had packaged three lanes on top of the `v0.9.0` surface:
+`v0.10.1` packages three lanes on top of the `v0.9.0` surface:
 
 - **Distribution.** A tag-gated release pipeline publishes static
   (`CGO_ENABLED=0`) archives for macOS/Linux/Windows with checksums, `_cgo`
@@ -52,8 +37,8 @@ contributor doc.
   inputs; it does not prove the verdict was correct, the action executed or
   prevented, or who produced the record.
 
-Neither `v0.10.1` nor `v0.11.0` adds a new governed action surface, adds a
-transport adapter, or upgrades any preview surface to production.
+`v0.10.1` adds no new governed action surface, adds no transport adapter, and
+upgrades no preview surface to production.
 
 The final public truth is:
 
@@ -64,10 +49,8 @@ The final public truth is:
 - Edit Boundary remains delivered preview and routed-edit-envelope-only.
 - CLI, CodeExec, gRPC, Managed Agents, Webhook, and A2A remain preview.
 - Decision records are hash-verifiable: unkeyed SHA-256 over RFC 8785
-  canonical bytes — integrity, not authenticity. As of `v0.11.0`, Ed25519
-  signing is opt-in and off by default; a signature attests who signed the
-  record, not the verdict or execution, and signed-by-default is never
-  claimed.
+  canonical bytes — integrity, not authenticity. In `v0.10.1`, signing is not
+  available; signed receipts are not claimed in any form.
 - `boundary explain` renders a decision record read-only; it does not
   re-verify hashes or prove the verdict was correct or enforced.
 - `boundary replay` reproduces the recorded decision for routed requests; it
@@ -79,9 +62,39 @@ The final public truth is:
 
 ## Shipped On Main, Unreleased
 
-> None as of this reconciliation: `main` (`a394488`) and the `v0.11.0` tag
-> are identical. When work merges past the tag, it is recorded here with
-> "main, unreleased" status before any downstream document cites it.
+> Everything in this section merged to `main` after the `v0.10.1` tag and is
+> **not part of any released tag**. Do not cite any of it as released
+> capability. It is recorded here so downstream truth documents (including the
+> Fulcrum-IO claims lock) can reference Boundary's main-branch state with the
+> correct status. These items become release truth only when the next tag
+> ships and this document is reconciled again.
+
+- **TypeScript and Rust standalone verifiers** (`verifiers/typescript/`,
+  `verifiers/rust/`), each recomputing `decision_hash` via a stock RFC 8785
+  implementation and pinned to Go by the same conformance vectors, enforced in
+  CI. With these, a record verifies in Go, Python, TypeScript, or Rust — that
+  enumerated list, never "any language." Ledger: `BND-CLAIM-VERIFY-003`,
+  `BND-CLAIM-VERIFY-004` (main).
+- **Opt-in Ed25519 record signing**, off by default: a configured signer
+  populates `signature`/`signature_key_id` on emitted records (parse
+  rejections included), `boundary serve --receipt-seed FILE` enables it at
+  serve (failing closed before the listener opens on a bad seed), and
+  `boundary verify-record --verify-signature --public-key <hex|file>` checks
+  the signature over the recomputed `decision_hash`, failing closed. Signing
+  never changes `decision_hash`. A valid signature attests who signed the
+  record; it does not prove the verdict was correct, that the action executed
+  or was prevented, and it does not solve key custody. The Python, TypeScript,
+  and Rust verifiers remain integrity-only and do not check signatures.
+  Ledger: `BND-CLAIM-SIGN-001` (main).
+- **CLI and docs polish**: `--version`/`-v`, `boundary help <topic>`, rich
+  help across previously bare commands, `--json` on `verify`/`verify-record`,
+  `boundary completion bash|zsh|fish`, a skeptic FAQ, a complete CLI reference
+  command map, and the adapter production-bar contributor doc.
+- **Test and robustness depth**: native Go fuzz targets (record
+  canonicalization round-trip, policy parse, SQL classifier) wired into the
+  required CI set; a hermetic black-box `boundary serve` boot test asserting
+  the governed deny before upstream; RESP codec unit tests for the kernel
+  trust path.
 
 On the standards question, stated once and precisely: Boundary's per-record
 canonicalization (RFC 8785/JCS) and SHA-256 hashing match the per-record
@@ -101,8 +114,8 @@ documented, additive change.
 | `go test ./claims/... -count=1` | Pass |
 | `go test ./... -count=1 -timeout 5m` | Pass |
 
-Verified 2026-06-11 at the `v0.11.0` tag commit `a394488` (`make
-release-check` exit 0 on the release-prep branch at the same tree, and the
+Verified 2026-06-11 at `main` commit `f0e3041` (post-tag main; the `v0.10.1`
+tag itself shipped with `make release-check` exit 0 at `7ac56b3`, and the
 release workflow's `release-check` gate job passed before publish).
 
 `make release-check` runs the root suite, the gRPC nested module suite, the
@@ -111,17 +124,15 @@ release workflow's `release-check` gate job passed before publish).
 `boundary doctor --json`, `boundary evidence bundle --include-demo`,
 `boundary evidence verify`, and the policy-as-code corpus.
 
-Post-tag verification for `v0.11.0` (recorded 2026-06-11): all 7 release
-jobs green; 13 release assets published (5-platform static archives, 4
-`_cgo` archives, `SHA256SUMS`, `SHA256SUMS-cgo`, evidence bundle); the
-Homebrew formula update landed in `fulcrum-governance/homebrew-tap`
-(commit `12080b771`, "boundary v0.11.0"); `brew upgrade boundary` moved a
-real machine from `v0.10.1` to `v0.11.0` end-to-end — the first exercise of
-the formula update path — and `boundary version` reports `v0.11.0` at
-`a394488` with `boundary selftest` passing. The `v0.10.1` post-tag evidence
-is archived in
-[`docs/internal/RELEASE_TRUTH_V0101.md`](./internal/RELEASE_TRUTH_V0101.md);
-prior evidence remains in `docs/internal/`.
+Post-tag verification for `v0.10.1` (recorded 2026-06-11): all 7 release jobs
+green; 13 release assets published (5-platform static archives, 4 `_cgo`
+archives, `SHA256SUMS`, `SHA256SUMS-cgo`, evidence bundle); the Homebrew
+formula landed in `fulcrum-governance/homebrew-tap`; the container image is
+publicly pullable at `ghcr.io/fulcrum-governance/boundary:v0.10.1`
+(multi-arch manifest verified anonymously); `brew install
+fulcrum-governance/tap/boundary` followed by `boundary version` and
+`boundary selftest` passed end-to-end on a real machine. Prior post-tag
+evidence for `v0.9.0` and earlier remains in `docs/internal/`.
 
 ## README First-Run Status
 
@@ -138,7 +149,7 @@ boundary demo tamper-evidence
 The source path remains:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.11.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.10.1
 ```
 
 All demos remain credential-free and perform no live calls or real mutations.
@@ -149,7 +160,7 @@ All demos remain credential-free and perform no live calls or real mutations.
 ## Claims Status
 
 The `v0.9.0` claims table in
-[`docs/internal/RELEASE_TRUTH_V090.md`](./internal/RELEASE_TRUTH_V090.md)
+[`docs/internal/RELEASE_TRUTH_V090.md`](./RELEASE_TRUTH_V090.md)
 remains accurate for the carried-over claims; no carried claim changed status
 in `v0.10.x`. New claims recorded since `v0.9.0`:
 
@@ -159,27 +170,15 @@ in `v0.10.x`. New claims recorded since `v0.9.0`:
 | BND-CLAIM-DIST-001 | delivered (v0.10.1) | Prebuilt distribution channels (release archives + checksums, Homebrew tap, container image, `go install`) publish from the tag-gated pipeline for `v0.10.1` and later; releases up to and including `v0.10.0` shipped source-only. |
 | BND-CLAIM-REC-002 | delivered (v0.10.1) | Decision-record hashes are computed over RFC 8785 (JCS) canonical bytes; the conformance statement is record-scoped and is not a whole-product standards claim. |
 | BND-CLAIM-VERIFY-002 | delivered (v0.10.1) | A standalone non-Go (Python) verifier recomputes a record's hash and detects a one-field forgery, pinned to Go by the shared conformance-vector corpus. |
-| BND-CLAIM-VERIFY-003 | delivered (v0.11.0) | TypeScript verifier, vector-pinned; integrity only, not authenticity. |
-| BND-CLAIM-VERIFY-004 | delivered (v0.11.0) | Rust verifier, vector-pinned (including the ECMAScript float round-trip vector); integrity only, not authenticity. |
-| BND-CLAIM-SIGN-001 | delivered (v0.11.0) | Opt-in Ed25519 record signing, off by default; a signature attests the signer, not the verdict or execution; signing never changes decision_hash. |
+| BND-CLAIM-VERIFY-003 | main, unreleased | TypeScript verifier, vector-pinned. Not part of any released tag. |
+| BND-CLAIM-VERIFY-004 | main, unreleased | Rust verifier, vector-pinned. Not part of any released tag. |
+| BND-CLAIM-SIGN-001 | main, unreleased | Opt-in Ed25519 record signing, off by default; signature attests the signer, not the verdict. Not part of any released tag. |
 
 ## Feature Status
 
 The `v0.9.0` feature table in
-[`docs/internal/RELEASE_TRUTH_V090.md`](./internal/RELEASE_TRUTH_V090.md)
-carries forward unchanged. Added in `v0.11.0`:
-
-| Feature | Status | Release truth |
-| --- | --- | --- |
-| TypeScript standalone verifier | delivered | `verifiers/typescript/` recomputes `decision_hash` via the stock `canonicalize` package; vector-pinned to Go; integrity only. |
-| Rust standalone verifier | delivered | `verifiers/rust/` recomputes `decision_hash` via the stock `serde_jcs` crate; vector-pinned to Go; integrity only. |
-| Opt-in Ed25519 record signing | delivered | Off by default. `PipelineConfig.ReceiptSigner` / `serve --receipt-seed` sign emitted records (parse rejections included); `verify-record --verify-signature` fails closed; signing never changes `decision_hash`; a signature attests the signer, not the verdict. |
-| Shell completions | delivered | `boundary completion bash\|zsh\|fish`, generated from the binary's command table; static scripts. |
-| Fuzz targets in required CI | delivered | Record canonicalization round-trip, policy parse, and SQL classifier fuzz targets; seeds run on every `go test ./...`; the CI fuzz job is in the `ci-ok` required set. |
-| Serve-boot + RESP test depth | delivered | Hermetic black-box `boundary serve` boot test asserting the governed deny before upstream; RESP codec unit tests for the kernel trust path. |
-| Adapter production bar doc | delivered | `docs/ADAPTER_PRODUCTION_BAR.md`: the preview-to-production contract; the bar earns a label, not a guarantee. |
-
-Added in `v0.10.1`:
+[`docs/internal/RELEASE_TRUTH_V090.md`](./RELEASE_TRUTH_V090.md)
+carries forward unchanged. Added in `v0.10.1`:
 
 | Feature | Status | Release truth |
 | --- | --- | --- |
@@ -198,16 +197,16 @@ Added in `v0.10.1`:
 Unchanged from `v0.9.0` — no surface changed maturity in `v0.10.x`. MCP is
 production; CLI, CodeExec, gRPC, Managed Agents, Webhook, A2A, Secure GitHub,
 Command Boundary, and Edit Boundary are preview. The full table is in
-[`docs/internal/RELEASE_TRUTH_V090.md`](./internal/RELEASE_TRUTH_V090.md).
+[`docs/internal/RELEASE_TRUTH_V090.md`](./RELEASE_TRUTH_V090.md).
 
 ## User-Install Status
 
-The documented install channels (binaries publish for `v0.10.1` and later; current tag `v0.11.0`):
+The documented install channels for `v0.10.1` and later:
 
 ```bash
 brew install fulcrum-governance/tap/boundary          # static build
-docker pull ghcr.io/fulcrum-governance/boundary:v0.11.0
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.11.0
+docker pull ghcr.io/fulcrum-governance/boundary:v0.10.1
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.10.1
 ```
 
 Plus release archives with `SHA256SUMS` / `SHA256SUMS-cgo` manifests. Releases
@@ -220,7 +219,7 @@ full SQL classifier (Go 1.25+ and a C toolchain required for source).
 The MCP audit action examples use:
 
 ```yaml
-- uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.11.0
+- uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.10.1
 ```
 
 Use the release tag for repeatable CI behavior. SARIF upload examples must
@@ -263,15 +262,12 @@ direct `git apply`, shell redirection, IDE saves, CI jobs, and arbitrary
 processes remain outside Boundary unless routed through Boundary edit
 envelopes.
 
-Fulcrum Boundary v0.11.0 widens record verification: a decision record
-verifies in Go, Python, TypeScript, or Rust — always that enumerated list —
-with each standalone verifier pinned to the Go implementation by the
-committed conformance-vector corpus, enforced in CI; the verifiers check
-integrity, not authenticity. Ed25519 signing is available opt-in and off by
-default: a signature attests who signed the record, not the verdict or
-execution, key custody is the operator's, and the non-Go verifiers do not
-check signatures. v0.11.0 adds no new governed action surface and upgrades
-no preview surface to production.
+For the next tagged release (when the main-unreleased items above ship), the
+pre-approved additions are: records verify in Go, Python, TypeScript, or Rust
+(always the enumerated list); and Ed25519 signing is opt-in and off by
+default, a signature attests who signed the record and not the verdict or
+execution, and key custody is the operator's. Neither sentence may be used as
+released-capability language before that tag exists.
 
 ## Forbidden Release Language
 
@@ -313,9 +309,11 @@ Do not use these as public capability claims:
 - Do not claim Boundary as a whole is standards-conformant; the RFC 8785
   statement is record-scoped with the scope on the same line.
 - Do not claim a Boundary record verifies in any language; the verifier list
-  is always enumerated: Go, Python, TypeScript, Rust.
-- Do not claim signed receipts or signing by default; signing is opt-in, off
-  by default, and attests the signer rather than the verdict.
+  is always enumerated, and TypeScript/Rust remain unreleased until the next
+  tag.
+- Do not claim signed receipts or signing by default; in `v0.10.1` signing
+  does not exist, and on main it is opt-in, off by default, and attests the
+  signer rather than the verdict.
 - Do not claim Boundary aligns with or implements
   `draft-sharif-agent-audit-trail`; the shared per-record algorithms and the
   unimplemented `prev_hash` session chain must be stated together or not at
@@ -326,41 +324,43 @@ or explicit limitation context.
 
 ## Docs Checked
 
-This 2026-06-11 revision verified, against the `v0.11.0` tag (`a394488`,
-identical to `main`):
+This 2026-06-11 revision verified, against the `v0.10.1` tag and `main`
+(`f0e3041`):
 
 - `README.md` (install channels, first-run, forge-the-receipt language)
 - `docs/INSTALL.md` (channel availability, `@v0.10.1` targets)
 - `CHANGELOG.md` (`[0.10.0]`/`[0.10.1]` history, `[Unreleased]` content)
 - `docs/releases/v0.10.0.md` and `docs/releases/v0.10.1.md`
-- `claims/boundary_claims.yaml` (claim diff `v0.10.1..v0.11.0`)
+- `claims/boundary_claims.yaml` (claim diff `v0.9.0..v0.10.1` and
+  `v0.10.1..main`)
 - `verifiers/python/README.md`
-- `docs/SIGNING.md`
-- `docs/releases/v0.11.0.md`
+- `docs/SIGNING.md` (main, unreleased)
 - `docs/CLI_REFERENCE.md`
 - Release assets, tap formula, and container image (post-tag evidence above)
 
 The `v0.9.0` reconciliation's full docs-checked list is preserved in
-[`docs/internal/RELEASE_TRUTH_V090.md`](./internal/RELEASE_TRUTH_V090.md).
+[`docs/internal/RELEASE_TRUTH_V090.md`](./RELEASE_TRUTH_V090.md).
 
 ## Drift Fixed
 
-- Updated active public truth from `v0.10.1` to the published `v0.11.0`
+- Updated active public truth from `v0.9.0` to the published `v0.10.1`
   release; archived the prior active truth to
-  `docs/internal/RELEASE_TRUTH_V0101.md` (relative links corrected for the
-  directory move).
-- Collapsed the "Shipped On Main, Unreleased" section: `main` and the
-  `v0.11.0` tag are identical at this reconciliation, so the TypeScript/Rust
-  verifiers and opt-in Ed25519 signing moved from fenced main-status to
-  released claims (`BND-CLAIM-VERIFY-003`, `BND-CLAIM-VERIFY-004`,
-  `BND-CLAIM-SIGN-001` — delivered, v0.11.0).
-- Activated the previously pre-approved release language: enumerated
-  four-language verification and opt-in, off-by-default signing with the
-  attests-the-signer caveat.
-- Recorded the `v0.11.0` post-tag evidence: 7/7 release jobs, 13 assets, the
-  tap formula update, and the first end-to-end `brew upgrade` exercise of the
-  formula update path.
-- Updated install, container, and GitHub Action examples to `@v0.11.0`.
-- Kept the standards position unchanged and precise: shared per-record
-  algorithms with `draft-sharif-agent-audit-trail-00`, unimplemented session
-  chain, no alignment claim.
+  `docs/internal/RELEASE_TRUTH_V090.md`.
+- Recorded the `v0.10.0` history honestly: a valid source-install tag whose
+  pipeline run failed before publishing assets; `v0.10.1` is
+  content-identical plus the fix.
+- Recorded the `v0.10.1` post-tag evidence: 7/7 release jobs, 13 assets, tap
+  formula, public multi-arch container image, and an end-to-end
+  `brew install` + `selftest` pass.
+- Recorded the distribution, static-build, RFC 8785 record, and Python
+  verifier claims as delivered at `v0.10.1` with their caveats.
+- Added the fenced "Shipped On Main, Unreleased" section so downstream truth
+  documents can cite Boundary's main-branch state (TypeScript/Rust verifiers,
+  opt-in Ed25519 signing, CLI polish, fuzz/boot-test depth) without
+  presenting it as released capability.
+- Stated the `draft-sharif-agent-audit-trail` position once and precisely:
+  shared per-record algorithms, unimplemented session chain, no alignment
+  claim.
+- Extended the forbidden-language list with the records-era rules:
+  tamper-proof/immutable/non-repudiable, blanket standards conformance,
+  any-language verification, signed-by-default, and draft-alignment claims.
