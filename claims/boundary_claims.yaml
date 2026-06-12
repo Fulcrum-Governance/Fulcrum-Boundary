@@ -252,7 +252,7 @@ claims:
         - path: tests/integration/standalone_test.go
           assertion: "Standalone mode boots with local policies, in-process trust, budget, envelope, and proof correspondence"
         - path: tests/integration/kernel_test.go
-          assertion: "Kernel bridge contracts load policy, read trust, call budget, publish escalation, audit, and envelope events"
+          assertion: "Kernel bridge contracts load policy, read trust, call budget, publish escalation (routing mode) and synchronously await an out-of-band resolution (await mode, resolving approved/denied/expired/timeout fail-closed), audit, and envelope events"
       docs:
         - path: docs/INTEGRATION.md
           section: "Interface Contracts"
@@ -263,7 +263,7 @@ claims:
     public_language:
       allowed:
         - "Boundary defines standalone and kernel integration contracts for the Fulcrum control plane."
-        - "Kernel mode names the policy, trust, budget, escalation, audit, and envelope seams explicitly."
+        - "Kernel mode names the policy, trust, budget, escalation, audit, and envelope seams explicitly, and the kernel escalation seam can synchronously await an out-of-band resolution when a Subscriber and a deployed resolver are configured."
       forbidden:
         - "Boundary mechanically extracts runtime code from Lean proofs"
         - "Boundary emits proved decisions"
@@ -997,3 +997,29 @@ claims:
     gaps: []
     depends_on:
       - BND-CLAIM-005
+
+  - id: BND-CLAIM-ESC-001
+    claim: "Boundary's kernel escalation seam can synchronously await an out-of-band resolution for an escalated action and adopt the resolved verdict (approved allows, denied/expired deny), failing closed on timeout or fault"
+    status: delivered
+    evidence:
+      tests:
+        - path: tests/integration/kernel_test.go
+          assertion: "The awaiting escalation handler publishes the escalate envelope, registers before publish, maps approved->allow(human_approved), denied->deny(human_approved), expired->deny, times out to deny naming the window, faults closed on publish error / duplicate in-flight / subscribe failure, ignores malformed/unknown/late messages without leak or panic, and Bundle.Close releases the subscription"
+        - path: governance/pipeline_escalation_test.go
+          assertion: "With no handler the ActionEscalate case is byte-identical relabel-and-return; with a handler the pipeline adopts the resolved verdict, denies fail-closed with the 'escalation fault (fail-closed):' prefix on handler error/nil/invalid action, and under dry-run skips the await and notes it in the reason"
+      docs:
+        - path: docs/INTEGRATION.md
+          section: "Interface Contracts"
+        - path: ARCHITECTURE.md
+          section: "The four-stage pipeline"
+    public_language:
+      allowed:
+        - "In kernel mode with a configured Subscriber and a deployed resolver, Boundary can hold an escalated action for a bounded window awaiting an out-of-band human-review resolution, then allow on approval and deny on denial, timeout, or expiry."
+        - "The escalation-await window is bounded and denies by default at expiry; resolution is relayed from the upstream Foundry layer, not decided by Boundary."
+      forbidden:
+        - "Boundary provides human-in-the-loop approval out of the box"
+        - "Boundary blocks every escalated action until a human approves"
+        - "Boundary decides escalation approvals itself"
+    gaps: []
+    depends_on:
+      - BND-CLAIM-010

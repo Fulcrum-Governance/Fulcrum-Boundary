@@ -16,6 +16,10 @@ import (
 	"github.com/fulcrum-governance/fulcrum-boundary/governance/standalone"
 )
 
+// Publisher publishes a payload on a subject. It is a bare injection seam:
+// Boundary ships no NATS implementation in-repo; deployment provides the
+// transport. Subscriber (governance/kernel/escalation.go) is its receiving
+// mirror.
 type Publisher interface {
 	Publish(ctx context.Context, subject string, payload []byte) error
 }
@@ -31,6 +35,19 @@ type Bundle struct {
 	Proofs     governance.ProofCorrespondence
 }
 
+// Close releases any closeable seams the bundle holds (currently the awaiting
+// escalation handler's resolution subscription). It is additive and optional:
+// bundles built before Close existed, or built with non-closeable seams, are
+// unaffected, and calling it is opt-in. Safe to call more than once; seams
+// that do not implement io.Closer are skipped. Returns the first close error
+// encountered, if any.
+func (b *Bundle) Close() error {
+	if c, ok := b.Escalation.(io.Closer); ok {
+		return c.Close()
+	}
+	return nil
+}
+
 type BundleConfig struct {
 	PolicyStore     governance.RedisKV
 	PolicyKeyPrefix string
@@ -41,6 +58,20 @@ type BundleConfig struct {
 	EscalateSubject string
 	AuditSubject    string
 	EnvelopeSubject string
+
+	// Subscriber selects the escalation mode. Nil (the default) keeps the
+	// routing-mode NATSEscalationHandler exactly as before this field
+	// existed: publish-and-return, no await. Non-nil selects the awaiting
+	// handler, which blocks for a bounded window on a resolution message.
+	Subscriber Subscriber
+	// EscalateResolvedSubject is the subject the awaiting handler subscribes
+	// to for resolution messages. Empty means the canonical default
+	// fulcrum.foundry.escalate.resolved. Ignored when Subscriber is nil.
+	EscalateResolvedSubject string
+	// EscalateAwaitTimeout bounds the awaiting handler's synchronous hold.
+	// Zero means the 120s default; a negative value is a configuration error
+	// NewBundle rejects. Ignored when Subscriber is nil.
+	EscalateAwaitTimeout time.Duration
 }
 
 func NewBundle(cfg BundleConfig) (*Bundle, error) {
@@ -53,6 +84,36 @@ func NewBundle(cfg BundleConfig) (*Bundle, error) {
 	if cfg.BudgetEndpoint == "" {
 		return nil, fmt.Errorf("kernel budget endpoint is required")
 	}
+	// Escalation seam selection: Subscriber nil keeps the routing handler
+	// (publish-and-return) byte-identical to before the seam existed;
+	// Subscriber set selects the synchronous awaiting handler, which blocks
+	// for a bounded window on an upstream resolution.
+	var escalation governance.EscalationHandler
+	if cfg.Subscriber == nil {
+		escalation = NATSEscalationHandler{
+			Publisher: cfg.Publisher,
+			Subject:   firstNonEmpty(cfg.EscalateSubject, "fulcrum.foundry.escalate"),
+		}
+	} else {
+		timeout := cfg.EscalateAwaitTimeout
+		switch {
+		case timeout < 0:
+			return nil, fmt.Errorf("kernel escalate await timeout must not be negative")
+		case timeout == 0:
+			timeout = 120 * time.Second
+		}
+		awaiting, err := NewAwaitingEscalationHandler(
+			cfg.Publisher,
+			cfg.Subscriber,
+			firstNonEmpty(cfg.EscalateSubject, "fulcrum.foundry.escalate"),
+			firstNonEmpty(cfg.EscalateResolvedSubject, "fulcrum.foundry.escalate.resolved"),
+			timeout,
+		)
+		if err != nil {
+			return nil, err
+		}
+		escalation = awaiting
+	}
 	return &Bundle{
 		Policies: RedisPolicyProvider{
 			Store:     cfg.PolicyStore,
@@ -64,10 +125,7 @@ func NewBundle(cfg BundleConfig) (*Bundle, error) {
 			Endpoint: cfg.BudgetEndpoint,
 			Client:   http.DefaultClient,
 		},
-		Escalation: NATSEscalationHandler{
-			Publisher: cfg.Publisher,
-			Subject:   firstNonEmpty(cfg.EscalateSubject, "fulcrum.foundry.escalate"),
-		},
+		Escalation: escalation,
 		Audit: NATSAuditPublisher{
 			Publisher: cfg.Publisher,
 			Subject:   firstNonEmpty(cfg.AuditSubject, "fulcrum.audit.boundary"),
@@ -178,6 +236,12 @@ func (e HTTPBudgetEnforcer) post(ctx context.Context, operation, tenantID, agent
 	return nil
 }
 
+// NATSEscalationHandler is the routing-mode escalation handler: it publishes
+// the escalate envelope {"request": ..., "reason": ...} to Subject (default
+// fulcrum.foundry.escalate) fire-and-forget, then unconditionally returns a
+// synthetic escalate decision — it never waits for a resolution. A nil
+// Publisher skips the publish and still returns the synthetic decision. For
+// the synchronous awaiting mode see AwaitingEscalationHandler.
 type NATSEscalationHandler struct {
 	Publisher Publisher
 	Subject   string

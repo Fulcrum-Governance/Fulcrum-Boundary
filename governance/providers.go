@@ -73,8 +73,11 @@ type BudgetEnforcer interface {
 }
 
 // EscalationHandler routes a request that policy marked for escalation to an
-// out-of-band approver and returns the resulting decision. It is a kernel-mode
-// seam; the standalone path has no escalation backend.
+// out-of-band approver and returns the resulting decision. An implementation
+// may return immediately after routing (fire-and-forget, decision still
+// "escalate") or block for a bounded window and return the resolved verdict of
+// an upstream human review (e.g. allow with DecisionModeHumanApproved). It is
+// a kernel-mode seam; the standalone path has no escalation backend.
 type EscalationHandler interface {
 	// Escalate handles req for the given reason and returns the decision the
 	// escalation resolved to, or an error if escalation could not be performed.

@@ -6,6 +6,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Kernel escalation await mode: a new `governance/kernel.AwaitingEscalationHandler`
+  publishes the existing frozen escalate envelope (`{"request": …, "reason": …}`
+  on `fulcrum.foundry.escalate`), then blocks for a bounded window (default
+  120s via `BundleConfig.EscalateAwaitTimeout`; negative values are a
+  `NewBundle` error) awaiting a resolution message on
+  `fulcrum.foundry.escalate.resolved`, with the waiter registered under
+  `request_id` before the publish. Resolutions map `approved` → allow and
+  `denied` → deny (both `human_approved`); a resolver-side `expired`
+  resolution, a local timeout, and every fault (publish/subscribe error,
+  duplicate in-flight `request_id`, cancelled context) deny fail-closed as
+  `deterministic`, faults with the reason prefix
+  `escalation fault (fail-closed):`. The handler asserts no trust
+  (`TrustScore: 0`, empty `TrustState`; trust fields stay pipeline-owned).
+  Await mode is selected in `kernel.NewBundle` when the new bare
+  `BundleConfig.Subscriber` seam is set (Boundary ships no NATS
+  implementation in-repo); without it the routing-mode
+  `NATSEscalationHandler` is built exactly as before. Also new:
+  `BundleConfig.EscalateResolvedSubject` and an additive `Bundle.Close()`
+  that releases the resolution subscription. The resolved-message wire
+  contract and deployment notes are documented in `docs/INTEGRATION.md`.
+  This is not a wired human-in-the-loop capability until the fulcrum-io resolver half lands and a resolver is deployed consuming the escalate subject — absent one, awaited escalations deny at the window; routed paths only.
+- Pipeline escalation seam: optional `PipelineConfig.Escalation` is invoked
+  for Stage-4 `ActionEscalate` decisions and its resolved verdict
+  (`Action`/`Reason`/`DecisionMode`) is adopted; nil — the default, and
+  always nil on the standalone path — preserves the relabel-and-return
+  behavior byte-for-byte. A handler error, a nil decision, or a returned
+  action outside `allow`/`deny`/`warn`/`escalate`/`require_approval` denies
+  fail-closed with the `escalation fault (fail-closed):` reason prefix.
+  Dry-run does not block on the await: the decision keeps the relabel path
+  and the reason notes that the await was skipped.
+
 ## [0.11.0] - 2026-06-11
 
 ### Added

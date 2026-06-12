@@ -41,6 +41,11 @@ Stage 3: Domain interceptors      interceptors[req.ToolName](ctx, req)
 Stage 4: PolicyEval engine        policyeval.Evaluator evaluates the request
                                   against all active policies. Actions:
                                     Deny / Escalate / RequireApproval / Warn
+                                  Escalate invokes the optional
+                                  EscalationHandler seam when one is
+                                  configured (skipped under dry-run; see
+                                  "Escalation resolution" below); faults
+                                  there deny fail-closed.
                                   Evaluator errors follow fail-closed vs
                                   fail-open as described below.
      │
@@ -57,6 +62,43 @@ returning. The returned decision carries `DryRun: true` and a reason
 prefixed with `DRY-RUN would deny:`. The audit trail therefore reflects
 what governance *would* have blocked while the caller observes the
 permissive outcome. Use this to validate a new policy before enforcing it.
+
+### Escalation resolution (optional Stage-4 seam)
+
+When Stage 4 returns `Escalate`, the pipeline marks the decision
+`escalate` with mode `classified`. With no `EscalationHandler` configured
+(`PipelineConfig.Escalation` — nil by default, and always nil on the
+standalone path) that is the whole story: a pure relabel-and-return,
+byte-identical to the behavior before the seam existed.
+
+With a handler configured (the kernel seam), the pipeline invokes it and
+relays its resolved verdict, adopting the returned `Action`, `Reason`, and
+`DecisionMode`. The verdict is relayed, never minted locally:
+`human_approved` appears on a pipeline decision only when the handler
+relays a human-review resolution from the upstream Foundry layer
+(fulcrum-io), the pipeline does not originate `proved` or `human_approved`
+from its own logic, and the four decision modes (`deterministic`,
+`classified`, `proved`, `human_approved`) stay frozen.
+
+A relayed approval requires a deployed resolver consuming the escalate
+subject; absent one, awaited escalations deny when the bounded window
+expires.
+
+The seam is fail-closed at every fault: a handler error, a nil decision,
+or a returned action outside `allow` / `deny` / `warn` / `escalate` /
+`require_approval` denies with the reason prefixed
+`escalation fault (fail-closed):`. The kernel awaiting handler maps
+upstream resolutions the same way — `approved` → allow and `denied` → deny
+(both `human_approved`), while a resolver-side record expiry, a local
+await timeout, and every fault deny as `deterministic`, because no human
+verdict was relayed and none is claimed.
+
+Under dry-run the pipeline does not block on an await: the decision keeps
+the relabel path and the reason records that the await was skipped, so the
+audit trail stays honest that no resolution was requested. Escalation
+resolution, like every pipeline stage, governs only requests routed
+through Boundary. Configuration, the two kernel handler modes, and the
+resolved-message wire contract live in `docs/INTEGRATION.md`.
 
 ## Data flow
 
