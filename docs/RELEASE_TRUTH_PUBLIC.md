@@ -79,8 +79,9 @@ The final public truth is:
 
 ## Shipped On Main, Unreleased
 
-> None as of this reconciliation: `main` (`a394488`) and the `v0.11.0` tag
-> are identical. When work merges past the tag, it is recorded here with
+> No capability changes: the only commits on `main` past the `v0.11.0` tag
+> (`a394488`) are release-truth documentation, including this reconciliation
+> itself. When capability work merges past the tag, it is recorded here with
 > "main, unreleased" status before any downstream document cites it.
 
 On the standards question, stated once and precisely: Boundary's per-record
@@ -326,11 +327,10 @@ or explicit limitation context.
 
 ## Docs Checked
 
-This 2026-06-11 revision verified, against the `v0.11.0` tag (`a394488`,
-identical to `main`):
+This 2026-06-11 revision verified, against the `v0.11.0` tag (`a394488`):
 
 - `README.md` (install channels, first-run, forge-the-receipt language)
-- `docs/INSTALL.md` (channel availability, `@v0.10.1` targets)
+- `docs/INSTALL.md` (channel availability, `@v0.11.0` targets)
 - `CHANGELOG.md` (`[0.10.0]`/`[0.10.1]` history, `[Unreleased]` content)
 - `docs/releases/v0.10.0.md` and `docs/releases/v0.10.1.md`
 - `claims/boundary_claims.yaml` (claim diff `v0.10.1..v0.11.0`)
