@@ -12,9 +12,14 @@ package governance
 //   - proved        → machine-checkable formal proof
 //   - human_approved → human reviewer approved the action
 //
-// The Boundary pipeline produces only deterministic and classified decisions.
-// The proved and human_approved modes are set by the upstream Foundry layer
-// (fulcrum-io) when Lean 4 verification or human review occurs.
+// From its own logic the Boundary pipeline produces only deterministic and
+// classified decisions. The proved and human_approved modes originate in the
+// upstream Foundry layer (fulcrum-io) when Lean 4 verification or human review
+// occurs; Boundary never mints them. The kernel escalation-await seam may RELAY
+// a human_approved resolution onto a pipeline decision (an approved/denied
+// human review), but it relays — it does not originate — and it is guarded
+// against relaying proved. See governance/pipeline.go (resolveEscalation) and
+// docs/PROOF_BOUNDARY.md.
 type DecisionMode string
 
 const (
@@ -30,8 +35,11 @@ const (
 	// formal proof (e.g., Lean 4 budget safety invariant).
 	DecisionModeProved DecisionMode = "proved"
 
-	// DecisionModeHumanApproved indicates a human operator reviewed and
-	// approved the action.
+	// DecisionModeHumanApproved indicates a human review resolved the action;
+	// the decision Action carries the reviewer's verdict (approved → allow,
+	// denied → deny). It is set when a human-review resolution is relayed from
+	// the upstream Foundry layer (fulcrum-io), never minted by the Boundary
+	// pipeline's own logic.
 	DecisionModeHumanApproved DecisionMode = "human_approved"
 )
 

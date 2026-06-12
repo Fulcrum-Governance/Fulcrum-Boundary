@@ -83,6 +83,14 @@ type PipelineConfig struct {
 	// holders, not authenticity of the verdict — see ReceiptSigner. Nil (the
 	// default) leaves records unsigned and byte-identical to the unsigned path.
 	ReceiptSigner ReceiptSigner
+
+	// Escalation, when non-nil, is invoked for PolicyEval ActionEscalate
+	// decisions to resolve the escalation out-of-band (kernel mode) and adopt
+	// its returned verdict. Nil (the default) preserves the relabel-and-return
+	// behavior byte-for-byte: the decision is marked escalate/classified and
+	// returned without any await. This is a kernel-mode seam; the standalone
+	// path leaves it nil.
+	Escalation EscalationHandler
 }
 
 // PolicyEvaluator is the abstract dependency the pipeline has on the policy
@@ -116,6 +124,7 @@ type Pipeline struct {
 	failClosed       map[TransportType]bool
 	dryRun           bool
 	signer           ReceiptSigner
+	escalation       EscalationHandler
 }
 
 // NewPipeline creates a governance pipeline.
@@ -153,6 +162,7 @@ func NewPipeline(cfg PipelineConfig, trust TrustChecker, evaluator PolicyEvaluat
 		failClosed:       fc,
 		dryRun:           cfg.DryRun,
 		signer:           cfg.ReceiptSigner,
+		escalation:       cfg.Escalation,
 	}
 }
 
@@ -211,9 +221,12 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 		EnvelopeID:     req.EnvelopeID,
 		GatewayVersion: p.gatewayVersion,
 		// Deterministic is the correct label for every Boundary pipeline outcome
-		// except PolicyEval ActionEscalate (which flips to classified below).
-		// The PRD-002 taxonomy reserves "proved" and "human_approved" for
-		// upstream Foundry decisions that never originate here.
+		// except PolicyEval ActionEscalate (which flips to classified, and —
+		// when an EscalationHandler resolves it out-of-band — may further carry
+		// the upstream human_approved verdict the handler RELAYS). The PRD-002
+		// taxonomy reserves "proved" and "human_approved" for upstream Foundry
+		// decisions; the pipeline never mints either from its own logic — it
+		// only relays a resolution the EscalationHandler returns.
 		DecisionMode: DecisionModeDeterministic,
 		TrustState:   TrustStateTrusted.String(),
 	}
@@ -362,6 +375,18 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 			// newSemanticEscalatePolicy). Relabel the decision so downstream
 			// sinks know this row needs semantic follow-up.
 			decision.DecisionMode = DecisionModeClassified
+			// Out-of-band resolution seam. With no handler configured this case
+			// is a pure relabel-and-return (byte-identical to the pre-seam
+			// behavior). With a handler (kernel await mode) the pipeline RELAYS
+			// the handler's resolved verdict (an upstream human review's
+			// approve/deny, or a mechanical expiry deny) and never mints that
+			// verdict itself. Skipped under dry-run (audit-only must not block
+			// on a human).
+			if p.escalation != nil && !p.dryRun {
+				p.resolveEscalation(ctx, req, decision)
+			} else if p.escalation != nil && p.dryRun {
+				decision.Reason = decision.Reason + " (dry-run: escalation await skipped)"
+			}
 		case policyeval.ActionRequireApproval:
 			decision.Action = "require_approval"
 			decision.Reason = evalDecision.Reason
@@ -375,6 +400,82 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 	}
 
 	return decision, nil
+}
+
+// resolveEscalation invokes the configured EscalationHandler for an escalate
+// decision and folds its resolved verdict into decision. A handler error, a
+// nil decision, or a decision whose Action is not one of the recognized
+// verdicts is a fault and denies fail-closed with the
+// "escalation fault (fail-closed):" reason prefix; fault denies carry
+// DecisionModeDeterministic, matching the pipeline's other fail-closed fault
+// paths (a local fault is a mechanical outcome, not a relayed resolution).
+// On success it adopts the handler's Action, Reason, and DecisionMode — and
+// only those fields: trust posture stays pipeline-owned. The adopted mode is
+// vetted by isAdoptableEscalationMode so a buggy or hostile handler cannot
+// stamp "proved" or any non-recognized mode onto a Boundary decision; an
+// unadoptable (or empty) returned DecisionMode leaves the relabel's classified
+// in place. This mirrors the action guard: the pipeline never originates
+// "proved"/"human_approved" itself and only relays a mode the handler is
+// permitted to return (see governance/decision_mode.go and
+// docs/PROOF_BOUNDARY.md).
+func (p *Pipeline) resolveEscalation(ctx context.Context, req *GovernanceRequest, decision *GovernanceDecision) {
+	resolved, err := p.escalation.Escalate(ctx, *req, decision.Reason)
+	if err != nil {
+		decision.Action = "deny"
+		decision.Reason = "escalation fault (fail-closed): " + err.Error()
+		decision.DecisionMode = DecisionModeDeterministic
+		return
+	}
+	if resolved == nil {
+		decision.Action = "deny"
+		decision.Reason = "escalation fault (fail-closed): handler returned no decision"
+		decision.DecisionMode = DecisionModeDeterministic
+		return
+	}
+	if !isValidEscalatedAction(resolved.Action) {
+		decision.Action = "deny"
+		decision.Reason = fmt.Sprintf("escalation fault (fail-closed): handler returned invalid action %q", resolved.Action)
+		decision.DecisionMode = DecisionModeDeterministic
+		return
+	}
+	decision.Action = resolved.Action
+	decision.Reason = resolved.Reason
+	if isAdoptableEscalationMode(resolved.DecisionMode) {
+		decision.DecisionMode = resolved.DecisionMode
+	}
+}
+
+// isValidEscalatedAction reports whether a is one of the decision actions an
+// EscalationHandler may resolve to (the GovernanceDecision action vocabulary).
+// Anything else — including an empty action — is treated as a handler fault so
+// a buggy or hostile handler cannot inject an out-of-vocabulary action into a
+// decision record.
+func isValidEscalatedAction(a string) bool {
+	switch a {
+	case "allow", "deny", "warn", "escalate", "require_approval":
+		return true
+	}
+	return false
+}
+
+// isAdoptableEscalationMode reports whether the pipeline may adopt a
+// DecisionMode an EscalationHandler returns. The escalation seam RELAYS an
+// upstream resolution, so it may legitimately carry "human_approved" (a relayed
+// human-review verdict); it may also carry the pipeline-native "deterministic"
+// or "classified" (the awaiting handler uses these for mechanical expiry,
+// timeout, and fault outcomes). It may NOT carry "proved": Boundary never emits
+// proved decisions (governance/decision_mode.go header, docs/PROOF_BOUNDARY.md,
+// BND-CLAIM-010), and the escalation seam is not a proof channel. An empty mode
+// or any value outside this vetted set is not adopted (the relabel's classified
+// stays), so a buggy or hostile handler cannot inject "proved" or an unknown
+// mode onto a decision record — the same threat model isValidEscalatedAction
+// guards for the action channel.
+func isAdoptableEscalationMode(m DecisionMode) bool {
+	switch m {
+	case DecisionModeDeterministic, DecisionModeClassified, DecisionModeHumanApproved:
+		return true
+	}
+	return false
 }
 
 // routeID derives the governed route identifier recorded in schema_version "2"

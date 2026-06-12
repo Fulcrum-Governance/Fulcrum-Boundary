@@ -37,17 +37,21 @@ four modes are mutually exclusive:
 
 | Mode | Who sets it | When |
 |---|---|---|
-| `deterministic` | Boundary pipeline | Default for every stage below; static-rule matches, trust outcomes, interceptor outcomes, `ActionDeny`/`ActionWarn`/`ActionRequireApproval`, evaluator errors (fail-closed or fail-open), and the no-match default allow. |
-| `classified` | Boundary pipeline | Only PolicyEval `ActionEscalate`, because escalation implies a semantic condition the evaluator could not resolve deterministically. |
-| `proved` | Upstream Foundry (fulcrum-io) | Set when a Lean 4 invariant has discharged the decision. Boundary itself never emits this mode. |
-| `human_approved` | Upstream Foundry (fulcrum-io) | Set when a human reviewer has approved the action. Boundary itself never emits this mode. |
+| `deterministic` | Boundary pipeline | Default for every stage below; static-rule matches, trust outcomes, interceptor outcomes, `ActionDeny`/`ActionWarn`/`ActionRequireApproval`, evaluator errors (fail-closed or fail-open), and the no-match default allow. Also the kernel escalation-await seam's mechanical denies — a resolver-side record expiry, a local await timeout, and every escalation fault — because no human verdict was relayed and none is claimed. |
+| `classified` | Boundary pipeline | PolicyEval `ActionEscalate` (escalation implies a semantic condition the evaluator could not resolve deterministically). With no `EscalationHandler` configured this is the whole escalate outcome; it also stays as the relabel default when an await handler returns no adoptable mode. |
+| `proved` | Upstream Foundry (fulcrum-io) | Set when a Lean 4 invariant has discharged the decision. Boundary itself never emits this mode, and the escalation seam is guarded against adopting it (`isAdoptableEscalationMode`, `governance/pipeline.go`). |
+| `human_approved` | Upstream Foundry (fulcrum-io), relayed by the kernel escalation-await seam | Set when a human review resolved an escalated action. Boundary does not originate this mode from its own logic; the kernel `AwaitingEscalationHandler` relays it onto a pipeline decision only for an `approved`→allow or `denied`→deny resolution message from the upstream layer (`governance/kernel/escalation.go`). This is a kernel-mode, routed-only path that requires an injected `Subscriber` and a deployed resolver; with no handler configured (the standalone path, and the default) Boundary never emits it. |
 
 Per-stage citations: the default value is initialized where `decision` is
-constructed (`governance/pipeline.go:161`); the single `classified` override
-is in the `ActionEscalate` branch of Stage 4
-(`governance/pipeline.go:255`). The decision-mode field is propagated to
-the audit event by `emitAudit` (`governance/pipeline.go:283`), so audit
-sinks can aggregate or filter by epistemic confidence level.
+constructed (`governance/pipeline.go`, in `Evaluate`); the `classified`
+override is in the `ActionEscalate` branch of Stage 4 (`governance/pipeline.go`,
+`Evaluate`). On that same branch, when `PipelineConfig.Escalation` is set, the
+pipeline relays the handler's vetted verdict via `resolveEscalation`
+(`governance/pipeline.go`), which is how a relayed `human_approved` (or a
+mechanical-deny `deterministic`) can reach a Stage-4 escalate decision; a fault
+there denies `deterministic` fail-closed. The decision-mode field is propagated
+to the audit event by `emitAudit` (`governance/pipeline.go`), so audit sinks can
+aggregate or filter by epistemic confidence level.
 
 The defer-emit hook at `pipeline.go:118-130` is the only place a decision can
 be reshaped:

@@ -171,10 +171,19 @@ and verifies with `boundary verify-record docs/examples/decision-record-v2.examp
 ### Decision-mode note
 
 `decision_mode` records how the verdict was reached, not whether it was correct.
-Boundary emits only `deterministic` (static-policy outcomes) and `classified`.
-Boundary does **not** emit `proved`; the `proved` and `human_approved` modes
-originate upstream in the Fulcrum family and must not be implied by a Boundary
-record. See [`docs/PROOF_BOUNDARY.md`](PROOF_BOUNDARY.md).
+From its own logic Boundary emits `deterministic` (static-policy outcomes and
+the kernel escalation seam's mechanical expiry/timeout/fault denies) and
+`classified` (the `ActionEscalate` relabel). Boundary does **not** emit
+`proved`; the `proved` mode originates upstream in the Fulcrum family and must
+not be implied by a Boundary record. The `human_approved` mode is likewise not
+originated locally, but a Boundary record **can** carry it when the kernel
+escalation-await seam relays a human-review resolution — `approved`→allow or
+`denied`→deny — from the upstream Foundry layer; this is a kernel-mode,
+routed-only path that requires an injected `Subscriber` and a deployed resolver,
+and with no handler configured (the default, and the standalone path) a Boundary
+record never carries it. The seam relays a vetted mode only and is guarded
+against adopting `proved`. See [`docs/PROOF_BOUNDARY.md`](PROOF_BOUNDARY.md) and
+[`INTEGRATION.md`](INTEGRATION.md).
 
 ## Parse-rejection records
 

@@ -322,13 +322,15 @@ Every decision resolves to **exactly one of five verbs**, all literal outcomes i
 
 ## 3.4 Decision modes — Boundary never says "proved" (C7)
 
-`DecisionMode` labels the epistemic confidence of a verdict. Four modes exist, but **Boundary emits only two**:
+`DecisionMode` labels the epistemic confidence of a verdict. Four modes exist; **from its own logic Boundary produces only two** (`deterministic` and `classified`), and it **never emits `proved`**:
 
-- **`deterministic`** — static rule / deterministic code path (the default for every Boundary outcome).
-- **`classified`** — set when PolicyEval returns `Escalate` (`governance/pipeline.go`, `Evaluate` stage 4 escalate path).
-- **`proved`** and **`human_approved`** are **reserved for the upstream Foundry layer (fulcrum-io)** and, per the code comment, **"never originate here"** (`governance/decision_mode.go:14–17`; `governance/pipeline.go`, `Evaluate`).
+- **`deterministic`** — static rule / deterministic code path (the default for every Boundary outcome), and the kernel escalation-await seam's mechanical denies (resolver-side record expiry, local await timeout, every escalation fault).
+- **`classified`** — set when PolicyEval returns `Escalate` (`governance/pipeline.go`, `Evaluate` stage 4 escalate path), and the relabel default an await handler falls back to when it returns no adoptable mode.
+- **`proved`** is **reserved for the upstream Foundry layer (fulcrum-io)** and is never emitted by Boundary; the escalation seam is guarded against adopting it (`isAdoptableEscalationMode`, `governance/pipeline.go`).
+- **`human_approved`** is likewise not **originated** by Boundary, but a pipeline decision **can carry** it when the kernel escalation-await seam **relays** a human-review resolution (`approved`→allow / `denied`→deny) from the upstream layer (`governance/kernel/escalation.go`; adopted by `resolveEscalation` in `governance/pipeline.go`). This is a kernel-mode, routed-only path requiring an injected `Subscriber` and a deployed resolver; with no handler configured (the default, and the standalone path) Boundary never emits it.
+- **superseded:** "Boundary emits only two modes / Boundary never emits `human_approved`" and the source phrase **"never originate here"** (which the pipeline mode-reservation comment no longer uses — it was rewritten to the relay framing). Boundary still never **mints** `proved`/`human_approved` from its own logic; the only change is that the kernel escalation seam **relays** a `human_approved` verdict. The `proved` invariant in this section is unchanged.
 
-> **Hard rule for all copy.** Runtime decisions are **"deterministic" / "classified," never "proved."** Lean proofs are referenced **by correspondence only** (`docs/PROOF_BOUNDARY.md`). (C7; full treatment §6.5.)
+> **Hard rule for all copy.** Runtime decisions Boundary mints itself are **"deterministic" / "classified," never "proved."** A relayed `human_approved` from the kernel escalation seam is the one mode Boundary surfaces without originating it. Lean proofs are referenced **by correspondence only** (`docs/PROOF_BOUNDARY.md`). (C7; full treatment §6.5.)
 
 ## 3.5 The routed-only doctrine (load-bearing — pointer to §10.0)
 
@@ -576,9 +578,9 @@ The decision record is the **shared proof artifact** across both lanes (canonica
 
 ## 6.5 Proof Boundary — decisions are `deterministic`/`classified`, never `proved` (C7)
 
-**Locked term:** Boundary runtime decisions carry **`deterministic`** or **`classified`** modes; Boundary **never emits `proved`** (nor `human_approved`). Formal proofs are referenced **by correspondence only**.
+**Locked term:** Boundary runtime decisions it mints itself carry **`deterministic`** or **`classified`** modes; Boundary **never emits `proved`**. The one exception to "mints itself" is the kernel escalation-await seam, which may **relay** a `human_approved` verdict (an `approved`/`denied` human review) from the upstream layer onto a routed kernel-mode decision — it relays, it does not originate, and it is guarded against relaying `proved`. Formal proofs are referenced **by correspondence only**.
 
-**Verified in source (`governance/decision_mode.go`, `governance/pipeline.go`):** the taxonomy defines four modes; the code comment in `Evaluate` states the `proved` and `human_approved` modes are set by the upstream Foundry layer and "never originate here." `Pipeline.Evaluate` initializes every decision to `DecisionModeDeterministic` and flips to `classified` **only** for the PolicyEval `ActionEscalate` path.
+**Verified in source (`governance/decision_mode.go`, `governance/pipeline.go`, `governance/kernel/escalation.go`):** the taxonomy defines four modes; the `decision_mode.go` header and the `Evaluate` mode-reservation comment state Boundary never **mints** `proved`/`human_approved` from its own logic, and `resolveEscalation` is guarded (`isAdoptableEscalationMode`) so the escalation seam can never adopt `proved`. `Pipeline.Evaluate` initializes every decision to `DecisionModeDeterministic` and flips to `classified` for the PolicyEval `ActionEscalate` path; when a kernel `EscalationHandler` resolves that escalation it may further adopt the relayed verdict's mode (`human_approved` for an approved/denied review; `deterministic` for a mechanical expiry/timeout/fault). **superseded:** the source phrase **"never originate here"** (the pipeline comment was rewritten to the relay framing) and the framing that the escalate path flips to `classified` **only** — with a handler configured it can resolve to `human_approved` or `deterministic`. The `proved`-never-emitted invariant below is unchanged.
 
 **Proof by correspondence.** `docs/PROOF_BOUNDARY.md` is the authority; its first sentence is the rule: *"Boundary uses proof correspondence as a design constraint, not as a runtime certificate. Boundary does not emit `proved` decisions."* The correspondence table maps Boundary behaviors (budget-denial; trust-isolation/termination bands at 0.30 / 0.60; privilege-subset; absorbing terminated state) to named Lean 4 theorems in the **separate** `Fulcrum-Proofs` repo, all correspondence type **`design`** — *"the runtime behavior was designed to satisfy the proved invariant; it does not mean the Go implementation was mechanically extracted from Lean."* The proofs repo is **not** a build or runtime dependency of the OSS release (C3).
 
