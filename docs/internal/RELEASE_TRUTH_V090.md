@@ -85,11 +85,11 @@ version`, `boundary demo action-boundary`, `boundary doctor --json`,
 `boundary test --path tests/fixtures/policy-test/cases`.
 
 Post-tag install and `@latest` verification for `v0.9.0` are recorded in
-[`docs/internal/RELEASE_TRUTH_V090_POSTRELEASE.md`](./internal/RELEASE_TRUTH_V090_POSTRELEASE.md).
+[`docs/internal/RELEASE_TRUTH_V090_POSTRELEASE.md`](./RELEASE_TRUTH_V090_POSTRELEASE.md).
 The prior `v0.8.0` post-tag evidence remains recorded in
-[`docs/internal/RELEASE_TRUTH_V080_POSTRELEASE.md`](./internal/RELEASE_TRUTH_V080_POSTRELEASE.md).
+[`docs/internal/RELEASE_TRUTH_V080_POSTRELEASE.md`](./RELEASE_TRUTH_V080_POSTRELEASE.md).
 The prior `v0.6.1` record in
-[`docs/internal/RELEASE_TRUTH_V061_POSTRELEASE.md`](./internal/RELEASE_TRUTH_V061_POSTRELEASE.md)
+[`docs/internal/RELEASE_TRUTH_V061_POSTRELEASE.md`](./RELEASE_TRUTH_V061_POSTRELEASE.md)
 documents a superseded tag and survives only as history.
 
 ## README First-Run Status
