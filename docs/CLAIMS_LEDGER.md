@@ -27,6 +27,32 @@ claim-control language.
 | `planned` | Roadmap only. Do not state as current behavior. |
 | `false` | Do not use as a public claim. The validation gate checks that the claim text is absent from `README.md`. |
 
+## Public-language lists
+
+Each claim may carry `public_language.allowed` and `public_language.forbidden`
+lists in [`claims/boundary_claims.yaml`](../claims/boundary_claims.yaml).
+
+- **`allowed`** is human-facing approved copy — phrasings sanctioned for that claim.
+- **`forbidden`** is **advisory**: each entry names a capability framing the claim
+  must never assert. Forbidden phrases are governed in public copy by the hardcoded
+  language-lint rules ([`claims/language_lint_test.go`](../claims/language_lint_test.go))
+  plus human review. They are **not** literally substring-scanned against documents —
+  concept words such as `signature` and `decision hashes` appear legitimately in
+  honest, hedged copy, so literal enforcement would brick truthful text.
+
+The forbidden lists are not inert:
+[`claims/forbidden_test.go`](../claims/forbidden_test.go) fails the build if any
+entry is empty, duplicated within a claim, or also present in that claim's `allowed`
+list, and pins the forbidden phrases that double as language-lint terms so the
+ledger and the lint cannot silently drift apart.
+
+> **Honest boundary.** Sentence-form overclaims in the forbidden lists that are
+> *not* also hardcoded lint terms (e.g. "Secure GitHub is production", "Boundary
+> controls all file writes") are governed by review, not by a document scan. The
+> hardcoded Gate-2 rules do not catch them today, so this ledger does not claim
+> they are machine-enforced. Opt-in literal enforcement of that safe subset is a
+> documented follow-up option, intentionally not yet adopted.
+
 ## Current Claims
 
 | ID | Status | Claim | Evidence | Public boundary |

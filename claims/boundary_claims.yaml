@@ -1,3 +1,15 @@
+# Boundary claims ledger — the machine-readable source of truth for public language.
+# Parsed and build-gated by claims/claims_test.go and claims/forbidden_test.go.
+#
+# public_language.forbidden is ADVISORY: each entry names a capability framing the
+# claim must never assert. Forbidden phrases are governed in public copy by the
+# hardcoded Gate-2 lint rules (claims/language_lint_test.go) plus human review —
+# they are NOT literally substring-scanned against documents, because concept words
+# such as "signature" and "decision hashes" appear legitimately in honest, hedged
+# copy and literal enforcement would brick truthful text. The lists are still
+# machine-checked for integrity (non-empty, unique within a claim, never also in
+# that claim's allowed list) and pinned in sync with the lint terms — see
+# claims/forbidden_test.go. See docs/CLAIMS_LEDGER.md "Public-language lists".
 claims:
   - id: BND-CLAIM-001
     claim: "Boundary governs MCP Safety Gateway requests before execution when the tool route passes through Boundary"
