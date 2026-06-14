@@ -43,8 +43,9 @@ lists in [`claims/boundary_claims.yaml`](../claims/boundary_claims.yaml).
 The forbidden lists are not inert:
 [`claims/forbidden_test.go`](../claims/forbidden_test.go) fails the build if any
 entry is empty, duplicated within a claim, or also present in that claim's `allowed`
-list, and pins the forbidden phrases that double as language-lint terms so the
-ledger and the lint cannot silently drift apart.
+list, and pins the forbidden phrases currently governed by language-lint terms
+(matched with the lint's own substring semantics) so the ledger and the lint
+cannot silently drift apart.
 
 > **Honest boundary.** Sentence-form overclaims in the forbidden lists that are
 > *not* also hardcoded lint terms (e.g. "Secure GitHub is production", "Boundary

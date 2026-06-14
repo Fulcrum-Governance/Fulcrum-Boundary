@@ -51,13 +51,18 @@ func TestForbiddenListIntegrity(t *testing.T) {
 
 // TestForbiddenLintSync couples the two truth surfaces that govern public
 // language so they cannot silently drift apart: the ledger's advisory forbidden
-// lists and the hardcoded Gate-2 lint rules (publicLanguageRules). A small
-// number of forbidden phrases are ALSO literal lint terms; this test pins that
-// overlap. If the "adapter maturity overclaim" rule term is removed or renamed
-// while the ledger still forbids the phrase (or the ledger phrase is dropped
-// while the rule keeps it), the two surfaces decouple and this test fails,
-// naming the drift. When the overlap changes intentionally, update wantWired and
-// confirm a live lint rule still enforces the phrase.
+// lists and the hardcoded Gate-2 lint rules (publicLanguageRules). A forbidden
+// phrase is "lint-governed" when some lint term is a SUBSTRING of it — that is
+// exactly how TestPublicLanguageLint matches (strings.Contains), so any doc line
+// carrying the forbidden phrase also carries the lint term and is caught (e.g.
+// the forbidden "Boundary is a SQL firewall" is governed by the shorter lint
+// term "SQL firewall"). This test pins the set of currently lint-governed
+// forbidden phrases using those same substring semantics. If a lint rule term is
+// removed or narrowed so one of these phrases is no longer covered, it drops out
+// of the computed set and this test fails naming it — catching the silent
+// ledger↔lint decoupling that an exact-equality check would miss. When the
+// governed set changes intentionally, update wantWired after confirming a live
+// rule still covers each phrase.
 func TestForbiddenLintSync(t *testing.T) {
 	repoRoot, err := filepath.Abs("..")
 	if err != nil {
@@ -65,37 +70,53 @@ func TestForbiddenLintSync(t *testing.T) {
 	}
 	ledger := loadLedger(t, repoRoot)
 
-	lintTerms := map[string]bool{}
+	var lintTerms []string
 	for _, r := range publicLanguageRules() {
 		for _, term := range r.terms {
-			lintTerms[strings.ToLower(term)] = true
+			lintTerms = append(lintTerms, strings.ToLower(term))
 		}
+	}
+	// governedByLint mirrors the lint's own substring matching.
+	governedByLint := func(phrase string) bool {
+		for _, term := range lintTerms {
+			if strings.Contains(phrase, term) {
+				return true
+			}
+		}
+		return false
 	}
 
 	got := map[string]bool{}
 	for _, c := range ledger.Claims {
 		for _, f := range c.PublicLanguage.Forbidden {
 			norm := strings.ToLower(strings.TrimSpace(f))
-			if lintTerms[norm] {
+			if governedByLint(norm) {
 				got[norm] = true
 			}
 		}
 	}
 
-	// The current ledger ↔ lint overlap, pinned. Verified against the real
-	// ledger: exactly the two adapter-maturity phrases double as lint terms.
+	// The forbidden framings currently machine-governed by the language lint
+	// (via substring), pinned. Verified against the real ledger and
+	// publicLanguageRules().
 	wantWired := map[string]bool{
-		"six production adapters":   true,
-		"seven production adapters": true,
+		"boundary emits proved decisions":            true,
+		"boundary fully secures github":              true,
+		"boundary guarantees universal agent safety": true,
+		"boundary is a sql firewall":                 true,
+		"boundary is standards-conformant":           true,
+		"boundary prevents all sql injection":        true,
+		"six production adapters":                    true,
+		"seven production adapters":                  true,
 	}
 	for phrase := range wantWired {
 		if !got[phrase] {
-			t.Fatalf("forbidden phrase %q must stay wired to a publicLanguageRules() term, but the ledger no longer forbids it (ledger/lint drift)", phrase)
+			t.Fatalf("forbidden phrase %q must stay governed by a publicLanguageRules() term (via substring), but no live lint term covers it now (ledger/lint drift)", phrase)
 		}
 	}
 	for phrase := range got {
 		if !wantWired[phrase] {
-			t.Fatalf("forbidden phrase %q newly overlaps a publicLanguageRules() term but is not pinned; if intended, add it to wantWired", phrase)
+			t.Fatalf("forbidden phrase %q is now lint-governed but is not pinned; if intended, add it to wantWired", phrase)
 		}
 	}
 }
