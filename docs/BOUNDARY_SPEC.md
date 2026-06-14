@@ -609,12 +609,13 @@ The decision record is the **shared proof artifact** across both lanes (canonica
 
 Boundary binds public language to repo evidence through **three CI-blocking gates** (all in `.github/workflows/ci.yml`, verified). This machinery is the differentiator — describe it openly.
 
-**Gate 1 — The claims ledger (`claims/claims_test.go`).** `claims/boundary_claims.yaml` is the machine-readable ledger (30 entries, verified), rendered for humans at `docs/CLAIMS_LEDGER.md`. `TestBoundaryClaimsLedger` parses it and **fails the build** on any violation:
+**Gate 1 — The claims ledger (`claims/claims_test.go`, `claims/forbidden_test.go`).** `claims/boundary_claims.yaml` is the machine-readable ledger (39 entries, verified), rendered for humans at `docs/CLAIMS_LEDGER.md`. `TestBoundaryClaimsLedger` parses it and **fails the build** on any violation:
 - Every claim has a unique non-empty `id` and `claim` text (duplicate IDs fail).
 - `status ∈ {delivered | partial | planned | false}` (any other value fails).
 - **`delivered`** → must have **≥1 test path AND ≥1 doc path**, and **every referenced path must exist on disk** (`os.Stat`). A missing evidence file fails the build.
 - **`partial`** → must list **≥1 gap**; each gap ID must match `^BND-[A-Z0-9]+-[0-9]{3}$` with a `description` and `spec` reference.
 - **`false`** → the claim text **must not appear in `README.md`** (the build greps and fails if present).
+- **`public_language.forbidden`** lists are **advisory** — each entry names a capability framing a claim must never assert. They are governed in public copy by the Gate-2 lint and human review, **not** literally substring-scanned against docs (concept words like `signature`/`decision hashes` appear legitimately in hedged copy, so literal enforcement would brick truthful text). They are still machine-checked: `claims/forbidden_test.go` (`TestForbiddenListIntegrity`, `TestForbiddenLintSync`) **fails the build** on an empty entry, a within-claim duplicate, an entry that is also `allowed`, or drift between the forbidden phrases that double as lint terms and `publicLanguageRules()`. Sentence-form forbidden phrases that are *not* also hardcoded lint terms are review-governed, not document-scanned — opt-in literal enforcement of that safe subset is a documented follow-up, intentionally not yet adopted.
 
 > **Status vocabulary → public-use rule.** `delivered` may be used in copy without caveat **only** for uncaveated `delivered` claims; routed-only and local-only claims must carry their scope sentence. `partial` may be used **only** with the YAML gap/maturity caveat. `planned` is **never** stated as current behavior. `false` is **never** a public claim (build-checked absent from README). Per C4, the word **production** is reserved for the **MCP route only** (`BND-CLAIM-006`); the single `false` claim is `BND-CLAIM-004` "SQL firewall" — killed.
 
@@ -981,7 +982,9 @@ Signed decision records / tamper-evident receipts would upgrade Surface 3 (§10.
 > Definitions are canonical in `docs/LEXICON.md`; the forbidden list consolidates
 > `docs/RELEASE_TRUTH_PUBLIC.md` "Forbidden Release Language" (the tie-breaker authority),
 > `docs/COPY_RULES.md`, and the per-claim `forbidden` arrays in `claims/boundary_claims.yaml`
-> (CI-enforced by `language_lint_test.go`). Do not use any term to upgrade a claim beyond
+> (advisory; integrity- and lint-sync-checked by `claims/forbidden_test.go` — only forbidden phrases
+> that double as hardcoded `language_lint_test.go` terms are CI-enforced in public copy; see §7.1).
+> Do not use any term to upgrade a claim beyond
 > `docs/CLAIMS_LEDGER.md`. **§12.3 is the single source for forbidden-phrase → replacement; prose
 > sections cite it rather than re-listing.**
 
