@@ -125,8 +125,10 @@ func TestHostSetupPerHostCaveat(t *testing.T) {
 func TestHostSetupRequiredElements(t *testing.T) {
 	doc := read(t, repoRoot(t), "docs/firewall/HOST_SETUP.md")
 	required := []string{
-		"boundary doctor",                // how to confirm the route
-		"Routed-only",                    // the global caveat banner
+		"boundary doctor",                // the readiness check
+		"Routed-only",                    // routed-only caveat banner
+		"fail-closed",                    // the generic route is fail-closed until configured
+		"Secure MCP profile",             // what live forwarding requires
 		"ROUTE_CONFORMANCE_CHECKLIST.md", // canonical checklist link
 		"--client claude",                // Claude Desktop selector
 		"--client repo",                  // Claude Code (repo-local) selector

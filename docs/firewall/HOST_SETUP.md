@@ -1,14 +1,20 @@
 # Per-Host Setup: Route an MCP Client Through Boundary
 
 Short, per-host walkthroughs for putting an MCP client's tool calls on a
-Boundary-governed route. Each host follows the same three steps — **find the
-config → install the route → confirm it** — and carries the same honest caveat:
+Boundary-governed route. Each host follows the same shape — **find the config →
+install the route → check readiness** — and carries the same honest caveats:
 
 > **Routed-only.** Boundary governs a tool call **only** when that call is forced
-> through it. After install, the client's MCP servers route through Boundary; any
-> path that still reaches a tool directly (a server you did not route, a shell or
-> editor that calls the tool outside the rewritten config) is a bypass. Confirm
-> the live route with `boundary doctor` and the
+> through it. After install, the client's routed MCP servers go through Boundary;
+> any path that still reaches a tool directly (a server you did not route, a shell
+> or editor that calls the tool outside the rewritten config) is a bypass.
+>
+> **Fail-closed preview.** The generic installed route runs `boundary mcp proxy`,
+> which is **fail-closed in this preview**: a real routed call does **not** forward
+> or emit a decision record until you configure a
+> [Secure MCP profile](../secure-mcp/README.md). Install proves the route is *in
+> place and reversible*; `boundary doctor` checks local readiness; the full check
+> that a real call is governed is the
 > [Route Conformance Checklist](../ROUTE_CONFORMANCE_CHECKLIST.md).
 
 Install is conservative: it rewrites a config **only** when you run `boundary
@@ -44,10 +50,10 @@ boundary install --client claude             # write the route (backs up first)
 Each routed `mcpServers` entry is rewritten so the server launches **through** a
 Boundary-owned route instead of directly; your original file is backed up
 byte-for-byte under `.boundary/firewall/backups/`. Restart Claude Desktop so it
-re-reads the config. **Confirm:** `boundary doctor` (or `--json`) lists the
-routed surface and the bypass caveats; the server you routed should appear as
-governed. Servers you did not route, or tools reached outside this config, stay a
-bypass.
+re-reads the config. **Check readiness:** `boundary doctor` (or `--json`) lists
+the local routed surface and the bypass caveats — it does not by itself prove
+this server is live-governed (see the fail-closed note above). Servers you did
+not route, or tools reached outside this config, stay a bypass.
 
 ---
 
@@ -57,8 +63,8 @@ Claude Code reads project MCP servers from a repo-local **`.mcp.json`**. Boundar
 has no dedicated Claude Code selector — route it as the **repo-local** client:
 
 ```bash
-boundary install --client repo --root .       # routes .mcp.json / mcp.json in the repo
-boundary install --config ./.mcp.json --dry-run
+boundary install --config ./.mcp.json --dry-run   # preview first (no mutation)
+boundary install --client repo --root .            # routes .mcp.json / mcp.json in the repo
 ```
 
 | Scope | Path |
@@ -66,10 +72,10 @@ boundary install --config ./.mcp.json --dry-run
 | Project | `.mcp.json` (or `mcp.json`) at the repo root |
 
 The routed entry wraps the server command so calls pass through Boundary first.
-**Confirm:** run `boundary doctor` from the repo, and verify a governed decision
-appears for a routed call. Servers Claude Code loads from your *user* config
-(outside the repo) are not covered by a repo-local install — that path is a
-bypass until you route those servers explicitly with `--config`.
+**Check readiness:** run `boundary doctor` from the repo. Servers Claude Code
+loads from your *user* config (outside the repo) are not covered by a repo-local
+install — that path is a bypass until you route those servers explicitly with
+`--config`.
 
 ---
 
@@ -88,10 +94,9 @@ boundary install --client cursor --dry-run
 boundary install --client cursor
 ```
 
-Reload Cursor after install. **Confirm:** `boundary doctor` shows the routed
-surface; a routed MCP tool call produces a Boundary decision record. Cursor
-servers you did not route, or tools reached outside the rewritten config, are a
-bypass.
+Reload Cursor after install. **Check readiness:** `boundary doctor` shows the
+local routed surface and bypass caveats. Cursor servers you did not route, or
+tools reached outside the rewritten config, are a bypass.
 
 ---
 
@@ -111,17 +116,21 @@ boundary install --client vscode --dry-run
 boundary install --client vscode
 ```
 
-Reload the VS Code window after install. **Confirm:** `boundary doctor` lists the
-governed route and bypass caveats. Anything VS Code reaches outside the routed
-config — an un-routed server, or a tool called directly — is a bypass.
+Reload the VS Code window after install. **Check readiness:** `boundary doctor`
+lists the local routed surface and bypass caveats. Anything VS Code reaches
+outside the routed config — an un-routed server, or a tool called directly — is a
+bypass.
 
 ---
 
 ## Confirm the route actually passes through Boundary
 
 `boundary doctor` reports the local routed surface and the known bypass paths; it
-does not call the network and does not prove remote deployment safety. For the
-full check — that a real call is intercepted, denied where it should be, and that
-no un-routed path reaches the tool — work through the
+does not call the network and does not prove remote deployment safety. The
+generic installed route is **fail-closed** until you configure a
+[Secure MCP profile](../secure-mcp/README.md) — it holds the route open in your
+config but does not forward live calls or emit decision records on its own. For
+the full check — that a real call is intercepted, denied where it should be, and
+that no un-routed path reaches the tool — work through the
 [Route Conformance Checklist](../ROUTE_CONFORMANCE_CHECKLIST.md). Until a route
 passes that checklist, treat the host as only partially covered.
