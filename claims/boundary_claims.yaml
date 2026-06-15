@@ -229,6 +229,34 @@ claims:
     depends_on:
       - BND-CLAIM-BUILD-001
 
+  - id: BND-CLAIM-DIST-002
+    claim: "Boundary's tag-gated release pipeline generates an SPDX SBOM for each static release archive and records GitHub build-provenance attestations for its release artifacts"
+    status: partial
+    evidence:
+      tests:
+        - path: tests/supplychain/wiring_test.go
+          assertion: "the SBOM (syft/spdx-json) config and the attest-build-provenance steps + OIDC permissions are present in .goreleaser.yaml and .github/workflows/release.yml"
+      docs:
+        - path: docs/SUPPLY_CHAIN.md
+          section: "What the pipeline produces"
+        - path: docs/INSTALL.md
+          section: "Supply Chain"
+    public_language:
+      allowed:
+        - "The release pipeline attaches an SPDX SBOM (syft) to each static archive and records GitHub build-provenance attestations for release artifacts, verifiable with gh attestation verify."
+        - "Supply-chain metadata covers the release distribution; it is distinct from runtime decision-record signing and from upstream package or MCP-server supply chains."
+      forbidden:
+        - "Boundary signs decision records"
+        - "The boundary version command proves release provenance"
+        - "Every release archive carries an SBOM"
+        - "Build provenance was recorded for releases before the pipeline shipped it"
+    gaps:
+      - id: BND-DIST-002
+        description: "Build-provenance attestation is release-gated (it needs the workflow's GitHub OIDC token on a v* tag) and the native-cgo archive SBOM is not yet generated; both are wired in .goreleaser.yaml and .github/workflows/release.yml but unproven until the first tagged release runs the updated pipeline. Static-archive SPDX SBOM generation is verified locally via `goreleaser release --snapshot`."
+        spec: "GitHub issue #140 — SBOM and provenance attestation for release artifacts"
+    depends_on:
+      - BND-CLAIM-DIST-001
+
   - id: BND-CLAIM-009
     claim: "Boundary provides standalone trust integration and adaptive termination for protected adapters"
     status: delivered

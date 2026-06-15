@@ -56,6 +56,8 @@ jobs:
     permissions:
       contents: write # create the GitHub release and upload assets
       packages: write # push container images to ghcr.io
+      id-token: write # mint the OIDC token for build-provenance attestation
+      attestations: write # record the provenance attestation
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
@@ -64,6 +66,13 @@ jobs:
         with:
           go-version: '1.26.4'
           cache: true
+      # goreleaser execs `syft` from PATH to generate the SPDX SBOMs (see the
+      # sboms block in .goreleaser.yaml). Neither ubuntu-latest nor
+      # goreleaser-action provides syft, so install it here — before BOTH the
+      # tag `release --clean` and the dispatch `release --clean --snapshot`
+      # steps, and NOT tag-gated, so the dry-run path has it too.
+      - name: Install syft for SBOM generation
+        uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
       - name: Log in to ghcr.io
         if: github.ref_type == 'tag'
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
@@ -91,6 +100,18 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+      - name: Attest build provenance for static release artifacts (tag)
+        if: github.ref_type == 'tag'
+        uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
+        with:
+          # The static archives, their SPDX SBOMs, and the checksum manifest
+          # produced by goreleaser in dist/. Build provenance for the release
+          # distribution; distinct from runtime decision-record signing (#134).
+          subject-path: |
+            dist/*_static-nocgo.tar.gz
+            dist/*_static-nocgo.zip
+            dist/*.spdx.json
+            dist/SHA256SUMS
       - name: goreleaser snapshot dry-run (manual dispatch)
         if: github.ref_type != 'tag'
         uses: goreleaser/goreleaser-action@5daf1e915a5f0af01ddbcd89a43b8061ff4f1a89 # v7.2.2
@@ -115,6 +136,8 @@ jobs:
     needs: goreleaser
     permissions:
       contents: write # upload assets to the release created by goreleaser
+      id-token: write # mint the OIDC token for build-provenance attestation
+      attestations: write # record the provenance attestation
     strategy:
       fail-fast: false
       matrix:
@@ -200,6 +223,11 @@ jobs:
         run: |
           gh release upload "${GITHUB_REF_NAME}" \
             "${{ steps.package.outputs.archive }}" --clobber
+      - name: Attest build provenance for the cgo archive (tag)
+        if: github.ref_type == 'tag'
+        uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
+        with:
+          subject-path: ${{ steps.package.outputs.archive }}
       - name: Upload workflow artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

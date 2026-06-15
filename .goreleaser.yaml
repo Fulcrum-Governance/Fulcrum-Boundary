@@ -70,6 +70,22 @@ checksum:
   name_template: SHA256SUMS
   algorithm: sha256
 
+# SPDX SBOM (one per static archive), generated with syft. The per-runner
+# native-cgo archives are SBOM'd separately in .github/workflows/release.yml
+# (job `cgo-binaries`), since they are built outside goreleaser. This is
+# supply-chain inventory for the release artifacts; it is distinct from runtime
+# decision-record signing (Boundary does not sign decision records by default —
+# see docs/PROOF_BOUNDARY.md and issue #134). Validate locally with:
+#   goreleaser release --snapshot --clean --skip=publish,docker
+# then inspect dist/*.spdx.json.
+sboms:
+  - id: static-archive-sbom
+    artifacts: archive
+    documents:
+      - "{{ .ArtifactName }}.spdx.json"
+    cmd: syft
+    args: ["$artifact", "--output", "spdx-json=$document"]
+
 snapshot:
   version_template: "{{ incpatch .Version }}-next"
 
