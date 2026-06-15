@@ -72,6 +72,23 @@ docker run --rm ghcr.io/fulcrum-governance/boundary:v<version> doctor --json
 The image carries the static build (reduced SQL classification, below) on a
 distroless base; the entrypoint is `boundary`.
 
+## Supply Chain
+
+Release archives carry supply-chain metadata: an SPDX SBOM per static archive
+(what is compiled into the binary) and a GitHub build-provenance attestation for
+release artifacts (where they were built). Verify provenance with:
+
+```bash
+gh attestation verify boundary_<version>_<os>_<arch>_static-nocgo.tar.gz \
+  --repo Fulcrum-Governance/Fulcrum-Boundary
+```
+
+This is provenance for the release distribution — distinct from runtime
+decision-record signing, which Boundary does not do by default. See
+[SUPPLY_CHAIN.md](./SUPPLY_CHAIN.md) for what ships, how to verify, and the
+honest scope (`BND-CLAIM-DIST-002`, `partial` — SBOM verified via snapshot,
+provenance live from the next tagged release).
+
 ## Static Vs Cgo Builds
 
 The Postgres AST guard ([`docs/policies/POSTGRES.md`](policies/POSTGRES.md))
