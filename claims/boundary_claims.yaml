@@ -252,7 +252,7 @@ claims:
         - "Build provenance was recorded for releases before the pipeline shipped it"
     gaps:
       - id: BND-DIST-002
-        description: "Build-provenance attestation is release-gated (it needs the workflow's GitHub OIDC token on a v* tag) and the native-cgo archive SBOM is not yet generated; both are wired in .goreleaser.yaml and .github/workflows/release.yml but unproven until the first tagged release runs the updated pipeline. Static-archive SPDX SBOM generation is verified locally via `goreleaser release --snapshot`."
+        description: "Build-provenance attestation is wired in .github/workflows/release.yml but release-gated — it needs the workflow's GitHub OIDC token on a v* tag — so it is unproven until the first tagged release runs the updated pipeline. The native-cgo archive SBOM is NOT yet implemented (the cgo-binaries job has no syft/SBOM step). Static-archive SPDX SBOM generation is verified locally via `goreleaser release --snapshot`."
         spec: "GitHub issue #140 — SBOM and provenance attestation for release artifacts"
     depends_on:
       - BND-CLAIM-DIST-001
