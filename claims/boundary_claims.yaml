@@ -370,6 +370,8 @@ claims:
       docs:
         - path: docs/firewall/INSTALL_LOCK.md
           section: "MCP Firewall Install And Descriptor Lock"
+        - path: docs/firewall/HOST_SETUP.md
+          section: "Per-Host Setup: Route an MCP Client Through Boundary"
     public_language:
       allowed:
         - "Boundary installs reversible MCP config routes and verifies descriptor lockfiles for local MCP server descriptors."

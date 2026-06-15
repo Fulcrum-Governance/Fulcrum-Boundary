@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- Per-host install tutorials (#138): `docs/firewall/HOST_SETUP.md` adds short
+  walkthroughs for routing Claude Desktop, Claude Code, Cursor, and VS Code
+  through Boundary — where each MCP config lives (per OS), the `boundary install`
+  command, confirming the live route with `boundary doctor`, reversibility via
+  `boundary uninstall`, and the routed-only caveat per host. Claude Code is
+  documented as the repo-local `.mcp.json` client (Boundary has no dedicated
+  selector). Linked from `docs/INSTALL.md` and the Route Conformance Checklist;
+  the documented per-host path rows are pinned, and their components coupled to
+  `internal/firewall/discover.go`, by drift tests in `tests/docs/`.
 - Release supply-chain metadata (`BND-CLAIM-DIST-002`, `partial`): the
   tag-gated release pipeline now generates an SPDX SBOM (syft) for each static
   archive (`.goreleaser.yaml`) and records GitHub build-provenance attestations

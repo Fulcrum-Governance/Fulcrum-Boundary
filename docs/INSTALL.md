@@ -155,6 +155,15 @@ make demo-github
 make release-check
 ```
 
+## Route an MCP Client Through Boundary
+
+Installing the binary does not route anything yet — Boundary governs only calls
+forced through it. To put a host's MCP servers on a Boundary route, see the
+per-host walkthroughs (Claude Desktop, Claude Code, Cursor, VS Code) in
+[firewall/HOST_SETUP.md](./firewall/HOST_SETUP.md): where each config lives, the
+`boundary install` command, confirming with `boundary doctor`, and the
+routed-only caveat per host.
+
 ## First Useful Commands
 
 Run the local release smoke test:
