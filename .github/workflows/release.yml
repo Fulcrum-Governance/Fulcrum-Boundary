@@ -112,6 +112,7 @@ jobs:
             dist/*_static-nocgo.zip
             dist/*.spdx.json
             dist/SHA256SUMS
+            .release-extras/boundary-evidence.tar.gz
       - name: goreleaser snapshot dry-run (manual dispatch)
         if: github.ref_type != 'tag'
         uses: goreleaser/goreleaser-action@5daf1e915a5f0af01ddbcd89a43b8061ff4f1a89 # v7.2.2
