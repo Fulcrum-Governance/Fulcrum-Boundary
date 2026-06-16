@@ -26,17 +26,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   and the native-cgo release matrix gains no Windows lane.
 - Release supply-chain metadata (`BND-CLAIM-DIST-002`, `partial`): the
   tag-gated release pipeline now generates an SPDX SBOM (syft) for each static
-  archive (`.goreleaser.yaml`) and records GitHub build-provenance attestations
-  for release artifacts — static archives, their SBOMs, `SHA256SUMS`, and each
-  native-cgo archive — via SHA-pinned `actions/attest-build-provenance`
+  (`.goreleaser.yaml`) and native-cgo (`cgo-binaries` job) release archive and
+  records GitHub build-provenance attestations for release artifacts — static
+  archives, their SBOMs, `SHA256SUMS`, and each native-cgo archive and its
+  SBOM — via SHA-pinned `actions/attest-build-provenance`
   (`.github/workflows/release.yml`, with `id-token`/`attestations` OIDC
   permissions). Verify with `gh attestation verify`. This is distribution
   provenance, distinct from runtime decision-record signing (Boundary does not
   sign decision records by default; see `docs/PROOF_BOUNDARY.md`, #134). Static
-  SBOM generation is verified via `goreleaser release --snapshot`; provenance is
-  release-gated and the cgo-archive SBOM is a tracked gap (`BND-DIST-002`) until
-  the first tagged release runs the updated pipeline. Docs:
-  `docs/SUPPLY_CHAIN.md`; wiring pinned by `tests/supplychain/`.
+  SBOM generation is verified via `goreleaser release --snapshot` and the
+  cgo-archive SBOM command via local syft; provenance and the cgo SBOM are
+  release-gated (`BND-DIST-002`) until the first tagged release runs the updated
+  pipeline. Docs: `docs/SUPPLY_CHAIN.md`; wiring pinned by `tests/supplychain/`.
 
 - Kernel escalation await mode: a new `governance/kernel.AwaitingEscalationHandler`
   publishes the existing frozen escalate envelope (`{"request": …, "reason": …}`

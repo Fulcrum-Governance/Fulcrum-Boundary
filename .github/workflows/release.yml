@@ -174,6 +174,8 @@ jobs:
         with:
           go-version: '1.26.4'
           cache: true
+      - name: Install syft for SBOM generation
+        uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
       - name: Resolve version
         id: version
         run: |
@@ -219,20 +221,28 @@ jobs:
           else
             (cd dist-cgo && shasum -a 256 "${name}.tar.gz" > "${name}.tar.gz.sha256")
           fi
+          # SPDX SBOM for the cgo archive (BND-CLAIM-DIST-002). The static
+          # archives are SBOM'd by goreleaser; the cgo archives are built outside
+          # goreleaser, so syft runs here, matching format.
+          syft "dist-cgo/${name}.tar.gz" --output "spdx-json=dist-cgo/${name}.tar.gz.spdx.json"
           echo "archive=dist-cgo/${name}.tar.gz" >> "$GITHUB_OUTPUT"
           echo "checksum=dist-cgo/${name}.tar.gz.sha256" >> "$GITHUB_OUTPUT"
+          echo "sbom=dist-cgo/${name}.tar.gz.spdx.json" >> "$GITHUB_OUTPUT"
       - name: Upload to the GitHub release (tag)
         if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release upload "${GITHUB_REF_NAME}" \
-            "${{ steps.package.outputs.archive }}" --clobber
-      - name: Attest build provenance for the cgo archive (tag)
+            "${{ steps.package.outputs.archive }}" \
+            "${{ steps.package.outputs.sbom }}" --clobber
+      - name: Attest build provenance for the cgo archive + SBOM (tag)
         if: github.ref_type == 'tag'
         uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
         with:
-          subject-path: ${{ steps.package.outputs.archive }}
+          subject-path: |
+            ${{ steps.package.outputs.archive }}
+            ${{ steps.package.outputs.sbom }}
       - name: Upload workflow artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -240,6 +250,7 @@ jobs:
           path: |
             ${{ steps.package.outputs.archive }}
             ${{ steps.package.outputs.checksum }}
+            ${{ steps.package.outputs.sbom }}
           retention-days: 7
 
   cgo-checksums:
