@@ -17,6 +17,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   selector). Linked from `docs/INSTALL.md` and the Route Conformance Checklist;
   the documented per-host path rows are pinned, and their components coupled to
   `internal/firewall/discover.go`, by drift tests in `tests/docs/`.
+- Windows static-only stance, made explicit and pinned (#139): `docs/INSTALL.md`
+  now states that Windows ships the static (`CGO_ENABLED=0`) build **only** — a
+  permanent stance, not a pending gap — because the cgo SQL classifier needs a
+  C/MSYS2 toolchain the Windows release path does not carry. Routed SQL on Windows
+  classifies `UNKNOWN` and is denied fail-closed (it never allows SQL a cgo build
+  would deny). `tests/releasebuild/` pins it: Windows stays in the static build
+  and the native-cgo release matrix gains no Windows lane.
 - Release supply-chain metadata (`BND-CLAIM-DIST-002`, `partial`): the
   tag-gated release pipeline now generates an SPDX SBOM (syft) for each static
   archive (`.goreleaser.yaml`) and records GitHub build-provenance attestations

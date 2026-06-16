@@ -218,6 +218,7 @@ claims:
       allowed:
         - "A tag-gated release pipeline builds static (CGO_ENABLED=0) archives for darwin, linux, and windows on amd64 and arm64, native-cgo full-classifier archives, SHA256 checksum manifests, a Homebrew formula, and a container image."
         - "Install channels publish with releases after v0.9.0; v0.9.0 and earlier releases are source-only."
+        - "Windows ships the static (CGO_ENABLED=0) build only by design; native-cgo full-classifier archives are produced for darwin and linux, not Windows."
       forbidden:
         - "Prebuilt binaries are available for v0.9.0 and earlier"
         - "The Homebrew tap is installable before the first pipeline-published release"

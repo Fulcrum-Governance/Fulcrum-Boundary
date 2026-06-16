@@ -42,8 +42,10 @@ Each release attaches two archive families plus checksum manifests:
   `SHA256SUMS`.
 - `boundary_<version>_<os>_<arch>_cgo.tar.gz` — native-cgo builds with the
   full Postgres AST classifier for darwin and linux on amd64 and arm64,
-  listed in `SHA256SUMS-cgo`. Windows `_cgo` archives are not produced; use
-  the static archive or build from source there.
+  listed in `SHA256SUMS-cgo`. Windows `_cgo` archives are **not produced** — a
+  permanent stance, not a pending gap (see
+  [Static vs cgo](#static-vs-cgo-builds)); on Windows use the static archive or
+  a source build.
 
 Download, verify, and install (example: static build on Apple Silicon —
 substitute the version, OS, arch, and variant you need):
@@ -112,6 +114,15 @@ build would deny. A `//go:build !cgo` test sweep
 SQL evasion corpus lands in the `UNKNOWN` deny bucket in static builds. If a
 deployment depends on SQL class distinctions (for example, allowing `READ`
 while escalating `ADMIN`), use a cgo build on that route.
+
+**Windows ships the static build only — a permanent stance, by design.** The
+cgo classifier links `pg_query_go` through a C toolchain (MSYS2) that the
+Windows release path does not carry, and adding a Windows-cgo lane is not
+planned. Windows users get the `_static-nocgo` archive (or a `CGO_ENABLED=0`
+source build): routed SQL classifies as `UNKNOWN` and is denied fail-closed,
+exactly as above — never allowing SQL a cgo build would deny. This is not a
+pending gap. For SQL class distinctions, run Boundary on that route from a Linux
+or macOS cgo build.
 
 Everything else — the four-stage pipeline, decision records, demos,
 `selftest`, `doctor`, `evidence`, policy testing — behaves identically in

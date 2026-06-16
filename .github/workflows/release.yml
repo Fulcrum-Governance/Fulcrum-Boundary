@@ -21,8 +21,12 @@ name: Release
 # cannot classify SQL (the Postgres AST classifier links pg_query_go via cgo),
 # so routed SQL classifies UNKNOWN and the Postgres guard denies it
 # fail-closed; `_cgo` binaries carry the full classifier. Windows `_cgo`
-# binaries are not produced (no MSYS2 toolchain here); Windows users get the
-# static variant.
+# binaries are not produced — a permanent stance, by design: the cgo classifier
+# needs a C/MSYS2 toolchain the Windows release path does not carry, and a
+# Windows-cgo lane is not planned. Windows users get the static variant (routed
+# SQL denied fail-closed). See docs/INSTALL.md "Static Vs Cgo Builds". The
+# cgo-binaries matrix below is darwin/linux only by design; a drift test
+# (tests/releasebuild/) pins it.
 
 on:
   push:
