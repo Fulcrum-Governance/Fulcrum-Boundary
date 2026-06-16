@@ -72,7 +72,8 @@ checksum:
 
 # SPDX SBOM (one per static archive), generated with syft. The per-runner
 # native-cgo archives (built outside goreleaser in .github/workflows/release.yml,
-# job `cgo-binaries`) are NOT yet SBOM'd — that is a tracked gap (BND-DIST-002).
+# job `cgo-binaries`) are SBOM'd there with syft in the same spdx-json format,
+# release-gated on a v* tag (BND-DIST-002 stays partial until the first tag).
 # This is supply-chain inventory for the release artifacts; it is distinct from runtime
 # decision-record signing (Boundary does not sign decision records by default —
 # see docs/PROOF_BOUNDARY.md and issue #134). Validate locally with:

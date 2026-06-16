@@ -76,9 +76,10 @@ distroless base; the entrypoint is `boundary`.
 
 ## Supply Chain
 
-Release archives carry supply-chain metadata: an SPDX SBOM per static archive
-(what is compiled into the binary) and a GitHub build-provenance attestation for
-release artifacts (where they were built). Verify provenance with:
+Release archives carry supply-chain metadata: an SPDX SBOM per release archive
+(static and native-cgo — what is compiled into the binary) and a GitHub
+build-provenance attestation for release artifacts (where they were built).
+Verify provenance with:
 
 ```bash
 gh attestation verify boundary_<version>_<os>_<arch>_static-nocgo.tar.gz \

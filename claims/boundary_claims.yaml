@@ -231,12 +231,12 @@ claims:
       - BND-CLAIM-BUILD-001
 
   - id: BND-CLAIM-DIST-002
-    claim: "Boundary's tag-gated release pipeline generates an SPDX SBOM for each static release archive and records GitHub build-provenance attestations for its release artifacts"
+    claim: "Boundary's tag-gated release pipeline generates an SPDX SBOM for each static and native-cgo release archive and records GitHub build-provenance attestations for its release artifacts"
     status: partial
     evidence:
       tests:
         - path: tests/supplychain/wiring_test.go
-          assertion: "the SBOM (syft/spdx-json) config and the attest-build-provenance steps + OIDC permissions are present in .goreleaser.yaml and .github/workflows/release.yml"
+          assertion: "the static SBOM config (.goreleaser.yaml syft), the cgo-archive SBOM step (cgo-binaries job syft), and the attest-build-provenance steps + OIDC permissions are present in .goreleaser.yaml and .github/workflows/release.yml"
       docs:
         - path: docs/SUPPLY_CHAIN.md
           section: "What the pipeline produces"
@@ -244,7 +244,7 @@ claims:
           section: "Supply Chain"
     public_language:
       allowed:
-        - "The release pipeline attaches an SPDX SBOM (syft) to each static archive and records GitHub build-provenance attestations for release artifacts, verifiable with gh attestation verify."
+        - "The release pipeline attaches an SPDX SBOM (syft) to each static and native-cgo archive and records GitHub build-provenance attestations for release artifacts, verifiable with gh attestation verify."
         - "Supply-chain metadata covers the release distribution; it is distinct from runtime decision-record signing and from upstream package or MCP-server supply chains."
       forbidden:
         - "Boundary signs decision records"
@@ -253,8 +253,8 @@ claims:
         - "Build provenance was recorded for releases before the pipeline shipped it"
     gaps:
       - id: BND-DIST-002
-        description: "Build-provenance attestation is wired in .github/workflows/release.yml but release-gated — it needs the workflow's GitHub OIDC token on a v* tag — so it is unproven until the first tagged release runs the updated pipeline. The native-cgo archive SBOM is NOT yet implemented (the cgo-binaries job has no syft/SBOM step). Static-archive SPDX SBOM generation is verified locally via `goreleaser release --snapshot`."
-        spec: "GitHub issue #140 — SBOM and provenance attestation for release artifacts"
+        description: "Build-provenance attestation (both archive families) and the native-cgo archive SBOM run only on a v* tag — the cgo SBOM in the per-runner cgo-binaries matrix and attestation via the workflow's GitHub OIDC token — so they are unproven until the first tagged release runs the updated pipeline. Verified locally short of a release: the static-archive SBOM via `goreleaser release --snapshot` (6 SPDX files) and the cgo SBOM command via `syft` on a cgo archive (valid SPDX-2.3)."
+        spec: "GitHub issue #140 — SBOM and provenance attestation for release artifacts (cgo SBOM closes BND-DIST-002's cgo gap)"
     depends_on:
       - BND-CLAIM-DIST-001
 

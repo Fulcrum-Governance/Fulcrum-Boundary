@@ -71,6 +71,54 @@ func TestSyftInstalledInReleaseWorkflow(t *testing.T) {
 	}
 }
 
+// TestCgoArchiveSBOM pins the cgo-archive half of the SBOM coverage
+// (BND-CLAIM-DIST-002 / BND-DIST-002): the cgo-binaries job — which builds the
+// native-cgo archives outside goreleaser — must install syft, generate an SPDX
+// SBOM for its archive, and include that SBOM in the build-provenance
+// attestation subjects. Without this the cgo archives ship with no inventory.
+func TestCgoArchiveSBOM(t *testing.T) {
+	wf := read(t, repoRoot(t), ".github/workflows/release.yml")
+	var doc struct {
+		Jobs map[string]struct {
+			Steps []struct {
+				Uses string `yaml:"uses"`
+				Run  string `yaml:"run"`
+				With struct {
+					SubjectPath string `yaml:"subject-path"`
+				} `yaml:"with"`
+			} `yaml:"steps"`
+		} `yaml:"jobs"`
+	}
+	if err := yaml.Unmarshal([]byte(wf), &doc); err != nil {
+		t.Fatalf("parse release.yml: %v", err)
+	}
+	cgo, ok := doc.Jobs["cgo-binaries"]
+	if !ok {
+		t.Fatal("release.yml has no cgo-binaries job")
+	}
+	var syftInstalled, sbomGenerated, sbomAttested bool
+	for _, s := range cgo.Steps {
+		if strings.Contains(s.Uses, "download-syft@") {
+			syftInstalled = true
+		}
+		if strings.Contains(s.Run, "syft ") && strings.Contains(s.Run, "spdx-json") {
+			sbomGenerated = true
+		}
+		if strings.Contains(s.Uses, "attest-build-provenance@") && strings.Contains(s.With.SubjectPath, "sbom") {
+			sbomAttested = true
+		}
+	}
+	if !syftInstalled {
+		t.Fatal("cgo-binaries job does not install syft — the cgo-archive SBOM (BND-CLAIM-DIST-002) cannot generate on the matrix runners")
+	}
+	if !sbomGenerated {
+		t.Fatal("cgo-binaries job does not generate an SPDX SBOM (syft … spdx-json) for the cgo archive")
+	}
+	if !sbomAttested {
+		t.Fatal("cgo-binaries build-provenance attestation subject-path does not include the cgo SBOM")
+	}
+}
+
 // releaseWorkflow is the slice of the workflow schema this test reasons about.
 type releaseWorkflow struct {
 	Jobs map[string]struct {
