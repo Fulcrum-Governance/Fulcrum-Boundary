@@ -25,9 +25,10 @@ them. Highlights:
   it is not a claim that Boundary as a whole is standards-conformant.
 - **MCP is the only production route.** All other adapters and profiles ship as
   labeled previews; production status requires passing the adapter-readiness gate.
-- **cgo is required.** The Postgres AST guard links a cgo binding, so
-  `CGO_ENABLED=0` builds fail; separately, unparsable SQL is classified `UNKNOWN`
-  and denied fail-closed at runtime.
+- **Static and cgo builds differ only in SQL classification depth.** Cgo builds
+  use the full Postgres AST classifier. Static builds (`CGO_ENABLED=0`,
+  Homebrew, container images, and `_static-nocgo` archives) classify routed SQL
+  as `UNKNOWN` and deny it fail-closed.
 - **No model in the local verdict path.** The verdict path is deterministic;
   semantic rules escalate rather than guess, and Boundary does not emit `proved`.
 - **Standalone vs kernel.** Standalone is the zero-dependency OSS path; kernel is

@@ -47,11 +47,11 @@ boundary demo command-secret-exfil
 
 Decision-record commands:
 
-!!! note "Availability — in the v0.9.0 release"
+!!! note "Availability - current release"
     `boundary explain`, `boundary replay`, and `schema_version "2"` (route-context)
-    decision records are in the `v0.9.0` release, so `go install …@v0.9.0` includes
-    them. `boundary verify-record` on a `schema_version "1"` or `"2"` record is
-    included in `v0.9.0` as well.
+    decision records shipped by `v0.9.0` and remain included in the current
+    `v0.11.0` release. `boundary verify-record` on a `schema_version "1"` or
+    `"2"` record is included as well.
 
 ```bash
 boundary verify-record record.json
@@ -72,9 +72,9 @@ prove that no upstream bytes moved.
 
 Policy test commands:
 
-!!! note "Availability — in the v0.9.0 release"
-    `boundary test` is included in the `v0.9.0` release. The `@v0.9.0` install
-    includes it; the historical `@v0.8.0` install does not.
+!!! note "Availability - current release"
+    `boundary test` shipped in `v0.9.0` and remains included in the current
+    `v0.11.0` release. The historical `@v0.8.0` install does not include it.
 
 ```bash
 boundary test --path tests/fixtures/policy-test/cases

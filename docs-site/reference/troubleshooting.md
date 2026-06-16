@@ -6,8 +6,10 @@ Canonical repository reference:
 Covers the most common first-run problems and how to resolve them:
 
 - Go 1.25+ toolchain requirement.
-- The cgo / C-toolchain requirement: the default build links the Postgres AST
-  guard through cgo, so `CGO_ENABLED=0` builds fail. Includes the concrete fix.
+- Static versus cgo builds: default source builds link the full Postgres AST
+  guard through cgo and need a C toolchain; `CGO_ENABLED=0` source builds,
+  Homebrew, container images, and `_static-nocgo` archives run the static
+  fail-closed SQL classifier.
 - `PATH` issues after `go install` (GOBIN / GOPATH).
 - The failure modes of each first-run command (`selftest`, `doctor`, the two
   demos, `evidence bundle` / `verify`, `verify-record`) and how to resolve them.
@@ -17,7 +19,7 @@ Covers the most common first-run problems and how to resolve them:
 The canonical first-run sequence these notes follow:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.11.0
 boundary selftest
 boundary doctor --json
 boundary demo github-lethal-trifecta
