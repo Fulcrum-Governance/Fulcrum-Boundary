@@ -152,3 +152,35 @@ func TestGitHubLethalTrifectaDemoMarkdownOutAndDashboard(t *testing.T) {
 		t.Fatalf("dashboard artifact missing: %v", err)
 	}
 }
+
+func TestGitHubLethalTrifectaDemoEvidencePackFlag(t *testing.T) {
+	dir := t.TempDir()
+	packDir := filepath.Join(dir, "pack")
+	var stdout, stderr bytes.Buffer
+	code := boundarycli.Run([]string{
+		"demo", "github-lethal-trifecta", "--evidence-pack", packDir,
+	}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("demo exit = %d, stderr=%s", code, stderr.String())
+	}
+	out := stdout.String()
+	if !strings.Contains(out, "evidence pack: "+packDir) {
+		t.Fatalf("stdout missing evidence pack path:\n%s", out)
+	}
+	if !strings.Contains(out, "evidence pack manifest: "+filepath.Join(packDir, "pack.json")) {
+		t.Fatalf("stdout missing manifest path:\n%s", out)
+	}
+	// The manifest and receipt must exist and the manifest must hold preview/L0.
+	manifestBody, err := os.ReadFile(filepath.Join(packDir, "pack.json"))
+	if err != nil {
+		t.Fatalf("read pack manifest: %v", err)
+	}
+	for _, want := range []string{`"secure_github_status": "preview"`, `"bypass_ladder_level": "L0"`} {
+		if !strings.Contains(string(manifestBody), want) {
+			t.Fatalf("manifest missing %q:\n%s", want, manifestBody)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(packDir, "proof-receipt.json")); err != nil {
+		t.Fatalf("proof-receipt.json missing: %v", err)
+	}
+}

@@ -25,17 +25,36 @@ func runGitHubLethalTrifectaDemo(args []string, stdout, stderr io.Writer) int {
 		Notes: []string{
 			"Fixture mode uses no credentials, no network, and no live GitHub mutation.",
 			"The demo proves pre-upstream denial for the fixture route, not live GitHub App conformance.",
+			"--evidence-pack DIR writes a fixture-only evidence pack (manifest + hashed artifacts) a reviewer can re-verify offline.",
 		},
 	})
 	jsonOutput := fs.Bool("json", false, "emit machine-readable JSON")
 	markdownOutput := fs.Bool("markdown", false, "emit Markdown")
 	outPath := fs.String("out", "", "write the demo report to a file")
 	dashboard := fs.Bool("dashboard", false, "write a local-only HTML dashboard artifact")
+	evidencePack := fs.String("evidence-pack", "", "write a fixture-only evidence pack (manifest + hashed artifacts) to a directory")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return 0
 		}
 		return 1
+	}
+	if *evidencePack != "" {
+		pack, err := boundarydemo.BuildEvidencePack(context.Background(), boundarydemo.GitHubLethalTrifectaOptions{})
+		if err != nil {
+			fmt.Fprintf(stderr, "github lethal-trifecta evidence pack: %v\n", err)
+			return 1
+		}
+		if err := boundarydemo.WriteEvidencePackDir(pack, *evidencePack); err != nil {
+			fmt.Fprintf(stderr, "github lethal-trifecta evidence pack: %v\n", err)
+			return 1
+		}
+		fmt.Fprintf(stdout, "evidence pack: %s\n", *evidencePack)
+		fmt.Fprintf(stdout, "evidence pack manifest: %s\n", filepath.Join(*evidencePack, "pack.json"))
+		if !pack.Passed {
+			return 1
+		}
+		return 0
 	}
 	if *jsonOutput && *markdownOutput {
 		fmt.Fprintln(stderr, "choose only one of --json or --markdown")
