@@ -131,6 +131,16 @@ func publicLanguageRules() []languageRule {
 			allowLine: negatedOrControlled,
 		},
 		{
+			// The decision record itself is NOT validated by a formally verified
+			// checker; only the proof-receipt-v0.1 sidecar's named invariants are.
+			// Permit the claim ONLY when scoped to the sidecar/receipt or its
+			// invariants, and reject the blanket "the decision record is validated
+			// by a formally verified checker" overclaim.
+			name:      "formally verified checker scope",
+			terms:     []string{"formally verified checker", "lean-checked checker", "checker-validated"},
+			allowLine: proofReceiptScoped,
+		},
+		{
 			name:      "secure sandbox overclaim",
 			terms:     []string{"secure sandbox", "secure sandboxing"},
 			allowLine: sandboxCaveat,
@@ -243,6 +253,30 @@ func conformanceScoped(line string) bool {
 		"the record",
 		"record's",
 		"record is rfc",
+	}
+	for _, term := range scoped {
+		if strings.Contains(line, term) {
+			return true
+		}
+	}
+	return false
+}
+
+// proofReceiptScoped permits a "formally verified / Lean-checked checker" claim
+// only when negated/limitation-framed or explicitly scoped to the proof-receipt
+// sidecar by name. Generic scope words (invariant, budget, trust-circuit,
+// receipt, static privilege) are NOT sufficient — a blanket claim that the
+// decision record or pipeline is checker-validated must be rejected even when
+// it mentions one of those terms. Only an explicit "proof receipt" / "proof-receipt"
+// / "sidecar" reference or a negation allows the claim through.
+func proofReceiptScoped(line string) bool {
+	if negatedOrControlled(line) {
+		return true
+	}
+	scoped := []string{
+		"proof receipt",
+		"proof-receipt",
+		"sidecar",
 	}
 	for _, term := range scoped {
 		if strings.Contains(line, term) {

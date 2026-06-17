@@ -335,17 +335,49 @@ claims:
       forbidden:
         - "Boundary emits proved decisions"
         - "Boundary mechanically extracts runtime code from Lean"
-        - "Boundary's decision record is validated by a formally verified checker"
         - "Boundary couples a trust equilibrium to enforcement as a runtime certificate"
         - "Boundary is the only formally verified action boundary"
         - "Boundary is provably safe"
     gaps:
       - id: BND-PROOF-001
-        description: "The per-decision certifying witness validated by a formally verified checker on the budget (B_prev>=C_req) and privilege-subset invariants, and the trust-equilibrium-coupled-to-enforcement runtime certificate, are not delivered in this repo. Boundary records the witness substrate and corresponds to the Lean lineage by design only; runtime discharge lives upstream (Fulcrum-Proofs, fulcrum-trust). Moving the certifying witness up to the compiled-LM-program level is conjectured and unbuilt."
-        spec: "docs/PROOF_BOUNDARY.md correspondence table (design rows); upstream Fulcrum-Proofs GameTheory + TrustTermination + BasicInvariants"
+        description: "The trust-equilibrium-coupled-to-enforcement runtime certificate and the up-the-stack compiled-LM-program witness are not delivered in this repo: Boundary corresponds to the Nash-equilibrium / price-of-anarchy lineage by design only, and moving a certifying witness above the budget and static-privilege invariants is conjectured and unbuilt. The delivered per-decision sidecar (budget + static-privilege) is tracked separately as BND-CLAIM-PROOF-002."
+        spec: "docs/PROOF_BOUNDARY.md correspondence table (design rows); upstream Fulcrum-Proofs GameTheory + TrustTermination"
     depends_on:
       - BND-CLAIM-010
       - BND-CLAIM-REC-002
+
+  - id: BND-CLAIM-PROOF-002
+    claim: "Boundary can attach a proof-receipt-v0.1 sidecar to a decision record: checker-validated invariant lines for the budget (B_prev>=C_req) and static-privilege-subset invariants, bound to the record by decision_hash. The sidecar is invariant evidence attached to a decision, not a decision mode; attaching it does not change decision_hash, and Boundary never emits proved decisions."
+    status: delivered
+    evidence:
+      tests:
+        - path: governance/proofreceipt/receipt_test.go
+          assertion: "The proof-receipt-v0.1 sidecar binds to a decision record by decision_hash and rejects a wrong hash or version"
+        - path: governance/proofreceipt/budget_test.go
+          assertion: "The budget checker validates spent_before + requested <= limit for THM-BUDGET-LOCAL"
+        - path: governance/proofreceipt/privilege_test.go
+          assertion: "The static-privilege checker validates requested_caps subset authorized_caps for THM-PRIVILEGE-STATIC"
+        - path: governance/proofreceipt/trust_test.go
+          assertion: "The trust-circuit checker validates circuit_open iff (alpha+1)*q < p*(alpha+beta+2) for THM-TRUST-TERMINATION as a circuit-transition consistency check, not a per-decision termination proof"
+        - path: tests/proof_receipt_warehouse_test.go
+          assertion: "Attaching the sidecar does not change the verbatim record_json or its decision_hash and the record still verifies under VerifyDecisionRecord(record, nil, \"\", \"\")"
+      docs:
+        - path: docs/PROOF_RECEIPT.md
+          section: "Proof-Receipt Sidecar"
+        - path: docs/PROOF_BOUNDARY.md
+          section: "Proof-receipt sidecar (proof-receipt-v0.1)"
+    public_language:
+      allowed:
+        - "Boundary can attach a checker-validated proof-receipt sidecar for the budget and static-privilege invariants, bound to the decision record by decision_hash; the sidecar is invariant evidence, not a `proved` decision_mode, and Boundary does not emit proved decisions."
+        - "The proof-receipt sidecar is validated by a formally verified checker for its named invariants; the decision record itself is not, and the receipt does not make the decision a `proved` decision."
+      forbidden:
+        - "Boundary emits proved decisions"
+        - "The proof receipt is hash-chained"
+        - "Boundary signs the receipt by default"
+        - "Attaching the sidecar changes the decision mode"
+    gaps: []
+    depends_on:
+      - BND-CLAIM-PROOF-001
 
   - id: BND-CLAIM-011
     claim: "Boundary inventories local MCP client configs and classifies discovered MCP server capabilities without mutating those configs"

@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- Add the `proof-receipt-v0.1` sidecar: checker-validated budget and
+  static-privilege invariant lines bound to a decision record by `decision_hash`.
+  The sidecar is invariant evidence attached to a decision, not a `proved`
+  decision mode; attaching it does not change `decision_hash`, and Boundary does
+  not emit proved decisions.
+
 - Per-host install tutorials (#138): `docs/firewall/HOST_SETUP.md` adds short
   walkthroughs for routing Claude Desktop, Claude Code, Cursor, and VS Code
   through Boundary — where each MCP config lives (per OS), the `boundary install`
