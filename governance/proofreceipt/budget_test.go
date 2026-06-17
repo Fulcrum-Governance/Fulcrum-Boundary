@@ -1,6 +1,9 @@
 package proofreceipt
 
-import "testing"
+import (
+	"math"
+	"testing"
+)
 
 func TestCheckBudget_AdmitWhenWithinLimit(t *testing.T) {
 	w := BudgetWitness{Limit: 100, SpentBefore: 40, Requested: 60, SpentAfter: 100,
@@ -49,5 +52,30 @@ func TestCheckBudget_BoundaryEquality(t *testing.T) {
 	w := BudgetWitness{Limit: 100, SpentBefore: 100, Requested: 0, SpentAfter: 100}
 	if got := CheckBudget(w).Result; got != ResultPass {
 		t.Fatalf("spent==limit, requested 0 must pass, got %q", got)
+	}
+}
+
+func TestCheckBudget_NoOverflow(t *testing.T) {
+	// SpentBefore = MaxInt64, Requested = 1: the true sum (MaxInt64+1) is
+	// astronomically larger than Limit=100, so the request is way over budget
+	// and MUST produce ResultFail.
+	//
+	// Under a naive int64 implementation, SpentBefore+Requested wraps to
+	// math.MinInt64 (a large negative), which is <= 100, causing the predicate
+	// to wrongly evaluate as ResultPass — the overflow bug.
+	//
+	// SpentAfter: we set it to math.MinInt64 (the int64-wrapped sum) so that
+	// the naive consistency check (SpentAfter == SpentBefore+Requested) also
+	// passes under the buggy implementation, giving the attacker the most
+	// favorable possible witness. The correct big.Int path sees the true sum
+	// and must reject regardless.
+	w := BudgetWitness{
+		Limit:       100,
+		SpentBefore: math.MaxInt64,
+		Requested:   1,
+		SpentAfter:  math.MinInt64, // int64 wrap of MaxInt64+1; crafted to fool naive impl
+	}
+	if got := CheckBudget(w).Result; got != ResultFail {
+		t.Fatalf("overflow witness must fail (MaxInt64+1 >> 100), got %q", got)
 	}
 }
