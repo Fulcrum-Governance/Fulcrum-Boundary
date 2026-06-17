@@ -2,9 +2,14 @@ package demo
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/fulcrum-governance/fulcrum-boundary/governance"
@@ -239,4 +244,102 @@ func WriteEvidencePackJSON(w io.Writer, pack *EvidencePack) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	return enc.Encode(pack)
+}
+
+// WriteEvidencePackDir writes the evidence pack to outDir as a fixture-safe,
+// operator-pokable artifact set: pack.json (the manifest with per-artifact
+// SHA-256), decision-record.json, proof-receipt.json, route-conformance.json,
+// tamper-cases.json, caveats.md. It populates pack.Artifacts with the hashed
+// manifest entries. Local files only — no credentials, no network, no live
+// mutation. outDir must be non-empty.
+func WriteEvidencePackDir(pack *EvidencePack, outDir string) error {
+	if pack == nil {
+		return fmt.Errorf("evidence pack is required")
+	}
+	if strings.TrimSpace(outDir) == "" {
+		return fmt.Errorf("evidence pack output directory is required")
+	}
+	if err := os.MkdirAll(outDir, 0o700); err != nil {
+		return err
+	}
+	pack.Artifacts = nil
+
+	writeJSON := func(name, kind string, payload any) error {
+		body, err := json.MarshalIndent(payload, "", "  ")
+		if err != nil {
+			return err
+		}
+		body = append(body, '\n')
+		return writePackArtifact(pack, outDir, name, kind, body)
+	}
+
+	if err := writeJSON("proof-receipt.json", "proof_receipt", pack.ProofReceipt); err != nil {
+		return err
+	}
+	if err := writeJSON("decision-record.json", "decision_record", pack.DecisionRecord); err != nil {
+		return err
+	}
+	if err := writeJSON("route-conformance.json", "route_conformance", pack.RouteConformance); err != nil {
+		return err
+	}
+	if err := writeJSON("tamper-cases.json", "tamper_cases", pack.TamperCases); err != nil {
+		return err
+	}
+	var caveats strings.Builder
+	caveats.WriteString("# What this evidence pack does not prove\n\n")
+	for _, c := range pack.Caveats {
+		caveats.WriteString("- " + c + "\n")
+	}
+	if err := writePackArtifact(pack, outDir, "caveats.md", "caveats", []byte(caveats.String())); err != nil {
+		return err
+	}
+
+	// The manifest is written last and lists every preceding artifact, so it is
+	// not self-referential. It mirrors evidence.Manifest's fixture-safety fields
+	// while carrying the pack-specific preview/L0 literals.
+	manifest := struct {
+		SchemaVersion       string             `json:"schema_version"`
+		Status              string             `json:"status"`
+		SecureGitHubStatus  string             `json:"secure_github_status"`
+		BypassLadderLevel   string             `json:"bypass_ladder_level"`
+		FixtureOnly         bool               `json:"fixture_only"`
+		RequiresCredentials bool               `json:"requires_credentials"`
+		RequiresNetwork     bool               `json:"requires_network"`
+		MutatesLiveSystems  bool               `json:"mutates_live_systems"`
+		Artifacts           []EvidenceArtifact `json:"artifacts"`
+	}{
+		SchemaVersion:       pack.SchemaVersion,
+		Status:              pack.Status,
+		SecureGitHubStatus:  pack.SecureGitHubStatus,
+		BypassLadderLevel:   pack.BypassLadderLevel,
+		FixtureOnly:         pack.FixtureOnly,
+		RequiresCredentials: pack.RequiresCredentials,
+		RequiresNetwork:     pack.RequiresNetwork,
+		MutatesLiveSystems:  pack.MutatesLiveSystems,
+		Artifacts:           pack.Artifacts,
+	}
+	body, err := json.MarshalIndent(manifest, "", "  ")
+	if err != nil {
+		return err
+	}
+	body = append(body, '\n')
+	// #nosec G306 -- pack.json is a fixture-safe local manifest in an operator-selected directory.
+	return os.WriteFile(filepath.Join(outDir, "pack.json"), body, 0o600)
+}
+
+// writePackArtifact writes one fixture-safe artifact and records its hashed
+// manifest entry on the pack.
+func writePackArtifact(pack *EvidencePack, outDir, name, kind string, body []byte) error {
+	// #nosec G306 -- evidence-pack artifacts are fixture-safe local files in an operator-selected directory.
+	if err := os.WriteFile(filepath.Join(outDir, name), body, 0o600); err != nil {
+		return err
+	}
+	sum := sha256.Sum256(body)
+	pack.Artifacts = append(pack.Artifacts, EvidenceArtifact{
+		Path:      name,
+		Kind:      kind,
+		SHA256:    hex.EncodeToString(sum[:]),
+		SizeBytes: int64(len(body)),
+	})
+	return nil
 }
