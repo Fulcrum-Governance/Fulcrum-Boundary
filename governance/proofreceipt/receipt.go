@@ -122,3 +122,21 @@ func ReadJSON(path string) (ProofReceipt, error) {
 	}
 	return r, nil
 }
+
+// AttachAll builds a proof-receipt-v0.1 for record from the given invariant
+// lines and returns it bound by record.DecisionHash. It is the single entry
+// point a demo or adapter uses to attach budget/privilege/trust invariants at
+// once. It does not mutate record and does not recompute or alter decision_hash;
+// the returned receipt is a separate artifact that VerifyBinding re-checks
+// against the verbatim record. Invariants with an empty TheoremID are dropped so
+// a caller can pass a fixed-length slice with some checks skipped.
+func AttachAll(record governance.DecisionRecordV1, checkerID, checkerBuildHash string, invariants []Invariant, recordedAt time.Time) ProofReceipt {
+	kept := make([]Invariant, 0, len(invariants))
+	for _, inv := range invariants {
+		if inv.TheoremID == "" {
+			continue
+		}
+		kept = append(kept, inv)
+	}
+	return New(record, checkerID, checkerBuildHash, kept, recordedAt)
+}
