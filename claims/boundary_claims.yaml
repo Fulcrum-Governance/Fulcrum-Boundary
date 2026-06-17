@@ -312,6 +312,41 @@ claims:
     gaps: []
     depends_on: []
 
+  - id: BND-CLAIM-PROOF-001
+    claim: "Boundary is the open, record-carrying surface of the Fulcrum proof lineage: every governed verdict produces a decision record, and Boundary's runtime trust, termination, budget, and privilege behavior is documented to correspond (correspondence type design) to machine-checked Lean theorems — a Beta-distribution trust model, a pure/mixed Nash equilibrium, an exact price-of-anarchy bound, circuit-breaker termination, the budget invariant B_prev>=C_req, and the privilege-subset invariant — held upstream in Fulcrum-Proofs. The correspondence is a design constraint, not a runtime certificate; Boundary itself never emits proved decisions and never mechanically extracts runtime code from Lean."
+    status: partial
+    evidence:
+      tests:
+        - path: tests/adaptive_termination_test.go
+          assertion: "Repeated protected-tool violations isolate an agent before later protected requests execute, the runtime behavior the trust-termination theorems are designed to constrain"
+        - path: governance/canonicaljson_test.go
+          assertion: "The decision record (the carried witness substrate) is RFC 8785/JCS canonicalized so its decision_hash is independently recomputable"
+      docs:
+        - path: docs/PROOF_BOUNDARY.md
+          section: "Proof Boundary"
+        - path: docs/TRUST_INTEGRATION.md
+          section: "Modes"
+        - path: docs/ADAPTIVE_TERMINATION.md
+          section: "State Transitions"
+    public_language:
+      allowed:
+        - "Boundary carries the decision record and its runtime behavior corresponds (design correspondence) to machine-checked Lean theorems; the equilibrium and the certifying checker are upstream in Fulcrum-Proofs, and the correspondence is a design constraint, not a runtime certificate."
+        - "Boundary is the open, record-carrying surface of the Fulcrum proof lineage; it does not itself emit proved decisions."
+      forbidden:
+        - "Boundary emits proved decisions"
+        - "Boundary mechanically extracts runtime code from Lean"
+        - "Boundary's decision record is validated by a formally verified checker"
+        - "Boundary couples a trust equilibrium to enforcement as a runtime certificate"
+        - "Boundary is the only formally verified action boundary"
+        - "Boundary is provably safe"
+    gaps:
+      - id: BND-PROOF-001
+        description: "The per-decision certifying witness validated by a formally verified checker on the budget (B_prev>=C_req) and privilege-subset invariants, and the trust-equilibrium-coupled-to-enforcement runtime certificate, are not delivered in this repo. Boundary records the witness substrate and corresponds to the Lean lineage by design only; runtime discharge lives upstream (Fulcrum-Proofs, fulcrum-trust). Moving the certifying witness up to the compiled-LM-program level is conjectured and unbuilt."
+        spec: "docs/PROOF_BOUNDARY.md correspondence table (design rows); upstream Fulcrum-Proofs GameTheory + TrustTermination + BasicInvariants"
+    depends_on:
+      - BND-CLAIM-010
+      - BND-CLAIM-REC-002
+
   - id: BND-CLAIM-011
     claim: "Boundary inventories local MCP client configs and classifies discovered MCP server capabilities without mutating those configs"
     status: delivered

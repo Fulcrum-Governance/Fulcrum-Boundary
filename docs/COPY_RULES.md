@@ -90,6 +90,26 @@ forbidden or false.
 | fully secures GitHub | governs supported GitHub actions routed through Boundary |
 | production GitHub security | preview Secure GitHub profile until live conformance evidence exists |
 | detects every malicious issue | detects configured taint sources and tested write-after-taint paths |
+| AI gateway (as the product headline) | action boundary for routed agent tools |
+| category of one | names a specific gap; describe the exact capability and its evidence instead |
+| first formally verified | a formally verified checker validates stated invariants (only where that checker exists and is named) |
+| only formally verified | a formally verified checker validates stated invariants (only where that checker exists and is named) |
+| empty intersection of rigor and traction | describe the traction and the rigor work separately, each scoped to evidence |
+| provably safe | denies tested patterns on governed routes; emits verifiable decision records (never "safe" unqualified) |
+
+Notes on the additions above:
+
+- The boundary / decide-before-execution primitive is commoditized in
+  general-purpose agent platforms and cloud gateways. Do not headline Boundary as
+  "an AI gateway" or imply the primitive is the differentiator; lead with the
+  operator-verifiable decision record on a governed route.
+- "Category of one", "first/only formally verified", and "empty intersection of
+  rigor and traction" are unbounded standing claims about the whole field. They
+  cannot be checked against this repo's evidence and do not belong in public
+  copy. State the specific capability and where it is proven.
+- "Provably safe" (unqualified) overstates a routed, fixture-scoped guarantee. A
+  separate, formally verified checker validates stated invariants only where that
+  checker exists — and it is not part of this standalone repo.
 
 ## Adapter Maturity
 

@@ -293,3 +293,24 @@ Allowed use: "MCP Firewall is the install wedge for Boundary."
 Forbidden use: "MCP Firewall proves every MCP server is safe."
 
 Example: "`boundary inventory` and `boundary graph` are MCP Firewall commands."
+
+## Formally Verified Checker
+
+Definition: A separate checker, itself formally verified, that validates a
+per-decision certifying artifact against stated invariants (for example, a budget
+invariant such as available budget covering the requested cost, or a privilege
+invariant such as the requested privileges being a subset of those available). It
+is the property that does the work — not the word "witness," which now collides
+with unrelated vendor marketing.
+
+Allowed use: "Where a Fulcrum component emits a certifying artifact, a formally
+verified checker validates it against stated invariants." Use only where that
+checker exists and is named.
+
+Forbidden use: "Boundary is the first/only formally verified agent control."
+"Boundary ships a formally verified checker." (This standalone repo does not.)
+"Boundary emits a witness." (Not a product term here.)
+
+Example: "The formally verified checker is part of the Fulcrum kernel and proof
+work, not this standalone OSS repo; this repo verifies decision records by
+recomputation with `boundary verify-record`."

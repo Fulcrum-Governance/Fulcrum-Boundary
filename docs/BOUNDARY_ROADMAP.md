@@ -184,6 +184,167 @@ Scope and limits, stated up front:
 
 ---
 
+## Phase P-pos — Positioning surgery (planned)
+
+> **Not shipped. Planned, language-and-claims only.** This phase changes how
+> Boundary is *described*, not what it governs. It adds no command, no adapter,
+> no record field, and no verdict. It lands behind the same claims and language
+> gate as everything else, and the claims ledger is updated in the same change.
+
+Phase P-pos tightens public language so the repository leads with the exact
+capability it can stand behind, and hardens the controlled-overclaim list against
+a new class of overstatement. The pre-execution boundary primitive is now widely
+available from several vendors; this phase stops describing Boundary as the
+boundary in the abstract and scopes every headline to the witness-and-record lane
+the tests actually exercise.
+
+Concretely:
+
+- **Adopt the exact-conjunction claim.** Where the repository describes its
+  differentiated capability, it states the capability as a single conjunction of
+  parts that hold together, never as a part standing in for the whole. A claim
+  that names only one half of the conjunction is treated as an overclaim and is
+  rewritten or removed.
+- **Harden the controlled-overclaim list.** New phrases are added to the language
+  system (`docs/LANGUAGE_SYSTEM.md`, `docs/LEXICON.md`, `docs/COPY_RULES.md`) and
+  to `claims/language_lint_test.go` so they fail the build on any public surface
+  unless negated or limitation-framed — including standalone superlatives of the
+  "first/only/category-of-one" shape and headline use of the bare gateway
+  framing.
+- **No new capability is asserted.** This phase cannot move any claim from
+  `partial`/`planned` to `delivered`; it only narrows existing language toward
+  what is already true.
+
+Non-goals for Phase P-pos: no new governed surface, no preview promoted to
+production, no claim upgraded by language change alone.
+
+---
+
+## Phase P-verify — Defensive verification of referenced claims (planned)
+
+> **Not shipped. Planned.** Scope is *internal verification of claims the
+> repository repeats*, not a new product surface. Any artifact that lands ships
+> behind the full gate, and nothing here emits a `proved` decision or changes a
+> verdict.
+
+When the repository references an external formal result — a machine-checked
+equilibrium argument, a circuit-breaker termination property, or a
+witness-checker invariant — Phase P-verify keeps a compile-checked Lean artifact
+that re-derives the specific property being cited, so a referenced result is
+corroborated locally rather than asserted on trust. This is a defensive,
+citation-hygiene lane: it raises the cost of repeating a claim the repository has
+not itself re-checked.
+
+Scope and limits, stated up front:
+
+- It covers only the **named invariants** the public language relies on — for
+  example, that a budget guard requires available budget to cover a requested
+  cost, and that a requested privilege set is contained in the available set.
+- A green Lean build corroborates the **stated property**; it does **not** prove
+  any running Boundary deployment satisfies it, and it does **not** make Boundary
+  emit `proved` decisions. Boundary does not emit `proved` decisions itself.
+- It introduces no new transport adapter and no new governed action surface, so
+  it adds no readiness entry.
+
+---
+
+## Phase P-standards — Standards legibility for the decision record (planned)
+
+> **Not shipped. Planned.** This phase makes the *existing* decision record
+> legible to external attestation formats. It adds no governed surface and does
+> not change a verdict; the record content is unchanged, only its expressibility
+> in standard envelopes.
+
+Phase P-standards demonstrates a lossless round-trip of the existing decision
+record through interoperable authorization and supply-chain formats, so an
+operator can carry a Boundary verdict into the attestation tooling they already
+run. The work is a mapping and a round-trip test over the record that ships
+today; it earns only the scoped, record-bounded conformance claim the language
+gate already permits.
+
+Concretely:
+
+- A documented mapping expresses a decision record as an external
+  authorization-decision payload and as a supply-chain attestation statement, and
+  a round-trip test confirms the verdict, reason, and decision hashes survive the
+  conversion intact.
+- The conformance claim stays **scoped to the decision record** — the surface
+  whose canonicalization is already RFC 8785/JCS — and is never widened into a
+  blanket whole-product conformance claim.
+- The execution self-report remains an adapter self-report; expressing the record
+  in a standard envelope does **not** independently corroborate that no upstream
+  bytes moved.
+
+Non-goals for Phase P-standards: no new governed surface, no signing of records,
+no attestation that a deployment matches its asserted topology.
+
+---
+
+## Phase P-witness — Witness-up-the-stack research [INTENT] (gated on Phase P-redteam)
+
+> **Not shipped. [INTENT] / research only.** Nothing in this phase is built,
+> installable, or claimed as a capability. It is recorded here so the research
+> direction is legible, not as a dated commitment. It **must not** be read as a
+> delivered or in-progress feature, and it does **not** ship until Phase
+> P-redteam clears the correctness gate below.
+
+Phase P-witness explores moving the per-decision certifying witness *up the
+stack* — from a single tool call to a bounded, compiled language-model program —
+so that a certificate could attest that an optimized program preserves its
+declared invariants across the steps it actually runs. This is conjectured work
+on an open problem; the repository asserts no result here.
+
+Stated as intent, with the honesty that governs the rest of this page:
+
+- The target is a **bounded** program shape with declared invariants, not
+  arbitrary agent behavior. No certificate is claimed for unbounded reasoning.
+- This phase is **blocked** on Phase P-redteam. A per-trace certificate is
+  meaningless if a program can do consequential work inside a sub-call or REPL
+  that the boundary never observes; that bypass must be characterized and
+  contained before any witness-up-the-stack artifact is pursued.
+- Until both conditions hold, this remains `[INTENT]`: no command, no adapter, no
+  record field, no verdict, and no entry in the claims ledger.
+
+---
+
+## Phase P-redteam — Self-decomposition bypass red-team (planned, correctness gate)
+
+> **Not shipped. Planned, and a hard gate on Phase P-witness.** This is a
+> correctness and adversarial-coverage lane, not a new product surface. It adds
+> no governed surface and changes no verdict; it characterizes a failure mode and
+> raises the bar a witness claim must clear.
+
+Phase P-redteam builds an adversarial corpus for the failure mode where an agent
+that decomposes its own task performs consequential work inside a sub-call,
+spawned process, or REPL that a pre-execution boundary on the outer call never
+sees. The corpus uses synthetic fixtures only (no real secrets; `example.invalid`
+hosts), asserts both the intended verdict **and** that the dangerous action did
+not execute, and is wired into the existing red-team lane.
+
+Scope and limits:
+
+- It is a **correctness gate**, not a coverage claim. A passing corpus shows the
+  characterized bypasses are caught under the modeled topology; it does **not**
+  prove every decomposition path is observable, and it does **not** remove the
+  routed-only caveat — an unrouted sub-call remains a bypass unless deployment
+  topology removes that path.
+- Clearing this gate is a **precondition** for any Phase P-witness work; an
+  un-contained self-decomposition bypass blocks witness-up-the-stack research.
+- It introduces no new transport adapter and no new governed action surface.
+
+---
+
+## Strategy posture
+
+The business posture that sequences these phases is **not** recorded on this
+public roadmap and is **not** committed to this repository. It lives only in a
+local, uncommitted strategy record, kept outside this repository. This page stays strategy-free by
+design; consult that record for posture, and this roadmap for
+shipped-versus-planned engineering truth.
+
+
+---
+
 ## How to read this roadmap against the claims gate
 
 This repository mechanically checks that public language matches shipped

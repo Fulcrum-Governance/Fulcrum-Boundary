@@ -1,12 +1,12 @@
 # Fulcrum Boundary
 
-> The action boundary for routed agent tools.
+> The open action boundary for routed agent tools — it carries a decision record that recomputes.
 
-**See what your AI tools can do. Block what they should not.**
+**See what your AI tools can do. Block what they should not. Carry a record that recomputes.**
 
-MCP is the first production route; Command and Edit are delivered previews.
+Boundary decides before a routed tool executes, then emits a decision record whose hash recomputes independently. Boundary itself does not emit `proved` decisions: its runtime trust, termination, budget, and privilege behavior is documented to *correspond* (design correspondence) to machine-checked Lean theorems held upstream in [Fulcrum-Proofs](https://github.com/Fulcrum-Governance/Fulcrum-Proofs); that correspondence is a design constraint, not a runtime certificate.
 
-Your agent is about to touch a real system. Boundary decides before the tool executes, records the verdict, and governs only routes forced through Boundary.
+MCP is the first production route; Command and Edit are delivered previews. Boundary governs only routes forced through Boundary — direct access to the same tool is a bypass unless deployment topology removes that path.
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/fulcrum-governance/fulcrum-boundary.svg)](https://pkg.go.dev/github.com/fulcrum-governance/fulcrum-boundary)
 [![CI](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/actions/workflows/ci.yml)
@@ -206,7 +206,9 @@ through the [route conformance checklist](./docs/ROUTE_CONFORMANCE_CHECKLIST.md)
 The `upstream_called=false` and `executed=false` fields are adapter self-reports
 of their own control flow; they are **not** fields of the hashed record and are
 **not** independently corroborated by it. Boundary does not emit `proved`
-decisions itself.
+decisions itself: the record is what this boundary carries, and the
+formally verified discharge of the trust, termination, budget, and privilege
+invariants it corresponds to is upstream work, not performed here.
 
 ## What It Proves
 
@@ -325,7 +327,7 @@ make docs-build
 
 ## Part of the Fulcrum Architecture
 
-Boundary is the downloadable action boundary in the Fulcrum repo family:
+Boundary is the open action boundary in the Fulcrum repo family — it records the verdict and corresponds by design to the proof lineage, while the machine-checked trust equilibrium and the invariant checker that discharges it live upstream, not in this repo:
 
 | Repo | Role |
 |---|---|

@@ -79,6 +79,14 @@ The router is a deployment pattern. The boundary is the product.
 - Keep preview and production adapter language aligned with
   [`docs/ADAPTER_READINESS_MATRIX.md`](./ADAPTER_READINESS_MATRIX.md).
 - Keep receipt-grade language separate from basic decision-record language.
+- Do not headline Boundary as "an AI gateway." The decide-before-execution
+  primitive is commoditized; lead with the operator-verifiable decision record on
+  a governed route, not with the gateway/primitive.
+- Do not make unbounded field-wide superiority claims ("category of one",
+  "first/only formally verified", "empty intersection of rigor and traction",
+  "provably safe"). Where a formally verified checker validates a certifying
+  artifact, say so only where that checker exists and is named — it is not part of
+  this standalone repo.
 
 ## Preferred Public Frame
 

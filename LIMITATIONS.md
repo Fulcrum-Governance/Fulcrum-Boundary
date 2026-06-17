@@ -3,7 +3,10 @@
 Fulcrum Boundary governs an action only when the route is forced through
 Boundary. Direct shell, editor, filesystem, CI, SSH, or API paths outside
 Boundary are not governed unless deployment topology removes that direct path.
-Nearly every limitation below follows from this routed-only constraint.
+This is a property of where Boundary sits, not of how common the interception
+primitive is: a governed route still does not govern a path that does not pass
+through it. Nearly every limitation below follows from this routed-only
+constraint.
 
 This page is a summary. The authoritative, per-surface status lives in
 [`docs/RELEASE_TRUTH_PUBLIC.md`](docs/RELEASE_TRUTH_PUBLIC.md),
@@ -23,6 +26,16 @@ This page is a summary. The authoritative, per-surface status lives in
 - The remaining adapters (A2A, CLI, CodeExec, gRPC, Managed Agents, Webhook)
   ship as labeled previews.
 
+The pre-execution action boundary itself — decide allow/deny on a routed tool
+call before it runs — is now a commodity capability available in general-purpose
+agent platforms and cloud gateways. Boundary does not claim the boundary
+primitive as a differentiator. What this repo adds on a governed route is the
+operator-verifiable artifact of the decision: a hash-checkable decision record
+(receipt-grade when it carries the request, policy-bundle, and decision hashes),
+a policy-as-code test lane, and decision replay. Pre-execution interception that
+is not coupled to a re-checkable per-decision record is not what this repo is
+about.
+
 ## Decision records
 
 Decision records are receipt-grade when they carry the request, policy-bundle,
@@ -37,6 +50,20 @@ key custody (see [`docs/SIGNING.md`](docs/SIGNING.md)).
 `upstream_called=false` / `executed=false` are adapter self-reports, not fields
 of the hashed record. See [`docs/RECEIPTS.md`](docs/RECEIPTS.md) and
 [`docs/DECISION_RECORDS.md`](docs/DECISION_RECORDS.md).
+
+## "Witness" terminology
+
+Boundary does not use the word "witness" as a product term. The term now appears
+in unrelated vendor marketing for agent-observability and gateway products, so it
+does not unambiguously denote what this repo does. Where another component of the
+Fulcrum family emits a per-decision certifying artifact, the load-bearing
+property is not the label but the checker: the artifact is *validated by a
+separate, formally verified checker* against stated invariants. That checker and
+the certifying-artifact pipeline are not part of this standalone OSS repo. This
+repo emits structured and receipt-grade decision records verified by
+recomputation (`boundary verify-record`); it does not ship a formally verified
+checker and does not emit `proved` decisions (see
+[`docs/PROOF_BOUNDARY.md`](docs/PROOF_BOUNDARY.md)).
 
 ## SQL classification
 
