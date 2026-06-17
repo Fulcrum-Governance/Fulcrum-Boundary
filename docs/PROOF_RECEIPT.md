@@ -23,8 +23,7 @@ the sidecar's named invariants are.
       "theorem_id":   "THM-BUDGET-LOCAL",
       "predicate":    "spent_before + requested <= limit",
       "inputs_hash":  "sha256:<hex of canonical JSON of the witness inputs>",
-      "status":       "ok | fail",
-      "values":       { "spent_before": 0, "requested": 10, "limit": 100 }
+      "result":       "pass | fail"
     }
   ],
   "recorded_at": "<RFC 3339 timestamp>"
@@ -49,8 +48,7 @@ Each invariant entry:
 | `theorem_id` | string | One of `THM-BUDGET-LOCAL`, `THM-PRIVILEGE-STATIC`, `THM-TRUST-TERMINATION` |
 | `predicate` | string | Human-readable statement of the invariant |
 | `inputs_hash` | string | `"sha256:"` + hex SHA-256 of the RFC 8785 canonical JSON of the witness inputs |
-| `status` | string | `"ok"` when the check passed; `"fail"` otherwise |
-| `values` | object | Runtime values the check was evaluated against |
+| `result` | string | `"pass"` when the check passed; `"fail"` otherwise |
 
 ## Binding Rule
 

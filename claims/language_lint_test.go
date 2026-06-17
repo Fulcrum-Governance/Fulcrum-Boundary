@@ -133,9 +133,11 @@ func publicLanguageRules() []languageRule {
 		{
 			// The decision record itself is NOT validated by a formally verified
 			// checker; only the proof-receipt-v0.1 sidecar's named invariants are.
-			// Permit the claim ONLY when scoped to the sidecar/receipt or its
-			// invariants, and reject the blanket "the decision record is validated
-			// by a formally verified checker" overclaim.
+			// Permit the claim ONLY when explicitly scoped to the proof-receipt
+			// sidecar (or negated). Reject any claim whose subject is broader than
+			// the sidecar — the decision record, pipeline, system, verdict, or any
+			// quantified set — even when a scope word like "sidecar" is also present
+			// (keyword-stuffing must not narrow the subject).
 			name:      "formally verified checker scope",
 			terms:     []string{"formally verified checker", "lean-checked checker", "checker-validated"},
 			allowLine: proofReceiptScoped,
@@ -262,22 +264,54 @@ func conformanceScoped(line string) bool {
 	return false
 }
 
-// proofReceiptScoped permits a "formally verified / Lean-checked checker" claim
-// only when negated/limitation-framed or explicitly scoped to the proof-receipt
-// sidecar by name. Generic scope words (invariant, budget, trust-circuit,
-// receipt, static privilege) are NOT sufficient — a blanket claim that the
-// decision record or pipeline is checker-validated must be rejected even when
-// it mentions one of those terms. Only an explicit "proof receipt" / "proof-receipt"
-// / "sidecar" reference or a negation allows the claim through.
+// proofReceiptScoped permits a "formally verified / Lean-checked checker" claim only
+// when it is negated/limitation-framed or scoped exclusively to the proof-receipt
+// sidecar (or its named invariants). It is strict by design: the checker attests the
+// sidecar's named invariants and nothing broader, so a checker-validation claim about a
+// broader subject — a decision/record/output under any quantifier, the pipeline, the
+// system, the verdict, the whole product, or another runtime artifact Boundary acts on —
+// is an overclaim and is REJECTED even when the line also stuffs in a scope word like
+// "sidecar". Negation is checked first, so a disclaimer that names a broad subject (e.g.
+// "the pipeline ... does not imply ... checker coverage") still passes. This is a
+// controlled-phrase heuristic over our own authored docs, not an adversarial grammar; it
+// errs toward rejection — honest copy states the checker-validation claim and any
+// record-binding in separate sentences.
 func proofReceiptScoped(line string) bool {
 	if negatedOrControlled(line) {
 		return true
 	}
-	scoped := []string{
-		"proof receipt",
-		"proof-receipt",
-		"sidecar",
+	// {quantifier} x {decision(s)/record(s)/output(s)}: the checker never validates a
+	// set of decisions, records, or outputs. Cover the three core nouns symmetrically so
+	// a stray quantifier cannot slip an overclaim past the lint.
+	quantifiers := []string{"every ", "all ", "each ", "any ", "some ", "most ", "many ", "both ", "the "}
+	nouns := []string{"decision", "decisions", "record", "records", "output", "outputs"}
+	for _, q := range quantifiers {
+		for _, n := range nouns {
+			if strings.Contains(line, q+n) {
+				return false
+			}
+		}
 	}
+	// Structural broad subjects: the record/pipeline/system/verdict, the whole product,
+	// and the common runtime artifacts Boundary acts on. A checker-validation claim about
+	// any of these is an overclaim regardless of a stuffed scope word.
+	blanket := []string{
+		"decision record", "decision-record", "decision pipeline",
+		"the record's", "the record is",
+		"the pipeline", "whole pipeline", "entire pipeline", "complete pipeline",
+		"the whole", "the entire", "whole decision", "entire decision",
+		"the system", "the verdict", "boundary's verdict", "boundary is",
+		"every boundary", "all boundary", "boundary decision", "boundary output",
+		"the audit log", "the action", "the response", "the request",
+		"the tool call", "policy decision", "the enforcement", "the outcome",
+	}
+	for _, term := range blanket {
+		if strings.Contains(line, term) {
+			return false
+		}
+	}
+	// Otherwise the claim must be explicitly scoped to the sidecar artifact.
+	scoped := []string{"proof receipt", "proof-receipt", "sidecar"}
 	for _, term := range scoped {
 		if strings.Contains(line, term) {
 			return true

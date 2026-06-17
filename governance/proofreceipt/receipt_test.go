@@ -116,6 +116,19 @@ func TestWriteReadRoundTrip(t *testing.T) {
 	}
 }
 
+func TestReadJSONRejectsTrailingData(t *testing.T) {
+	dir := t.TempDir()
+	path := dir + "/trailing.json"
+	// Valid receipt followed by a rogue second object on a new line.
+	data := []byte("{\"receipt_version\":\"proof-receipt-v0.1\",\"decision_hash\":\"sha256:abc\",\"checker_id\":\"c\",\"checker_build_hash\":\"h\",\"invariants\":[],\"recorded_at\":\"2024-01-01T00:00:00Z\"}\n{\"decision_mode\":\"proved\"}\n")
+	if err := writeFile(t, path, data); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	if _, err := ReadJSON(path); err == nil {
+		t.Fatal("ReadJSON must reject trailing data after the receipt object")
+	}
+}
+
 // writeFile is a test helper to write bytes to a file.
 func writeFile(t *testing.T, path string, data []byte) error {
 	t.Helper()

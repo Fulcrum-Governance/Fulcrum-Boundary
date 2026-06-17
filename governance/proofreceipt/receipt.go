@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -119,6 +120,9 @@ func ReadJSON(path string) (ProofReceipt, error) {
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&r); err != nil {
 		return ProofReceipt{}, fmt.Errorf("proof-receipt-v0.1 schema violation: %w", err)
+	}
+	if err := dec.Decode(new(json.RawMessage)); err != io.EOF {
+		return ProofReceipt{}, fmt.Errorf("proof-receipt-v0.1 trailing data after object")
 	}
 	return r, nil
 }
