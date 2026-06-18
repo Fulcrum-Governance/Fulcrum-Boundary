@@ -55,7 +55,7 @@ of the hashed record. See [`docs/RECEIPTS.md`](docs/RECEIPTS.md) and
 
 Boundary does not emit `proved` decisions. The proof-receipt sidecar
 (proof-receipt-v0.1) is a wired witness for the budget and static-privilege
-invariants: a checker-validated artifact bound to the decision record by
+invariants. It is a checker-validated artifact, bound to the decision record by
 decision_hash. The trust-termination behavior is expressed as a circuit-transition
 consistency check (not a per-decision termination proof). The equilibrium
 correspondence — a machine-checked equilibrium analysis (Nash equilibrium and

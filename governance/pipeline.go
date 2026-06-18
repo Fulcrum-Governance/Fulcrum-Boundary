@@ -306,7 +306,10 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 		decision.PolicyID = rule.Name
 		decision.MatchedRule = rule.Name
 		decision.PolicyFile = rule.PolicyFile
-		if rule.DecisionMode != "" {
+		// Use the same adoptable-mode allow-set as the escalation seam so a
+		// mis-set or hostile policy mode (e.g. "proved") cannot make the
+		// standalone pipeline emit a non-deterministic or proof-grade decision.
+		if isAdoptableEscalationMode(rule.DecisionMode) {
 			decision.DecisionMode = rule.DecisionMode
 		}
 		if rule.Action == "deny" {

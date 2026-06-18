@@ -430,3 +430,71 @@ func TestPipeline_Escalation_ApprovedAllow_DeferredIsolationFlip(t *testing.T) {
 		t.Errorf("trust state = %q, want %q", d.TrustState, TrustStateIsolated.String())
 	}
 }
+
+// TestPipeline_StaticPolicy_ProvedMode_IsNotAdopted pins the invariant that the
+// standalone pipeline never emits a proved decision. The Stage-2 static-policy
+// loop copies a matching rule's decision_mode verbatim; this test confirms a
+// rule with decision_mode: proved cannot make the pipeline return a decision
+// carrying proved. The deny action must still take effect (the rule is
+// enforced); only the mode must be rejected, leaving the safe deterministic
+// default. A second case confirms that a legitimately adoptable mode
+// (classified) IS propagated — the guard must not suppress valid modes.
+func TestPipeline_StaticPolicy_ProvedMode_IsNotAdopted(t *testing.T) {
+	tests := []struct {
+		name          string
+		action        string
+		ruleMode      DecisionMode
+		wantAction    string
+		wantMode      DecisionMode
+		wantNotProved bool
+	}{
+		{
+			name:          "deny rule with proved mode must not emit proved",
+			action:        "deny",
+			ruleMode:      DecisionModeProved,
+			wantAction:    "deny",
+			wantMode:      DecisionModeDeterministic,
+			wantNotProved: true,
+		},
+		{
+			name:       "warn rule with classified mode propagates classified",
+			action:     "warn",
+			ruleMode:   DecisionModeClassified,
+			wantAction: "warn",
+			wantMode:   DecisionModeClassified,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := PipelineConfig{
+				StaticPolicies: []StaticPolicyRule{
+					{
+						Name:         "mode-test-rule",
+						Tool:         "test-tool",
+						Action:       tc.action,
+						Reason:       "mode guard test",
+						DecisionMode: tc.ruleMode,
+					},
+				},
+			}
+			p := NewPipeline(cfg, nil, nil, nil)
+			d, err := p.Evaluate(context.Background(), &GovernanceRequest{
+				ToolName:  "test-tool",
+				Transport: TransportMCP,
+			})
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if d.Action != tc.wantAction {
+				t.Errorf("action = %q, want %q (the rule action must still be enforced)", d.Action, tc.wantAction)
+			}
+			if d.DecisionMode != tc.wantMode {
+				t.Errorf("mode = %q, want %q", d.DecisionMode, tc.wantMode)
+			}
+			if tc.wantNotProved && d.DecisionMode == DecisionModeProved {
+				t.Error("pipeline decision must never carry proved — static-policy mode guard violated")
+			}
+		})
+	}
+}
