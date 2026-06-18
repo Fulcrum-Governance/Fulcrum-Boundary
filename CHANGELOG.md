@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   decision mode; attaching it does not change `decision_hash`, and Boundary does
   not emit proved decisions.
 
+- Re-point public positioning onto the evidence wedge: the proof-receipt sidecar
+  is the wired witness for budget and static-privilege; trust termination is a
+  circuit-transition consistency check; the Nash/price-of-anarchy correspondence
+  is a machine-checked equilibrium analysis (design only, not a runtime
+  certificate). Boundary does not emit `proved` decisions.
+
 - Per-host install tutorials (#138): `docs/firewall/HOST_SETUP.md` adds short
   walkthroughs for routing Claude Desktop, Claude Code, Cursor, and VS Code
   through Boundary — where each MCP config lives (per OS), the `boundary install`

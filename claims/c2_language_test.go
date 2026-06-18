@@ -56,3 +56,16 @@ func TestPublicSurfaceUsesC2Relabel(t *testing.T) {
 		t.Error("README must not assert the trust-equilibrium-coupled-to-enforcement runtime certificate")
 	}
 }
+
+// TestReleaseTruthCarriesC2Relabel asserts that RELEASE_TRUTH_PUBLIC.md carries
+// the wired-witness and machine-checked equilibrium analysis relabel paragraphs
+// added in WS-4.4.
+func TestReleaseTruthCarriesC2Relabel(t *testing.T) {
+	text := strings.ToLower(readFile(t, filepath.Join(mustAbs(t), "docs/RELEASE_TRUTH_PUBLIC.md")))
+	if !strings.Contains(text, "machine-checked equilibrium analysis") {
+		t.Error("RELEASE_TRUTH_PUBLIC must carry the equilibrium-analysis relabel")
+	}
+	if !strings.Contains(text, "wired witness") {
+		t.Error("RELEASE_TRUTH_PUBLIC must carry the wired-witness relabel")
+	}
+}

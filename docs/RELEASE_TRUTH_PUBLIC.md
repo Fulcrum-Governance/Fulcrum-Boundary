@@ -281,6 +281,16 @@ execution, key custody is the operator's, and the non-Go verifiers do not
 check signatures. v0.11.0 adds no new governed action surface and upgrades
 no preview surface to production.
 
+Boundary's decision record can carry a proof-receipt sidecar bound by
+decision_hash; attaching it does not change decision_hash and does not add a `proved`
+decision mode. The proof-receipt sidecar is checker-validated: it carries the
+wired witness for the budget and static-privilege invariants. Boundary's runtime
+behavior corresponds to a machine-checked equilibrium analysis (a Nash equilibrium
+and an exact price-of-anarchy bound) upstream in Fulcrum-Proofs; that
+correspondence is a design constraint, not a runtime certificate, and trust
+termination is a circuit-transition consistency check, not a per-decision
+termination proof.
+
 ## Forbidden Release Language
 
 Do not use these as public capability claims:
@@ -333,6 +343,7 @@ Do not use these as public capability claims:
   `draft-sharif-agent-audit-trail`; the shared per-record algorithms and the
   unimplemented `prev_hash` session chain must be stated together or not at
   all.
+- Do not claim Boundary's equilibrium correspondence to enforcement is a runtime certificate; the correspondence is design-only and the wired witness covers only budget and static-privilege invariants.
 
 These phrases may appear only in claim-control, language-control, historical,
 or explicit limitation context.
