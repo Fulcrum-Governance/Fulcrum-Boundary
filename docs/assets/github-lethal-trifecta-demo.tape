@@ -44,3 +44,11 @@ Type@55ms "boundary demo github-lethal-trifecta | sed -n '1,14p'"
 Sleep 400ms
 Enter
 Sleep 5.5s
+
+# 3) Show the evidence pack — the primary artifact (manifest + hashed receipt).
+Type@70ms "clear" Enter
+Sleep 250ms
+Type@55ms "boundary demo github-lethal-trifecta --evidence-pack ./gh-pack && ls gh-pack"
+Sleep 400ms
+Enter
+Sleep 4.0s

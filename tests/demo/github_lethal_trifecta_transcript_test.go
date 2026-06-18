@@ -97,3 +97,21 @@ func TestExampleTranscriptMatchesLiveOutput(t *testing.T) {
 	}
 	assertSubsetOfLive(t, string(body), liveDemoStdout(t))
 }
+
+func TestRenderedDemoAssetsExist(t *testing.T) {
+	for _, p := range []string{
+		"../../docs/assets/github-lethal-trifecta-demo.gif",
+		"../../docs/assets/github-lethal-trifecta-demo.mp4",
+		"../../docs/assets/github-lethal-trifecta-demo.poster.png",
+		"../../docs/assets/github-lethal-trifecta-demo.tape",
+	} {
+		info, err := os.Stat(p)
+		if err != nil {
+			t.Errorf("rendered demo asset missing: %s (%v)", p, err)
+			continue
+		}
+		if info.Size() == 0 {
+			t.Errorf("rendered demo asset is empty: %s", p)
+		}
+	}
+}
