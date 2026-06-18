@@ -1,0 +1,17 @@
+%% Fixture-only route topology for the GitHub lethal-trifecta wedge (bypass ladder L0).
+%% Solid = the governed route. Dashed-red = bypass paths a deployment must deny (delegated, not closed by Boundary code).
+flowchart LR
+    agent["AI agent (tainted session)"]
+    mcp["MCP transport"]
+    boundary["Fulcrum Boundary\npre-execution decision"]
+    gh["GitHub (private repo)"]
+    record["DecisionRecord + proof-receipt-v0.1"]
+
+    agent -->|"create_or_update_file"| mcp
+    mcp --> boundary
+    boundary -->|"DENY (lethal_trifecta_detected)"| record
+    boundary -. "blocked before upstream" .-x gh
+
+    agent -. "direct GitHub API (bypass)" .-x gh
+    agent -. "upstream GitHub MCP (bypass)" .-x gh
+    agent -. "SSH / git-write (bypass)" .-x gh
