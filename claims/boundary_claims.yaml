@@ -332,6 +332,8 @@ claims:
       allowed:
         - "Boundary carries the decision record and its runtime behavior corresponds (design correspondence) to machine-checked Lean theorems; the equilibrium and the certifying checker are upstream in Fulcrum-Proofs, and the correspondence is a design constraint, not a runtime certificate."
         - "Boundary is the open, record-carrying surface of the Fulcrum proof lineage; it does not itself emit proved decisions."
+        - "Boundary's runtime behavior corresponds to a machine-checked equilibrium analysis (a Nash equilibrium and an exact price-of-anarchy bound) held upstream in Fulcrum-Proofs; the correspondence is a design constraint, not a runtime certificate, and Boundary does not couple a trust equilibrium to enforcement."
+        - "Boundary's trust termination is expressed as a circuit transition checked for consistency against the Beta-distribution threshold; it is not a per-decision termination proof and triggers no process action."
       forbidden:
         - "Boundary emits proved decisions"
         - "Boundary mechanically extracts runtime code from Lean"
@@ -370,6 +372,7 @@ claims:
       allowed:
         - "Boundary can attach a checker-validated proof-receipt sidecar for the budget and static-privilege invariants, bound to the decision record by decision_hash; the sidecar is invariant evidence, not a `proved` decision_mode, and Boundary does not emit proved decisions."
         - "The proof-receipt sidecar is validated by a formally verified checker for its named invariants; the decision record itself is not, and the receipt does not make the decision a `proved` decision."
+        - "The proof-receipt sidecar is a wired witness for the budget and static-privilege invariants; as a checker-validated proof receipt it is bound to the decision record by decision_hash and is not a proved decision mode."
       forbidden:
         - "Boundary emits proved decisions"
         - "The proof receipt is hash-chained"
