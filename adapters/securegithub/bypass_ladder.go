@@ -84,9 +84,7 @@ type LadderFacts struct {
 // is pure and deterministic. It caps at L2: L3 is third-party attestation
 // reviewed outside this code, so even a fully attested packet returns at most L2.
 // Reasons are always non-empty below L2 so callers can show the next gate.
-func ClassifyBypassLevel(f LadderFacts) (BypassLadderLevel, []string) {
-	var reasons []string
-
+func ClassifyBypassLevel(f LadderFacts) (level BypassLadderLevel, reasons []string) {
 	l1 := f.LiveDeniedWriteRecorded && f.LiveNoMutationProven &&
 		f.TranscriptSanitized && f.DecisionRecordHashPresent
 	if !l1 {
