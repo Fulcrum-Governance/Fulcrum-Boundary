@@ -79,6 +79,7 @@ forbidden or false.
 | Phrase | Replacement |
 |---|---|
 | AI governance platform | action boundary for agent actions |
+| relabel `"coupled to enforcement"` | say "wired witness (budget/static-privilege) + circuit-transition (termination) + machine-checked equilibrium analysis (Nash/PoA design correspondence)" |
 | SQL firewall | Postgres AST guard for routed requests |
 | prevents all prompt injection | blocks tested write-after-taint fixture attacks before execution |
 | prevents all SQL injection | classifies and denies tested destructive SQL patterns in governed routes |
@@ -96,6 +97,8 @@ forbidden or false.
 | only formally verified | a formally verified checker validates stated invariants (only where that checker exists and is named) |
 | empty intersection of rigor and traction | describe the traction and the rigor work separately, each scoped to evidence |
 | provably safe | denies tested patterns on governed routes; emits verifiable decision records (never "safe" unqualified) |
+
+Note: `"coupled to enforcement as a runtime certificate"` stays forbidden.
 
 Notes on the additions above:
 

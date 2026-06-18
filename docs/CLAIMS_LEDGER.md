@@ -95,6 +95,34 @@ cannot silently drift apart.
 | BND-CLAIM-REC-002 | delivered | Boundary's decision record is canonicalized with RFC 8785 (JSON Canonicalization Scheme), so its decision hash is reproducible by a stock RFC 8785 implementation independent of Boundary's code. | `governance/canonicaljson_test.go`, `tests/conformance/verifier_vectors_test.go`, `verifiers/python/README.md`, `CHANGELOG.md` | The RFC 8785 / JCS statement is scoped to the decision record. The decision hash is an unkeyed integrity digest: it detects edits, not authorship; Boundary as a whole is not standards-conformant. |
 | BND-CLAIM-VERIFY-002 | delivered | A standalone non-Go verifier recomputes a decision record's hash and detects a one-field forgery, pinned to the Go implementation by a shared conformance-vector corpus. | `tests/conformance/verifier_vectors_test.go`, `verifiers/python/test_boundary_verify.py`, `verifiers/python/README.md` | A Python verifier ships today; the canonical format is reproducible by any RFC 8785 implementation, but Boundary does not provide a verifier in every language. Integrity, not authenticity. |
 
+## C2 Relabel Vocabulary (Proof Claims)
+
+The following claims establish the C2 relabel vocabulary for the proof-receipt
+sidecar and its associated invariants:
+
+- **`BND-CLAIM-PROOF-001`** (design correspondence) backs the phrase
+  "machine-checked equilibrium analysis (Nash/PoA design correspondence)":
+  Boundary's runtime behavior corresponds to a machine-checked equilibrium
+  analysis of its trust-circuit and budget-enforcement design, held upstream in
+  Fulcrum-Proofs. This is a design constraint, not a runtime certificate.
+
+- **`BND-CLAIM-PROOF-002`** (wired sidecar) backs the phrase
+  "wired witness (budget/static-privilege)": the proof-receipt sidecar, when
+  attached, is the wired witness for the budget and static-privilege invariants.
+  The circuit-transition (termination) check is a state-machine consistency
+  assertion, not a per-decision termination proof.
+
+Relabel summary:
+
+| Old framing | Relabeled as |
+|---|---|
+| "coupled to enforcement" (runtime cert) | wired witness (budget/static-privilege) |
+| per-decision termination proof | circuit-transition (termination) consistency check |
+| equilibrium as runtime cert | machine-checked equilibrium analysis (Nash/PoA design correspondence) |
+
+`"coupled to enforcement as a runtime certificate"` is and remains forbidden in
+public copy.
+
 ## Release Rule
 
 Release notes can only make uncaveated behavior claims whose status is

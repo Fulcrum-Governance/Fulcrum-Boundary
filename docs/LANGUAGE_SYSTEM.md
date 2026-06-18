@@ -125,6 +125,21 @@ Avoid:
 Boundary emits proved decisions for every action.
 ```
 
+## C2 Relabel: Wired Witness, Circuit Transition, Equilibrium Analysis
+
+The proof-receipt sidecar is the **wired** witness for the budget and
+static-privilege invariants; trust termination is a **circuit-transition
+consistency** check, not a per-decision termination proof; the Nash/PoA
+correspondence is **machine-checked equilibrium analysis** held upstream in
+Fulcrum-Proofs — a design constraint, never a runtime certificate. Boundary
+does not couple a trust equilibrium to enforcement.
+
+Use "wired witness (budget/static-privilege)" where the proof-receipt sidecar is
+the subject. Use "circuit-transition (termination)" where the trust-termination
+state transition is the subject. Use "machine-checked equilibrium analysis
+(Nash/PoA design correspondence)" where the upstream Lean proof artifacts are the
+subject. Never use "coupled to enforcement as a runtime certificate" in public copy.
+
 ## What Secure GitHub Means Here
 
 Secure GitHub MCP is the flagship governed-tool profile for the next release

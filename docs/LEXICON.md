@@ -294,6 +294,58 @@ Forbidden use: "MCP Firewall proves every MCP server is safe."
 
 Example: "`boundary inventory` and `boundary graph` are MCP Firewall commands."
 
+## Wired Witness
+
+Definition: The proof-receipt sidecar, when attached to a governed decision record,
+acts as a wired witness for the budget and static-privilege invariants — it
+certifies that the named invariants held at decision time via a checker-validated
+artifact, not by the pipeline or decision record alone.
+
+Allowed use: "The proof-receipt sidecar is the wired witness for the budget and
+static-privilege invariants." "Where the proof-receipt sidecar is configured, a
+wired witness for the budget/static-privilege invariants is attached to the
+decision record."
+
+Forbidden use: "Boundary wires a trust equilibrium to enforcement as a runtime
+certificate." "coupled to enforcement as a runtime certificate."
+
+Example: "The wired witness (budget/static-privilege) is the proof-receipt sidecar,
+not the decision record or pipeline."
+
+## Circuit Transition (Termination)
+
+Definition: Trust termination expressed as a circuit-transition consistency check:
+the termination invariant asserts that the trust circuit moves from Evaluating to
+Isolated or Terminated only when the checker condition is met — it is a
+state-machine consistency check, not a per-decision termination proof.
+
+Allowed use: "Trust termination is a circuit-transition consistency check."
+"Boundary's trust termination is expressed as a circuit transition checked by the
+Lean verifier upstream."
+
+Forbidden use: "Boundary proves per-decision trust termination." "Boundary
+emits a termination proof for every decision."
+
+Example: "The circuit-transition checker validates circuit_open iff (alpha+1)*q < p*(alpha+1); this is a design-level invariant, not a per-call runtime proof."
+
+## Machine-Checked Equilibrium Analysis
+
+Definition: The Nash/PoA design correspondence verified upstream in Fulcrum-Proofs
+is machine-checked equilibrium analysis — it is a design constraint held in the
+proof artifacts, never a runtime certificate attached to individual decisions.
+
+Allowed use: "The Nash/PoA correspondence is machine-checked equilibrium analysis
+held upstream in Fulcrum-Proofs — a design constraint, never a runtime certificate."
+"Boundary's runtime behavior corresponds to a machine-checked equilibrium analysis
+of its trust-circuit and budget-enforcement design."
+
+Forbidden use: "Boundary runs equilibrium analysis at runtime." "Boundary emits
+an equilibrium certificate per decision." "coupled to enforcement as a runtime
+certificate."
+
+Example: "Machine-checked equilibrium analysis (Nash/PoA design correspondence)
+is held upstream; Boundary's runtime decisions do not carry equilibrium certificates."
+
 ## Formally Verified Checker
 
 Definition: A separate checker, itself formally verified, that validates a
