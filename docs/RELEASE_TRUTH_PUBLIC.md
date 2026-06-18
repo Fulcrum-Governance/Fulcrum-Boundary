@@ -255,6 +255,13 @@ preview surface to production.
 Secure GitHub is preview. Production status still requires deployment bypass
 evidence and broader live coverage.
 
+Secure GitHub maps a deployment onto an L0-L3 bypass-proof ladder. Routed live
+conformance earns L1 (the denied write-after-taint no-mutation proof). An
+operator-attested bypass-proof packet that denies every direct GitHub path earns
+L2, the internal production-candidate gate. L2 does not make Secure GitHub
+production and does not prove the deployment is bypass-proof; the packet records
+and classifies what the operator attested.
+
 Command Boundary remains preview. Direct shell access, CI jobs, and SSH
 sessions remain outside Command Boundary unless routed through Boundary command
 wrappers or project-local shims.
@@ -282,6 +289,11 @@ Do not use these as public capability claims:
 - Do not claim production Secure GitHub.
 - Do not claim Secure GitHub fully secures GitHub.
 - Do not claim live conformance proves deployment bypass resistance.
+- Do not use "production-candidate" as public copy; it is an internal planning
+  word and Secure GitHub stays preview until release truth changes.
+- Do not claim the Secure GitHub bypass-proof packet proves the deployment is
+  bypass-proof; it records operator attestations and routed evidence and
+  classifies the ladder level.
 - Do not claim all adapters production.
 - Do not claim generated policies are production-complete.
 - Do not claim dashboard monitoring.

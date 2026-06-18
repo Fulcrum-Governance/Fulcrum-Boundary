@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- Secure GitHub bypass-proof ladder (L0-L3) and a fail-closed deployment
+  bypass-proof packet that records operator-owned live evidence (L1) and
+  operator-attested deployment-topology denials (L2). Reaching L2 is an internal
+  production-candidate gate; it does not make Secure GitHub production, does not
+  prove the deployment is bypass-proof, and Secure GitHub stays preview.
+
 - Add the `proof-receipt-v0.1` sidecar: checker-validated budget and
   static-privilege invariant lines bound to a decision record by `decision_hash`.
   The sidecar is invariant evidence attached to a decision, not a `proved`

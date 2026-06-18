@@ -33,6 +33,9 @@ evidence:
     - tests/securegithub/secure_github_cli_test.go
     - tests/redteam/secure_github_integration_test.go
     - tests/conformance/secure_github/conformance_test.go
+    - adapters/securegithub/bypass_ladder_test.go
+    - adapters/securegithub/live_evidence_test.go
+    - adapters/securegithub/bypass_packet_test.go
   docs:
     - docs/secure-mcp/GITHUB.md
     - docs/secure-mcp/GITHUB_REDTEAM.md
@@ -40,8 +43,10 @@ evidence:
     - docs/secure-mcp/GITHUB_LIVE_EVIDENCE.md
     - docs/secure-mcp/GITHUB_LIVE_BYPASS_MODEL.md
     - docs/deployment/secure-github-bypass-proofing.md
+    - docs/secure-mcp/GITHUB_BYPASS_LADDER.md
+    - docs/deployment/secure-github-bypass-proof-packet.md
     - docs/ADAPTER_READINESS_MATRIX.md
 gaps:
   - id: BND-GH-002
-    description: "Secure GitHub remains preview until deployment bypass proof shows agents cannot reach direct GitHub API, direct upstream GitHub MCP, SSH, or other credentialed write paths outside Boundary. The live conformance harness proves the configured read and denied-write no-mutation path, not bypass resistance."
-    spec: "v0.5 Secure GitHub live conformance"
+    description: "Secure GitHub remains preview until a deployment bypass-proof packet attests every direct GitHub path (direct API token, upstream GitHub MCP, SSH/git-write, unmanaged gh, ambient egress) is denied outside Boundary. The routed live conformance harness proves the configured read and denied-write no-mutation path (ladder L1), not bypass resistance. L2 (operator-attested topology denials) is the internal production-candidate gate and does not change preview status."
+    spec: "v0.5 Secure GitHub live conformance; WS-2 bypass-proof ladder (L0-L3)"

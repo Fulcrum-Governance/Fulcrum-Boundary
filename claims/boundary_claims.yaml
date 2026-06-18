@@ -618,6 +618,37 @@ claims:
     depends_on:
       - BND-CLAIM-018
 
+  - id: BND-CLAIM-GH-020
+    claim: "Boundary provides a Secure GitHub bypass-proof ladder (L0-L3) and a fail-closed deployment bypass-proof packet that records operator-owned live evidence and operator-attested deployment-topology denials"
+    status: delivered
+    adapter: securegithub
+    evidence:
+      tests:
+        - path: adapters/securegithub/bypass_ladder_test.go
+          assertion: "The L0-L3 classifier caps at L2, sets the production-candidate gate at L2, and reports why each higher level was not reached"
+        - path: adapters/securegithub/live_evidence_test.go
+          assertion: "The sanitized live-evidence index is hash-only, rejects unsanitized transcripts, and derives L1 facts only from a denied-write no-mutation transcript"
+        - path: adapters/securegithub/bypass_packet_test.go
+          assertion: "The bypass-proof packet fails closed on missing attestations, absent live evidence, unsanitized index, or secret-like evidence, and only an L2 preview packet is a production-candidate"
+      docs:
+        - path: docs/secure-mcp/GITHUB_BYPASS_LADDER.md
+          section: "Levels"
+        - path: docs/deployment/secure-github-bypass-proof-packet.md
+          section: "Fail-closed rules"
+    public_language:
+      allowed:
+        - "Boundary maps a Secure GitHub deployment onto an L0-L3 bypass-proof ladder and records an operator-attested bypass-proof packet."
+        - "A passing L2 bypass-proof packet is an internal production-candidate gate and does not change Secure GitHub's preview status."
+        - "Secure GitHub remains preview until deployment bypass proof exists."
+      forbidden:
+        - "Secure GitHub is production"
+        - "The bypass-proof packet proves the deployment is bypass-proof"
+        - "Live conformance proves deployment bypass resistance"
+        - "Boundary fully secures GitHub"
+    gaps: []
+    depends_on:
+      - BND-CLAIM-018
+
   - id: BND-CLAIM-UTIL-001
     claim: "Boundary reports local version and build metadata in text and JSON formats"
     status: delivered
