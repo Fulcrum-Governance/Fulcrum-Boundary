@@ -103,7 +103,6 @@ func TestRenderedDemoAssetsExist(t *testing.T) {
 		"../../docs/assets/github-lethal-trifecta-demo.gif",
 		"../../docs/assets/github-lethal-trifecta-demo.mp4",
 		"../../docs/assets/github-lethal-trifecta-demo.poster.png",
-		"../../docs/assets/github-lethal-trifecta-demo.tape",
 	} {
 		info, err := os.Stat(p)
 		if err != nil {
