@@ -24,6 +24,16 @@ type AttestedDenial struct {
 // writes can only reach GitHub through Boundary. It is deployment-delegated
 // evidence; Boundary records and classifies it but does not verify the
 // deployment.
+//
+// Evidence contract: each AttestedDenial.Evidence field must be an
+// operator-authored short reference to a deployment control — for example
+// "token sealed to runtime secret store; direct GitHub path denied by egress
+// policy". It must NOT contain raw secrets, raw repository content, or PR
+// bodies. The credential scrubber (containsSecretLikeData) rejects
+// credential-like material, but the operator is responsible for not pasting
+// sensitive repository or PR content. This is a preview-stage operator-trust
+// boundary: Boundary records what the operator attests, not what it has
+// independently verified.
 type DeploymentAttestation struct {
 	AgentHasNoDirectToken    AttestedDenial `json:"agent_has_no_direct_token"`
 	AppCredentialRuntimeOnly AttestedDenial `json:"app_credential_runtime_only"`
@@ -50,25 +60,20 @@ type BypassProofPacket struct {
 	Reasons       []string              `json:"reasons"`
 }
 
-// containsCredentialPattern checks attestation evidence strings for actual
-// credential material (token values, bearer tokens, raw keys) using only regex
-// patterns. Unlike containsSecretLikeData it does not trigger on descriptive
-// phrases such as "private key sealed to runtime" that refer to the location of a
-// credential rather than the credential itself.
-func containsCredentialPattern(text string) bool {
-	for _, pattern := range credentialPatterns {
-		if pattern.MatchString(text) {
-			return true
-		}
-	}
-	return false
-}
-
 // BuildBypassProofPacket validates the inputs, composes the L1 routed facts with
 // the L2 attested facts, classifies the level, and returns the packet. It fails
 // closed: an unsanitized live-evidence index or secret-like attestation evidence
 // is rejected; any unattested L2 denial caps the level below L2; absent live
 // evidence caps it at L0.
+//
+// Attestation evidence is validated with the strict containsSecretLikeData
+// scrubber, which rejects both regex-matched credential material (bearer tokens,
+// PEM headers, PAT prefixes) and substring-matched terms ("private key",
+// "authorization") including raw key bodies with no PEM header. Operators must
+// supply short deployment-control references, not raw credential or repository
+// content (see DeploymentAttestation docs). This does NOT prevent pasting of
+// non-credential sensitive content such as PR bodies or internal repo paths;
+// that is an operator-responsibility boundary at this preview stage.
 func BuildBypassProofPacket(idx LiveEvidenceIndex, att DeploymentAttestation) (BypassProofPacket, error) {
 	if !idx.Sanitized {
 		return BypassProofPacket{}, fmt.Errorf("bypass-proof packet requires a sanitized live-evidence index")
@@ -80,7 +85,7 @@ func BuildBypassProofPacket(idx LiveEvidenceIndex, att DeploymentAttestation) (B
 		"no_unmanaged_git_or_gh":      att.NoUnmanagedGitOrGH,
 		"egress_policy_enforced":      att.EgressPolicyEnforced,
 	} {
-		if containsCredentialPattern(d.Evidence) {
+		if containsSecretLikeData(d.Evidence) {
 			return BypassProofPacket{}, fmt.Errorf("attestation %q evidence contains secret-like data; reference a manifest or policy id, not a credential", name)
 		}
 	}
@@ -108,7 +113,7 @@ func BuildBypassProofPacket(idx LiveEvidenceIndex, att DeploymentAttestation) (B
 	if err != nil {
 		return BypassProofPacket{}, err
 	}
-	if containsCredentialPattern(string(body)) {
+	if containsSecretLikeData(string(body)) {
 		return BypassProofPacket{}, fmt.Errorf("refusing to build Secure GitHub bypass-proof packet with secret-like data")
 	}
 	return packet, nil

@@ -43,6 +43,18 @@ A production Secure GitHub deployment would need documented evidence that:
   required by the deployment;
 - live conformance transcripts are sanitized before storage.
 
+## Evidence Field Operator-Trust Boundary
+
+The credential scrubber rejects raw secrets, bearer tokens, PAT/SSH key
+material, and raw private-key bodies in attestation Evidence fields. It does
+NOT detect non-credential sensitive content such as PR bodies, internal
+repository paths, or owner/repo names pasted into an Evidence string. Operators
+are responsible for supplying short deployment-control references (e.g. "token
+sealed to runtime vault; direct GitHub path denied by egress policy") rather
+than raw repository or PR content. This is a preview-stage operator-trust
+boundary: Boundary records what the operator attests, not what it has
+independently verified.
+
 ## Release Gate
 
 Do not mark Secure GitHub production until deployment bypass evidence is

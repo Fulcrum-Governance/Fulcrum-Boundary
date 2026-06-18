@@ -8,7 +8,7 @@ import (
 func fullAttestation() DeploymentAttestation {
 	return DeploymentAttestation{
 		AgentHasNoDirectToken:    AttestedDenial{Attested: true, Evidence: "no PAT/SSH key mounted in agent runtime; verified by deploy manifest"},
-		AppCredentialRuntimeOnly: AttestedDenial{Attested: true, Evidence: "GitHub App private key sealed to governed runtime secret store"},
+		AppCredentialRuntimeOnly: AttestedDenial{Attested: true, Evidence: "GitHub App signing credential sealed to the governed runtime secret store"},
 		UpstreamMCPUnavailable:   AttestedDenial{Attested: true, Evidence: "no upstream github-mcp endpoint reachable from agent network namespace"},
 		NoUnmanagedGitOrGH:       AttestedDenial{Attested: true, Evidence: "gh/git absent from agent image; only Boundary route present"},
 		EgressPolicyEnforced:     AttestedDenial{Attested: true, Evidence: "egress NetworkPolicy denies api.github.com except from Boundary pod"},
@@ -81,6 +81,23 @@ func TestBypassPacketRejectsAttestationEvidenceWithSecrets(t *testing.T) {
 	att.AppCredentialRuntimeOnly = AttestedDenial{Attested: true, Evidence: "Authorization: Bearer ghp_exampleTokenMaterialThatMustNotBeStored"}
 	if _, err := BuildBypassProofPacket(idx, att); err == nil {
 		t.Fatal("expected fail-closed error when attestation evidence carries secret-like data")
+	}
+}
+
+// TestBypassPacketRejectsRawKeyBodyEvidence is the F1 regression test: a raw
+// private-key body with no PEM BEGIN header and no token prefix (e.g.
+// "private key: MIIEv...") matches no credentialPattern regex but contains
+// the "private key" substring. The strict containsSecretLikeData scrubber must
+// catch it and BuildBypassProofPacket must fail closed.
+func TestBypassPacketRejectsRawKeyBodyEvidence(t *testing.T) {
+	idx, _ := BuildLiveEvidenceIndex([]LiveConformanceResult{deniedWriteResult()})
+	att := fullAttestation()
+	att.AppCredentialRuntimeOnly = AttestedDenial{
+		Attested: true,
+		Evidence: "private key: MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQC7rawBodyNoHeader",
+	}
+	if _, err := BuildBypassProofPacket(idx, att); err == nil {
+		t.Fatal("expected fail-closed error: raw private-key body with no PEM header must be rejected by the strict scrubber")
 	}
 }
 
