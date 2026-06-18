@@ -327,7 +327,7 @@ make docs-build
 
 ## Part of the Fulcrum Architecture
 
-Boundary is the open action boundary in the Fulcrum repo family — it records the verdict and corresponds by design to the proof lineage, while the machine-checked trust equilibrium and the invariant checker that discharges it live upstream, not in this repo:
+Boundary is the open action boundary in the Fulcrum repo family — it records the verdict and corresponds by design to the proof lineage. Boundary's runtime behavior corresponds to a machine-checked equilibrium analysis (a Nash equilibrium and an exact price-of-anarchy bound) upstream in Fulcrum-Proofs — a design constraint, not a runtime certificate — and its trust termination is a circuit-transition consistency check, not a per-decision termination proof. The equilibrium analysis and the certifying checker live upstream, not in this repo:
 
 | Repo | Role |
 |---|---|
@@ -336,7 +336,7 @@ Boundary is the open action boundary in the Fulcrum repo family — it records t
 | [`fulcrum-trust`](https://github.com/Fulcrum-Governance/fulcrum-trust) | Trust modeling package used by broader Fulcrum work. |
 | [`Fulcrum-Proofs`](https://github.com/Fulcrum-Governance/Fulcrum-Proofs) | Lean proof work consumed through documented correspondence and release claims. |
 
-Boundary consumes proof-backed contracts through documented correspondence and decision-mode boundaries; it does not emit `proved` decisions itself. See [docs/PROOF_BOUNDARY.md](./docs/PROOF_BOUNDARY.md).
+Boundary's decision record can carry a checker-validated proof receipt (the wired witness for budget and static-privilege); Boundary itself does not emit `proved` decisions. Boundary consumes proof-backed contracts through documented correspondence and decision-mode boundaries. See [docs/PROOF_BOUNDARY.md](./docs/PROOF_BOUNDARY.md).
 
 ## License
 

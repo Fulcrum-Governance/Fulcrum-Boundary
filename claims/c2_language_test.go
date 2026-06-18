@@ -47,7 +47,6 @@ func TestC2WiredWitnessLanguageIsLedgerBacked(t *testing.T) {
 // an allowed claim). The README edit lands in WS-4.3; this body is skipped here
 // and the skip is removed in WS-4.3 step 1 (the documented red->green handoff).
 func TestPublicSurfaceUsesC2Relabel(t *testing.T) {
-	t.Skip("README relabel lands in WS-4.3")
 	root := mustAbs(t)
 	readme := strings.ToLower(readFile(t, filepath.Join(root, "README.md")))
 	if !strings.Contains(readme, "machine-checked equilibrium analysis") {

@@ -51,19 +51,20 @@ key custody (see [`docs/SIGNING.md`](docs/SIGNING.md)).
 of the hashed record. See [`docs/RECEIPTS.md`](docs/RECEIPTS.md) and
 [`docs/DECISION_RECORDS.md`](docs/DECISION_RECORDS.md).
 
-## "Witness" terminology
+## Proof-receipt and checker correspondence
 
-Boundary does not use the word "witness" as a product term. The term now appears
-in unrelated vendor marketing for agent-observability and gateway products, so it
-does not unambiguously denote what this repo does. Where another component of the
-Fulcrum family emits a per-decision certifying artifact, the load-bearing
-property is not the label but the checker: the artifact is *validated by a
-separate, formally verified checker* against stated invariants. That checker and
-the certifying-artifact pipeline are not part of this standalone OSS repo. This
-repo emits structured and receipt-grade decision records verified by
-recomputation (`boundary verify-record`); it does not ship a formally verified
-checker and does not emit `proved` decisions (see
-[`docs/PROOF_BOUNDARY.md`](docs/PROOF_BOUNDARY.md)).
+Boundary does not emit `proved` decisions. The proof-receipt sidecar
+(proof-receipt-v0.1) is a wired witness for the budget and static-privilege
+invariants: a checker-validated artifact bound to the decision record by
+decision_hash. The trust-termination behavior is expressed as a circuit-transition
+consistency check (not a per-decision termination proof). The equilibrium
+correspondence — a machine-checked equilibrium analysis (Nash equilibrium and
+price-of-anarchy bound) — is a design constraint held upstream in Fulcrum-Proofs,
+not a runtime certificate emitted by this repo. This repo emits structured and
+receipt-grade decision records verified by recomputation (`boundary verify-record`);
+attaching the proof-receipt sidecar does not change the decision mode. See
+[`docs/PROOF_BOUNDARY.md`](docs/PROOF_BOUNDARY.md) and
+[`docs/PROOF_RECEIPT.md`](docs/PROOF_RECEIPT.md).
 
 ## SQL classification
 
