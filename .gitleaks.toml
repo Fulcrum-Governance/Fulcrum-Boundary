@@ -15,17 +15,22 @@ useDefault = true
 description = "Synthetic test fixtures and known-benign placeholders — no real secrets"
 
 # Allowlist the entire fixtures tree (paths are matched against the file path),
-# plus two known-benign placeholders that trip the default rules but are not
+# plus three known-benign placeholders that trip the default rules but are not
 # secrets:
 #   - adapters/cli/inspector_test.go: a literal "-----BEGIN RSA PRIVATE
 #     KEY-----\nPLACEHOLDER..." string used to TEST Boundary's own secret
 #     detection (the word PLACEHOLDER stands in for any key material).
 #   - docs/INTEGRATION.md: the example URL path "fulcrum-api:8080/api/v1/..."
 #     matches the generic-api-key keyword "api" but is a URL, not a credential.
+#   - adapters/securegithub/bypass_packet_test.go: synthetic credential-scrubber
+#     negative-test fixtures (a fake "ghp_..." token and a headerless
+#     "private key: MII..." body) that prove the scrubber fails closed; these
+#     are test inputs, not real secrets.
 paths = [
   '''fixtures/.*''',
   '''adapters/cli/inspector_test\.go''',
   '''docs/INTEGRATION\.md''',
+  '''adapters/securegithub/bypass_packet_test\.go''',
 ]
 
 # Belt-and-suspenders: also allow the specific synthetic markers wherever they

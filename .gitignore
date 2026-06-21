@@ -65,7 +65,7 @@ verifiers/**/.venv/
 
 # Local agent, context, and Conductor config (never commit to public repo)
 /AGENTS.md
-/.remember/
+/.remember
 /.sdd
 /.codex/
 /.conductor/
