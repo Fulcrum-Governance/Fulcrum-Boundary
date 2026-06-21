@@ -44,8 +44,7 @@ func TestC2WiredWitnessLanguageIsLedgerBacked(t *testing.T) {
 // TestPublicSurfaceUsesC2Relabel asserts README uses the relabel and that the
 // old "couples a trust equilibrium to enforcement as a runtime certificate"
 // framing stays out of public copy (it remains a forbidden ledger entry, never
-// an allowed claim). The README edit lands in WS-4.3; this body is skipped here
-// and the skip is removed in WS-4.3 step 1 (the documented red->green handoff).
+// an allowed claim).
 func TestPublicSurfaceUsesC2Relabel(t *testing.T) {
 	root := mustAbs(t)
 	readme := strings.ToLower(readFile(t, filepath.Join(root, "README.md")))
