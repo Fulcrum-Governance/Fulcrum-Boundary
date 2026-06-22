@@ -63,10 +63,10 @@ matches the [README](../README.md) quickstart; the demos appear in the same
 order there.
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.11.0
 boundary selftest                                            # Local-only smoke test
 boundary doctor --json                                       # Local-only diagnostics + bypass caveats
-boundary doctor --report                                     # Source builds after v0.9.0: redacted local report
+boundary doctor --report                                     # Redacted local report (current v0.11.0 release)
 boundary demo github-lethal-trifecta      # Lane 1: MCP, the first production route (Delivered)
 boundary demo command-secret-exfil        # Lane 2: Command Boundary, a delivered preview (Preview)
 boundary evidence bundle --include-demo --out boundary-evidence   # Local-only evidence bundle
@@ -87,10 +87,9 @@ local fixtures, does not call the network, and does not perform live mutation.
 and bypass caveats for MCP, Command Boundary, and Edit Boundary, plus first-run
 environment diagnostics for the Go toolchain, cgo / C-toolchain readiness, and
 `go install` PATH resolution. It does not call the network. Doctor output is
-local diagnostics, not proof that every deployment route is protected. Source
-builds after `v0.9.0` also include `boundary doctor --report`, which emits
-redacted JSON for support threads; the pinned `@v0.9.0` install does not include
-that flag until the next release tag. See [docs/DOCTOR.md](./DOCTOR.md).
+local diagnostics, not proof that every deployment route is protected. The
+current `v0.11.0` release also includes `boundary doctor --report`, which emits
+redacted JSON for support threads. See [docs/DOCTOR.md](./DOCTOR.md).
 
 `boundary demo github-lethal-trifecta` (Delivered, Lane 1) is the fixture-only
 MCP proof lane: untrusted GitHub issue context flows into a private-repo mutation
@@ -266,8 +265,8 @@ sync before shipping a Boundary release branch.
 
 ## 8A. Policy-as-Code Test Commands
 
-> **Availability:** `boundary test` is included in the `v0.9.0` release. The
-> `@v0.9.0` install includes it; the historical `@v0.8.0` install does not.
+> **Availability:** `boundary test` shipped in `v0.9.0` and remains included in
+> the current `v0.11.0` release; the historical `@v0.8.0` install does not.
 
 ```bash
 boundary test --path tests/fixtures/policy-test/cases
@@ -298,7 +297,7 @@ bundle.
 > **Availability:** `boundary verify-record` and `schema_version "1"` records are
 > baseline. The `schema_version "2"` route-context path described below, along
 > with `boundary explain` / `boundary replay` in sections 10–11, shipped in
-> `v0.8.0` and is included in `v0.9.0`; `go install …@v0.9.0` includes them.
+> `v0.8.0` and remains included in the current `v0.11.0` release; `go install …@v0.11.0` includes them.
 
 ```bash
 boundary verify-record record.json
@@ -359,8 +358,8 @@ that actually ran. See [docs/DECISION_RECORDS.md](./DECISION_RECORDS.md) and
 ## 10. Decision-Record Explanation Commands
 
 > **Availability:** `boundary explain` (this section) and `boundary replay`
-> (section 11) are in the `v0.9.0` release, so `go install …@v0.9.0` includes
-> them. They join the rest of the `v0.9.0` first-run path — `selftest`, `doctor`,
+> (section 11) shipped in `v0.9.0` and remain in the current `v0.11.0` release, so `go install …@v0.11.0` includes
+> them. They join the rest of the current first-run path — `selftest`, `doctor`,
 > the two proof demos, `evidence bundle`/`verify`, and `verify-record` on a
 > `schema_version "1"` or `"2"` record.
 
@@ -396,7 +395,7 @@ bypass a record cannot see. `topology_profile` is asserted, not attested, and
 ## 11. Decision-Record Replay Commands
 
 > **Availability:** like `boundary explain` (section 10), `boundary replay` is
-> in the `v0.9.0` release; `go install …@v0.9.0` includes it.
+> in the `v0.9.0` release and the current `v0.11.0` release; `go install …@v0.11.0` includes it.
 
 ```bash
 boundary replay record.json --request request.json --policies ./policies/
