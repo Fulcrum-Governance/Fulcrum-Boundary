@@ -14,7 +14,7 @@ Run these in order. This is the single canonical sequence; the README and the
 rest of the docs match it.
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.11.0
 boundary selftest
 boundary doctor --json
 boundary demo github-lethal-trifecta      # Lane 1: MCP, the first production route
@@ -39,7 +39,7 @@ Boundary targets Go 1.25+ (`go.mod` declares `go 1.25.0`). Check your toolchain:
 go version
 ```
 
-If `go version` reports an older release, `go install …@v0.9.0` can fail to
+If `go version` reports an older release, `go install …@v0.11.0` can fail to
 resolve or compile. Install a Go 1.25+ toolchain from <https://go.dev/dl/>, or
 let the `go` command download the required toolchain automatically if your
 installed Go is recent enough to honor the `toolchain` directive.
@@ -60,12 +60,12 @@ interceptors/sql/ast_classifier.go:34:24: undefined: pg_query.Parse
 
 Fixes, in order of preference:
 
-1. **Do not disable cgo.** `go install …@v0.9.0`, `go build`, and `make build`
+1. **Do not disable cgo.** `go install …@v0.11.0`, `go build`, and `make build`
    all build with cgo on by default. If you have `CGO_ENABLED=0` set in your
    environment or CI, set it back on for Boundary builds:
 
    ```bash
-   CGO_ENABLED=1 go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0
+   CGO_ENABLED=1 go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.11.0
    ```
 
 2. **Install a C compiler** so cgo can find one:
@@ -152,9 +152,8 @@ the three surfaces (`mcp`, `command`, `edit`) reports `"status": "warn"` on a
 fresh checkout because the optional `.boundary/firewall`, `.boundary/bin`, and
 `.boundary/edit` workspaces do not exist yet. **`warn` here is the expected
 first-run state, not an error** — see "Reading `boundary doctor --json`" below.
-Source builds after `v0.9.0` also include first-run environment diagnostics and
-`boundary doctor --report` for redacted support reports; the pinned `@v0.9.0`
-install does not include that report flag until the next release tag.
+The current `v0.11.0` release also includes first-run environment diagnostics and
+`boundary doctor --report` for redacted support reports.
 
 - **`boundary: command not found`** — `PATH` issue; see above.
 - **Surfaces show `warn` for missing workspaces** — expected on a clean checkout.
@@ -271,7 +270,7 @@ deployment protection. Full reference: [DOCTOR.md](DOCTOR.md).
 | `environment[]` | First-run diagnostics for Go 1.25+, cgo / C-toolchain readiness, and `go install` PATH resolution. |
 | `surfaces[]` | One entry per routed surface (`mcp`, `command`, `edit`). |
 
-Source builds after `v0.9.0` can use `boundary doctor --report` to emit the same
+The current `v0.11.0` release can use `boundary doctor --report` to emit the same
 diagnostics with `report_redacted: true` and `project_root: "<redacted>"`.
 
 ### Per-surface fields
