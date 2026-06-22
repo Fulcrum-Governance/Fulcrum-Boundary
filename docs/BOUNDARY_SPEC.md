@@ -2,7 +2,7 @@
 
 > **This is the single authoritative public-surface spec** for the current public release surface of
 > **Fulcrum Boundary** (Apache-2.0, Go developer tool,
-> `github.com/fulcrum-governance/fulcrum-boundary`, CLI binary `boundary`, target tag `v0.9.0`).
+> `github.com/fulcrum-governance/fulcrum-boundary`, CLI binary `boundary`, target tag `v0.11.0`).
 > It defines what is published and what it is called. It is a language-control document:
 > §12 enumerates the approved and forbidden public language, so it intentionally quotes the
 > forbidden phrases in order to govern them.
@@ -25,8 +25,8 @@
 ## How to read this spec
 
 **Authority order (tie-breaker for any claim; highest wins).**
-`docs/RELEASE_TRUTH_PUBLIC.md` (v0.9.0) → `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md`
-(**CI-enforced**, the binding floor) → `README.md` (v0.9.0) → most-recent intent
+`docs/RELEASE_TRUTH_PUBLIC.md` (v0.11.0) → `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md`
+(**CI-enforced**, the binding floor) → `README.md` (v0.11.0) → most-recent intent
 (`conductor/2026-05-29-*-reset-{design,plan}.md`, polish only) → the language stack
 (`docs/LANGUAGE_SYSTEM.md` / `docs/COPY_RULES.md` / `docs/LEXICON.md` /
 `docs/BOUNDARY_PRODUCT_PRIMITIVES.md`) → `docs/LAUNCH_TRUTH_FREEZE.md` →
@@ -75,7 +75,7 @@ only once — in its owning section with a `superseded:` predecessor. No section
 | **C7** | Runtime decisions are **`deterministic` / `classified`, NEVER `proved`.** Lean proofs referenced by correspondence only (`docs/PROOF_BOUNDARY.md`). | "proved runtime / decisions proved by Lean" | §1.9, §3.4, §6.5 |
 | **C8** | **Vendor-neutral copy** — no named competitors / third parties. | named-competitor / named-third-party copy (early fixtures/flags/tests) | §1.10, §7.3 |
 | **C9** | **ROUTED-ONLY DOCTRINE** (load-bearing, sharpest for CLI): Boundary governs **only what routes through it**. The CLI lane states (i) how to ENFORCE the route and (ii) the KNOWN BYPASSES. FORBIDDEN: "global shell control", "all CLI activity protected", "governs every way an agent can mutate". | "governs every way an agent can mutate" (Position A) | §1.11, §3.5, §10.0 |
-| **C10** | Distribution = **local + `go install …/cmd/boundary@v0.9.0` only.** No hosted-monitoring / Homebrew / package-manager claims. Dashboard reads local artifacts only. | implied hosted monitoring / package-manager distribution | §1.12, §7.4 |
+| **C10** | Distribution = **prebuilt one-command channels (Homebrew tap, container image, static + native-cgo archives with SHA256 manifests) from the tag-gated pipeline for `v0.10.1`+, plus `go install …/cmd/boundary@v0.11.0` from source** (`BND-CLAIM-DIST-001`, `delivered`). Still **no hosted-monitoring / cloud analysis**; the dashboard reads local artifacts only. | implied hosted monitoring / cloud analysis | §1.12, §7.4 |
 | **R1** | Copy subject = **"Boundary decides", NEVER "Fulcrum decides".** | `docs/LANGUAGE_SYSTEM.md` lines 11 & 18 + `docs/PUBLIC_RELEASE_COPY.md` line 70 | §2.1, §7.6 |
 | **P1** | Developer trust lever = **policy-as-code tests.** `boundary test` is local, fixture-only, and CI-friendly; it reports verdicts for routed request fixtures only. | treating policy behavior as docs-only or claiming policy tests prove deployment enforcement | §2.2, §9, §10 |
 
@@ -116,8 +116,8 @@ only once — in its owning section with a `superseded:` predecessor. No section
 > **Hero (verbatim, do not edit): See what your AI tools can do. Block what they should not.**
 
 - The category-defining noun is **"the action boundary."** The qualifier is **"routed agent tools"** — broader than MCP, and the word **"routed"** carries the honesty: Boundary governs only what is forced through it.
-- **One-liner (LOCKED):** *Boundary is the local-first action boundary for your AI agent's tools — see what your tools can actually do, and block the dangerous ones before they run. One `go install`, no account, no cloud, no live calls.* Each clause is backed by the repeatable first-run path (`go install …@v0.9.0` → `boundary selftest` 10/10 → `boundary demo github-lethal-trifecta` denies with `upstream_called=false`; evidence: README "Try It In One Minute", briefing §1).
-- The hero ships verbatim in `docs/LANGUAGE_SYSTEM.md` (Developer variant) and the v0.9.0 README. It leads with the action, not the architecture. When copy is MCP-specific, "your MCP tools" / "MCP-native" is correct and preferred **for that lane**.
+- **One-liner (LOCKED):** *Boundary is the local-first action boundary for your AI agent's tools — see what your tools can actually do, and block the dangerous ones before they run. One `go install`, no account, no cloud, no live calls.* Each clause is backed by the repeatable first-run path (`go install …@v0.11.0` → `boundary selftest` 10/10 → `boundary demo github-lethal-trifecta` denies with `upstream_called=false`; evidence: README "Try It In One Minute", briefing §1).
+- The hero ships verbatim in `docs/LANGUAGE_SYSTEM.md` (Developer variant) and the v0.11.0 README. It leads with the action, not the architecture. When copy is MCP-specific, "your MCP tools" / "MCP-native" is correct and preferred **for that lane**.
 - **superseded:** "the action boundary for **MCP-native** agents" (README v0.6.1 line 3 / `docs/LANGUAGE_SYSTEM.md` "Preferred Public Frame"). MCP is now the **first production route**, not the identity, so the Command/CLI lane and future routes fit the same frame without re-scoping.
 
 ## 1.2 The category (LOCKED — resolves C1)
@@ -170,9 +170,9 @@ The release story is a **tight spine of two flagship proof lanes**, each with a 
 
 ## 1.9 Distribution (LOCKED — resolves C10)
 
-- **Local + `go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0` ONLY.** Requires Go 1.25+ and a C toolchain (CGO) for the default build (§5.5).
-- **No** hosted-monitoring, **no** Homebrew, **no** package-manager distribution claims. The **dashboard reads local artifacts only** (`local-only`). Full mechanics §7.4.
-- **superseded:** implied hosted monitoring / package-manager distribution (early planning copy).
+- **Prebuilt one-command channels** ship from the tag-gated release pipeline for `v0.10.1`+ — a Homebrew tap formula, a container image, and static + native-cgo archives with SHA256 checksum manifests (`BND-CLAIM-DIST-001`, `delivered`) — **plus** `go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.11.0` from source. Releases up to and including `v0.10.0` were source-only. The source/cgo build requires Go 1.25+ and a C toolchain (CGO) (§5.5).
+- **No** hosted-monitoring and **no** cloud analysis: every channel installs a **local** binary, and the **dashboard reads local artifacts only** (`local-only`). Full mechanics §7.4.
+- **superseded:** the earlier "local + `go install` only — no Homebrew / package-manager distribution" stance (pre-`v0.10.1`, before the tag-gated pipeline shipped), and any implied hosted monitoring.
 
 ---
 
@@ -399,7 +399,7 @@ flowchart TB
 # 4. Scope & Maturity Matrix
 
 > **Authority order for every claim below** (highest first): `docs/RELEASE_TRUTH_PUBLIC.md`
-> (v0.9.0) → `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md` (CI-enforced) →
+> (v0.11.0) → `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md` (CI-enforced) →
 > `docs/ADAPTER_READINESS_MATRIX.md` + `adapters/<x>/readiness.yaml` → `README.md`. Current
 > release-candidate verification is recorded in `docs/RELEASE_TRUTH_PUBLIC.md`
 > and the release gates; older HEAD-specific audits are provenance only.
@@ -508,10 +508,10 @@ Kernel / out-of-process integration is **a contract surface, not a shipped depen
 
 | Item | Contract | Status | Evidence |
 |---|---|---|---|
-| Install path | `go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0` | repeatable release target | `docs/RELEASE_TRUTH_PUBLIC.md`; README |
+| Install path | `brew install fulcrum-governance/tap/boundary` (static) or `go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.11.0` (source) | repeatable release target | `docs/RELEASE_TRUTH_PUBLIC.md`; README |
 | Go toolchain | **Go 1.25+** required | hard requirement | `go.mod` `go 1.25.0` |
 | **C-toolchain prerequisite** | Default `go install` needs a **C compiler present** (CGO on): `cmd/boundary` → `interceptors/sql` → `pganalyze/pg_query_go/v6` is **CGO with no `nocgo` fallback**. `CGO_ENABLED=0` build **fails**. The shipped `Dockerfile` builds with `CGO_ENABLED=1` plus a C toolchain; the README states the prerequisite. | build caveat (B-1, resolved) | `CROSS_REPO_DEPS.md` B-1; `Dockerfile` (`CGO_ENABLED=1`, `build-base`); verified `CGO_ENABLED=0 go build ./cmd/boundary` fails (`undefined: pg_query.Parse`) |
-| Hosted / package-manager distribution | **None claimed** — no Homebrew, no package manager, no hosted monitoring | forbidden to claim | `docs/RELEASE_TRUTH_PUBLIC.md` |
+| Prebuilt channels | **Homebrew tap, container image, archives + SHA256 manifests** ship from the tag-gated pipeline (`v0.10.1`+; `BND-CLAIM-DIST-001`). **No hosted monitoring / cloud analysis** — every channel installs a local binary. | delivered; hosted monitoring still forbidden | `docs/RELEASE_TRUTH_PUBLIC.md`; `docs/INSTALL.md` |
 
 > The README **states the C-toolchain prerequisite** for the default install path,
 > and the `Dockerfile` builds with CGO on (B-1, resolved) — so no broken
@@ -627,7 +627,7 @@ Controlled rules (verified): generic platform lead (`AI governance platform`, he
 
 ## 7.2 Authority order (the tie-breaker)
 
-When two documents disagree about what may be claimed, resolve highest-wins (the canonical chain from the briefing): (1) `docs/RELEASE_TRUTH_PUBLIC.md` (v0.9.0); (2) `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md` (**CI-enforced**; the binding floor); (3) `README.md` (v0.9.0); (4) `conductor/2026-05-29-…-reset-{design,plan}.md` (intent, polish only); (5) the language stack; (6) `docs/LAUNCH_TRUTH_FREEZE.md`; (7) `Fulcrum_Boundary_Vision.md` (direction only).
+When two documents disagree about what may be claimed, resolve highest-wins (the canonical chain from the briefing): (1) `docs/RELEASE_TRUTH_PUBLIC.md` (v0.11.0); (2) `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md` (**CI-enforced**; the binding floor); (3) `README.md` (v0.11.0); (4) `conductor/2026-05-29-…-reset-{design,plan}.md` (intent, polish only); (5) the language stack; (6) `docs/LAUNCH_TRUTH_FREEZE.md`; (7) `Fulcrum_Boundary_Vision.md` (direction only).
 
 **Demote / do not cite as authority:** `BOUNDARY_SPEC_SERIES.md`, the "governance kernel / kernel-connected" framing, all GIL-named material, the per-version `RELEASE_TRUTH_V0xx` history.
 
@@ -637,24 +637,26 @@ When two documents disagree about what may be claimed, resolve highest-wins (the
 
 Public copy names **no competitors and no third parties** — no brand in README, docs, release notes, or other public copy. Comparisons are framed by **category** ("scanners," "platforms," "policy substrates"), never by brand; the internal positioning lane stays out of the public spec. **External ingestion is Boundary-owned mapping** (e.g. `--source external-mcp`, "external MCP inventory NDJSON"), with the explicit disclaimer: **"not an official third-party integration or compatibility claim."** The `language_lint` "unverified competitive claim" rule backstops this, but the discipline is broader than its two literal phrases — **no brand names at all**, and none appear in this spec. One canonical mental model **may** be cited because it is a named public concept, not a vendor: the **"lethal trifecta"** (private data + untrusted content + external comms), cited to its origin and kept scoped to the tested write-after-taint path. **Forbidden:** any competitor brand; any "vs <vendor>"; any "compatible with / integrates with <vendor>" for external-ingest formats; any "X cannot do this / only we can." *superseded: any earlier named-competitor / named-third-party copy.*
 
-## 7.4 Distribution — local + `go install` only (C10)
+## 7.4 Distribution — prebuilt channels + `go install` (C10)
 
-The only distribution channel for this release is local build + `go install`. The one canonical install line (matching the install path in the README):
+Distribution ships from the tag-gated release pipeline for `v0.10.1`+: a Homebrew tap, a container image, and static + native-cgo archives with SHA256 checksum manifests (`BND-CLAIM-DIST-001`, `delivered`), alongside a source install. The canonical lines (matching the README):
 
 ```
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0
+brew install fulcrum-governance/tap/boundary
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.11.0
 ```
 
-- **No** "available on Homebrew," `brew install`, `apt`/`yum`/`apk`, `npm install`, `docker pull …`, or any package-manager / registry distribution claim (verified: README contains none).
-- **No hosted/monitoring service.** The dashboard is **`local-only`**, reads **local artifacts only** (inventory, risk paths, policy status, install receipts, descriptor locks, local decision-record files), binds to loopback, and **rejects non-loopback serve addresses**.
-- The C-toolchain prerequisite (§5.5) belongs with the install instructions.
+- The Homebrew formula and the container image ship the **static** build; the `_cgo` archives and the source build carry the full SQL classifier. Releases up to and including `v0.10.0` were source-only.
+- **No hosted/monitoring service.** Every channel installs a **local** binary. The dashboard is **`local-only`**, reads **local artifacts only** (inventory, risk paths, policy status, install receipts, descriptor locks, local decision-record files), binds to loopback, and **rejects non-loopback serve addresses**.
+- The C-toolchain prerequisite (§5.5) belongs with the source/cgo install instructions.
+- **superseded:** the pre-`v0.10.1` "local + `go install` only — no package-manager distribution" stance.
 
 **Status & evidence:** dashboard = `local-only`, `BND-CLAIM-016` → `internal/firewall/dashboard_test.go`, `tests/firewall/inventory_cli_test.go`. GitHub Action = CI audit/reporting only, `BND-CLAIM-017` (Markdown + SARIF; repo-local by default).
 
 | Forbidden public claim (C10) | Ledger anchor |
 |---|---|
 | "hosted firewall dashboard" / "dashboard monitors production deployments" / "streams remote telemetry" | `BND-CLAIM-016` forbidden |
-| "available via Homebrew / a package manager" | C10 (no ledger claim asserts a package-manager channel) |
+| "the Homebrew tap is installable before the first pipeline-published release" / "prebuilt binaries for `v0.9.0` and earlier" | `BND-CLAIM-DIST-001` forbidden (channels ship for `v0.10.1`+; earlier are source-only) |
 | "Boundary Action protects MCP servers at runtime" / "installs the gateway" | `BND-CLAIM-017` forbidden |
 
 ## 7.5 The "What It Does NOT Prove" table (the differentiator, ship it)
@@ -678,7 +680,7 @@ Claim-safe by construction (every line is negated/limitation framing, which the 
 
 ## 7.6 R1 — "Boundary decides," never "Fulcrum decides" (truth-discipline record)
 
-"Boundary decides" subject discipline (R1) is preserved throughout; "Fulcrum" appears only in the module path, the proofs-correspondence lineage, and as the upstream owner of `proved`/`human_approved` modes. The three former "Fulcrum decides" residues (`docs/LANGUAGE_SYSTEM.md` lines 11 & 18 and `docs/PUBLIC_RELEASE_COPY.md` line 70) are **reconciled** — those files now read "Boundary decides"; the only remaining occurrences of the phrase are the governed quotes in this language-control spec (R1 rule, §2.1/§7.6). *superseded: those three "Fulcrum decides" instances.* The release-surface precision items remain done in the current tree: the public-surface guard covers every tracked text file (§7.1 Gate 3); `CITATION.cff` is corrected to the release version (`0.9.0`, resolving the earlier `0.2.0` drift; briefing B-3); the no-package-manager/hosted sweep is reflected in copy (§7.4); the receipt-vs-decision-record term is reconciled to "decision record (hash-verifiable)" (§6.1/§6.3); and README test-count precision is handled by carrying no fragile count in the README (§9). No item from this set remains open.
+"Boundary decides" subject discipline (R1) is preserved throughout; "Fulcrum" appears only in the module path, the proofs-correspondence lineage, and as the upstream owner of `proved`/`human_approved` modes. The three former "Fulcrum decides" residues (`docs/LANGUAGE_SYSTEM.md` lines 11 & 18 and `docs/PUBLIC_RELEASE_COPY.md` line 70) are **reconciled** — those files now read "Boundary decides"; the only remaining occurrences of the phrase are the governed quotes in this language-control spec (R1 rule, §2.1/§7.6). *superseded: those three "Fulcrum decides" instances.* The release-surface precision items remain done in the current tree: the public-surface guard covers every tracked text file (§7.1 Gate 3); `CITATION.cff` tracks the release version (`0.11.0`, having resolved the earlier `0.2.0` drift; briefing B-3); the no-package-manager/hosted sweep is reflected in copy (§7.4); the receipt-vs-decision-record term is reconciled to "decision record (hash-verifiable)" (§6.1/§6.3); and README test-count precision is handled by carrying no fragile count in the README (§9). No item from this set remains open.
 
 ---
 
@@ -699,10 +701,10 @@ Boundary is a single Apache-2.0 Go module (Go 1.25+) installed with one `go inst
 
 ## 8.1 The verified < 5-minute path (Lane 1: MCP, the first production route)
 
-Requires Go 1.25+ and a C toolchain on `PATH` (the SQL classifier links `pganalyze/pg_query_go` via cgo). Distribution is **local + `go install` only** (C10).
+Requires Go 1.25+ and a C toolchain on `PATH` for the source/cgo build (the SQL classifier links `pganalyze/pg_query_go` via cgo). Prebuilt channels — Homebrew, container, and archives — also ship for `v0.10.1`+ (C10).
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.9.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.11.0
 boundary selftest                       # 10 no-credential local checks (verified 10/10)
 boundary demo github-lethal-trifecta    # fixture-only: no creds, no GitHub calls, no mutation
 ```
@@ -942,7 +944,7 @@ The C6/C7 mechanics are canonical in §6; the threat-model-facing summary: **(C6
 
 Only the MCP route is `production`; everything else is honestly labeled. **The spine is the two demoed lanes (§10.3); the per-surface rows are NOT headline features.** The authoritative per-surface table (every adapter, its status, the lifecycle gap, and the ledger anchor) is canonical in **§4.2** and is not restated here; promotion to `production` is uniformly gated on **deployment-bypass proof** (§11.1).
 
-- **Distribution limit (C10):** install is **local + `go install …/cmd/boundary@v0.9.0` only.** No hosted-monitoring, Homebrew, or other package-manager claims. The dashboard reads local artifacts only.
+- **Distribution (C10):** prebuilt channels (Homebrew tap, container image, archives + SHA256 manifests) ship from the tag-gated pipeline for `v0.10.1`+, plus `go install …/cmd/boundary@v0.11.0` from source (`BND-CLAIM-DIST-001`). **No hosted-monitoring**; the dashboard reads local artifacts only.
 
 ## 10.6 Out of scope for this release (stated plainly)
 
@@ -1074,7 +1076,7 @@ These may appear ONLY in claim-control, language-control, historical, or explici
 | Forbidden | Replacement |
 |---|---|
 | hosted monitoring / dashboard monitors production deployments | dashboard reads local artifacts only |
-| Homebrew / package-manager availability | local + `go install …@v0.9.0` only |
+| prebuilt binaries for `v0.9.0` and earlier / the Homebrew tap before the first pipeline release | channels ship for `v0.10.1`+; earlier releases are source-only |
 
 **Vendor (C8)**
 | Forbidden | Replacement |
@@ -1096,7 +1098,7 @@ These may appear ONLY in claim-control, language-control, historical, or explici
 - No "proved" runtime claim; no "cryptographic proof of verdict"; no "global shell control / all CLI activity protected / governs every way an agent can mutate." (C6/C7/C9)
 - Subject is **Boundary**, never Fulcrum, in every capability sentence. (R1)
 - Vendor-neutral: no named third parties; the only named external concept is the public "lethal trifecta" mental model, scoped to the tested path. (C8)
-- Distribution copy asserts only `go install …@v0.9.0` and a `local-only` dashboard. (C10)
+- Distribution copy reflects the shipped channels (Homebrew, container, archives, and `go install …@v0.11.0`) for `v0.10.1`+ and a `local-only` dashboard with no hosted monitoring. (C10)
 - The routed-only doctrine and the two-lane spine are each stated **once canonically** (§10.0 and §4.0); every other reference cross-points to them. Each conflict-resolving section states its chosen side explicitly + exclusively with a `superseded:` predecessor (C1–C10, R1).
 
 **This is the authoritative in-repo public-surface spec. It is a language-control document (§12 governs public language by quoting the forbidden phrases) and is exempt from the public-surface guard and language lint for that reason, alongside the lexicon and copy-rules docs.**

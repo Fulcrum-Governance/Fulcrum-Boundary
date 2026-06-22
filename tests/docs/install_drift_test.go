@@ -1,7 +1,8 @@
 // install_drift_test.go pins every CANONICAL install / version reference in the
 // user-facing docs to the current release, so the install docs cannot silently
 // drift behind a published tag again (the failure this guard is built for: the
-// docs kept saying `@v0.9.0` long after v0.11.0 shipped).
+// install docs kept pinning a superseded release tag long after a newer release
+// shipped).
 //
 // The single source of truth is the "Current release target: `vX.Y.Z`" line in
 // docs/RELEASE_TRUTH_PUBLIC.md — when the next release bumps that line, this test
@@ -46,7 +47,6 @@ func isHistoricalSurface(rel string) bool {
 	}
 	switch rel {
 	case "CHANGELOG.md", // append-only history + compare links
-		"docs/BOUNDARY_SPEC.md", // LOCKED authoring baseline (C10 re-baseline tracked separately)
 		"docs/LAUNCH_README.md": // version-titled v0.9.0 launch artifact
 		return true
 	}
