@@ -208,25 +208,24 @@ claims:
 
   - id: BND-CLAIM-DIST-001
     claim: "Boundary publishes one-command install channels (Homebrew tap formula, prebuilt static and native-cgo archives with SHA256 checksum manifests, container image) from a tag-gated release pipeline"
-    status: partial
+    status: delivered
     evidence:
-      tests: []
+      tests:
+        - path: tests/releasebuild/channels_test.go
+          assertion: ".goreleaser.yaml wires the static archives, the SHA256SUMS checksum manifest, the Homebrew tap formula, and the ghcr.io container image (plus the multi-arch manifest), and .github/workflows/release.yml is tag-gated (push tags v*) and builds the _cgo archives plus the SHA256SUMS-cgo manifest; pins the config wiring, not a live publish"
       docs:
         - path: docs/INSTALL.md
           section: "Install Channels"
     public_language:
       allowed:
         - "A tag-gated release pipeline builds static (CGO_ENABLED=0) archives for darwin, linux, and windows on amd64 and arm64, native-cgo full-classifier archives, SHA256 checksum manifests, a Homebrew formula, and a container image."
-        - "Install channels publish with releases after v0.9.0; v0.9.0 and earlier releases are source-only."
+        - "Install channels publish from the tag-gated pipeline for v0.10.1 and later; releases up to and including v0.10.0 shipped source-only."
         - "Windows ships the static (CGO_ENABLED=0) build only by design; native-cgo full-classifier archives are produced for darwin and linux, not Windows."
       forbidden:
         - "Prebuilt binaries are available for v0.9.0 and earlier"
         - "The Homebrew tap is installable before the first pipeline-published release"
         - "Windows native-cgo archives are published"
-    gaps:
-      - id: BND-DIST-001
-        description: "The first tag-gated release carrying binary assets, SHA256SUMS, SHA256SUMS-cgo, the Homebrew formula push, _cgo archives, the evidence-bundle tarball, and the container image has not yet been published; the channels go live with the first tag after v0.9.0."
-        spec: "KEYSTONE install pipeline (launch/w1-foundation)"
+    gaps: []
     depends_on:
       - BND-CLAIM-BUILD-001
 
@@ -253,8 +252,8 @@ claims:
         - "Build provenance was recorded for releases before the pipeline shipped it"
     gaps:
       - id: BND-DIST-002
-        description: "Build-provenance attestation (both archive families) and the native-cgo archive SBOM run only on a v* tag — the cgo SBOM in the per-runner cgo-binaries matrix and attestation via the workflow's GitHub OIDC token — so they are unproven until the first tagged release runs the updated pipeline. Verified locally short of a release: the static-archive SBOM via `goreleaser release --snapshot` (6 SPDX files) and the cgo SBOM command via `syft` on a cgo archive (valid SPDX-2.3)."
-        spec: "GitHub issue #140 — SBOM and provenance attestation for release artifacts (cgo SBOM closes BND-DIST-002's cgo gap)"
+        description: "The SBOM and build-provenance wiring landed on main AFTER the v0.11.0 tag (a394488 predates it): build-provenance attestation for both archive families plus the native-cgo archive SBOM in commit 7123b85 (PR #140), and the cgo-archive SPDX SBOM that closes this claim's cgo half in commit 65227ab (PR #139). tests/supplychain/wiring_test.go pins that wiring — the syft SBOM steps for both archive families, the SHA-pinned attest-build-provenance steps, and the id-token/attestations OIDC permissions, all tag-gated. Stays partial because no tagged release has run the provenance/SBOM pipeline yet: every published tag through v0.11.0 predates the wiring, so the recorded attestations are unproven and the first tag after v0.11.0 is the first to exercise them. Verified locally short of a release: the static-archive SBOM via `goreleaser release --snapshot` (6 SPDX files) and the cgo SBOM command via `syft` on a cgo archive (valid SPDX-2.3); independently confirming a published attestation needs `gh attestation verify` against the release assets, which is out-of-repo."
+        spec: "GitHub issues #140 (SBOM + build-provenance attestation) and #139 (cgo-archive SBOM, closing the cgo half) — wiring on main post-v0.11.0, unrun in a tagged release until the next tag"
     depends_on:
       - BND-CLAIM-DIST-001
 
