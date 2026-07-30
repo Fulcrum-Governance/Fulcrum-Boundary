@@ -90,6 +90,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Security
 
+- Bring the nested `adapters/grpc` module under the CI `security scan` job. Both
+  scanners ran from the repo root only, and a root `./...` does not reach a
+  separate Go module, so the gRPC adapter module shipped unscanned by the gate —
+  `go list ./...` from the root returns zero packages under `adapters/grpc`. The
+  job now runs `gosec` and `govulncheck` once per module as four separately named
+  blocking steps, so a red names its scanner and its module, and the root `gosec`
+  step gains the `GOTOOLCHAIN` pin the other steps already carried. Landing with
+  it: `golang.org/x/net` moves from v0.55.0 to v0.57.0 in that module
+  (GO-2026-5942, fixed in v0.56.0), which drops the finding out of the module
+  graph. This closes a gap in what the gate *scans*; it is not a statement about
+  vulnerabilities the scanners do not model.
+
 - Clear the two `govulncheck` findings on the root module: `golang.org/x/text`
   moves from v0.31.0 to v0.40.0 (GO-2026-5970, infinite loop on invalid input,
   fixed in v0.39.0) and the Go toolchain floor moves from `go1.26.4` to
