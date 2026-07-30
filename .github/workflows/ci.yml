@@ -125,14 +125,30 @@ jobs:
         with:
           go-version: '1.26.5'
           cache: true
-      - name: gosec
+      # adapters/grpc is a separate Go module: the root `./...` pattern does not
+      # reach it, so each scanner needs its own invocation from that module root
+      # or the module ships unscanned. Steps stay separate so a red names its
+      # scanner and its module.
+      - name: gosec (root module)
+        env:
+          GOTOOLCHAIN: go1.26.5
         run: go run github.com/securego/gosec/v2/cmd/gosec@v2.26.1 ./...
-      - name: govulncheck
+      - name: gosec (adapters/grpc module)
+        env:
+          GOTOOLCHAIN: go1.26.5
+        working-directory: adapters/grpc
+        run: go run github.com/securego/gosec/v2/cmd/gosec@v2.26.1 ./...
+      - name: govulncheck (root module)
         env:
           GOTOOLCHAIN: go1.26.5
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./...
+      - name: govulncheck (adapters/grpc module)
+        env:
+          GOTOOLCHAIN: go1.26.5
+        working-directory: adapters/grpc
+        run: govulncheck ./...
 
   fuzz:
     name: fuzz (smoke)
