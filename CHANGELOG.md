@@ -88,6 +88,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   Dry-run does not block on the await: the decision keeps the relabel path
   and the reason notes that the await was skipped.
 
+### Security
+
+- Clear the two `govulncheck` findings on the root module: `golang.org/x/text`
+  moves from v0.31.0 to v0.40.0 (GO-2026-5970, infinite loop on invalid input,
+  fixed in v0.39.0) and the Go toolchain floor moves from `go1.26.4` to
+  `go1.26.5` for the patched `crypto/tls` (GO-2026-5856, Encrypted Client Hello
+  privacy leak). The CI `security scan` job pinned `GOTOOLCHAIN=go1.26.4`, so
+  the toolchain floor is raised in `.github/workflows/ci.yml` and
+  `.github/workflows/release.yml` alongside the `go.mod` directive — released
+  binaries are built on the patched standard library. `adapters/grpc` inherits
+  x/text v0.40.0 through the root-module replace and its toolchain floor moves
+  with the root. This clears the two findings the scanner reports; it is not a
+  statement about vulnerabilities the scanner does not model.
+
 ## [0.11.0] - 2026-06-11
 
 ### Added
