@@ -139,7 +139,7 @@ func TestProvenanceAttestationWired(t *testing.T) {
 	wf := read(t, repoRoot(t), ".github/workflows/release.yml")
 
 	// Repo convention: actions are pinned to a commit SHA, not a moving tag.
-	const pinnedAction = "actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f"
+	const pinnedAction = "actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373"
 	if !strings.Contains(wf, pinnedAction) {
 		t.Fatalf("release.yml no longer pins %s — build-provenance attestation (BND-CLAIM-DIST-002) is removed or unpinned", pinnedAction)
 	}
