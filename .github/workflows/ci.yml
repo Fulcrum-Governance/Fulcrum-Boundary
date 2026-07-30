@@ -85,7 +85,7 @@ jobs:
           go test ./tests/conformance/... -count=1
           python3 verifiers/python/test_boundary_verify.py
           python3 verifiers/python/boundary_verify.py docs/examples/decision-record.example.json
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: 'npm'
