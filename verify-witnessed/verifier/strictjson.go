@@ -284,7 +284,7 @@ func readRegularFile(path string) ([]byte, error) {
 	if !info.Mode().IsRegular() {
 		return nil, fmt.Errorf("%s is not a regular file", path)
 	}
-	return os.ReadFile(path)
+	return os.ReadFile(path) // #nosec G304 -- path is the CLI-supplied bundle directory joined with a fixed filename from the tool's own manifest list, not attacker-controlled remote input.
 }
 
 func decodeCompactJSONLine(data []byte, dst any, required ...string) error {
