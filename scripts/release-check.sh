@@ -33,8 +33,10 @@ run ./scripts/assert-no-public-vendor-refs.sh
 run ./scripts/assert-no-internal-public-artifacts.sh
 run go vet ./...
 run_in adapters/grpc go vet ./...
+run_in verify-witnessed go vet ./...
 run go test ./... -count=1 -timeout 5m
 run_in adapters/grpc go test ./... -count=1 -timeout 5m
+run_in verify-witnessed go test ./... -count=1 -timeout 5m
 run go test ./tests/... -count=1 -timeout 5m
 run go test ./claims/... -count=1 -timeout 5m
 run go run ./cmd/boundary verify --policies examples/mcp-postgres-gateway/policies
