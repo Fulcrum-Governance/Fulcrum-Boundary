@@ -1113,6 +1113,36 @@ claims:
     depends_on:
       - BND-CLAIM-VERIFY-002
 
+  - id: BND-CLAIM-WITNESS-001
+    claim: "Fulcrum-Boundary ships fulcrum-verify-witnessed, a public, Apache-2.0, independently-buildable Go command (verify-witnessed/) that checks an exported witnessed-log bundle offline against locally supplied Fulcrum and witness Ed25519 public keys, with no Fulcrum code, account, credential, or network call required to build or run it"
+    status: delivered
+    evidence:
+      tests:
+        - path: verify-witnessed/independence_test.go
+          assertion: "TestSourceAndDependencyIndependence fails the build if any non-test file imports anything outside the standard library, the local module, or golang.org/x/mod/sumdb/tlog, if database/sql, net, net/http, or net/rpc is imported, if go.mod carries a replace directive, or if go.mod references the private fulcrum-io module"
+        - path: verify-witnessed/main_test.go
+          assertion: "spawning the built binary with only FULCRUM_VERIFY_HELPER, FULCRUM_VERIFY_BUNDLE, FULCRUM_VERIFY_KEYRING, and HOME set asserts no Fulcrum service URL or credential environment variable is present, every emitted status is pass, fail, missing, or not_present, and no aggregate verified field is ever emitted"
+      docs:
+        - path: verify-witnessed/README.md
+          section: "What it checks"
+    public_language:
+      allowed:
+        - "Fulcrum-Boundary ships fulcrum-verify-witnessed, a public, Apache-2.0, independently-buildable Go command that checks an exported witnessed-log bundle offline against locally supplied Ed25519 public keys."
+        - "The verifier requires no Fulcrum account, credential, or network call; its own test suite asserts no Fulcrum service URL or credential environment variable is present when it runs."
+        - "Relocating the verifier out of Fulcrum's private repository makes the check inspectable and independently buildable; it does not by itself establish that any witness is operated independently of Fulcrum."
+      forbidden:
+        - "fulcrum-verify-witnessed proves witnesses are externally or independently operated"
+        - "Boundary's witnesses are independently operated"
+        - "a passing check proves the witnessed log is complete"
+        - "a passing check proves Fulcrum's witnessed-log service is correct"
+        - "a passing check is non-repudiable or legally admissible evidence"
+        - "every leaf type in the witnessed log carries equal integrity guarantees"
+        - "the witnessed log is immutable"
+        - "the verifier proves authenticity"
+    gaps: []
+    depends_on:
+      - BND-CLAIM-REC-002
+
   - id: BND-CLAIM-SIGN-001
     claim: "Boundary optionally signs decision records with Ed25519 (off by default); boundary verify-record --verify-signature checks the signature over the recomputed decision_hash and fails closed, while unsigned records remain the default and signing never changes decision_hash"
     status: delivered

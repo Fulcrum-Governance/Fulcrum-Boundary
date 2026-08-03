@@ -210,6 +210,14 @@ decisions itself: the record is what this boundary carries, and the
 formally verified discharge of the trust, termination, budget, and privilege
 invariants it corresponds to is upstream work, not performed here.
 
+Bundles that include a witnessed log — signed tree heads and witness
+cosignatures over a period's records — carry a separate offline check:
+[`verify-witnessed`](./verify-witnessed/) recomputes the Merkle inclusion
+proof, tree-head signature, and witness cosignatures with no Fulcrum account,
+credential, or network call. It checks a different artifact from the decision
+record above, and does not establish that any witness is operated
+independently of Fulcrum.
+
 ## What It Proves
 
 | Scope | Proof shown by the local fixture |
@@ -254,6 +262,7 @@ Boundary governs actions only when the route is forced through Boundary.
 | Policy-as-code testing | Local-only | `boundary test` checks routed request fixtures against local policy bundles. |
 | Policy generation | Starter policy utility | Requires operator review. |
 | Dashboard | Local artifact visibility | Not hosted monitoring. |
+| Witnessed-log verifier | Delivered (air-gapped) | Checks bundle integrity and cosignatures offline against supplied keys; does not establish that any witness is externally or independently operated. |
 
 ## Adapter Readiness
 

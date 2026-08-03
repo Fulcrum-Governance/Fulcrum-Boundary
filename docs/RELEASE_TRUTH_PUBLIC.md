@@ -79,10 +79,19 @@ The final public truth is:
 
 ## Shipped On Main, Unreleased
 
-> No capability changes: the only commits on `main` past the `v0.11.0` tag
-> (`a394488`) are release-truth documentation, including this reconciliation
-> itself. When capability work merges past the tag, it is recorded here with
-> "main, unreleased" status before any downstream document cites it.
+> One capability change past the `v0.11.0` tag (`a394488`), recorded here
+> with "main, unreleased" status before any downstream document cites it;
+> promote it to the versioned Claims Status / Feature Status tables below at
+> the next tag cut.
+
+- **Witnessed-log verifier** (`BND-CLAIM-WITNESS-001`, delivered): `verify-witnessed/`
+  relocated from Fulcrum's private repository — public, Apache-2.0,
+  independently-buildable, zero private-code imports (machine-enforced by its
+  own `independence_test.go`). Checks decision-record integrity, manifest,
+  source-hash-to-leaf, inclusion proof, tenant binding, STH signature, and
+  witness cosignatures offline, against locally supplied Ed25519 public keys.
+  Closes the code/license gate only (ADR-041); witnesses today remain
+  Fulcrum-operated, not independently operated. See `verify-witnessed/README.md`.
 
 On the standards question, stated once and precisely: Boundary's per-record
 canonicalization (RFC 8785/JCS) and SHA-256 hashing match the per-record
