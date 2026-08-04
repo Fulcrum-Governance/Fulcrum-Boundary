@@ -148,6 +148,8 @@ Commands:
   shell           Launch a project-local Command Boundary subshell
   policy generate Generate starter Boundary firewall policies
   mcp proxy       Fail-closed generic MCP proxy entrypoint for installed routes
+  mcp secure-github
+                  Run the stateful local Boundary route to official GitHub MCP
   serve           Start the Boundary gateway
   demo action-boundary
                   Run a fixture-only cross-surface action-boundary demo
