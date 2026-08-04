@@ -10,7 +10,7 @@ Current release target: `v0.12.0`
 
 `v0.12.0` is an urgent release candidate. The published release remains
 `v0.11.0`; neither `v0.12.0` nor `verify-witnessed/v0.12.0` exists yet. No
-GitHub release, container, Homebrew formula update, or public-release status
+GitHub release, container, Homebrew cask update, or public-release status
 change is authorized by this candidate document.
 
 Both proposed annotated tags must resolve to the same exact commit, after the
@@ -22,11 +22,18 @@ approval:
 
 The root tag is expected to publish ten static/native-cgo archives, two checksum
 manifests, ten SPDX SBOMs, the fixture-safe evidence bundle, the static
-multi-architecture container, and the static Homebrew formula update. GitHub
+multi-architecture container, and the static Homebrew cask update. GitHub
 build-provenance attestations cover the configured static archives, static
 SBOMs, `SHA256SUMS`, native-cgo archives, and native-cgo SBOMs. Live publication
 and attestation remain unverified until the approved tag-gated workflow runs, so
 `BND-CLAIM-DIST-002` remains `partial`.
+
+The candidate uses GoReleaser's current `dockers_v2` and `homebrew_casks`
+configuration. The public tap still contains the legacy
+`Formula/boundary.rb`; before either release tag is pushed, the release operator
+must migrate that tap entry to the cask path and verify a dry-run install. That
+external tap change is not authorized by this candidate lane and remains a
+human release gate.
 
 The nested verifier is source-distributed only through its nested Go module tag:
 
@@ -34,7 +41,7 @@ The nested verifier is source-distributed only through its nested Go module tag:
 go install github.com/fulcrum-governance/fulcrum-boundary/verify-witnessed@v0.12.0
 ```
 
-There is no verifier-specific archive, container, Homebrew formula, or version
+There is no verifier-specific archive, container, Homebrew package, or version
 flag. The verifier checks bundle integrity and configured signatures offline;
 it does not prove upstream correctness, completeness, immutability, or
 independent witness operation.
@@ -267,7 +274,7 @@ go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.12.0
 ```
 
 Plus release archives with `SHA256SUMS` / `SHA256SUMS-cgo` manifests. Releases
-up to and including `v0.10.0` shipped source-only. The formula and archives
+up to and including `v0.10.0` shipped source-only. The cask and archives
 install the static build; the `_cgo` archives and the source build carry the
 full SQL classifier (Go 1.25+ and a C toolchain required for source).
 

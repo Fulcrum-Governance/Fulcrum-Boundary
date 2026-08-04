@@ -1,6 +1,6 @@
 // channels_test.go pins the install-CHANNEL wiring behind BND-CLAIM-DIST-001:
 // the tag-gated release pipeline must declare every one-command channel —
-// static archives, the SHA256SUMS checksum manifest, the Homebrew tap formula,
+// static archives, the SHA256SUMS checksum manifest, the Homebrew tap cask,
 // and the ghcr.io container image (plus the native-cgo archive + SHA256SUMS-cgo
 // lane). Like its sibling windows_static_test.go and tests/supplychain, these
 // assert the pipeline CONFIGURATION is present and tag-gated; they do NOT claim a
@@ -29,7 +29,7 @@ func mustContainAll(t *testing.T, name, body string, wants ...string) {
 }
 
 // TestStaticArchivesConfigured: the static archive channel exists (the
-// `_static-nocgo` archives that SHA256SUMS and the Homebrew formula install).
+// `_static-nocgo` archives that SHA256SUMS and the Homebrew cask install).
 func TestStaticArchivesConfigured(t *testing.T) {
 	mustContainAll(t, ".goreleaser.yaml archives", goreleaser(t),
 		"archives:", "id: static-archives", "_static-nocgo")
@@ -41,18 +41,25 @@ func TestChecksumManifestConfigured(t *testing.T) {
 		"checksum:", "name_template: SHA256SUMS", "algorithm: sha256")
 }
 
-// TestHomebrewFormulaConfigured: the Homebrew channel publishes the static
-// archives to the fulcrum-governance/homebrew-tap formula.
-func TestHomebrewFormulaConfigured(t *testing.T) {
-	mustContainAll(t, ".goreleaser.yaml brews", goreleaser(t),
-		"brews:", "name: homebrew-tap", "static-archives")
+// TestHomebrewCaskConfigured: the Homebrew channel publishes the static
+// archives to the fulcrum-governance/homebrew-tap cask.
+func TestHomebrewCaskConfigured(t *testing.T) {
+	mustContainAll(t, ".goreleaser.yaml homebrew_casks", goreleaser(t),
+		"homebrew_casks:", "name: homebrew-tap", "static-archives")
+	if strings.Contains(goreleaser(t), "\nbrews:") {
+		t.Fatal(".goreleaser.yaml: deprecated brews configuration remains")
+	}
 }
 
-// TestContainerImageConfigured: the container-image channel exists — per-arch
-// images plus the multi-arch ghcr.io manifest.
+// TestContainerImageConfigured: the multi-platform container-image channel
+// exists through GoReleaser's current dockers_v2 configuration.
 func TestContainerImageConfigured(t *testing.T) {
-	mustContainAll(t, ".goreleaser.yaml dockers", goreleaser(t),
-		"dockers:", "docker_manifests:", "ghcr.io/fulcrum-governance/boundary")
+	mustContainAll(t, ".goreleaser.yaml dockers_v2", goreleaser(t),
+		"dockers_v2:", "linux/amd64", "linux/arm64",
+		"ghcr.io/fulcrum-governance/boundary")
+	if strings.Contains(goreleaser(t), "\ndockers:") || strings.Contains(goreleaser(t), "\ndocker_manifests:") {
+		t.Fatal(".goreleaser.yaml: deprecated docker configuration remains")
+	}
 }
 
 // TestReleasePipelineTagGated: channels publish from a TAG-gated pipeline — the

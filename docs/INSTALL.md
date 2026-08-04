@@ -14,7 +14,7 @@ Fulcrum Boundary ships the `boundary` CLI from the Go module
 | Container image | `docker run --rm ghcr.io/fulcrum-governance/boundary:<tag>` | Reduced — static build |
 | Build from source | `go install …/cmd/boundary@<tag>` (Go 1.25+, C toolchain) | Full Postgres AST classifier |
 
-Channel availability: prebuilt binaries, the tap formula, the container image,
+Channel availability: prebuilt binaries, the tap cask, the container image,
 and both checksum manifests publish from the tag-gated release workflow
 (`.github/workflows/release.yml`) for `v0.10.1` and later. Releases up to and
 including `v0.10.0` shipped source-only (the v0.10.0 pipeline run failed
@@ -28,7 +28,7 @@ brew install fulcrum-governance/tap/boundary
 boundary selftest
 ```
 
-The formula installs the static (`CGO_ENABLED=0`) build — see
+The cask installs the static (`CGO_ENABLED=0`) build — see
 [Static vs cgo](#static-vs-cgo-builds) for the one capability difference. For
 the full SQL classifier, download a `_cgo` release archive or build from
 source.
@@ -102,7 +102,7 @@ binary families:
 - **Cgo builds** (`_cgo` archives, or source builds with a C toolchain):
   statements classify as `READ` / `WRITE` / `ADMIN` / `DESTRUCTIVE` /
   `UNKNOWN`, and policy acts on those classes.
-- **Static builds** (`_static-nocgo` archives, the Homebrew formula, the
+- **Static builds** (`_static-nocgo` archives, the Homebrew cask, the
   container image, or `CGO_ENABLED=0` source builds): the AST parser is
   unavailable. Every routed SQL statement classifies as `UNKNOWN` with the
   reason `sql ast classification unavailable in this build (CGO disabled)`,
@@ -156,7 +156,7 @@ go install github.com/fulcrum-governance/fulcrum-boundary/verify-witnessed@v0.12
 
 Go resolves this from `verify-witnessed/v0.12.0`; that nested tag and root
 `v0.12.0` must point to the same exact commit. The verifier does not ship as a
-separate archive, container, Homebrew formula, or versioned binary surface.
+separate archive, container, Homebrew package, or versioned binary surface.
 See [`verify-witnessed/README.md`](../verify-witnessed/README.md) for the
 offline bundle and keyring contract.
 

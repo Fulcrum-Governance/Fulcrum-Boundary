@@ -112,6 +112,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   Dry-run does not block on the await: the decision keeps the relabel path
   and the reason notes that the await was skipped.
 
+### Changed
+
+- Migrate the release configuration from GoReleaser's deprecated `dockers` /
+  `docker_manifests` and `brews` pipes to `dockers_v2` and `homebrew_casks`.
+  The install command and static-build capability boundary are unchanged. The
+  existing tap formula must be migrated to the cask before the first v0.12.0
+  tag publish; candidate preparation does not mutate the tap or publish an
+  artifact.
+
 ### Security
 
 - Bring the nested `adapters/grpc` module under the CI `security scan` job. Both

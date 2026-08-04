@@ -170,7 +170,7 @@ The release story is a **tight spine of two flagship proof lanes**, each with a 
 
 ## 1.9 Distribution (LOCKED — resolves C10)
 
-- **Prebuilt one-command channels** ship from the tag-gated release pipeline for `v0.10.1`+ — a Homebrew tap formula, a container image, and static + native-cgo archives with SHA256 checksum manifests (`BND-CLAIM-DIST-001`, `delivered`) — **plus** `go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.12.0` from source. Releases up to and including `v0.10.0` were source-only. The source/cgo build requires Go 1.25+ and a C toolchain (CGO) (§5.5).
+- **Prebuilt one-command channels** ship from the tag-gated release pipeline for `v0.10.1`+ — a Homebrew tap cask, a container image, and static + native-cgo archives with SHA256 checksum manifests (`BND-CLAIM-DIST-001`, `delivered`) — **plus** `go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.12.0` from source. Releases up to and including `v0.10.0` were source-only. The source/cgo build requires Go 1.25+ and a C toolchain (CGO) (§5.5).
 - **No** hosted-monitoring and **no** cloud analysis: every channel installs a **local** binary, and the **dashboard reads local artifacts only** (`local-only`). Full mechanics §7.4.
 - **superseded:** the earlier "local + `go install` only — no Homebrew / package-manager distribution" stance (pre-`v0.10.1`, before the tag-gated pipeline shipped), and any implied hosted monitoring.
 
@@ -646,7 +646,7 @@ brew install fulcrum-governance/tap/boundary
 go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.12.0
 ```
 
-- The Homebrew formula and the container image ship the **static** build; the `_cgo` archives and the source build carry the full SQL classifier. Releases up to and including `v0.10.0` were source-only.
+- The Homebrew cask and the container image ship the **static** build; the `_cgo` archives and the source build carry the full SQL classifier. Releases up to and including `v0.10.0` were source-only.
 - **No hosted/monitoring service.** Every channel installs a **local** binary. The dashboard is **`local-only`**, reads **local artifacts only** (inventory, risk paths, policy status, install receipts, descriptor locks, local decision-record files), binds to loopback, and **rejects non-loopback serve addresses**.
 - The C-toolchain prerequisite (§5.5) belongs with the source/cgo install instructions.
 - **superseded:** the pre-`v0.10.1` "local + `go install` only — no package-manager distribution" stance.

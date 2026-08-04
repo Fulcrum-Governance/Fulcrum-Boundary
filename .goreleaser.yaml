@@ -130,7 +130,7 @@ release:
 
     Everything else — the four-stage pipeline, decision records, demos,
     `selftest`, `doctor`, `evidence` — behaves identically in both variants.
-    The Homebrew formula and the container image ship the static variant; use
+    The Homebrew cask and the container image ship the static variant; use
     a `_cgo` archive (or build from source with a C toolchain) for the full
     classifier. The attached `boundary-evidence.tar.gz` is the local-only,
     fixture-safe output of `boundary evidence bundle` for this release; it
@@ -138,57 +138,37 @@ release:
 
 # The container image ships the static (reduced SQL classification) variant;
 # the image notes above apply to it as well.
-dockers:
-  - id: boundary-docker-amd64
+dockers_v2:
+  - id: boundary-docker
     ids:
       - boundary-static
-    goos: linux
-    goarch: amd64
-    use: buildx
     dockerfile: Dockerfile.release
-    image_templates:
-      - ghcr.io/fulcrum-governance/boundary:v{{ .Version }}-amd64
-    build_flag_templates:
-      - --platform=linux/amd64
-      - --label=org.opencontainers.image.title=boundary
-      - --label=org.opencontainers.image.description=Pre-execution action boundary for routed AI-agent tool calls (static build; reduced SQL classification)
-      - --label=org.opencontainers.image.source=https://github.com/Fulcrum-Governance/Fulcrum-Boundary
-      - --label=org.opencontainers.image.version=v{{ .Version }}
-      - --label=org.opencontainers.image.revision={{ .FullCommit }}
-      - --label=org.opencontainers.image.licenses=Apache-2.0
-  - id: boundary-docker-arm64
-    ids:
-      - boundary-static
-    goos: linux
-    goarch: arm64
-    use: buildx
-    dockerfile: Dockerfile.release
-    image_templates:
-      - ghcr.io/fulcrum-governance/boundary:v{{ .Version }}-arm64
-    build_flag_templates:
-      - --platform=linux/arm64
-      - --label=org.opencontainers.image.title=boundary
-      - --label=org.opencontainers.image.description=Pre-execution action boundary for routed AI-agent tool calls (static build; reduced SQL classification)
-      - --label=org.opencontainers.image.source=https://github.com/Fulcrum-Governance/Fulcrum-Boundary
-      - --label=org.opencontainers.image.version=v{{ .Version }}
-      - --label=org.opencontainers.image.revision={{ .FullCommit }}
-      - --label=org.opencontainers.image.licenses=Apache-2.0
+    images:
+      - ghcr.io/fulcrum-governance/boundary
+    tags:
+      - "v{{ .Version }}"
+      - latest
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    labels:
+      org.opencontainers.image.title: boundary
+      org.opencontainers.image.description: Pre-execution action boundary for routed AI-agent tool calls (static build; reduced SQL classification)
+      org.opencontainers.image.source: https://github.com/Fulcrum-Governance/Fulcrum-Boundary
+      org.opencontainers.image.version: "v{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+      org.opencontainers.image.licenses: Apache-2.0
+    # Archive SBOMs are release assets. Container SBOM publication is not yet
+    # part of BND-CLAIM-DIST-002 and remains outside this migration's scope.
+    sbom: false
 
-docker_manifests:
-  - name_template: ghcr.io/fulcrum-governance/boundary:v{{ .Version }}
-    image_templates:
-      - ghcr.io/fulcrum-governance/boundary:v{{ .Version }}-amd64
-      - ghcr.io/fulcrum-governance/boundary:v{{ .Version }}-arm64
-  - name_template: ghcr.io/fulcrum-governance/boundary:latest
-    image_templates:
-      - ghcr.io/fulcrum-governance/boundary:v{{ .Version }}-amd64
-      - ghcr.io/fulcrum-governance/boundary:v{{ .Version }}-arm64
-
-# Homebrew formula for `brew install fulcrum-governance/tap/boundary`.
-# The formula installs the static (reduced SQL classification) archives built
+# Homebrew cask for `brew install fulcrum-governance/tap/boundary`.
+# The cask installs the static (reduced SQL classification) archives built
 # above; the per-runner `_cgo` full-classifier archives are workflow-built
-# release assets and are not referenced by the formula.
-brews:
+# release assets and are not referenced by the cask. Before the first cask
+# publish, the tap's legacy Formula/boundary.rb must be migrated explicitly;
+# the release approval packet records that external human gate.
+homebrew_casks:
   - name: boundary
     ids:
       - static-archives
@@ -197,19 +177,20 @@ brews:
       name: homebrew-tap
       branch: main
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    directory: Formula
     homepage: https://github.com/Fulcrum-Governance/Fulcrum-Boundary
     description: Pre-execution action boundary for routed AI-agent tool calls
     license: Apache-2.0
+    binaries:
+      - boundary
+    url:
+      verified: github.com/Fulcrum-Governance/Fulcrum-Boundary/
     skip_upload: auto
     commit_author:
       name: Tony Diefenbach
       email: tonydiefenbach@gmail.com
     commit_msg_template: "boundary {{ .Tag }}"
-    test: |
-      system "#{bin}/boundary", "version"
     caveats: |
-      This formula installs the static (CGO_ENABLED=0) build. Its Postgres
+      This cask installs the static (CGO_ENABLED=0) build. Its Postgres
       AST classifier is unavailable: every routed SQL statement classifies as
       UNKNOWN and the Postgres guard denies it fail-closed. For the full SQL
       classifier, download a `_cgo` release archive or build from source with

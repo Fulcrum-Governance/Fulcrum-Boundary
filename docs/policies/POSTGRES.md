@@ -39,7 +39,7 @@ least 30 cases and verifies each expected class.
 
 The classifier links `pg_query_go`, a cgo binding for the PostgreSQL parser,
 so it requires a cgo build. In binaries built with `CGO_ENABLED=0` — the
-prebuilt `_static-nocgo` release archives, the Homebrew formula, and the
+prebuilt `_static-nocgo` release archives, the Homebrew cask, and the
 container image (see [`docs/INSTALL.md`](../INSTALL.md)) — the AST parser is
 unavailable: every statement classifies as `UNKNOWN` with the reason
 `sql ast classification unavailable in this build (CGO disabled)`, and the

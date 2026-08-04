@@ -207,18 +207,18 @@ claims:
       - BND-CLAIM-008
 
   - id: BND-CLAIM-DIST-001
-    claim: "Boundary publishes one-command install channels (Homebrew tap formula, prebuilt static and native-cgo archives with SHA256 checksum manifests, container image) from a tag-gated release pipeline"
+    claim: "Boundary publishes one-command install channels (Homebrew tap cask, prebuilt static and native-cgo archives with SHA256 checksum manifests, container image) from a tag-gated release pipeline"
     status: delivered
     evidence:
       tests:
         - path: tests/releasebuild/channels_test.go
-          assertion: ".goreleaser.yaml wires the static archives, the SHA256SUMS checksum manifest, the Homebrew tap formula, and the ghcr.io container image (plus the multi-arch manifest), and .github/workflows/release.yml is tag-gated (push tags v*) and builds the _cgo archives plus the SHA256SUMS-cgo manifest; pins the config wiring, not a live publish"
+          assertion: ".goreleaser.yaml wires the static archives, the SHA256SUMS checksum manifest, the Homebrew tap cask, and the ghcr.io multi-platform container image, and .github/workflows/release.yml is tag-gated (push tags v*) and builds the _cgo archives plus the SHA256SUMS-cgo manifest; pins the config wiring, not a live publish"
       docs:
         - path: docs/INSTALL.md
           section: "Install Channels"
     public_language:
       allowed:
-        - "A tag-gated release pipeline builds static (CGO_ENABLED=0) archives for darwin, linux, and windows on amd64 and arm64, native-cgo full-classifier archives, SHA256 checksum manifests, a Homebrew formula, and a container image."
+        - "A tag-gated release pipeline builds static (CGO_ENABLED=0) archives for darwin, linux, and windows on amd64 and arm64, native-cgo full-classifier archives, SHA256 checksum manifests, a Homebrew cask, and a container image."
         - "Install channels publish from the tag-gated pipeline for v0.10.1 and later; releases up to and including v0.10.0 shipped source-only."
         - "Windows ships the static (CGO_ENABLED=0) build only by design; native-cgo full-classifier archives are produced for darwin and linux, not Windows."
       forbidden:

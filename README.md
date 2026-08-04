@@ -63,7 +63,7 @@ boundary verify-record github-lethal-trifecta-artifacts/decision-record.json
 ```
 
 > One honest capability split: the prebuilt static binaries, the Homebrew
-> formula, and the container image are `CGO_ENABLED=0` builds, so the Postgres
+> cask, and the container image are `CGO_ENABLED=0` builds, so the Postgres
 > AST classifier (a cgo binding) is unavailable — routed SQL classifies as
 > `UNKNOWN` and the Postgres guard denies it fail-closed. The static build
 > never allows SQL the cgo build would deny. The `_cgo` release archives carry
