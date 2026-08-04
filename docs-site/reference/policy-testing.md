@@ -16,7 +16,7 @@ JSON envelope is `boundary.test.v1` and includes one result per case plus the
 local-safety flags.
 
 Availability note: this command shipped in `v0.9.0` and remains included in
-the current `v0.11.0` release. The historical `@v0.8.0` install does not
+the current `v0.12.0` release. The historical `@v0.8.0` install does not
 include it.
 
 What it does not prove:

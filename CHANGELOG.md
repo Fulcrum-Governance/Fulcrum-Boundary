@@ -6,7 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-08-04
+
 ### Added
+
+- Preview stateful Secure GitHub route to the official GitHub MCP endpoint
+  (`BND-CLAIM-GH-021`): `boundary mcp secure-github` governs exactly one
+  configured untrusted source issue and one protected target repository and
+  branch. A successful `issue_read` taints the session; a later protected
+  `create_or_update_file` is denied before forwarding with a full decision
+  record and an independent `blocked_before_forward` event. The route does not
+  semantically classify issue prose, govern the full GitHub MCP catalog, close
+  direct GitHub bypasses, or change Secure GitHub's preview status.
 
 - Publish `fulcrum-verify-witnessed` (`verify-witnessed/`, `BND-CLAIM-WITNESS-001`,
   `delivered`): relocated from Fulcrum's private repository as a standalone,
@@ -550,7 +561,8 @@ Initial public release of the project now known as Fulcrum Boundary.
 
 ---
 
-[Unreleased]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.10.1...v0.11.0
 [0.10.1]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.9.0...v0.10.0

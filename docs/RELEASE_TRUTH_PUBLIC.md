@@ -1,12 +1,58 @@
 # Final Public Release Truth
 
-Date: 2026-06-11
+Date: 2026-08-04
 
 Branch: `main`
 
-Current release target: `v0.11.0`
+Current release target: `v0.12.0`
 
-## Summary
+## Candidate status — not published
+
+`v0.12.0` is an urgent release candidate. The published release remains
+`v0.11.0`; neither `v0.12.0` nor `verify-witnessed/v0.12.0` exists yet. No
+GitHub release, container, Homebrew formula update, or public-release status
+change is authorized by this candidate document.
+
+Both proposed annotated tags must resolve to the same exact commit, after the
+candidate PR is merged and an operator gives explicit exact-commit and dual-tag
+approval:
+
+- root distribution tag: `v0.12.0`
+- nested source-distribution tag: `verify-witnessed/v0.12.0`
+
+The root tag is expected to publish ten static/native-cgo archives, two checksum
+manifests, ten SPDX SBOMs, the fixture-safe evidence bundle, the static
+multi-architecture container, and the static Homebrew formula update. GitHub
+build-provenance attestations cover the configured static archives, static
+SBOMs, `SHA256SUMS`, native-cgo archives, and native-cgo SBOMs. Live publication
+and attestation remain unverified until the approved tag-gated workflow runs, so
+`BND-CLAIM-DIST-002` remains `partial`.
+
+The nested verifier is source-distributed only through its nested Go module tag:
+
+```bash
+go install github.com/fulcrum-governance/fulcrum-boundary/verify-witnessed@v0.12.0
+```
+
+There is no verifier-specific archive, container, Homebrew formula, or version
+flag. The verifier checks bundle integrity and configured signatures offline;
+it does not prove upstream correctness, completeness, immutability, or
+independent witness operation.
+
+The candidate adds the relocated Apache-2.0 verifier; the Secure GitHub
+bypass-proof ladder and narrow stateful official-MCP route (both still preview);
+the proof-receipt sidecar; the wired-witness vocabulary reconciliation; per-host
+install docs; the permanent Windows static-only stance; SBOM and provenance
+wiring; kernel escalation await mode and pipeline seam; and the Go 1.26.5
+toolchain/security refresh. It does not change adapter maturity; Boundary does
+not emit `proved` decisions.
+
+Post-publication reconciliation must independently verify both tag targets, all
+GitHub assets and attestations, container pull/version behavior, Homebrew
+upgrade/version behavior, nested `go install`, source-fresh-clone tests, and
+protected-branch checks before this section can be promoted to published truth.
+
+## Published baseline: v0.11.0
 
 This report reconciles the public Boundary release surface for the published
 `v0.11.0` release — the verifiable-records-breadth release. `v0.10.1` (the
@@ -145,10 +191,10 @@ boundary demo github-lethal-trifecta
 boundary demo tamper-evidence
 ```
 
-The source path remains:
+The candidate source path, available only after approved publication, is:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.11.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.12.0
 ```
 
 All demos remain credential-free and perform no live calls or real mutations.
@@ -212,12 +258,12 @@ Command Boundary, and Edit Boundary are preview. The full table is in
 
 ## User-Install Status
 
-The documented install channels (binaries publish for `v0.10.1` and later; current tag `v0.11.0`):
+The candidate install channels (available only after approved publication of `v0.12.0`) are:
 
 ```bash
 brew install fulcrum-governance/tap/boundary          # static build
-docker pull ghcr.io/fulcrum-governance/boundary:v0.11.0
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.11.0
+docker pull ghcr.io/fulcrum-governance/boundary:v0.12.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.12.0
 ```
 
 Plus release archives with `SHA256SUMS` / `SHA256SUMS-cgo` manifests. Releases
@@ -230,7 +276,7 @@ full SQL classifier (Go 1.25+ and a C toolchain required for source).
 The MCP audit action examples use:
 
 ```yaml
-- uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.11.0
+- uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.12.0
 ```
 
 Use the release tag for repeatable CI behavior. SARIF upload examples must

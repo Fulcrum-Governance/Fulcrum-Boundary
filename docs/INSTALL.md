@@ -137,13 +137,28 @@ Requires Go 1.25+ and, for the default cgo build, a C toolchain (a C compiler
 such as gcc/clang on `PATH`):
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.11.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.12.0
 boundary selftest
 ```
 
-`@v0.11.0` is the recommended repeatable install target for the current launch
+`@v0.12.0` is the recommended repeatable install target for the current launch
 release. `@latest` resolves to the latest published release after the Go proxy
 refreshes.
+
+### Offline witnessed-log verifier
+
+The independently buildable verifier is a separate nested Go module and is
+source-distributed through its matching nested tag:
+
+```bash
+go install github.com/fulcrum-governance/fulcrum-boundary/verify-witnessed@v0.12.0
+```
+
+Go resolves this from `verify-witnessed/v0.12.0`; that nested tag and root
+`v0.12.0` must point to the same exact commit. The verifier does not ship as a
+separate archive, container, Homebrew formula, or versioned binary surface.
+See [`verify-witnessed/README.md`](../verify-witnessed/README.md) for the
+offline bundle and keyring contract.
 
 From a checkout:
 
