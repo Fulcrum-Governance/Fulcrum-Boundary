@@ -201,6 +201,15 @@ func TestMCPRouteLifecycleAndWriteAfterTaintDenial(t *testing.T) {
 	if after != before {
 		t.Fatalf("disallowed source reached upstream: before=%d after=%d", before, after)
 	}
+	beforeFractional, _, _, _ := upstream.snapshot()
+	fractionalSource := postMCP(t, route, sessionID, toolCall(301, GitHubIssueReadTool, map[string]any{
+		"method": "get", "owner": "public-org", "repo": "untrusted-issues", "issue_number": 17.5,
+	}), nil)
+	assertDenied(t, fractionalSource, "secure-github-source-allowlist")
+	afterFractional, _, _, _ := upstream.snapshot()
+	if afterFractional != beforeFractional {
+		t.Fatalf("fractional source issue reached upstream: before=%d after=%d", beforeFractional, afterFractional)
+	}
 
 	upstream.setReadFails(true)
 	readFailure := postMCP(t, route, sessionID, toolCall(31, GitHubIssueReadTool, configuredRead()), nil)
@@ -274,6 +283,22 @@ func TestMCPRouteLifecycleAndWriteAfterTaintDenial(t *testing.T) {
 	assertDenied(t, disallowedSink, "secure-github-sink-allowlist")
 	unknownTool := postMCP(t, route, sessionID, toolCall(36, "delete_file", map[string]any{}), nil)
 	assertDenied(t, unknownTool, "secure-github-tool-allowlist")
+	beforeSlashTool, _, _, _ := upstream.snapshot()
+	slashTool := postMCP(t, route, sessionID, toolCall(37, "delete/file", map[string]any{}), nil)
+	assertDenied(t, slashTool, "secure-github-tool-allowlist")
+	afterSlashTool, _, _, _ := upstream.snapshot()
+	if afterSlashTool != beforeSlashTool {
+		t.Fatalf("slash-containing unknown tool reached upstream: before=%d after=%d", beforeSlashTool, afterSlashTool)
+	}
+	slashRecord := decisions.latest(t)
+	slashCanary := forwardEvents.latest(t)
+	if slashRecord.MatchedRule != "secure-github-tool-allowlist" || slashCanary.RequestID != recordRequestID(t, slashTool.Body.Bytes()) ||
+		slashCanary.Tool != "delete/file" || slashCanary.Forwarded || slashCanary.Outcome != "blocked_before_forward" {
+		t.Fatalf("slash-containing tool lacks canonical deny evidence: record=%+v canary=%+v", slashRecord, slashCanary)
+	}
+	if err := governance.VerifyDecisionRecord(slashRecord, nil, "", ""); err != nil {
+		t.Fatalf("slash-containing tool decision record does not verify: %v", err)
+	}
 }
 
 func TestMCPRouteIssueReadJSONAndSSEOutcomes(t *testing.T) {

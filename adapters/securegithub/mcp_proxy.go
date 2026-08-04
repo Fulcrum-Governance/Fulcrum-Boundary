@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"mime"
 	"net/http"
 	"net/url"
@@ -183,7 +184,7 @@ func secureGitHubMCPPolicyRules() []governance.StaticPolicyRule {
 		return governance.StaticPolicyMatch{Type: "equals", Field: field, Value: value}
 	}
 	return []governance.StaticPolicyRule{
-		deny("secure-github-tool-allowlist", "github.*", "tool is not exposed by the Secure GitHub route", equals("arguments.tool_allowed", "false")),
+		deny("secure-github-tool-allowlist", "*", "tool is not exposed by the Secure GitHub route", equals("arguments.tool_allowed", "false")),
 		deny("secure-github-source-allowlist", "github."+GitHubIssueReadTool, "source issue is outside the configured untrusted source", equals("arguments.source_allowed", "false")),
 		deny("secure-github-sink-allowlist", "github."+GitHubProtectedWriteTool, "target repository or branch is outside the configured protected sink", equals("arguments.sink_allowed", "false")),
 		deny("secure-github-write-after-taint", "github."+GitHubProtectedWriteTool, "protected write denied after configured untrusted source read", equals("arguments.tainted", "true")),
@@ -423,8 +424,9 @@ func (r *MCPRoute) emitDenial(w http.ResponseWriter, ctx context.Context, id jso
 }
 
 func (r *MCPRoute) allowedSource(args map[string]any) bool {
+	issueNumber, ok := exactIntValue(args["issue_number"])
 	return stringValue(args["method"]) == "get" && stringValue(args["owner"]) == r.cfg.SourceOwner &&
-		stringValue(args["repo"]) == r.cfg.SourceRepo && intValue(args["issue_number"]) == r.cfg.SourceIssue
+		stringValue(args["repo"]) == r.cfg.SourceRepo && ok && issueNumber == r.cfg.SourceIssue
 }
 
 func (r *MCPRoute) allowedTarget(args map[string]any) bool {
@@ -656,12 +658,24 @@ func stringValue(value any) string {
 	return s
 }
 
-func intValue(value any) int {
+func exactIntValue(value any) (int, bool) {
 	switch v := value.(type) {
 	case float64:
-		return int(v)
+		if math.IsNaN(v) || math.IsInf(v, 0) || v != math.Trunc(v) {
+			return 0, false
+		}
+		maxInt := int(^uint(0) >> 1)
+		minInt := -maxInt - 1
+		if v < float64(minInt) || v > float64(maxInt) {
+			return 0, false
+		}
+		converted := int(v)
+		if float64(converted) != v {
+			return 0, false
+		}
+		return converted, true
 	case int:
-		return v
+		return v, true
 	}
-	return 0
+	return 0, false
 }
