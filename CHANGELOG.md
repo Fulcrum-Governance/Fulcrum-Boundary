@@ -8,6 +8,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- Publish `fulcrum-verify-witnessed` (`verify-witnessed/`, `BND-CLAIM-WITNESS-001`,
+  `delivered`): relocated from Fulcrum's private repository as a standalone,
+  Apache-2.0, independently-buildable Go module with zero dependencies on
+  Fulcrum private code (machine-enforced by its own `independence_test.go`).
+  Checks an exported witnessed-log bundle offline — decision-record integrity,
+  manifest, source-hash-to-leaf, inclusion proof, tenant binding,
+  signed-tree-head signature, and witness cosignatures — against locally
+  supplied Ed25519 public keys, with no Fulcrum account, credential, or
+  network call. Closes the code/license gate for witnessed-log verification
+  (ADR-041); does not establish that any witness is operated independently of
+  Fulcrum — today's witnesses remain Fulcrum-operated, on separate
+  infrastructure. See `verify-witnessed/README.md`.
+
 - Secure GitHub bypass-proof ladder (L0-L3) and a fail-closed deployment
   bypass-proof packet that records operator-owned live evidence (L1) and
   operator-attested deployment-topology denials (L2). Reaching L2 is an internal

@@ -57,6 +57,7 @@ tests/conformance/secure_github/transcript/*.log
 
 # local build artifact
 /boundary
+/verify-witnessed/fulcrum-verify-witnessed
 
 # Python verifier artifacts (keep source, ignore bytecode/venv)
 __pycache__/

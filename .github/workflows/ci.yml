@@ -48,6 +48,19 @@ jobs:
         working-directory: adapters/grpc
         run: go test ./... -count=1 -race -cover
 
+  verify-witnessed:
+    name: test verify-witnessed module
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.26.5'
+          cache: true
+      - name: test verify-witnessed module
+        working-directory: verify-witnessed
+        run: go test ./... -count=1 -race -cover
+
   examples:
     name: build examples
     runs-on: ubuntu-latest
@@ -125,10 +138,10 @@ jobs:
         with:
           go-version: '1.26.5'
           cache: true
-      # adapters/grpc is a separate Go module: the root `./...` pattern does not
-      # reach it, so each scanner needs its own invocation from that module root
-      # or the module ships unscanned. Steps stay separate so a red names its
-      # scanner and its module.
+      # adapters/grpc and verify-witnessed are separate Go modules: the root
+      # `./...` pattern does not reach them, so each scanner needs its own
+      # invocation from that module root or the module ships unscanned. Steps
+      # stay separate so a red names its scanner and its module.
       - name: gosec (root module)
         env:
           GOTOOLCHAIN: go1.26.5
@@ -137,6 +150,11 @@ jobs:
         env:
           GOTOOLCHAIN: go1.26.5
         working-directory: adapters/grpc
+        run: go run github.com/securego/gosec/v2/cmd/gosec@v2.26.1 ./...
+      - name: gosec (verify-witnessed module)
+        env:
+          GOTOOLCHAIN: go1.26.5
+        working-directory: verify-witnessed
         run: go run github.com/securego/gosec/v2/cmd/gosec@v2.26.1 ./...
       - name: govulncheck (root module)
         env:
@@ -148,6 +166,11 @@ jobs:
         env:
           GOTOOLCHAIN: go1.26.5
         working-directory: adapters/grpc
+        run: govulncheck ./...
+      - name: govulncheck (verify-witnessed module)
+        env:
+          GOTOOLCHAIN: go1.26.5
+        working-directory: verify-witnessed
         run: govulncheck ./...
 
   fuzz:
@@ -177,6 +200,7 @@ jobs:
       - public-surface
       - test
       - grpc-adapter
+      - verify-witnessed
       - examples
       - cross-verifier
       - lint

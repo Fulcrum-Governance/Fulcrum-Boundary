@@ -62,6 +62,7 @@ func languageLintPaths(t *testing.T, repoRoot string) []string {
 		"docs/edit-boundary/*.md",
 		"docs/releases/*.md",
 		"verifiers/*/README.md",
+		"verify-witnessed/README.md",
 	}
 
 	seen := map[string]bool{}
