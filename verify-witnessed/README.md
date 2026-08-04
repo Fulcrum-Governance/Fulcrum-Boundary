@@ -179,8 +179,8 @@ Options:
 ```
 
 `--keyring`, `--fulcrum-pubkey`, and `--witness-pubkey` are each repeatable
-and may be combined. Exit codes: `0` if every check status is `pass`; `1` on
-a runtime error or any `fail` status; `2` on a usage or input error.
+and may be combined. Exit codes: `0` if no check status is `fail`; `1` on a
+runtime error or any `fail` status; `2` on a usage or input error.
 
 ## Tests
 
