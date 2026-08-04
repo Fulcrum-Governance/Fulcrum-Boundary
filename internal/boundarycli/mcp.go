@@ -93,14 +93,19 @@ func runSecureGitHubMCP(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	server := &http.Server{
-		Addr:              *listen,
 		Handler:           route,
 		ReadHeaderTimeout: 5 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
-	fmt.Fprintf(stdout, "READY: Secure GitHub MCP route listening on http://%s/mcp\n", *listen)
+	listener, err := net.Listen("tcp", *listen)
+	if err != nil {
+		fmt.Fprintf(stderr, "secure-github: bind: %v\n", err)
+		return 1
+	}
+	defer listener.Close()
+	fmt.Fprintf(stdout, "READY: Secure GitHub MCP route listening on http://%s/mcp\n", listener.Addr().String())
 	fmt.Fprintf(stdout, "source=%s/%s#%d target=%s/%s@%s\n", *sourceOwner, *sourceRepo, *sourceIssue, *targetOwner, *targetRepo, *targetBranch)
-	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		fmt.Fprintf(stderr, "secure-github: serve: %v\n", err)
 		return 1
 	}

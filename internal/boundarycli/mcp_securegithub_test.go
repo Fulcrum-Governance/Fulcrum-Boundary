@@ -2,6 +2,8 @@ package boundarycli
 
 import (
 	"bytes"
+	"net"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -26,6 +28,32 @@ func TestSecureGitHubMCPHelpAndCredentialReadinessGate(t *testing.T) {
 	}, &stdout, &stderr)
 	if code != 1 || !strings.Contains(stderr.String(), "NOT READY: SECURE_GITHUB_MCP_TOKEN_MISSING (FUL471_TEST_GITHUB_TOKEN)") {
 		t.Fatalf("credential readiness exit/stderr = %d/%q", code, stderr.String())
+	}
+}
+
+func TestSecureGitHubMCPPrintsReadyOnlyAfterSuccessfulBind(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	t.Setenv("FUL471_TEST_GITHUB_TOKEN", "fake-token")
+	dir := t.TempDir()
+	var stdout, stderr bytes.Buffer
+	code := Run([]string{
+		"mcp", "secure-github",
+		"--listen", listener.Addr().String(), "--upstream", "http://127.0.0.1:1/mcp",
+		"--source-owner", "public-org", "--source-repo", "issues", "--source-issue", "17",
+		"--target-owner", "private-org", "--target-repo", "protected", "--target-branch", "main",
+		"--token-env", "FUL471_TEST_GITHUB_TOKEN",
+		"--decision-records", filepath.Join(dir, "decisions.jsonl"),
+		"--forward-events", filepath.Join(dir, "forward.jsonl"),
+	}, &stdout, &stderr)
+	if code != 1 || !strings.Contains(stderr.String(), "secure-github: bind:") {
+		t.Fatalf("occupied bind exit/stderr = %d/%q", code, stderr.String())
+	}
+	if strings.Contains(stdout.String(), "READY:") {
+		t.Fatalf("READY printed before listener bind: %q", stdout.String())
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -43,6 +44,21 @@ type captureForwardSink struct {
 	events []MCPForwardEvent
 }
 
+type failFirstForwardSink struct {
+	mu    sync.Mutex
+	calls int
+}
+
+func (s *failFirstForwardSink) WriteForwardEvent(context.Context, MCPForwardEvent) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.calls++
+	if s.calls == 1 {
+		return errors.New("forward evidence unavailable")
+	}
+	return nil
+}
+
 func (s *captureForwardSink) WriteForwardEvent(_ context.Context, event MCPForwardEvent) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -58,6 +74,12 @@ func (s *captureForwardSink) latest(t *testing.T) MCPForwardEvent {
 		t.Fatal("no forward event captured")
 	}
 	return s.events[len(s.events)-1]
+}
+
+func (s *captureForwardSink) snapshot() []MCPForwardEvent {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]MCPForwardEvent{}, s.events...)
 }
 
 type upstreamCapture struct {
@@ -97,10 +119,10 @@ func (u *upstreamCapture) handler(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusAccepted)
 	case "tools/call":
 		if msg.Params.Name == GitHubIssueReadTool && readFails {
-			_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"read failed"}],"isError":true}}`))
+			_, _ = fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"result":{"content":[{"type":"text","text":"read failed"}],"isError":true}}`, msg.ID)
 			return
 		}
-		_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"configured issue"}]}}`))
+		_, _ = fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"result":{"content":[{"type":"text","text":"configured issue"}]}}`, msg.ID)
 	default:
 		_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":9,"result":{}}`))
 	}
@@ -151,6 +173,23 @@ func TestMCPRouteLifecycleAndWriteAfterTaintDenial(t *testing.T) {
 	tools := postMCP(t, route, sessionID, `{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}`, nil)
 	if strings.Contains(tools.Body.String(), "delete_file") || !strings.Contains(tools.Body.String(), GitHubIssueReadTool) || !strings.Contains(tools.Body.String(), GitHubProtectedWriteTool) {
 		t.Fatalf("tools/list was not filtered: %s", tools.Body.String())
+	}
+	ping := postMCP(t, route, sessionID, `{"jsonrpc":"2.0","id":20,"method":"ping","params":{}}`, nil)
+	if ping.Code != http.StatusOK {
+		t.Fatalf("ping status = %d", ping.Code)
+	}
+	beforeUnknown, _, _, _ := upstream.snapshot()
+	unknownMethod := postMCP(t, route, sessionID, `{"jsonrpc":"2.0","id":21,"method":"github/custom","params":{}}`, nil)
+	if !strings.Contains(unknownMethod.Body.String(), `"code":-32601`) {
+		t.Fatalf("custom method was not rejected: %s", unknownMethod.Body.String())
+	}
+	unknownNotification := postMCP(t, route, sessionID, `{"jsonrpc":"2.0","method":"notifications/custom","params":{}}`, nil)
+	if unknownNotification.Code != http.StatusAccepted || unknownNotification.Body.Len() != 0 {
+		t.Fatalf("custom notification rejection = %d/%q", unknownNotification.Code, unknownNotification.Body.String())
+	}
+	afterUnknown, _, _, _ := upstream.snapshot()
+	if afterUnknown != beforeUnknown {
+		t.Fatalf("unknown methods reached upstream: before=%d after=%d", beforeUnknown, afterUnknown)
 	}
 
 	before, _, _, _ := upstream.snapshot()
@@ -213,6 +252,21 @@ func TestMCPRouteLifecycleAndWriteAfterTaintDenial(t *testing.T) {
 	if canary.RequestID != recordRequestID(t, deniedWrite.Body.Bytes()) || canary.Forwarded || !canary.Mutation || canary.Outcome != "blocked_before_forward" {
 		t.Fatalf("independent canary does not prove no-forward: %+v", canary)
 	}
+	var sawRead, sawBlockedMutation bool
+	for _, event := range forwardEvents.snapshot() {
+		if event.Tool == GitHubIssueReadTool && event.Outcome == "forwarded_success" && event.Forwarded && !event.Mutation {
+			sawRead = true
+		}
+		if event.Tool == GitHubProtectedWriteTool && event.Outcome == "blocked_before_forward" && !event.Forwarded && event.Mutation {
+			sawBlockedMutation = true
+		}
+		if event.Mutation && event.Forwarded {
+			t.Fatalf("forward log contains a mutation request: %+v", event)
+		}
+	}
+	if !sawRead || !sawBlockedMutation {
+		t.Fatalf("forward log lacks correlated read/block events: %+v", forwardEvents.snapshot())
+	}
 
 	disallowedSink := postMCP(t, route, sessionID, toolCall(35, GitHubProtectedWriteTool, map[string]any{
 		"owner": "private-org", "repo": "protected-repo", "branch": "dev", "path": "README.md", "content": "x", "message": "x",
@@ -220,6 +274,210 @@ func TestMCPRouteLifecycleAndWriteAfterTaintDenial(t *testing.T) {
 	assertDenied(t, disallowedSink, "secure-github-sink-allowlist")
 	unknownTool := postMCP(t, route, sessionID, toolCall(36, "delete_file", map[string]any{}), nil)
 	assertDenied(t, unknownTool, "secure-github-tool-allowlist")
+}
+
+func TestMCPRouteIssueReadJSONAndSSEOutcomes(t *testing.T) {
+	type outcome struct {
+		name    string
+		result  func(json.RawMessage) string
+		tainted bool
+	}
+	outcomes := []outcome{
+		{
+			name: "success",
+			result: func(id json.RawMessage) string {
+				return fmt.Sprintf(`{"jsonrpc":"2.0","id":%s,"result":{"content":[{"type":"text","text":"configured issue"}]}}`, id)
+			},
+			tainted: true,
+		},
+		{
+			name: "tool-is-error",
+			result: func(id json.RawMessage) string {
+				return fmt.Sprintf(`{"jsonrpc":"2.0","id":%s,"result":{"content":[{"type":"text","text":"read failed"}],"isError":true}}`, id)
+			},
+		},
+		{
+			name: "json-rpc-error",
+			result: func(id json.RawMessage) string {
+				return fmt.Sprintf(`{"jsonrpc":"2.0","id":%s,"error":{"code":-32000,"message":"read failed"}}`, id)
+			},
+		},
+		{
+			name: "mismatched-id",
+			result: func(json.RawMessage) string {
+				return `{"jsonrpc":"2.0","id":999,"result":{"content":[{"type":"text","text":"wrong request"}]}}`
+			},
+		},
+	}
+	for _, format := range []string{"application/json; charset=utf-8", "text/event-stream; charset=utf-8"} {
+		for _, test := range outcomes {
+			name := strings.Split(format, ";")[0] + "/" + test.name
+			t.Run(name, func(t *testing.T) {
+				forwardEvents := &captureForwardSink{}
+				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+					body, _ := io.ReadAll(req.Body)
+					var msg mcpWireMessage
+					_ = json.Unmarshal(body, &msg)
+					w.Header().Set("Content-Type", format)
+					w.Header().Set("Cache-Control", "no-cache, no-transform")
+					var response string
+					switch msg.Method {
+					case "initialize":
+						response = fmt.Sprintf(`{"jsonrpc":"2.0","id":%s,"result":{"protocolVersion":"2025-06-18","capabilities":{"tools":{}},"serverInfo":{"name":"github-mcp","version":"test"}}}`, msg.ID)
+					case "tools/list":
+						response = fmt.Sprintf(`{"jsonrpc":"2.0","id":%s,"result":{"tools":[{"name":"issue_read"},{"name":"create_or_update_file"},{"name":"delete_file"}]}}`, msg.ID)
+					case "tools/call":
+						response = test.result(msg.ID)
+					}
+					if baseMediaType(format) == "text/event-stream" {
+						_, _ = fmt.Fprintf(w, "event: message\nid: upstream-event\ndata: %s\n\n", response)
+						return
+					}
+					_, _ = io.WriteString(w, response)
+				}))
+				defer server.Close()
+				route, err := NewMCPRoute(MCPRouteConfig{
+					UpstreamURL: server.URL, Token: "fake", SourceOwner: "public-org", SourceRepo: "untrusted-issues", SourceIssue: 17,
+					TargetOwner: "private-org", TargetRepo: "protected-repo", TargetBranch: "main",
+					DecisionSink: &captureDecisionSink{}, ForwardSink: forwardEvents,
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+				init := postMCP(t, route, "", `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}`, nil)
+				sessionID := init.Header().Get(mcpSessionHeader)
+				if sessionID == "" || baseMediaType(init.Header().Get("Content-Type")) != baseMediaType(format) {
+					t.Fatalf("initialize format/session = %q/%q", init.Header().Get("Content-Type"), sessionID)
+				}
+				tools := postMCP(t, route, sessionID, `{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}`, nil)
+				if baseMediaType(tools.Header().Get("Content-Type")) != baseMediaType(format) || strings.Contains(tools.Body.String(), "delete_file") {
+					t.Fatalf("filtered tools response = %q/%s", tools.Header().Get("Content-Type"), tools.Body.String())
+				}
+				read := postMCP(t, route, sessionID, toolCall(3, GitHubIssueReadTool, configuredRead()), nil)
+				if baseMediaType(read.Header().Get("Content-Type")) != baseMediaType(format) || read.Header().Get("Cache-Control") != "no-cache, no-transform" {
+					t.Fatalf("read headers were not preserved: %v", read.Header())
+				}
+				expectedReadBody := test.result(json.RawMessage("3"))
+				if baseMediaType(format) == "text/event-stream" {
+					expectedReadBody = "event: message\nid: upstream-event\ndata: " + expectedReadBody + "\n\n"
+				}
+				if read.Body.String() != expectedReadBody {
+					t.Fatalf("read body was not preserved:\nwant %q\n got %q", expectedReadBody, read.Body.String())
+				}
+				write := postMCP(t, route, sessionID, toolCall(4, GitHubProtectedWriteTool, configuredWrite()), nil)
+				if test.tainted {
+					assertDenied(t, write, "secure-github-write-after-taint")
+					var sawRead bool
+					for _, event := range forwardEvents.snapshot() {
+						if event.Tool == GitHubIssueReadTool && event.Outcome == "forwarded_success" && event.SessionID == sessionID {
+							sawRead = true
+						}
+					}
+					if !sawRead {
+						t.Fatalf("successful %s read lacks correlated forward evidence", format)
+					}
+				} else {
+					assertDenied(t, write, "secure-github-read-before-write")
+					for _, event := range forwardEvents.snapshot() {
+						if event.Tool == GitHubIssueReadTool && event.Outcome == "forwarded_success" {
+							t.Fatalf("unsuccessful read emitted success evidence: %+v", event)
+						}
+					}
+				}
+			})
+		}
+	}
+}
+
+func TestMCPRouteProtectedWriteVerdictComesFromCanonicalPipeline(t *testing.T) {
+	decisions := &captureDecisionSink{}
+	forwardEvents := &captureForwardSink{}
+	route, err := NewMCPRoute(MCPRouteConfig{
+		UpstreamURL: "http://upstream.invalid", Token: "fake", SourceOwner: "public-org", SourceRepo: "untrusted-issues", SourceIssue: 17,
+		TargetOwner: "private-org", TargetRepo: "protected-repo", TargetBranch: "main",
+		DecisionSink: decisions, ForwardSink: forwardEvents,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	route.sessions["pipeline-session"] = &mcpRouteSession{tainted: true}
+	governed, err := route.governTool(context.Background(), "pipeline-session", GitHubProtectedWriteTool, configuredWrite())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if governed.decision.Allowed() || governed.decision.MatchedRule != "secure-github-write-after-taint" {
+		t.Fatalf("canonical pipeline verdict = %+v", governed.decision)
+	}
+	if governed.record.MatchedRule != governed.decision.MatchedRule || governed.record.PolicyBundleHash != "secure-github-mcp-v1" {
+		t.Fatalf("canonical pipeline decision record = %+v", governed.record)
+	}
+	if route.auditor.Len() != 0 {
+		t.Fatalf("canonical pipeline audit capture was not consumed: %d", route.auditor.Len())
+	}
+}
+
+func TestMCPRouteMalformedOrAmbiguousSSEDoesNotTaint(t *testing.T) {
+	responses := map[string]string{
+		"malformed": "event: message\ndata: not-json\n\n",
+		"ambiguous": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":3,\"result\":{}}\n\n" +
+			"event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":3,\"result\":{}}\n\n",
+	}
+	for name, response := range responses {
+		t.Run(name, func(t *testing.T) {
+			forwardEvents := &captureForwardSink{}
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "text/event-stream")
+				_, _ = io.WriteString(w, response)
+			}))
+			defer server.Close()
+			route, err := NewMCPRoute(MCPRouteConfig{
+				UpstreamURL: server.URL, Token: "fake", SourceOwner: "public-org", SourceRepo: "untrusted-issues", SourceIssue: 17,
+				TargetOwner: "private-org", TargetRepo: "protected-repo", TargetBranch: "main",
+				DecisionSink: &captureDecisionSink{}, ForwardSink: forwardEvents,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			route.sessions["local-session"] = &mcpRouteSession{}
+			read := postMCP(t, route, "local-session", toolCall(3, GitHubIssueReadTool, configuredRead()), nil)
+			if read.Header().Get("Content-Type") != "text/event-stream" || read.Body.String() != response {
+				t.Fatalf("SSE response was not preserved: %q/%q", read.Header().Get("Content-Type"), read.Body.String())
+			}
+			write := postMCP(t, route, "local-session", toolCall(4, GitHubProtectedWriteTool, configuredWrite()), nil)
+			assertDenied(t, write, "secure-github-read-before-write")
+			for _, event := range forwardEvents.snapshot() {
+				if event.Tool == GitHubIssueReadTool && event.Outcome == "forwarded_success" {
+					t.Fatalf("invalid SSE tainted the session: %+v", event)
+				}
+			}
+		})
+	}
+}
+
+func TestMCPRouteEvidenceFailureRetainsValidatedReadTaint(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		body, _ := io.ReadAll(req.Body)
+		var msg mcpWireMessage
+		_ = json.Unmarshal(body, &msg)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"result":{"content":[{"type":"text","text":"configured issue"}]}}`, msg.ID)
+	}))
+	defer server.Close()
+	route, err := NewMCPRoute(MCPRouteConfig{
+		UpstreamURL: server.URL, Token: "fake", SourceOwner: "public-org", SourceRepo: "untrusted-issues", SourceIssue: 17,
+		TargetOwner: "private-org", TargetRepo: "protected-repo", TargetBranch: "main",
+		DecisionSink: &captureDecisionSink{}, ForwardSink: &failFirstForwardSink{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	route.sessions["local-session"] = &mcpRouteSession{}
+	read := postMCP(t, route, "local-session", toolCall(3, GitHubIssueReadTool, configuredRead()), nil)
+	if !strings.Contains(read.Body.String(), "Boundary forwarder evidence unavailable") || strings.Contains(read.Body.String(), "configured issue") {
+		t.Fatalf("evidence failure did not fail closed: %s", read.Body.String())
+	}
+	write := postMCP(t, route, "local-session", toolCall(4, GitHubProtectedWriteTool, configuredWrite()), nil)
+	assertDenied(t, write, "secure-github-write-after-taint")
 }
 
 func TestMCPRouteUpstreamOutageTimeoutAndCancellationDoNotTaint(t *testing.T) {
@@ -246,6 +504,7 @@ func TestMCPRouteUpstreamOutageTimeoutAndCancellationDoNotTaint(t *testing.T) {
 				UpstreamURL: upstreamURL, Token: "fake", HTTPClient: test.client, Timeout: 15 * time.Millisecond,
 				SourceOwner: "public-org", SourceRepo: "untrusted-issues", SourceIssue: 17,
 				TargetOwner: "private-org", TargetRepo: "protected-repo", TargetBranch: "main",
+				DecisionSink: &captureDecisionSink{}, ForwardSink: &captureForwardSink{},
 			})
 			if err != nil {
 				t.Fatal(err)
@@ -272,6 +531,7 @@ func TestMCPRouteRejectsMissingSessionAndNonLocalOrigin(t *testing.T) {
 		UpstreamURL: "http://upstream.invalid", Token: "fake",
 		SourceOwner: "public-org", SourceRepo: "untrusted-issues", SourceIssue: 17,
 		TargetOwner: "private-org", TargetRepo: "protected-repo", TargetBranch: "main",
+		DecisionSink: &captureDecisionSink{}, ForwardSink: &captureForwardSink{},
 	})
 	if err != nil {
 		t.Fatal(err)

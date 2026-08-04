@@ -35,7 +35,26 @@ func NewMCPJSONLEvidenceSink(decisionPath, forwardPath string) (*MCPJSONLEvidenc
 	if filepath.Clean(decisionAbs) == filepath.Clean(forwardAbs) {
 		return nil, errors.New("secure GitHub MCP: decision and forward evidence paths must be distinct")
 	}
+	for _, path := range []string{decisionAbs, forwardAbs} {
+		if err := prepareExistingMCPJSONL(path); err != nil {
+			return nil, err
+		}
+	}
 	return &MCPJSONLEvidenceSink{decisionPath: decisionAbs, forwardPath: forwardAbs}, nil
+}
+
+func prepareExistingMCPJSONL(path string) error {
+	info, err := os.Lstat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+		return errors.New("secure GitHub MCP: evidence path must be a regular file")
+	}
+	return os.Chmod(path, 0o600)
 }
 
 func (s *MCPJSONLEvidenceSink) WriteDecision(_ context.Context, record governance.DecisionRecordV1) error {
@@ -54,11 +73,28 @@ func appendMCPJSONL(path string, value any) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return err
 	}
+	if info, err := os.Lstat(path); err == nil {
+		if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+			return errors.New("secure GitHub MCP: evidence path must be a regular file")
+		}
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
 	// #nosec G304 -- evidence is written only to the operator-selected local path.
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
+	if err := file.Chmod(0o600); err != nil {
+		return err
+	}
+	info, err := file.Stat()
+	if err != nil {
+		return err
+	}
+	if !info.Mode().IsRegular() {
+		return errors.New("secure GitHub MCP: evidence path must be a regular file")
+	}
 	return json.NewEncoder(file).Encode(value)
 }
