@@ -54,6 +54,42 @@ Without `BOUNDARY_GITHUB_CONFORMANCE=true`, conformance commands skip without
 network calls. `boundary secure github serve --fixture=false` still fails closed;
 live serving is not part of this preview.
 
+## Stateful route to official GitHub MCP
+
+The separate `boundary mcp secure-github` command is a preview stateful local
+route to the official GitHub MCP endpoint. It is deliberately narrow: the
+operator configures exactly one untrusted source issue and one protected target
+repository and branch, and the route exposes only `issue_read` and
+`create_or_update_file`.
+
+```bash
+export GITHUB_PERSONAL_ACCESS_TOKEN='set outside shell history'
+
+boundary mcp secure-github \
+  --listen 127.0.0.1:8080 \
+  --source-owner SOURCE_OWNER \
+  --source-repo SOURCE_REPO \
+  --source-issue 123 \
+  --target-owner TARGET_OWNER \
+  --target-repo TARGET_REPO \
+  --target-branch main \
+  --token-env GITHUB_PERSONAL_ACCESS_TOKEN
+```
+
+The token is read from the named environment variable; it is never accepted as
+a command-line value. The listener must be loopback and the upstream must use
+HTTPS. A successful read of the configured issue taints that MCP session. A
+later configured protected write is denied before forwarding, and Boundary
+writes both a full decision record and an independent forwarder event with
+`outcome=blocked_before_forward` and `forwarded=false`. If either evidence sink
+is unavailable, the route fails closed.
+
+This route treats the operator-configured source as untrusted. It does not
+semantically classify issue prose. Other GitHub MCP tools, other sources or
+targets, direct GitHub API calls, unmanaged `gh`, SSH/git writes, and direct
+upstream MCP access are outside this route; deployment topology must remove
+those bypasses. The route remains preview.
+
 ## MVP Tool Set
 
 | Tool | Class | Source | Sink | Mutation |
@@ -148,6 +184,8 @@ The data object also carries the decision record for fixture evidence.
   deployment topology removes those paths.
 - The profile governs the MVP tool set above, not the full GitHub MCP tool
   catalog.
+- The stateful official-GitHub-MCP route governs only `issue_read` and
+  `create_or_update_file` for its configured source and target.
 
 ## Live Conformance Docs
 
