@@ -70,9 +70,14 @@ func (s *MCPJSONLEvidenceSink) WriteForwardEvent(_ context.Context, event MCPFor
 }
 
 func appendMCPJSONL(path string, value any) error {
+	if err := validateMCPJSONLEvidencePath(path); err != nil {
+		return err
+	}
+	// #nosec G703 -- path is absolute and clean per validateMCPJSONLEvidencePath.
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return err
 	}
+	// #nosec G703 -- path is absolute and clean per validateMCPJSONLEvidencePath.
 	if info, err := os.Lstat(path); err == nil {
 		if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
 			return errors.New("secure GitHub MCP: evidence path must be a regular file")
@@ -80,7 +85,7 @@ func appendMCPJSONL(path string, value any) error {
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
-	// #nosec G304 -- evidence is written only to the operator-selected local path.
+	// #nosec G304 G703 -- path is operator-selected, absolute, and clean per validateMCPJSONLEvidencePath.
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 	if err != nil {
 		return err
@@ -97,4 +102,11 @@ func appendMCPJSONL(path string, value any) error {
 		return errors.New("secure GitHub MCP: evidence path must be a regular file")
 	}
 	return json.NewEncoder(file).Encode(value)
+}
+
+func validateMCPJSONLEvidencePath(path string) error {
+	if path == "" || !filepath.IsAbs(path) || filepath.Clean(path) != path {
+		return errors.New("secure GitHub MCP: evidence path must be absolute and clean")
+	}
+	return nil
 }

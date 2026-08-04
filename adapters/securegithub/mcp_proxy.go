@@ -341,7 +341,7 @@ func (r *MCPRoute) forwardProtocol(w http.ResponseWriter, req *http.Request, bod
 	r.writeUpstream(w, response, status, headers, len(msg.ID) == 0 || string(msg.ID) == "null", sessionID)
 }
 
-func (r *MCPRoute) forward(ctx context.Context, body []byte, downstream http.Header, session *mcpRouteSession) ([]byte, int, http.Header, error) {
+func (r *MCPRoute) forward(ctx context.Context, body []byte, downstream http.Header, session *mcpRouteSession) (response []byte, status int, headers http.Header, err error) {
 	forwardCtx, cancel := context.WithTimeout(ctx, r.cfg.Timeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(forwardCtx, http.MethodPost, r.upstream.String(), bytes.NewReader(body))
@@ -363,7 +363,7 @@ func (r *MCPRoute) forward(ctx context.Context, body []byte, downstream http.Hea
 		return nil, 0, nil, err
 	}
 	defer resp.Body.Close()
-	response, err := io.ReadAll(io.LimitReader(resp.Body, maxMCPBody+1))
+	response, err = io.ReadAll(io.LimitReader(resp.Body, maxMCPBody+1))
 	if err != nil || len(response) > maxMCPBody || resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, resp.StatusCode, resp.Header, errors.New("upstream MCP response failed")
 	}

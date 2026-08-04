@@ -56,3 +56,15 @@ func TestMCPJSONLEvidenceSinkUsesDistinctPrivateFiles(t *testing.T) {
 		t.Fatal("symlink evidence path was accepted")
 	}
 }
+
+func TestAppendMCPJSONLRejectsUnvalidatedPath(t *testing.T) {
+	paths := []string{
+		filepath.Join("relative", "evidence.jsonl"),
+		t.TempDir() + string(filepath.Separator) + ".." + string(filepath.Separator) + "evidence.jsonl",
+	}
+	for _, path := range paths {
+		if err := appendMCPJSONL(path, MCPForwardEvent{}); err == nil {
+			t.Fatalf("appendMCPJSONL(%q) accepted an unvalidated path", path)
+		}
+	}
+}
