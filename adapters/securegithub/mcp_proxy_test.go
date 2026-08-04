@@ -333,6 +333,24 @@ func TestMCPRouteIssueReadJSONAndSSEOutcomes(t *testing.T) {
 				return `{"jsonrpc":"2.0","id":999,"result":{"content":[{"type":"text","text":"wrong request"}]}}`
 			},
 		},
+		{
+			name: "null-result",
+			result: func(id json.RawMessage) string {
+				return fmt.Sprintf(`{"jsonrpc":"2.0","id":%s,"result":null}`, id)
+			},
+		},
+		{
+			name: "empty-result",
+			result: func(id json.RawMessage) string {
+				return fmt.Sprintf(`{"jsonrpc":"2.0","id":%s,"result":{}}`, id)
+			},
+		},
+		{
+			name: "malformed-content",
+			result: func(id json.RawMessage) string {
+				return fmt.Sprintf(`{"jsonrpc":"2.0","id":%s,"result":{"content":{}}}`, id)
+			},
+		},
 	}
 	for _, format := range []string{"application/json; charset=utf-8", "text/event-stream; charset=utf-8"} {
 		for _, test := range outcomes {
@@ -414,6 +432,35 @@ func TestMCPRouteIssueReadJSONAndSSEOutcomes(t *testing.T) {
 	}
 }
 
+func TestMCPRouteInitializeNullResultDoesNotMintSession(t *testing.T) {
+	for _, format := range []string{"application/json", "text/event-stream"} {
+		t.Run(format, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", format)
+				response := `{"jsonrpc":"2.0","id":1,"result":null}`
+				if format == "text/event-stream" {
+					_, _ = fmt.Fprintf(w, "event: message\ndata: %s\n\n", response)
+					return
+				}
+				_, _ = io.WriteString(w, response)
+			}))
+			defer server.Close()
+			route, err := NewMCPRoute(MCPRouteConfig{
+				UpstreamURL: server.URL, Token: "fake", SourceOwner: "public-org", SourceRepo: "untrusted-issues", SourceIssue: 17,
+				TargetOwner: "private-org", TargetRepo: "protected-repo", TargetBranch: "main",
+				DecisionSink: &captureDecisionSink{}, ForwardSink: &captureForwardSink{},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			init := postMCP(t, route, "", `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}`, nil)
+			if init.Header().Get(mcpSessionHeader) != "" {
+				t.Fatalf("initialize result:null minted a session: %q", init.Header().Get(mcpSessionHeader))
+			}
+		})
+	}
+}
+
 func TestMCPRouteProtectedWriteVerdictComesFromCanonicalPipeline(t *testing.T) {
 	decisions := &captureDecisionSink{}
 	forwardEvents := &captureForwardSink{}
@@ -444,8 +491,8 @@ func TestMCPRouteProtectedWriteVerdictComesFromCanonicalPipeline(t *testing.T) {
 func TestMCPRouteMalformedOrAmbiguousSSEDoesNotTaint(t *testing.T) {
 	responses := map[string]string{
 		"malformed": "event: message\ndata: not-json\n\n",
-		"ambiguous": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":3,\"result\":{}}\n\n" +
-			"event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":3,\"result\":{}}\n\n",
+		"ambiguous": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":3,\"result\":{\"content\":[]}}\n\n" +
+			"event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":3,\"result\":{\"content\":[]}}\n\n",
 	}
 	for name, response := range responses {
 		t.Run(name, func(t *testing.T) {

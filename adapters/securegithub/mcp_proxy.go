@@ -289,7 +289,7 @@ func (r *MCPRoute) handleToolCall(w http.ResponseWriter, req *http.Request, body
 			r.writeProtocolError(w, msg.ID, -32002, "GitHub MCP upstream unavailable", nil)
 			return
 		}
-		if successfulMCPResponse(response, headers.Get("Content-Type"), msg.ID) {
+		if successfulToolCallMCPResponse(response, headers.Get("Content-Type"), msg.ID) {
 			// The validated upstream read is security-relevant state. Commit the
 			// taint before attempting evidence persistence so a sink failure can
 			// fail the response closed without erasing the transition.
@@ -324,7 +324,7 @@ func (r *MCPRoute) forwardProtocol(w http.ResponseWriter, req *http.Request, bod
 		r.writeProtocolError(w, msg.ID, -32002, "GitHub MCP upstream unavailable", nil)
 		return
 	}
-	if msg.Method == "initialize" && successfulMCPResponse(response, headers.Get("Content-Type"), msg.ID) {
+	if msg.Method == "initialize" && successfulInitializeMCPResponse(response, headers.Get("Content-Type"), msg.ID) {
 		sessionID = uuid.NewString()
 		r.mu.Lock()
 		r.sessions[sessionID] = &mcpRouteSession{upstreamID: headers.Get(mcpSessionHeader)}
@@ -500,7 +500,15 @@ func localOrigin(origin string) bool {
 	return host == "localhost" || host == "127.0.0.1" || host == "::1"
 }
 
-func successfulMCPResponse(body []byte, contentType string, expectedID json.RawMessage) bool {
+func successfulInitializeMCPResponse(body []byte, contentType string, expectedID json.RawMessage) bool {
+	return successfulMCPResponse(body, contentType, expectedID, validInitializeResult)
+}
+
+func successfulToolCallMCPResponse(body []byte, contentType string, expectedID json.RawMessage) bool {
+	return successfulMCPResponse(body, contentType, expectedID, validCallToolResult)
+}
+
+func successfulMCPResponse(body []byte, contentType string, expectedID json.RawMessage, validResult func(json.RawMessage) bool) bool {
 	messages, err := mcpResponseMessages(body, contentType)
 	if err != nil {
 		return false
@@ -520,12 +528,46 @@ func successfulMCPResponse(body []byte, contentType string, expectedID json.RawM
 			successful = false
 			continue
 		}
-		var result struct {
-			IsError bool `json:"isError"`
-		}
-		successful = json.Unmarshal(msg.Result, &result) == nil && !result.IsError
+		successful = validResult(msg.Result)
 	}
 	return matched == 1 && successful
+}
+
+func validInitializeResult(raw json.RawMessage) bool {
+	var result struct {
+		ProtocolVersion string          `json:"protocolVersion"`
+		Capabilities    json.RawMessage `json:"capabilities"`
+		ServerInfo      struct {
+			Name string `json:"name"`
+		} `json:"serverInfo"`
+	}
+	if json.Unmarshal(raw, &result) != nil || result.ProtocolVersion == "" || result.ServerInfo.Name == "" {
+		return false
+	}
+	var capabilities map[string]json.RawMessage
+	return json.Unmarshal(result.Capabilities, &capabilities) == nil && capabilities != nil
+}
+
+func validCallToolResult(raw json.RawMessage) bool {
+	var result map[string]json.RawMessage
+	if json.Unmarshal(raw, &result) != nil || result == nil {
+		return false
+	}
+	content, ok := result["content"]
+	if !ok || bytes.Equal(bytes.TrimSpace(content), []byte("null")) {
+		return false
+	}
+	var items []json.RawMessage
+	if json.Unmarshal(content, &items) != nil || items == nil {
+		return false
+	}
+	if isError, ok := result["isError"]; ok {
+		var failed bool
+		if bytes.Equal(bytes.TrimSpace(isError), []byte("null")) || json.Unmarshal(isError, &failed) != nil || failed {
+			return false
+		}
+	}
+	return true
 }
 
 func sameJSONRPCID(left, right json.RawMessage) bool {
