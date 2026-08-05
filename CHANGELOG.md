@@ -6,8 +6,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-## [0.12.0] - 2026-08-04
-
 ### Added
 
 - Preview stateful Secure GitHub route to the official GitHub MCP endpoint
@@ -570,8 +568,7 @@ Initial public release of the project now known as Fulcrum Boundary.
 
 ---
 
-[Unreleased]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.12.0...HEAD
-[0.12.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.11.0...v0.12.0
+[Unreleased]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.11.0...HEAD
 [0.11.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.10.1...v0.11.0
 [0.10.1]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.9.0...v0.10.0

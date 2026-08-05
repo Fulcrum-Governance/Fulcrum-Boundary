@@ -19,7 +19,7 @@ Covers the most common first-run problems and how to resolve them:
 The canonical first-run sequence these notes follow:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.12.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.11.0
 boundary selftest
 boundary doctor --json
 boundary demo github-lethal-trifecta

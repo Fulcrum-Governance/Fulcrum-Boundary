@@ -129,29 +129,22 @@ your own acceptance policy before treating a bundle as fully checked.
 
 ## How to obtain it
 
-Install the tagged nested Go module directly. No Fulcrum account, credential,
-or private-repository access is required:
-
-```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/verify-witnessed@v0.12.0
-```
-
-Go resolves that nested module from the matching
-`verify-witnessed/v0.12.0` tag. The root `v0.12.0` tag points to the same exact
-commit. To inspect the source or run the fixtures, clone and pin the root tag:
+Clone the public Fulcrum-Boundary repository and build from that clone. No
+Fulcrum account, credential, or private-repository access is required:
 
 ```bash
 git clone https://github.com/Fulcrum-Governance/Fulcrum-Boundary.git
 cd Fulcrum-Boundary/verify-witnessed
-git checkout v0.12.0
 go build -o fulcrum-verify-witnessed .
 ```
 
 Requires a Go 1.26+ toolchain. Building it pulls in no Boundary-internal
 package and no other Fulcrum private code (see "Tests" below for the command
-that checks this directly). Pin the module or clone to `v0.12.0` to match your
-bundle's `exporter.boundary_wire_contract_version` — the same convention used
-for the existing decision-record verifiers.
+that checks this directly). A versioned nested-module install is unavailable
+until both the root release tag and matching nested tag are explicitly approved
+and published. After publication, pin the module or clone to that matching
+release to align with your bundle's `exporter.boundary_wire_contract_version`
+— the same convention used for the existing decision-record verifiers.
 
 ## How to run it
 

@@ -137,28 +137,33 @@ Requires Go 1.25+ and, for the default cgo build, a C toolchain (a C compiler
 such as gcc/clang on `PATH`):
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.12.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.11.0
 boundary selftest
 ```
 
-`@v0.12.0` is the recommended repeatable install target for the current launch
-release. `@latest` resolves to the latest published release after the Go proxy
-refreshes.
+`@v0.11.0` is the recommended repeatable install target for the current
+published release. Candidate tags are not installable until their approved
+publication. `@latest` resolves to the latest published release after the Go
+proxy refreshes.
 
 ### Offline witnessed-log verifier
 
-The independently buildable verifier is a separate nested Go module and is
-source-distributed through its matching nested tag:
+The independently buildable verifier is a separate nested Go module. Until
+both the approved root release tag and its matching nested module tag are
+published, no versioned verifier install is available; build it from a public
+source checkout instead:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/verify-witnessed@v0.12.0
+git clone https://github.com/Fulcrum-Governance/Fulcrum-Boundary.git
+cd Fulcrum-Boundary/verify-witnessed
+go build -o fulcrum-verify-witnessed .
 ```
 
-Go resolves this from `verify-witnessed/v0.12.0`; that nested tag and root
-`v0.12.0` must point to the same exact commit. The verifier does not ship as a
-separate archive, container, Homebrew package, or versioned binary surface.
-See [`verify-witnessed/README.md`](../verify-witnessed/README.md) for the
-offline bundle and keyring contract.
+After publication, Go will resolve the verifier from the matching nested tag;
+the root and nested tags must point to the same exact commit. The verifier does
+not ship as a separate archive, container, Homebrew package, or versioned
+binary surface. See [`verify-witnessed/README.md`](../verify-witnessed/README.md)
+for the offline bundle and keyring contract.
 
 From a checkout:
 

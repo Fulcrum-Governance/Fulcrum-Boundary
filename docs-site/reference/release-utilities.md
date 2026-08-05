@@ -16,7 +16,7 @@ boundary evidence verify boundary-evidence
 ```
 
 Availability note: `boundary test` shipped in `v0.9.0` and remains included in
-the current `v0.12.0` release; the historical `@v0.8.0` install does not
+the current `v0.11.0` release; the historical `@v0.8.0` install does not
 include it. `boundary doctor --report` is included in the current release and
 emits redacted JSON for support threads.
 

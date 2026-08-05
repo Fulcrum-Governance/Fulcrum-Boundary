@@ -1,15 +1,21 @@
 # Final Public Release Truth
 
-Date: 2026-08-04
+Date: 2026-06-11
 
 Branch: `main`
 
-Current release target: `v0.12.0`
+Current release target: `v0.11.0`
+
+Current release date: `2026-06-11`
+
+Candidate release target: `v0.12.0` — **not published**
 
 ## Candidate status — not published
 
-`v0.12.0` is an urgent release candidate. The published release remains
-`v0.11.0`; neither `v0.12.0` nor `verify-witnessed/v0.12.0` exists yet. No
+`v0.12.0` is an urgent release candidate, not a current release. The published
+release remains `v0.11.0`; neither `v0.12.0` nor
+`verify-witnessed/v0.12.0` exists yet. Every candidate command in this section
+is unavailable until both approved tags publish. No
 GitHub release, container, Homebrew cask update, or public-release status
 change is authorized by this candidate document.
 
@@ -35,7 +41,9 @@ must migrate that tap entry to the cask path and verify a dry-run install. That
 external tap change is not authorized by this candidate lane and remains a
 human release gate.
 
-The nested verifier is source-distributed only through its nested Go module tag:
+After both approved tags publish, the nested verifier is expected to be
+source-distributed through its nested Go module tag. This command is currently
+unavailable:
 
 ```bash
 go install github.com/fulcrum-governance/fulcrum-boundary/verify-witnessed@v0.12.0
@@ -198,10 +206,10 @@ boundary demo github-lethal-trifecta
 boundary demo tamper-evidence
 ```
 
-The candidate source path, available only after approved publication, is:
+The currently published source path is:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.12.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.11.0
 ```
 
 All demos remain credential-free and perform no live calls or real mutations.
@@ -265,16 +273,17 @@ Command Boundary, and Edit Boundary are preview. The full table is in
 
 ## User-Install Status
 
-The candidate install channels (available only after approved publication of `v0.12.0`) are:
+The currently published install channels use `v0.11.0`:
 
 ```bash
 brew install fulcrum-governance/tap/boundary          # static build
-docker pull ghcr.io/fulcrum-governance/boundary:v0.12.0
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.12.0
+docker pull ghcr.io/fulcrum-governance/boundary:v0.11.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.11.0
 ```
 
 Plus release archives with `SHA256SUMS` / `SHA256SUMS-cgo` manifests. Releases
-up to and including `v0.10.0` shipped source-only. The cask and archives
+up to and including `v0.10.0` shipped source-only. The published formula and
+archives
 install the static build; the `_cgo` archives and the source build carry the
 full SQL classifier (Go 1.25+ and a C toolchain required for source).
 
@@ -283,7 +292,7 @@ full SQL classifier (Go 1.25+ and a C toolchain required for source).
 The MCP audit action examples use:
 
 ```yaml
-- uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.12.0
+- uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.11.0
 ```
 
 Use the release tag for repeatable CI behavior. SARIF upload examples must
