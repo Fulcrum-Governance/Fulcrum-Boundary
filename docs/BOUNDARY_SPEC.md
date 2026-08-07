@@ -170,7 +170,7 @@ The release story is a **tight spine of two flagship proof lanes**, each with a 
 
 ## 1.9 Distribution (LOCKED — resolves C10)
 
-- **Prebuilt one-command channels** ship from the tag-gated release pipeline for `v0.10.1`+ — a Homebrew tap formula, a container image, and static + native-cgo archives with SHA256 checksum manifests (`BND-CLAIM-DIST-001`, `delivered`) — **plus** `go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.11.0` from source. Releases up to and including `v0.10.0` were source-only. The source/cgo build requires Go 1.25+ and a C toolchain (CGO) (§5.5).
+- **Prebuilt one-command channels** ship from the tag-gated release pipeline for `v0.10.1`+ — a Homebrew tap package, a container image, and static + native-cgo archives with SHA256 checksum manifests (`BND-CLAIM-DIST-001`, `delivered`) — **plus** `go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.11.0` from source. Releases up to and including `v0.10.0` were source-only. The source/cgo build requires Go 1.25+ and a C toolchain (CGO) (§5.5).
 - **No** hosted-monitoring and **no** cloud analysis: every channel installs a **local** binary, and the **dashboard reads local artifacts only** (`local-only`). Full mechanics §7.4.
 - **superseded:** the earlier "local + `go install` only — no Homebrew / package-manager distribution" stance (pre-`v0.10.1`, before the tag-gated pipeline shipped), and any implied hosted monitoring.
 
@@ -469,7 +469,7 @@ Every preview row above is held below `production` by the same thing: **deployme
 
 # 5. Standalone & Integration Contract
 
-> **Locks C3** (with supporting cross-refs to C10). Current release-candidate
+> **Locks C3** (with supporting cross-refs to C10). Candidate
 > verification is recorded in `docs/RELEASE_TRUTH_PUBLIC.md` and the release
 > gates; older HEAD-specific audits are provenance only.
 
@@ -480,7 +480,7 @@ The release ships a **standalone, downloadable Apache-2.0 OSS tool** with **zero
 ## 5.2 Zero private-repo dependency — proven, not asserted
 
 Backed by read-only verification in `CROSS_REPO_DEPS.md` (offline build + empty
-Fulcrum-module `go mod graph`) and re-confirmed by the current release gate:
+Fulcrum-module `go mod graph`) and re-confirmed by the repository release gate:
 
 | Check | Result |
 |---|---|
@@ -646,7 +646,7 @@ brew install fulcrum-governance/tap/boundary
 go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.11.0
 ```
 
-- The Homebrew formula and the container image ship the **static** build; the `_cgo` archives and the source build carry the full SQL classifier. Releases up to and including `v0.10.0` were source-only.
+- The Homebrew cask and the container image ship the **static** build; the `_cgo` archives and the source build carry the full SQL classifier. Releases up to and including `v0.10.0` were source-only.
 - **No hosted/monitoring service.** Every channel installs a **local** binary. The dashboard is **`local-only`**, reads **local artifacts only** (inventory, risk paths, policy status, install receipts, descriptor locks, local decision-record files), binds to loopback, and **rejects non-loopback serve addresses**.
 - The C-toolchain prerequisite (§5.5) belongs with the source/cgo install instructions.
 - **superseded:** the pre-`v0.10.1` "local + `go install` only — no package-manager distribution" stance.
@@ -687,7 +687,7 @@ Claim-safe by construction (every line is negated/limitation framing, which the 
 # 8. Quickstart & Demos
 
 > The command shapes below are fixture-only, no-credential, no-network, and
-> no-live-mutation paths. Current release verification re-runs the key commands
+> no-live-mutation paths. Candidate verification re-runs the key commands
 > through `make release-check`; full transcripts and examples live in the demo
 > docs.
 
@@ -802,7 +802,7 @@ The side-by-side comparison of the two lanes — statuses, demo commands, scenar
 > **Framing.** Boundary's suite is the **reference standard** — the prior due-diligence audit's
 > named "role model" repo. The point is not to argue "is it tested" (it is) but to give an external
 > contributor a **frictionless, trustworthy first run** and to pre-empt one honest coverage-shape
-> question. Source: `research/TEST_READINESS.md`; the current release gate
+> question. Source: `research/TEST_READINESS.md`; the repository release gate
 > re-runs the contributor-facing checks. The full gap ledger, PR template, and
 > `docs/TESTING.md` outline live in `LAUNCH_BLOCKER_CHECKLIST.md`.
 

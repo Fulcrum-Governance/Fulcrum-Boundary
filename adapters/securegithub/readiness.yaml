@@ -36,6 +36,9 @@ evidence:
     - adapters/securegithub/bypass_ladder_test.go
     - adapters/securegithub/live_evidence_test.go
     - adapters/securegithub/bypass_packet_test.go
+    - adapters/securegithub/mcp_proxy_test.go
+    - adapters/securegithub/mcp_evidence_test.go
+    - internal/boundarycli/mcp_securegithub_test.go
   docs:
     - docs/secure-mcp/GITHUB.md
     - docs/secure-mcp/GITHUB_REDTEAM.md
@@ -45,6 +48,7 @@ evidence:
     - docs/deployment/secure-github-bypass-proofing.md
     - docs/secure-mcp/GITHUB_BYPASS_LADDER.md
     - docs/deployment/secure-github-bypass-proof-packet.md
+    - docs/secure-mcp/GITHUB.md
     - docs/ADAPTER_READINESS_MATRIX.md
 gaps:
   - id: BND-GH-002

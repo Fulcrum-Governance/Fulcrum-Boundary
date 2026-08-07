@@ -207,18 +207,18 @@ claims:
       - BND-CLAIM-008
 
   - id: BND-CLAIM-DIST-001
-    claim: "Boundary publishes one-command install channels (Homebrew tap formula, prebuilt static and native-cgo archives with SHA256 checksum manifests, container image) from a tag-gated release pipeline"
+    claim: "Boundary publishes one-command install channels (Homebrew tap cask, prebuilt static and native-cgo archives with SHA256 checksum manifests, container image) from a tag-gated release pipeline"
     status: delivered
     evidence:
       tests:
         - path: tests/releasebuild/channels_test.go
-          assertion: ".goreleaser.yaml wires the static archives, the SHA256SUMS checksum manifest, the Homebrew tap formula, and the ghcr.io container image (plus the multi-arch manifest), and .github/workflows/release.yml is tag-gated (push tags v*) and builds the _cgo archives plus the SHA256SUMS-cgo manifest; pins the config wiring, not a live publish"
+          assertion: ".goreleaser.yaml wires the static archives, the SHA256SUMS checksum manifest, the Homebrew tap cask, and the ghcr.io multi-platform container image, and .github/workflows/release.yml is tag-gated (push tags v*) and builds the _cgo archives plus the SHA256SUMS-cgo manifest; pins the config wiring, not a live publish"
       docs:
         - path: docs/INSTALL.md
           section: "Install Channels"
     public_language:
       allowed:
-        - "A tag-gated release pipeline builds static (CGO_ENABLED=0) archives for darwin, linux, and windows on amd64 and arm64, native-cgo full-classifier archives, SHA256 checksum manifests, a Homebrew formula, and a container image."
+        - "A tag-gated release pipeline builds static (CGO_ENABLED=0) archives for darwin, linux, and windows on amd64 and arm64, native-cgo full-classifier archives, SHA256 checksum manifests, a Homebrew cask, and a container image."
         - "Install channels publish from the tag-gated pipeline for v0.10.1 and later; releases up to and including v0.10.0 shipped source-only."
         - "Windows ships the static (CGO_ENABLED=0) build only by design; native-cgo full-classifier archives are produced for darwin and linux, not Windows."
       forbidden:
@@ -650,6 +650,38 @@ claims:
     gaps: []
     depends_on:
       - BND-CLAIM-018
+
+  - id: BND-CLAIM-GH-021
+    claim: "Boundary provides a preview stateful local route to the official GitHub MCP endpoint for one configured untrusted source issue and one protected target repository and branch"
+    status: delivered
+    adapter: securegithub
+    evidence:
+      tests:
+        - path: adapters/securegithub/mcp_proxy_test.go
+          assertion: "A successful configured issue_read taints the MCP session and a later create_or_update_file to the configured target is denied before forwarding"
+        - path: adapters/securegithub/mcp_evidence_test.go
+          assertion: "Decision records and independent forwarder events are written to distinct private files and unsafe evidence paths fail closed"
+        - path: internal/boundarycli/mcp_securegithub_test.go
+          assertion: "The route requires environment-only credentials, a loopback listener, a secure upstream, and successful bind before reporting readiness"
+      docs:
+        - path: docs/secure-mcp/GITHUB.md
+          section: "Stateful route to official GitHub MCP"
+        - path: docs/CLI_REFERENCE.md
+          section: "Secure GitHub Commands"
+    public_language:
+      allowed:
+        - "Boundary provides a preview stateful local route to the official GitHub MCP endpoint for one configured untrusted source issue and one protected target repository and branch."
+        - "A successful read of the configured source taints that route session; a protected write is denied before forwarding with a full decision record and a separate blocked-before-forward event."
+        - "The route treats only the operator-configured source as untrusted and does not semantically classify issue prose."
+      forbidden:
+        - "Secure GitHub is production"
+        - "Boundary detects malicious GitHub issue prose"
+        - "Boundary governs every GitHub MCP tool"
+        - "The stateful route closes direct GitHub bypasses"
+        - "Boundary fully secures GitHub"
+    gaps: []
+    depends_on:
+      - BND-CLAIM-015
 
   - id: BND-CLAIM-UTIL-001
     claim: "Boundary reports local version and build metadata in text and JSON formats"

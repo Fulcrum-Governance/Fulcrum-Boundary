@@ -1,4 +1,4 @@
-# Release image assembled by goreleaser (.goreleaser.yaml `dockers:`).
+# Release image assembled by goreleaser (.goreleaser.yaml `dockers_v2:`).
 # It copies the prebuilt static (CGO_ENABLED=0) boundary binary — no build
 # steps run here, which keeps multi-arch assembly emulation-free.
 #
@@ -7,7 +7,8 @@
 # `_cgo` release archive or build from source for the full classifier.
 FROM gcr.io/distroless/static-debian12:nonroot
 
-COPY boundary /usr/local/bin/boundary
+ARG TARGETPLATFORM
+COPY ${TARGETPLATFORM}/boundary /usr/local/bin/boundary
 
 USER nonroot
 WORKDIR /home/nonroot

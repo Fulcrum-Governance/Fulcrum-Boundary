@@ -31,8 +31,9 @@ go build -o fulcrum-verify-witnessed .
   --keyring testdata/witnessed-log-v1/public-keys-v1.json
 ```
 
-Default output is one JSON object per line, one per check, and the process
-exits 0 only if every check status is `pass`:
+Default output is one JSON object per line, one per check. The process exits 1
+if any check status is `fail`; the example below exits 0 because every check
+status is `pass`:
 
 ```
 {"id":"decision_record_integrity:sha256:04f26fb888aad12b244ed3350a0e6e5cd0d139e438a401f42d6c88ca230ddfc7","status":"pass"}
@@ -138,11 +139,12 @@ go build -o fulcrum-verify-witnessed .
 ```
 
 Requires a Go 1.26+ toolchain. Building it pulls in no Boundary-internal
-package and no other Fulcrum private code (see "Tests" below for the
-command that checks this directly). Once this capability ships in a tagged
-release, pin your clone to that tag (`git checkout vX.Y.Z`) to match your
-bundle's `exporter.boundary_wire_contract_version` — the same convention
-used for the existing decision-record verifiers.
+package and no other Fulcrum private code (see "Tests" below for the command
+that checks this directly). A versioned nested-module install is unavailable
+until both the root release tag and matching nested tag are explicitly approved
+and published. After publication, pin the module or clone to that matching
+release to align with your bundle's `exporter.boundary_wire_contract_version`
+— the same convention used for the existing decision-record verifiers.
 
 ## How to run it
 

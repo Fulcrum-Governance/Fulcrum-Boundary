@@ -196,10 +196,28 @@ BOUNDARY_GITHUB_CONFORMANCE=true boundary secure github conformance denied-write
 BOUNDARY_GITHUB_CONFORMANCE=true boundary secure github conformance all --out /tmp/boundary-secure-github
 ```
 
+Stateful route to the official GitHub MCP endpoint:
+
+```bash
+boundary mcp secure-github \
+  --source-owner SOURCE_OWNER --source-repo SOURCE_REPO --source-issue 123 \
+  --target-owner TARGET_OWNER --target-repo TARGET_REPO --target-branch main \
+  --token-env GITHUB_PERSONAL_ACCESS_TOKEN
+```
+
 The denied-write path must report `actual action: DENY`,
 `reason: lethal_trifecta_detected`, `upstream_called=false`, and
 `github_mutation_called=false`. Secure GitHub remains preview until deployment
 bypass proof exists.
+
+`boundary mcp secure-github` listens only on loopback, reads the upstream token
+from the named environment variable, and exposes only `issue_read` and
+`create_or_update_file` for one configured source issue and protected target. A
+successful configured read taints the session; a protected write is denied
+before forwarding with both a decision record and an independent
+`blocked_before_forward` event. It does not semantically classify issue prose,
+govern other tools or targets, or close direct GitHub bypasses. See
+[Secure GitHub MCP](./secure-mcp/GITHUB.md#stateful-route-to-official-github-mcp).
 
 ## 5. Inventory Ingest Commands
 

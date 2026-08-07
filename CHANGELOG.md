@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- Preview stateful Secure GitHub route to the official GitHub MCP endpoint
+  (`BND-CLAIM-GH-021`): `boundary mcp secure-github` governs exactly one
+  configured untrusted source issue and one protected target repository and
+  branch. A successful `issue_read` taints the session; a later protected
+  `create_or_update_file` is denied before forwarding with a full decision
+  record and an independent `blocked_before_forward` event. The route does not
+  semantically classify issue prose, govern the full GitHub MCP catalog, close
+  direct GitHub bypasses, or change Secure GitHub's preview status.
+
 - Publish `fulcrum-verify-witnessed` (`verify-witnessed/`, `BND-CLAIM-WITNESS-001`,
   `delivered`): relocated from Fulcrum's private repository as a standalone,
   Apache-2.0, independently-buildable Go module with zero dependencies on
@@ -100,6 +109,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   fail-closed with the `escalation fault (fail-closed):` reason prefix.
   Dry-run does not block on the await: the decision keeps the relabel path
   and the reason notes that the await was skipped.
+
+### Changed
+
+- Migrate the release configuration from GoReleaser's deprecated `dockers` /
+  `docker_manifests` and `brews` pipes to `dockers_v2` and `homebrew_casks`.
+  The install command and static-build capability boundary are unchanged. The
+  existing tap formula must be migrated to the cask before the first v0.12.0
+  tag publish; candidate preparation does not mutate the tap or publish an
+  artifact.
 
 ### Security
 

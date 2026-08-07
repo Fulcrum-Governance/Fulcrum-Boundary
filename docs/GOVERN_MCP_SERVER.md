@@ -223,7 +223,7 @@ process and repoint the client back at the upstream.
 ### Static (CGO_ENABLED=0) builds and SQL
 
 If you route a Postgres-style `query` tool, note that static / no-cgo builds
-(the `_static-nocgo` archives, the Homebrew formula, and the container image) do
+(the `_static-nocgo` archives, the Homebrew cask, and the container image) do
 not carry the AST SQL classifier: routed SQL classifies as `UNKNOWN` and the
 Postgres guard denies it fail-closed. Use a `_cgo` release archive or a cgo
 source build for class-based SQL policy. See [`docs/INSTALL.md`](INSTALL.md).

@@ -6,7 +6,7 @@ name: Release
 #   1. runs the full `make release-check` gate;
 #   2. builds the universal static (CGO_ENABLED=0) matrix with goreleaser,
 #      publishes the GitHub release with SHA256SUMS, the evidence-bundle
-#      tarball, the container images, and pushes the Homebrew formula to
+#      tarball, the container images, and pushes the Homebrew cask to
 #      fulcrum-governance/homebrew-tap (requires the HOMEBREW_TAP_GITHUB_TOKEN
 #      repo secret: a token with write access to that tap repo);
 #   3. builds the native-cgo full-SQL-classifier binaries per runner and
@@ -86,7 +86,7 @@ jobs:
           TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
         run: |
           if [ -z "$TAP_TOKEN" ]; then
-            echo "::error::HOMEBREW_TAP_GITHUB_TOKEN is empty or unset; the Homebrew formula push would fail after the full build. Set the repo secret and re-run."
+            echo "::error::HOMEBREW_TAP_GITHUB_TOKEN is empty or unset; the Homebrew cask push would fail after the full build. Set the repo secret and re-run."
             exit 1
           fi
       - name: Build evidence bundle (local-only, fixture-safe)
