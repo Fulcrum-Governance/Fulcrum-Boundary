@@ -4,9 +4,10 @@
 // install docs kept pinning a superseded release tag long after a newer release
 // shipped).
 //
-// The published source of truth is the "Current release target: `vX.Y.Z`" line
-// in docs/RELEASE_TRUTH_PUBLIC.md. A separate, explicitly unavailable candidate
-// target may exist without advancing active docs, CHANGELOG, or CITATION.
+// The release-stamp target is the "Current release target: `vX.Y.Z`" line in
+// docs/RELEASE_TRUTH_PUBLIC.md. A stamp candidate is internally consistent for
+// its future tag while its release-truth section still states that publication
+// has not happened.
 //
 // Only genuinely historical surfaces are exempt (per-version release notes,
 // archived internal reconciliations, the append-only changelog, the LOCKED spec
@@ -25,7 +26,7 @@ import (
 
 var (
 	currentReleaseAnchor     = regexp.MustCompile("(?m)^Current release target: `(v[0-9]+\\.[0-9]+\\.[0-9]+)`")
-	candidateReleaseAnchor   = regexp.MustCompile("(?m)^Candidate release target: `(v[0-9]+\\.[0-9]+\\.[0-9]+)` — \\*\\*not published\\*\\*$")
+	releaseStampAnchor       = regexp.MustCompile("(?m)^Release-stamp target: `(v[0-9]+\\.[0-9]+\\.[0-9]+)` — \\*\\*not published\\*\\*$")
 	currentReleaseDateAnchor = regexp.MustCompile("(?m)^Current release date: `([0-9]{4}-[0-9]{2}-[0-9]{2})`$")
 
 	// Canonical, copy-pasteable install / version references that must track the
@@ -105,93 +106,59 @@ func TestCanonicalInstallRefsTrackCurrentRelease(t *testing.T) {
 		t.Fatal("found zero canonical install references across the non-historical docs — the scan scope or patterns broke, so this guard is vacuous")
 	}
 
-	publishedStart := strings.Index(releaseTruth, "## Published baseline:")
-	if publishedStart == -1 {
-		t.Fatal("docs/RELEASE_TRUTH_PUBLIC.md: missing published-baseline section")
+	stampStart := strings.Index(releaseTruth, "## Release-stamp status — not published")
+	baselineStart := strings.Index(releaseTruth, "## Published baseline before this release stamp:")
+	if stampStart == -1 || baselineStart == -1 || stampStart >= baselineStart {
+		t.Fatal("docs/RELEASE_TRUTH_PUBLIC.md: release-stamp section must precede its published baseline")
 	}
-	assertInstallRefsEqual(t, "docs/RELEASE_TRUTH_PUBLIC.md published baseline", releaseTruth[publishedStart:], want)
+	assertInstallRefsEqual(t, "docs/RELEASE_TRUTH_PUBLIC.md release-stamp section", releaseTruth[stampStart:baselineStart], want)
 }
 
-func TestUnpublishedCandidateCannotStampPublishedTruth(t *testing.T) {
+func TestReleaseStampCandidateIsInternallyConsistent(t *testing.T) {
 	root := repoRoot(t)
 	releaseTruth := read(t, root, "docs/RELEASE_TRUTH_PUBLIC.md")
-	published := oneAnchor(t, "current release target", currentReleaseAnchor, releaseTruth)
-	candidate := oneAnchor(t, "not-published candidate release target", candidateReleaseAnchor, releaseTruth)
+	current := oneAnchor(t, "current release target", currentReleaseAnchor, releaseTruth)
+	stamp := oneAnchor(t, "not-published release-stamp target", releaseStampAnchor, releaseTruth)
 	releaseDate := oneAnchor(t, "current release date", currentReleaseDateAnchor, releaseTruth)
-	if candidate == published {
-		t.Fatalf("candidate %s must be distinct from published release %s", candidate, published)
+	if stamp != current {
+		t.Fatalf("release-stamp target %s must match current release target %s", stamp, current)
 	}
 
-	candidateStart := strings.Index(releaseTruth, "## Candidate status — not published")
-	publishedStart := strings.Index(releaseTruth, "## Published baseline:")
-	if candidateStart == -1 || publishedStart == -1 || candidateStart >= publishedStart {
-		t.Fatal("docs/RELEASE_TRUTH_PUBLIC.md: candidate section must precede the published baseline")
+	stampStart := strings.Index(releaseTruth, "## Release-stamp status — not published")
+	baselineStart := strings.Index(releaseTruth, "## Published baseline before this release stamp:")
+	if stampStart == -1 || baselineStart == -1 || stampStart >= baselineStart {
+		t.Fatal("docs/RELEASE_TRUTH_PUBLIC.md: release-stamp section must precede its published baseline")
 	}
-	assertInstallRefsEqual(t, "docs/RELEASE_TRUTH_PUBLIC.md candidate section", releaseTruth[candidateStart:publishedStart], candidate)
-	if strings.Contains(releaseTruth[publishedStart:], candidate) {
-		t.Fatalf("docs/RELEASE_TRUTH_PUBLIC.md: unpublished candidate %s leaked into the published baseline", candidate)
+	stampSection := releaseTruth[stampStart:baselineStart]
+	if !strings.Contains(stampSection, "The public release remains `v0.11.0` until both approved tags publish.") {
+		t.Fatal("docs/RELEASE_TRUTH_PUBLIC.md: release-stamp status must preserve the v0.11.0 published baseline until both tags publish")
 	}
+	assertInstallRefsEqual(t, "docs/RELEASE_TRUTH_PUBLIC.md release-stamp section", stampSection, stamp)
 
 	citation := read(t, root, "CITATION.cff")
-	if !strings.Contains(citation, `version: "`+strings.TrimPrefix(published, "v")+`"`) {
-		t.Fatalf("CITATION.cff must retain published version %s while candidate %s is unavailable", published, candidate)
+	if !strings.Contains(citation, `version: "`+strings.TrimPrefix(stamp, "v")+`"`) {
+		t.Fatalf("CITATION.cff must match release-stamp version %s", stamp)
 	}
 	if !strings.Contains(citation, `date-released: "`+releaseDate+`"`) {
-		t.Fatalf("CITATION.cff must retain published release date %s while candidate %s is unavailable", releaseDate, candidate)
+		t.Fatalf("CITATION.cff must match release-stamp date %s", releaseDate)
 	}
 
 	changelog := read(t, root, "CHANGELOG.md")
-	if strings.Contains(changelog, "## ["+strings.TrimPrefix(candidate, "v")+"]") ||
-		strings.Contains(changelog, "["+strings.TrimPrefix(candidate, "v")+"]:") {
-		t.Fatalf("CHANGELOG.md: unavailable candidate %s must remain under [Unreleased], without a dated heading or compare link", candidate)
+	stampHeading := "## [" + strings.TrimPrefix(stamp, "v") + "] - " + releaseDate
+	stampLink := "[" + strings.TrimPrefix(stamp, "v") + "]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.11.0..." + stamp
+	if !strings.Contains(changelog, stampHeading) || !strings.Contains(changelog, stampLink) {
+		t.Fatalf("CHANGELOG.md must carry the %s release-stamp heading and compare link", stamp)
 	}
-	unreleasedStart := strings.Index(changelog, "## [Unreleased]")
-	publishedHeading := strings.Index(changelog, "## ["+strings.TrimPrefix(published, "v")+"]")
-	if unreleasedStart == -1 || publishedHeading == -1 || unreleasedStart >= publishedHeading ||
-		strings.Contains(changelog[publishedHeading:], candidate) {
-		t.Fatalf("CHANGELOG.md: every %s entry must remain inside [Unreleased] before %s", candidate, published)
+	if !strings.Contains(changelog, "[Unreleased]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/"+stamp+"...HEAD") {
+		t.Fatalf("CHANGELOG.md: [Unreleased] must start from release-stamp target %s", stamp)
 	}
 
-	candidateNotes := read(t, root, "docs/releases/"+candidate+".md")
-	if !strings.Contains(candidateNotes, "**Status: unavailable.**") ||
-		!strings.Contains(candidateNotes, "until both tags are") {
-		t.Fatalf("docs/releases/%s.md must label all candidate commands unavailable until both tags publish", candidate)
+	stampNotes := read(t, root, "docs/releases/"+stamp+".md")
+	if !strings.Contains(stampNotes, "**Release-stamp candidate — not published.**") ||
+		!strings.Contains(stampNotes, "until both tags are") {
+		t.Fatalf("docs/releases/%s.md must label its stamp candidate unavailable until both tags publish", stamp)
 	}
-	assertInstallRefsEqual(t, "candidate release notes", candidateNotes, candidate)
-
-	allowed := map[string]bool{
-		"CHANGELOG.md":                       true,
-		"docs/RELEASE_TRUTH_PUBLIC.md":       true,
-		"docs/releases/" + candidate + ".md": true,
-	}
-	walkErr := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			switch d.Name() {
-			case ".git", ".context", "node_modules", "vendor", "dist":
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		ext := filepath.Ext(path)
-		if ext != ".md" && ext != ".mmd" && ext != ".cff" {
-			return nil
-		}
-		rel, relErr := filepath.Rel(root, path)
-		if relErr != nil {
-			return relErr
-		}
-		rel = filepath.ToSlash(rel)
-		if strings.Contains(read(t, root, rel), candidate) && !allowed[rel] {
-			t.Errorf("%s: unpublished candidate %s appears outside a classified candidate surface", rel, candidate)
-		}
-		return nil
-	})
-	if walkErr != nil {
-		t.Fatalf("walking public docs for candidate references: %v", walkErr)
-	}
+	assertInstallRefsEqual(t, "release-stamp notes", stampNotes, stamp)
 }
 
 func assertInstallRefsEqual(t *testing.T, name, body, want string) {

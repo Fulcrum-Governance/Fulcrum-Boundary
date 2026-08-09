@@ -50,7 +50,7 @@ Decision-record commands:
 !!! note "Availability - current release"
     `boundary explain`, `boundary replay`, and `schema_version "2"` (route-context)
     decision records shipped by `v0.9.0` and remain included in the current
-    `v0.11.0` release. `boundary verify-record` on a `schema_version "1"` or
+    `v0.12.0` release target. `boundary verify-record` on a `schema_version "1"` or
     `"2"` record is included as well.
 
 ```bash
@@ -74,7 +74,7 @@ Policy test commands:
 
 !!! note "Availability - current release"
     `boundary test` shipped in `v0.9.0` and remains included in the current
-    `v0.11.0` release. The historical `@v0.8.0` install does not include it.
+    `v0.12.0` release target. The historical `@v0.8.0` install does not include it.
 
 ```bash
 boundary test --path tests/fixtures/policy-test/cases

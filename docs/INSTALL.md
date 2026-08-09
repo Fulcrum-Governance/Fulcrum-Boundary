@@ -137,13 +137,13 @@ Requires Go 1.25+ and, for the default cgo build, a C toolchain (a C compiler
 such as gcc/clang on `PATH`):
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.11.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.12.0
 boundary selftest
 ```
 
-`@v0.11.0` is the recommended repeatable install target for the current
-published release. Candidate tags are not installable until their approved
-publication. `@latest` resolves to the latest published release after the Go
+`@v0.12.0` is the recommended repeatable install target once both approved
+release tags publish. Until then, the currently published install target remains
+`@v0.11.0`; `@latest` resolves to the latest published release after the Go
 proxy refreshes.
 
 ### Offline witnessed-log verifier
