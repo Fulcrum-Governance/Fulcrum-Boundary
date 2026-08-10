@@ -4,20 +4,20 @@ Date: 2026-06-11
 
 Branch: `main`
 
-Current release target: `v0.11.0`
+Current release target: `v0.12.0`
 
-Current release date: `2026-06-11`
+Current release date: `2026-08-09`
 
-Candidate release target: `v0.12.0` — **not published**
+Release-stamp target: `v0.12.0` — **not published**
 
-## Candidate status — not published
+## Release-stamp status — not published
 
-`v0.12.0` is an urgent release candidate, not a current release. The published
-release remains `v0.11.0`; neither `v0.12.0` nor
-`verify-witnessed/v0.12.0` exists yet. Every candidate command in this section
-is unavailable until both approved tags publish. No
-GitHub release, container, Homebrew cask update, or public-release status
-change is authorized by this candidate document.
+This branch contains the prospective `v0.12.0` release stamp, not a published
+release. The public release remains `v0.11.0` until both approved tags publish.
+Neither `v0.12.0` nor `verify-witnessed/v0.12.0` exists yet. Every command
+targeting `v0.12.0` is unavailable until then. No GitHub release, container,
+Homebrew cask update, or public-release status change is authorized by this
+release-stamp candidate.
 
 Both proposed annotated tags must resolve to the same exact commit, after the
 candidate PR is merged and an operator gives explicit exact-commit and dual-tag
@@ -67,7 +67,7 @@ GitHub assets and attestations, container pull/version behavior, Homebrew
 upgrade/version behavior, nested `go install`, source-fresh-clone tests, and
 protected-branch checks before this section can be promoted to published truth.
 
-## Published baseline: v0.11.0
+## Published baseline before this release stamp: v0.11.0
 
 This report reconciles the public Boundary release surface for the published
 `v0.11.0` release — the verifiable-records-breadth release. `v0.10.1` (the
