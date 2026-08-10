@@ -133,8 +133,9 @@ type releaseWorkflow struct {
 
 // TestProvenanceAttestationWired attributes the attestation wiring to the actual
 // jobs (parsed YAML, not whole-file substring counts): the SHA-pinned action,
-// each job's id-token/attestations permissions, a tag-gated attest step per
-// artifact family, and that no attest step runs un-gated on dispatch dry-runs.
+// each job's id-token/attestations permissions, a validated-release-target
+// attest step per artifact family, and that no attest step runs on no-input
+// dispatch dry-runs.
 func TestProvenanceAttestationWired(t *testing.T) {
 	wf := read(t, repoRoot(t), ".github/workflows/release.yml")
 
@@ -164,8 +165,8 @@ func TestProvenanceAttestationWired(t *testing.T) {
 				continue
 			}
 			attestSteps++
-			if !strings.Contains(s.If, "tag") {
-				t.Fatalf("job %q attestation step %q is not tag-gated (if=%q) — it would run on workflow_dispatch dry-runs", jobName, s.Name, s.If)
+			if !strings.Contains(s.If, "needs.release-target.outputs.publish == 'true'") {
+				t.Fatalf("job %q attestation step %q is not gated on the validated release target (if=%q) — it could run on a no-input workflow_dispatch dry-run", jobName, s.Name, s.If)
 			}
 		}
 		if attestSteps < 1 {
