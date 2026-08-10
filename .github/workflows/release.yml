@@ -13,9 +13,10 @@ name: Release
 #      uploads them to the same release with a `_cgo` suffix plus a
 #      SHA256SUMS-cgo manifest.
 #
-# `workflow_dispatch` runs are dry-runs: goreleaser runs in snapshot mode
-# (publishing skipped), the cgo matrix builds, and everything lands as
-# workflow artifacts only. No release, tap push, or image push happens.
+# A no-input `workflow_dispatch` is a dry-run: goreleaser runs in snapshot mode
+# (publishing skipped), the cgo matrix builds, and everything lands as workflow
+# artifacts only. Supplying all recovery inputs validates an existing annotated
+# root SemVer tag and its peeled commit before the normal publication path runs.
 #
 # Variant truth (see .goreleaser.yaml and docs/INSTALL.md): static binaries
 # cannot classify SQL (the Postgres AST classifier links pg_query_go via cgo),
@@ -32,20 +33,135 @@ on:
   push:
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing annotated root SemVer tag to republish
+        required: false
+        type: string
+      expected_commit:
+        description: Full commit SHA to which the release tag must peel
+        required: false
+        type: string
+      expected_tag_object:
+        description: Full annotated-tag object SHA expected for the release tag
+        required: false
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ inputs.release_tag || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
+  release-target:
+    name: validate exact release target
+    runs-on: ubuntu-latest
+    outputs:
+      publish: ${{ steps.target.outputs.publish }}
+      release_tag: ${{ steps.target.outputs.release_tag }}
+      release_sha: ${{ steps.target.outputs.release_sha }}
+      tag_object: ${{ steps.target.outputs.tag_object }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Validate annotated root release tag and exact commit
+        id: target
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          DISPATCH_TAG: ${{ inputs.release_tag }}
+          EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+          EXPECTED_TAG_OBJECT: ${{ inputs.expected_tag_object }}
+          PUSH_REF: ${{ github.ref }}
+          WORKFLOW_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          git fetch --force --tags origin
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            if [ -z "$DISPATCH_TAG" ] && [ -z "$EXPECTED_COMMIT" ] && [ -z "$EXPECTED_TAG_OBJECT" ]; then
+              # A no-input dispatch is deliberately snapshot-only. It has no
+              # release tag and cannot reach a publishing condition below.
+              {
+                echo 'publish=false'
+                echo 'release_tag=v0.0.0-snapshot'
+                echo "release_sha=$WORKFLOW_SHA"
+                echo 'tag_object='
+              } >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            if [ -z "$DISPATCH_TAG" ] || [ -z "$EXPECTED_COMMIT" ] || [ -z "$EXPECTED_TAG_OBJECT" ]; then
+              echo '::error::recovery publication requires release_tag, expected_commit, and expected_tag_object'
+              exit 1
+            fi
+            tag="$DISPATCH_TAG"
+            expected_commit="$EXPECTED_COMMIT"
+            expected_tag_object="$EXPECTED_TAG_OBJECT"
+          else
+            tag="${PUSH_REF#refs/tags/}"
+            # Bind a tag-push release to the immutable event target, not a
+            # value resolved from the fetched tag that could have moved.
+            expected_commit="$WORKFLOW_SHA"
+            expected_tag_object=''
+          fi
+
+          case "$tag" in
+            *'/'*) echo '::error::release tag must be a root tag, not a nested component tag'; exit 1 ;;
+          esac
+          # SemVer 2.0.0 with a required leading v: core numeric identifiers
+          # and numeric prerelease identifiers have no leading zeroes; every
+          # prerelease/build identifier is nonempty.
+          semver_re='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(\.(0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*)?(\+([0-9A-Za-z-]+)(\.[0-9A-Za-z-]+)*)?$'
+          if ! printf '%s\n' "$tag" | grep -Eq "$semver_re"; then
+            echo '::error::release tag must be a strict root SemVer 2.0.0 tag (vMAJOR.MINOR.PATCH)'
+            exit 1
+          fi
+          if ! printf '%s\n' "$expected_commit" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo '::error::expected_commit must be a full 40-character lowercase commit SHA'
+            exit 1
+          fi
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] \
+            && ! printf '%s\n' "$expected_tag_object" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo '::error::expected_tag_object must be a full 40-character lowercase annotated-tag object SHA'
+            exit 1
+          fi
+
+          tag_ref="refs/tags/$tag"
+          tag_object="$(git rev-parse "$tag_ref")"
+          if [ "$(git cat-file -t "$tag_object")" != 'tag' ]; then
+            echo '::error::release tag must be annotated; lightweight tags cannot be recovered'
+            exit 1
+          fi
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$tag_object" != "$expected_tag_object" ]; then
+            echo '::error::release tag object does not match expected_tag_object'
+            exit 1
+          fi
+          release_sha="$(git rev-parse "${tag_ref}^{}")"
+          if [ "$(git cat-file -t "$release_sha")" != 'commit' ]; then
+            echo '::error::release tag must peel to a commit'
+            exit 1
+          fi
+          if [ "$release_sha" != "$expected_commit" ]; then
+            echo '::error::release tag peeled commit does not match expected_commit'
+            exit 1
+          fi
+          {
+            echo 'publish=true'
+            echo "release_tag=$tag"
+            echo "release_sha=$release_sha"
+            echo "tag_object=$tag_object"
+          } >> "$GITHUB_OUTPUT"
+
   release-check:
     name: release-check gate
+    needs: release-target
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.release-target.outputs.release_sha }}
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: '1.26.5'
@@ -55,16 +171,19 @@ jobs:
 
   goreleaser:
     name: static matrix + release publish
-    needs: release-check
+    needs: [release-target, release-check]
     runs-on: ubuntu-latest
     permissions:
       contents: write # create the GitHub release and upload assets
       packages: write # push container images to ghcr.io
       id-token: write # mint the OIDC token for build-provenance attestation
       attestations: write # record the provenance attestation
+    env:
+      GORELEASER_CURRENT_TAG: ${{ needs.release-target.outputs.release_tag }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ needs.release-target.outputs.release_sha }}
           fetch-depth: 0 # goreleaser changelog needs history and tags
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
@@ -77,11 +196,13 @@ jobs:
       # steps, and NOT tag-gated, so the dry-run path has it too.
       - name: Install syft for SBOM generation
         uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
       - name: Log in to ghcr.io
-        if: github.ref_type == 'tag'
+        if: needs.release-target.outputs.publish == 'true'
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
       - name: Preflight tap token (tag publish)
-        if: github.ref_type == 'tag'
+        if: needs.release-target.outputs.publish == 'true'
         env:
           TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
         run: |
@@ -95,7 +216,7 @@ jobs:
           go run ./cmd/boundary evidence verify .release-extras/boundary-evidence
           tar -czf .release-extras/boundary-evidence.tar.gz -C .release-extras boundary-evidence
       - name: goreleaser release (tag)
-        if: github.ref_type == 'tag'
+        if: needs.release-target.outputs.publish == 'true'
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
           distribution: goreleaser
@@ -105,7 +226,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
       - name: Attest build provenance for static release artifacts (tag)
-        if: github.ref_type == 'tag'
+        if: needs.release-target.outputs.publish == 'true'
         uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
         with:
           # The static archives, their SPDX SBOMs, and the checksum manifest
@@ -118,7 +239,7 @@ jobs:
             dist/SHA256SUMS
             .release-extras/boundary-evidence.tar.gz
       - name: goreleaser snapshot dry-run (manual dispatch)
-        if: github.ref_type != 'tag'
+        if: needs.release-target.outputs.publish != 'true'
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
           distribution: goreleaser
@@ -127,7 +248,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload snapshot artifacts (manual dispatch)
-        if: github.ref_type != 'tag'
+        if: needs.release-target.outputs.publish != 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: static-snapshot
@@ -138,7 +259,7 @@ jobs:
 
   cgo-binaries:
     name: cgo ${{ matrix.goos }}/${{ matrix.goarch }}
-    needs: goreleaser
+    needs: [release-target, goreleaser]
     permissions:
       contents: write # upload assets to the release created by goreleaser
       id-token: write # mint the OIDC token for build-provenance attestation
@@ -169,6 +290,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ needs.release-target.outputs.release_sha }}
           fetch-depth: 0
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
@@ -178,14 +300,14 @@ jobs:
         uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
       - name: Resolve version
         id: version
+        env:
+          RELEASE_TAG: ${{ needs.release-target.outputs.release_tag }}
         run: |
-          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
-            tag="${GITHUB_REF_NAME}"
-          else
-            tag="$(git describe --tags --always)"
-          fi
-          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
-          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+          tag="$RELEASE_TAG"
+          {
+            echo "tag=${tag}"
+            echo "version=${tag#v}"
+          } >> "$GITHUB_OUTPUT"
       - name: Build native-cgo binary (full SQL classifier)
         env:
           CGO_ENABLED: '1'
@@ -195,7 +317,7 @@ jobs:
           go build -trimpath \
             -ldflags "-s -w \
               -X github.com/fulcrum-governance/fulcrum-boundary/internal/versioninfo.Version=${{ steps.version.outputs.tag }} \
-              -X github.com/fulcrum-governance/fulcrum-boundary/internal/versioninfo.Commit=${GITHUB_SHA} \
+              -X github.com/fulcrum-governance/fulcrum-boundary/internal/versioninfo.Commit=${{ needs.release-target.outputs.release_sha }} \
               -X github.com/fulcrum-governance/fulcrum-boundary/internal/versioninfo.BuildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             -o build-cgo/boundary ./cmd/boundary
       - name: Assert the binary really is the cgo variant
@@ -225,19 +347,21 @@ jobs:
           # archives are SBOM'd by goreleaser; the cgo archives are built outside
           # goreleaser, so syft runs here, matching format.
           syft "dist-cgo/${name}.tar.gz" --output "spdx-json=dist-cgo/${name}.tar.gz.spdx.json"
-          echo "archive=dist-cgo/${name}.tar.gz" >> "$GITHUB_OUTPUT"
-          echo "checksum=dist-cgo/${name}.tar.gz.sha256" >> "$GITHUB_OUTPUT"
-          echo "sbom=dist-cgo/${name}.tar.gz.spdx.json" >> "$GITHUB_OUTPUT"
+          {
+            echo "archive=dist-cgo/${name}.tar.gz"
+            echo "checksum=dist-cgo/${name}.tar.gz.sha256"
+            echo "sbom=dist-cgo/${name}.tar.gz.spdx.json"
+          } >> "$GITHUB_OUTPUT"
       - name: Upload to the GitHub release (tag)
-        if: github.ref_type == 'tag'
+        if: needs.release-target.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload "${GITHUB_REF_NAME}" \
+          gh release upload "${{ needs.release-target.outputs.release_tag }}" \
             "${{ steps.package.outputs.archive }}" \
             "${{ steps.package.outputs.sbom }}" --clobber
       - name: Attest build provenance for the cgo archive + SBOM (tag)
-        if: github.ref_type == 'tag'
+        if: needs.release-target.outputs.publish == 'true'
         uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
         with:
           subject-path: |
@@ -255,11 +379,14 @@ jobs:
 
   cgo-checksums:
     name: SHA256SUMS-cgo
-    needs: cgo-binaries
+    needs: [release-target, cgo-binaries]
     permissions:
       contents: write
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.release-target.outputs.release_sha }}
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: cgo-*
@@ -269,11 +396,11 @@ jobs:
           cat ./*.tar.gz.sha256 | sort -k2 > SHA256SUMS-cgo
           cat SHA256SUMS-cgo
       - name: Upload to the GitHub release (tag)
-        if: github.ref_type == 'tag'
+        if: needs.release-target.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload "${GITHUB_REF_NAME}" SHA256SUMS-cgo --clobber --repo "${GITHUB_REPOSITORY}"
+          gh release upload "${{ needs.release-target.outputs.release_tag }}" SHA256SUMS-cgo --clobber --repo "${GITHUB_REPOSITORY}"
       - name: Upload workflow artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
