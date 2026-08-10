@@ -1,60 +1,67 @@
 # Final Public Release Truth
 
-Date: 2026-06-11
+Date: 2026-08-10
 
 Branch: `main`
 
-Current release target: `v0.12.0`
+Current release: `v0.12.0`
 
-Current release date: `2026-08-09`
+Current release date: `2026-08-10`
 
-Release-stamp target: `v0.12.0` — **not published**
+Published release: `v0.12.0`
 
-## Release-stamp status — not published
+## Published v0.12.0 release
 
-This branch contains the prospective `v0.12.0` release stamp, not a published
-release. The public release remains `v0.11.0` until both approved tags publish.
-Neither `v0.12.0` nor `verify-witnessed/v0.12.0` exists yet. Every command
-targeting `v0.12.0` is unavailable until then. No GitHub release, container,
-Homebrew cask update, or public-release status change is authorized by this
-release-stamp candidate.
+The annotated root tag object `38ff2360c3f321646578cb3afd368a3c7cc2e98d`
+(`v0.12.0^{}`) and annotated nested-module tag object
+`67d49cf9dc6a523b741f06a7cc06d6fa57ce921e`
+(`verify-witnessed/v0.12.0^{}`) both peel to the approved release commit
+`a2fd0b81fdec312f6b676a96e1fce45b661f00cf`.
 
-Both proposed annotated tags must resolve to the same exact commit, after the
-candidate PR is merged and an operator gives explicit exact-commit and dual-tag
-approval:
+The [GitHub release](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/releases/tag/v0.12.0)
+is published (not draft or prerelease) with 23 assets: six static archives,
+four native-cgo archives, ten SPDX SBOMs, `SHA256SUMS`, `SHA256SUMS-cgo`, and
+the fixture-safe `boundary-evidence.tar.gz`. Both checksum manifests verify;
+all ten SPDX files parse and pass structural checks; and the evidence archive
+is readable. GitHub build-provenance attestations verify for the configured
+static archives and SBOMs, `SHA256SUMS`, and native-cgo archives and SBOMs.
+The workflow does not create an attestation for `SHA256SUMS-cgo`.
 
-- root distribution tag: `v0.12.0`
-- nested source-distribution tag: `verify-witnessed/v0.12.0`
+`ghcr.io/fulcrum-governance/boundary:v0.12.0` and `:latest` resolve to
+`sha256:557605c59ec9a9aa65c87d2e36ad7c1cd59ffe71791b18d37f4d28a293e4cb84`.
+That image provides linux/amd64 and linux/arm64 variants whose labels record
+version `v0.12.0` and the approved revision; its offline `version` reports that
+revision and `selftest` passes. The Homebrew cask at tap commit
+`8a61399d7dcff10dcabf73286d4545762601330a` is `Casks/boundary.rb` (there is no
+`Formula/boundary.rb`); strict online cask audit, release-archive hashes, a real
+cask install, version readback, and selftest all passed.
 
-The root tag is expected to publish ten static/native-cgo archives, two checksum
-manifests, ten SPDX SBOMs, the fixture-safe evidence bundle, the static
-multi-architecture container, and the static Homebrew cask update. GitHub
-build-provenance attestations cover the configured static archives, static
-SBOMs, `SHA256SUMS`, native-cgo archives, and native-cgo SBOMs. Live publication
-and attestation remain unverified until the approved tag-gated workflow runs, so
-`BND-CLAIM-DIST-002` remains `partial`.
-
-The candidate uses GoReleaser's current `dockers_v2` and `homebrew_casks`
-configuration. The public tap still contains the legacy
-`Formula/boundary.rb`; before either release tag is pushed, the release operator
-must migrate that tap entry to the cask path and verify a dry-run install. That
-external tap change is not authorized by this candidate lane and remains a
-human release gate.
-
-After both approved tags publish, the nested verifier is expected to be
-source-distributed through its nested Go module tag. This command is currently
-unavailable:
+Install the root command from the published lowercase root module path:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/verify-witnessed@v0.12.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.12.0
 ```
 
-There is no verifier-specific archive, container, Homebrew package, or version
-flag. The verifier checks bundle integrity and configured signatures offline;
-it does not prove upstream correctness, completeness, immutability, or
-independent witness operation.
+That source installation passes `selftest`, but reports `commit: unknown`; do
+not use it to infer the release commit. The release archives and container do
+report the approved revision.
 
-The candidate adds the relocated Apache-2.0 verifier; the Secure GitHub
+Install the nested verifier with this exact, case-sensitive module path:
+
+```bash
+go install github.com/Fulcrum-Governance/Fulcrum-Boundary/verify-witnessed@v0.12.0
+```
+
+The nested verifier is source-distributed only: it has no verifier-specific
+archive, container, Homebrew package, or version flag. In a credential-cleared,
+no-network run against release-tag fixtures, the valid bundle passed all 12
+checks with exit 0 and the `leaf-tamper` fixture exited 1 with
+`inclusion_proof` failing. This is offline integrity checking of the supplied
+bundle, not proof of external or independent witness operation. Current
+witnesses remain Fulcrum-operated on separate infrastructure; the verifier also
+does not prove upstream correctness, completeness, or immutability.
+
+The v0.12.0 release adds the relocated Apache-2.0 verifier; the Secure GitHub
 bypass-proof ladder and narrow stateful official-MCP route (both still preview);
 the proof-receipt sidecar; the wired-witness vocabulary reconciliation; per-host
 install docs; the permanent Windows static-only stance; SBOM and provenance
@@ -62,12 +69,12 @@ wiring; kernel escalation await mode and pipeline seam; and the Go 1.26.5
 toolchain/security refresh. It does not change adapter maturity; Boundary does
 not emit `proved` decisions.
 
-Post-publication reconciliation must independently verify both tag targets, all
-GitHub assets and attestations, container pull/version behavior, Homebrew
-upgrade/version behavior, nested `go install`, source-fresh-clone tests, and
-protected-branch checks before this section can be promoted to published truth.
+GitHub Pages at https://fulcrum-governance.github.io/Fulcrum-Boundary/ returns
+200 and its latest Docs workflow is green. Published navigation is limited to
+the routes the site exposes; this report does not imply separate release-truth
+or install Pages routes.
 
-## Published baseline before this release stamp: v0.11.0
+## Published baseline before v0.12.0: v0.11.0
 
 This report reconciles the public Boundary release surface for the published
 `v0.11.0` release — the verifiable-records-breadth release. `v0.10.1` (the
@@ -138,12 +145,7 @@ The final public truth is:
   deployment bypass resistance, or verdict correctness beyond supplied
   fixtures.
 
-## Shipped On Main, Unreleased
-
-> One capability change past the `v0.11.0` tag (`a394488`), recorded here
-> with "main, unreleased" status before any downstream document cites it;
-> promote it to the versioned Claims Status / Feature Status tables below at
-> the next tag cut.
+## New in v0.12.0
 
 - **Witnessed-log verifier** (`BND-CLAIM-WITNESS-001`, delivered): `verify-witnessed/`
   relocated from Fulcrum's private repository — public, Apache-2.0,
@@ -172,7 +174,7 @@ documented, additive change.
 | `go test ./claims/... -count=1` | Pass |
 | `go test ./... -count=1 -timeout 5m` | Pass |
 
-Verified 2026-06-11 at the `v0.11.0` tag commit `a394488` (`make
+Historical verification: 2026-06-11 at the `v0.11.0` tag commit `a394488` (`make
 release-check` exit 0 on the release-prep branch at the same tree, and the
 release workflow's `release-check` gate job passed before publish).
 
@@ -206,7 +208,7 @@ boundary demo github-lethal-trifecta
 boundary demo tamper-evidence
 ```
 
-The currently published source path is:
+The `v0.11.0` source path was:
 
 ```bash
 go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.11.0
@@ -273,7 +275,7 @@ Command Boundary, and Edit Boundary are preview. The full table is in
 
 ## User-Install Status
 
-The currently published install channels use `v0.11.0`:
+The `v0.11.0` published install channels were:
 
 ```bash
 brew install fulcrum-governance/tap/boundary          # static build
@@ -289,7 +291,7 @@ full SQL classifier (Go 1.25+ and a C toolchain required for source).
 
 ## GitHub Action Ref Status
 
-The MCP audit action examples use:
+The v0.11.0 MCP audit action examples used:
 
 ```yaml
 - uses: Fulcrum-Governance/Fulcrum-Boundary/actions/mcp-audit@v0.11.0

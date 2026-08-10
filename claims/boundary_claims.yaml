@@ -231,7 +231,7 @@ claims:
 
   - id: BND-CLAIM-DIST-002
     claim: "Boundary's tag-gated release pipeline generates an SPDX SBOM for each static and native-cgo release archive and records GitHub build-provenance attestations for its release artifacts"
-    status: partial
+    status: delivered
     evidence:
       tests:
         - path: tests/supplychain/wiring_test.go
@@ -250,10 +250,7 @@ claims:
         - "The boundary version command proves release provenance"
         - "Every release archive carries an SBOM"
         - "Build provenance was recorded for releases before the pipeline shipped it"
-    gaps:
-      - id: BND-DIST-002
-        description: "The SBOM and build-provenance wiring landed on main AFTER the v0.11.0 tag (a394488 predates it): build-provenance attestation for both archive families plus the native-cgo archive SBOM in commit 7123b85 (PR #140), and the cgo-archive SPDX SBOM that closes this claim's cgo half in commit 65227ab (PR #139). tests/supplychain/wiring_test.go pins that wiring — the syft SBOM steps for both archive families, the SHA-pinned attest-build-provenance steps, and the id-token/attestations OIDC permissions, all tag-gated. Stays partial because no tagged release has run the provenance/SBOM pipeline yet: every published tag through v0.11.0 predates the wiring, so the recorded attestations are unproven and the first tag after v0.11.0 is the first to exercise them. Verified locally short of a release: the static-archive SBOM via `goreleaser release --snapshot` (6 SPDX files) and the cgo SBOM command via `syft` on a cgo archive (valid SPDX-2.3); independently confirming a published attestation needs `gh attestation verify` against the release assets, which is out-of-repo."
-        spec: "GitHub issues #140 (SBOM + build-provenance attestation) and #139 (cgo-archive SBOM, closing the cgo half) — wiring on main post-v0.11.0, unrun in a tagged release until the next tag"
+    gaps: []
     depends_on:
       - BND-CLAIM-DIST-001
 

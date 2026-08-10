@@ -44,7 +44,7 @@ Boundary governs actions only when the route is forced through Boundary.
 
 `boundary test` is the local developer-trust step: it evaluates local policy
 bundles against routed request fixtures and exits non-zero on unexpected
-verdicts. It is included in the current `v0.12.0` release target. See
+verdicts. It is included in the published `v0.12.0` release. See
 [Policy Testing](reference/policy-testing.md).
 
 ## From Source
