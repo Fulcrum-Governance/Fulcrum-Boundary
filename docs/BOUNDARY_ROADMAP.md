@@ -8,11 +8,11 @@ decision yourself" — without changing what Boundary actually governs.
 
 Three rules govern this page:
 
-- **Release target means the prospective `v0.12.0` tag.** The baseline below,
+- **Published release means `v0.12.0`.** The baseline below,
   all of Phase 0A, and Phase 1 (`boundary test`) are released in `v0.9.0` and
-  exercised by tests and the two proof-lane demos. The `v0.12.0` release target
+  exercised by tests and the two proof-lane demos. The published `v0.12.0` release
   includes the Phase 0A commands, route-context record fields, and the
-  policy-as-code test runner. It is not publicly available until the tag publishes.
+  policy-as-code test runner.
 - **History stays history.** `v0.8.0` remains the Phase 0A record-trust tag:
   `DecisionRecordV2`, `boundary explain`, `boundary replay`, and record-location
   UX. It does not include `boundary test`.
@@ -55,11 +55,11 @@ corroborated by it. Boundary does not emit `proved` decisions itself.
 
 ---
 
-## Phase 0A — Trust the Record / Evidence UX (shipped in `v0.8.0`, included in the `v0.12.0` release target)
+## Phase 0A — Trust the Record / Evidence UX (shipped in `v0.8.0`, included in `v0.12.0`)
 
-> **In the `v0.8.0` release and included in the `v0.12.0` release target.** Everything in this
+> **In the `v0.8.0` release and included in the published `v0.12.0` release.** Everything in this
 > section is released, exercised by tests, and reflected in the claims ledger.
-> The `v0.12.0` release target includes these commands and record fields. Command and
+> The published `v0.12.0` release includes these commands and record fields. Command and
 > field reference:
 > [`docs/CLI_REFERENCE.md`](CLI_REFERENCE.md) (§§10–11) and the route-context
 > section of [`docs/DECISION_RECORDS.md`](DECISION_RECORDS.md).
@@ -94,7 +94,7 @@ human-readable account of the verdict — the matched rule, the reason, the
 decision mode, and the route context above — so a record can be understood
 without reverse-engineering JSON by hand. `boundary explain` is a released
 command (reference: [`docs/CLI_REFERENCE.md`](CLI_REFERENCE.md) §10), included
-in the `v0.12.0` release target.
+in the published `v0.12.0` release.
 
 ### `boundary replay <record>`
 
@@ -103,8 +103,7 @@ reproduce the verdict locally, so a developer can confirm a record's decision is
 deterministic and recompute it on their own machine. Replay is a local,
 fixture-safe reproduction step. It reproduces the *decision*, not the absence of
 upstream side effects. `boundary replay` is a released command (reference:
-[`docs/CLI_REFERENCE.md`](CLI_REFERENCE.md) §11), included in the `v0.12.0` release target.
-install.
+[`docs/CLI_REFERENCE.md`](CLI_REFERENCE.md) §11), included in the published `v0.12.0` release.
 
 ### Both proof-lane records are first-class
 
@@ -129,11 +128,10 @@ claimed:
 
 ---
 
-## Phase 0B — Diagnostics & first-impression clarity (included in the `v0.12.0` release target)
+## Phase 0B — Diagnostics & first-impression clarity (included in `v0.12.0`)
 
-> **Included in the `v0.12.0` release target.** These Phase 0B slices landed on
-> source `main` after `v0.9.0` and will be included in the `v0.12.0` install
-> when the tag publishes:
+> **Included in the published `v0.12.0` release.** These Phase 0B slices landed
+> on source `main` after `v0.9.0`:
 > doctor environment diagnostics, the redacted `--report`, and the clearer
 > first-run hierarchy.
 
@@ -160,7 +158,7 @@ governed surface and does **not** change any verdict.
 ## Phase 1 — Policy-as-code testing (shipped in `v0.9.0`)
 
 > **In the `v0.9.0` release.** `boundary test` is delivered in `v0.9.0`; the
-> `v0.12.0` release target includes it. The historical `@v0.8.0` install does not.
+> published `v0.12.0` release includes it. The historical `@v0.8.0` install does not.
 
 `boundary test` is a **local, fixture-only policy-as-code test runner**. It lets
 an operator author request fixtures and expected verdicts against local YAML
@@ -355,7 +353,7 @@ behavior. To keep that contract intact:
 - The Baseline, Phase 0A, and Phase 1 sections describe behavior that is
   released in `v0.9.0`. `explain`, `replay`, `DecisionRecordV2`, the
   route-context fields, and `boundary test` are released in `v0.9.0`, and the
-  `v0.12.0` release target includes them.
+  published `v0.12.0` release includes them.
 - `v0.8.0` remains the historical Phase 0A tag and does not include
   `boundary test`.
 - When any planned item lands, it ships behind the same release gates as the rest

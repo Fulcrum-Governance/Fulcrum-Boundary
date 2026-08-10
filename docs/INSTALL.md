@@ -159,10 +159,16 @@ cd Fulcrum-Boundary/verify-witnessed
 go build -o fulcrum-verify-witnessed .
 ```
 
-After publication, Go will resolve the verifier from the matching nested tag;
-the root and nested tags must point to the same exact commit. The verifier does
-not ship as a separate archive, container, Homebrew package, or versioned
-binary surface. See [`verify-witnessed/README.md`](../verify-witnessed/README.md)
+Go resolves the verifier from the matching published nested tag. Install it
+with the exact case-sensitive path:
+
+```bash
+go install github.com/Fulcrum-Governance/Fulcrum-Boundary/verify-witnessed@v0.12.0
+```
+
+The root and nested tags both point to
+`a2fd0b81fdec312f6b676a96e1fce45b661f00cf`. The verifier does not ship as a
+separate archive, container, Homebrew package, or versioned binary surface. See [`verify-witnessed/README.md`](../verify-witnessed/README.md)
 for the offline bundle and keyring contract.
 
 From a checkout:

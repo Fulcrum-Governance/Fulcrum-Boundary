@@ -51,17 +51,14 @@ binds its digest (`gh attestation verify <the .spdx.json>`).
 
 ## Honest scope (status)
 
-- **Verified short of a release:** static-archive SPDX SBOM generation is
-  exercised by `goreleaser release --snapshot --clean --skip=publish,docker` (six
-  archives, six SBOMs); the cgo-archive SBOM command (`syft … spdx-json`) is
-  verified by running syft on a locally-built cgo archive (valid SPDX 2.3). The
-  wiring for both is pinned by tests in `tests/supplychain/`.
-- **Wired, takes effect at the next tagged release:** build-provenance
-  attestation (both archive families) and the native-cgo archive SBOM run only on
-  a `v*` tag — the cgo SBOM in the per-runner `cgo-binaries` matrix, attestation
-  via the workflow's OIDC token. They are not claimed as a shipped release
-  capability until the first tag after they land — see `BND-CLAIM-DIST-002`
-  (`partial`) in [CLAIMS_LEDGER.md](./CLAIMS_LEDGER.md) and its gap `BND-DIST-002`.
+- **Published and verified at `v0.12.0`:** all ten SPDX files parse and pass
+  structural checks; both checksum manifests verify; and GitHub
+  build-provenance attestations verify for configured static archives and SBOMs,
+  `SHA256SUMS`, and native-cgo archives and SBOMs. `SHA256SUMS-cgo` is not
+  attested because the workflow does not create an attestation for it.
+- The build wiring remains pinned by tests in `tests/supplychain/`. It describes
+  distribution metadata, not a statement about the contents or provenance of
+  upstream packages, models, or MCP servers.
 - This page describes distribution supply-chain metadata only. It makes no claim
   about upstream package, model, or MCP-server supply chains (see
   `docs/STANDARDS_MAPPING.md`, ASI04).

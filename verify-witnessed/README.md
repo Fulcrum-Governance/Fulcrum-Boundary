@@ -140,10 +140,16 @@ go build -o fulcrum-verify-witnessed .
 
 Requires a Go 1.26+ toolchain. Building it pulls in no Boundary-internal
 package and no other Fulcrum private code (see "Tests" below for the command
-that checks this directly). A versioned nested-module install is unavailable
-until both the root release tag and matching nested tag are explicitly approved
-and published. After publication, pin the module or clone to that matching
-release to align with your bundle's `exporter.boundary_wire_contract_version`
+that checks this directly). The published versioned nested-module install is:
+
+```bash
+go install github.com/Fulcrum-Governance/Fulcrum-Boundary/verify-witnessed@v0.12.0
+```
+
+Use that exact case-sensitive module path. The root `v0.12.0` and matching
+`verify-witnessed/v0.12.0` tags both resolve to
+`a2fd0b81fdec312f6b676a96e1fce45b661f00cf`. Pin the module or clone to that
+matching release to align with your bundle's `exporter.boundary_wire_contract_version`
 — the same convention used for the existing decision-record verifiers.
 
 ## How to run it

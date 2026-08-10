@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-## [0.12.0] - 2026-08-09
+## [0.12.0] - 2026-08-10
 
 ### Added
 
@@ -66,7 +66,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   classifies `UNKNOWN` and is denied fail-closed (it never allows SQL a cgo build
   would deny). `tests/releasebuild/` pins it: Windows stays in the static build
   and the native-cgo release matrix gains no Windows lane.
-- Release supply-chain metadata (`BND-CLAIM-DIST-002`, `partial`): the
+- Release supply-chain metadata (`BND-CLAIM-DIST-002`, `delivered`): the
   tag-gated release pipeline now generates an SPDX SBOM (syft) for each static
   (`.goreleaser.yaml`) and native-cgo (`cgo-binaries` job) release archive and
   records GitHub build-provenance attestations for release artifacts — static
@@ -76,10 +76,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   permissions). Verify with `gh attestation verify`. This is distribution
   provenance, distinct from runtime decision-record signing (Boundary does not
   sign decision records by default; see `docs/PROOF_BOUNDARY.md`, #134). Static
-  SBOM generation is verified via `goreleaser release --snapshot` and the
-  cgo-archive SBOM command via local syft; provenance and the cgo SBOM are
-  release-gated (`BND-DIST-002`) until the first tagged release runs the updated
-  pipeline. Docs: `docs/SUPPLY_CHAIN.md`; wiring pinned by `tests/supplychain/`.
+  v0.12.0 exercised the tagged pipeline: all ten SBOMs parse and pass structural
+  checks, and attestations verify for the configured static archives and SBOMs,
+  `SHA256SUMS`, and native-cgo archives and SBOMs. The workflow does not create
+  an attestation for `SHA256SUMS-cgo`. Docs: `docs/SUPPLY_CHAIN.md`; wiring
+  pinned by `tests/supplychain/`.
 
 - Kernel escalation await mode: a new `governance/kernel.AwaitingEscalationHandler`
   publishes the existing frozen escalate envelope (`{"request": …, "reason": …}`

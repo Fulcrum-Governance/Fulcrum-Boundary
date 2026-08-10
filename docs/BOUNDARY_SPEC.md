@@ -25,8 +25,8 @@
 ## How to read this spec
 
 **Authority order (tie-breaker for any claim; highest wins).**
-`docs/RELEASE_TRUTH_PUBLIC.md` (v0.12.0 release target) → `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md`
-(**CI-enforced**, the binding floor) → `README.md` (v0.12.0 release target) → most-recent intent
+`docs/RELEASE_TRUTH_PUBLIC.md` (published v0.12.0 release) → `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md`
+(**CI-enforced**, the binding floor) → `README.md` (published v0.12.0 release) → most-recent intent
 (`conductor/2026-05-29-*-reset-{design,plan}.md`, polish only) → the language stack
 (`docs/LANGUAGE_SYSTEM.md` / `docs/COPY_RULES.md` / `docs/LEXICON.md` /
 `docs/BOUNDARY_PRODUCT_PRIMITIVES.md`) → `docs/LAUNCH_TRUTH_FREEZE.md` →
@@ -399,9 +399,9 @@ flowchart TB
 # 4. Scope & Maturity Matrix
 
 > **Authority order for every claim below** (highest first): `docs/RELEASE_TRUTH_PUBLIC.md`
-> (v0.12.0 release target) → `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md` (CI-enforced) →
+> (published v0.12.0 release) → `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md` (CI-enforced) →
 > `docs/ADAPTER_READINESS_MATRIX.md` + `adapters/<x>/readiness.yaml` → `README.md`. Current
-> release-candidate verification is recorded in `docs/RELEASE_TRUTH_PUBLIC.md`
+> published-release verification is recorded in `docs/RELEASE_TRUTH_PUBLIC.md`
 > and the release gates; older HEAD-specific audits are provenance only.
 
 ## 4.0 The two-lane spine (CANONICAL — the headline; everything else is honest preview)
@@ -508,7 +508,7 @@ Kernel / out-of-process integration is **a contract surface, not a shipped depen
 
 | Item | Contract | Status | Evidence |
 |---|---|---|---|
-| Install path | `brew install fulcrum-governance/tap/boundary` (static) or `go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.12.0` (source) | repeatable release target | `docs/RELEASE_TRUTH_PUBLIC.md`; README |
+| Install path | `brew install fulcrum-governance/tap/boundary` (static) or `go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.12.0` (source) | published release path | `docs/RELEASE_TRUTH_PUBLIC.md`; README |
 | Go toolchain | **Go 1.25+** required | hard requirement | `go.mod` `go 1.25.0` |
 | **C-toolchain prerequisite** | Default `go install` needs a **C compiler present** (CGO on): `cmd/boundary` → `interceptors/sql` → `pganalyze/pg_query_go/v6` is **CGO with no `nocgo` fallback**. `CGO_ENABLED=0` build **fails**. The shipped `Dockerfile` builds with `CGO_ENABLED=1` plus a C toolchain; the README states the prerequisite. | build caveat (B-1, resolved) | `CROSS_REPO_DEPS.md` B-1; `Dockerfile` (`CGO_ENABLED=1`, `build-base`); verified `CGO_ENABLED=0 go build ./cmd/boundary` fails (`undefined: pg_query.Parse`) |
 | Prebuilt channels | **Homebrew tap, container image, archives + SHA256 manifests** ship from the tag-gated pipeline (`v0.10.1`+; `BND-CLAIM-DIST-001`). **No hosted monitoring / cloud analysis** — every channel installs a local binary. | delivered; hosted monitoring still forbidden | `docs/RELEASE_TRUTH_PUBLIC.md`; `docs/INSTALL.md` |
@@ -627,7 +627,7 @@ Controlled rules (verified): generic platform lead (`AI governance platform`, he
 
 ## 7.2 Authority order (the tie-breaker)
 
-When two documents disagree about what may be claimed, resolve highest-wins (the canonical chain from the briefing): (1) `docs/RELEASE_TRUTH_PUBLIC.md` (v0.12.0 release target); (2) `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md` (**CI-enforced**; the binding floor); (3) `README.md` (v0.12.0 release target); (4) `conductor/2026-05-29-…-reset-{design,plan}.md` (intent, polish only); (5) the language stack; (6) `docs/LAUNCH_TRUTH_FREEZE.md`; (7) `Fulcrum_Boundary_Vision.md` (direction only).
+When two documents disagree about what may be claimed, resolve highest-wins (the canonical chain from the briefing): (1) `docs/RELEASE_TRUTH_PUBLIC.md` (published v0.12.0 release); (2) `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md` (**CI-enforced**; the binding floor); (3) `README.md` (published v0.12.0 release); (4) `conductor/2026-05-29-…-reset-{design,plan}.md` (intent, polish only); (5) the language stack; (6) `docs/LAUNCH_TRUTH_FREEZE.md`; (7) `Fulcrum_Boundary_Vision.md` (direction only).
 
 **Demote / do not cite as authority:** `BOUNDARY_SPEC_SERIES.md`, the "governance kernel / kernel-connected" framing, all GIL-named material, the per-version `RELEASE_TRUTH_V0xx` history.
 

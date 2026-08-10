@@ -52,8 +52,7 @@ sets `report_redacted: true` and replaces the local `project_root` with
 `<redacted>`. Use it when a developer needs to share a first-run failure without
 leaking a local path. It still makes no network calls and performs no mutation.
 
-> Availability note: `--report` is included in the `v0.12.0` release target;
-> `go install ...@v0.12.0` will include it when the tag publishes.
+> Availability note: `--report` is included in the published `v0.12.0` release.
 
 ## Environment Diagnostics
 
