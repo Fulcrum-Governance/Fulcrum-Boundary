@@ -162,7 +162,7 @@ func TestNoInputDispatchIsSnapshotOnly(t *testing.T) {
 // publish that matrix, so setup must remain SHA-pinned and before GoReleaser.
 func TestBuildxPrecedesGoReleaser(t *testing.T) {
 	wf := releaseWF(t)
-	const buildx = "docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435"
+	const buildx = "docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e"
 	buildxAt := strings.Index(wf, buildx)
 	goreleaserAt := strings.Index(wf, "goreleaser/goreleaser-action@")
 	if buildxAt < 0 {
