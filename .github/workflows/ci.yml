@@ -136,7 +136,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
-          go-version: '1.26.5'
+          go-version: '1.26.6'
           cache: true
       # adapters/grpc and verify-witnessed are separate Go modules: the root
       # `./...` pattern does not reach them, so each scanner needs its own
@@ -144,32 +144,32 @@ jobs:
       # stay separate so a red names its scanner and its module.
       - name: gosec (root module)
         env:
-          GOTOOLCHAIN: go1.26.5
+          GOTOOLCHAIN: go1.26.6
         run: go run github.com/securego/gosec/v2/cmd/gosec@v2.26.1 ./...
       - name: gosec (adapters/grpc module)
         env:
-          GOTOOLCHAIN: go1.26.5
+          GOTOOLCHAIN: go1.26.6
         working-directory: adapters/grpc
         run: go run github.com/securego/gosec/v2/cmd/gosec@v2.26.1 ./...
       - name: gosec (verify-witnessed module)
         env:
-          GOTOOLCHAIN: go1.26.5
+          GOTOOLCHAIN: go1.26.6
         working-directory: verify-witnessed
         run: go run github.com/securego/gosec/v2/cmd/gosec@v2.26.1 ./...
       - name: govulncheck (root module)
         env:
-          GOTOOLCHAIN: go1.26.5
+          GOTOOLCHAIN: go1.26.6
         run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
+          go install golang.org/x/vuln/cmd/govulncheck@v1.3.0
           govulncheck ./...
       - name: govulncheck (adapters/grpc module)
         env:
-          GOTOOLCHAIN: go1.26.5
+          GOTOOLCHAIN: go1.26.6
         working-directory: adapters/grpc
         run: govulncheck ./...
       - name: govulncheck (verify-witnessed module)
         env:
-          GOTOOLCHAIN: go1.26.5
+          GOTOOLCHAIN: go1.26.6
         working-directory: verify-witnessed
         run: govulncheck ./...
 
