@@ -149,8 +149,11 @@ on `PATH`):
 go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.12.0
 ```
 
-`v0.12.0` is the release-stamp target, not a published install yet. Until both
-approved tags publish, use the current public `v0.11.0` release.
+`v0.12.0` is the current published release. The source install above reports
+`commit: unknown`; use a prebuilt release archive or container when the approved
+revision must be visible at runtime. See the
+[public release-truth record](./docs/RELEASE_TRUTH_PUBLIC.md) for the tag,
+package, checksum, SBOM, and provenance evidence.
 
 Without a C toolchain, `CGO_ENABLED=0 go build ./cmd/boundary` builds the
 static variant described above (routed SQL classifies as `UNKNOWN` and is
