@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Security
+
+- `SlogAuditPublisher` no longer writes caller-controlled request, tool, reason,
+  trace, agent, tenant, envelope, or route values in clear text. It emits
+  deterministic SHA-256 digests for correlation while decision records retain
+  their existing schema.
+- Pin every GitHub Actions dependency to an immutable commit SHA and enforce the
+  policy in CI with `scripts/assert-actions-pinned.sh`.
+
 ## [0.12.0] - 2026-08-10
 
 ### Added

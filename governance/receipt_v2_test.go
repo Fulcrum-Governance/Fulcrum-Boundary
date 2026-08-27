@@ -153,8 +153,8 @@ func TestPipelineEmitsRouteContext(t *testing.T) {
 	if line["adapter_id"] != "cli" {
 		t.Errorf("expected adapter_id=cli, got %v", line["adapter_id"])
 	}
-	if line["route_id"] != "cli:rm" {
-		t.Errorf("expected route_id=cli:rm, got %v", line["route_id"])
+	if line["route_id_hash"] != auditLogDigest("cli:rm") {
+		t.Errorf("expected route_id_hash to digest cli:rm, got %v", line["route_id_hash"])
 	}
 	if line["topology_profile"] != "single-tenant-routed" {
 		t.Errorf("expected topology_profile=single-tenant-routed, got %v", line["topology_profile"])

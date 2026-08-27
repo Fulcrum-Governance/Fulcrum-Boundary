@@ -2,14 +2,18 @@ package governance
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"log/slog"
 )
 
 // SlogAuditPublisher writes governance audit events to a slog.Logger as
 // structured records. Allow/warn decisions log at INFO; deny, escalate, and
-// require_approval decisions log at WARN. This is the recommended default
-// AuditPublisher for development and for production deployments that already
-// ship logs to a structured backend.
+// require_approval decisions log at WARN. Caller-controlled identifiers and
+// free-form values are emitted only as deterministic SHA-256 digests so secrets
+// or personal data supplied through request headers cannot enter clear-text
+// logs. This is the recommended default AuditPublisher for development and for
+// production deployments that already ship logs to a structured backend.
 type SlogAuditPublisher struct {
 	Logger *slog.Logger
 }
@@ -42,11 +46,11 @@ func (p *SlogAuditPublisher) Publish(ctx context.Context, event AuditEvent) {
 		slog.String("schema_version", record.SchemaVersion),
 		slog.String("event_type", record.EventType),
 		slog.String("record_id", record.RecordID),
-		slog.String("request_id", event.RequestID),
+		slog.String("request_id_hash", auditLogDigest(event.RequestID)),
 		slog.String("transport", string(event.Transport)),
-		slog.String("tool_name", event.ToolName),
+		slog.String("tool_name_hash", auditLogDigest(event.ToolName)),
 		slog.String("action", event.Action),
-		slog.String("reason", event.Reason),
+		slog.String("reason_hash", auditLogDigest(event.Reason)),
 		slog.String("decision_mode", string(event.DecisionMode)),
 		slog.String("matched_rule", event.MatchedRule),
 		slog.String("policy_file", event.PolicyFile),
@@ -60,18 +64,26 @@ func (p *SlogAuditPublisher) Publish(ctx context.Context, event AuditEvent) {
 		slog.String("trust_state", record.TrustState),
 		slog.String("signature", record.Signature),
 		slog.String("signature_key_id", record.SignatureKeyID),
-		slog.String("trace_id", event.TraceID),
-		slog.String("agent_id", event.AgentID),
-		slog.String("tenant_id", event.TenantID),
+		slog.String("trace_id_hash", auditLogDigest(event.TraceID)),
+		slog.String("agent_id_hash", auditLogDigest(event.AgentID)),
+		slog.String("tenant_id_hash", auditLogDigest(event.TenantID)),
 		slog.Float64("trust_score", event.TrustScore),
-		slog.String("envelope_id", event.EnvelopeID),
+		slog.String("envelope_id_hash", auditLogDigest(event.EnvelopeID)),
 		slog.Time("timestamp", event.Timestamp),
 		// Route-context (schema_version "2"). Emitted for slog/record parity;
 		// empty for V1 records. Descriptive only — see ExecutionClaim docs for
 		// the asserted-not-attested / self-report-not-corroborated caveats.
 		slog.String("adapter_id", record.AdapterID),
-		slog.String("route_id", record.RouteID),
+		slog.String("route_id_hash", auditLogDigest(record.RouteID)),
 		slog.String("topology_profile", record.TopologyProfile),
 		slog.Bool("execution_claim_present", record.ExecutionClaim != nil),
 	)
+}
+
+func auditLogDigest(value string) string {
+	if value == "" {
+		return ""
+	}
+	sum := sha256.Sum256([]byte(value))
+	return "sha256:" + hex.EncodeToString(sum[:])
 }
