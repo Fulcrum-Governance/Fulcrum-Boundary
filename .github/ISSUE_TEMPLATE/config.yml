@@ -3,6 +3,3 @@ contact_links:
   - name: Questions and setup help
     url: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/discussions/categories/q-a
     about: Ask usage, installation, and design questions in GitHub Discussions.
-  - name: Report a security vulnerability
-    url: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/security/policy
-    about: Do not disclose vulnerabilities in a public issue. Follow the private process in SECURITY.md.
