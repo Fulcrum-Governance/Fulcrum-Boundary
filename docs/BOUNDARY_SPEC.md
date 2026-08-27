@@ -975,7 +975,7 @@ Move destructive-action blocking beyond substring matching toward parse-based cl
 Broader MCP-client discovery; more starter-policy templates; richer local dashboard views over local artifacts (still **local-only** — no hosted monitoring without an explicit, separately-scoped decision that revisits C10). The "adapter is the business model" expansion is retained as **strategy and future direction** — not a current release surface.
 
 ## 11.5 Optional integrity upgrade
-Signed decision records / tamper-evident receipts would upgrade Surface 3 (§10.2) from "depends on your log pipeline" to in-artifact tamper-evidence. **Not shipped**; until then, copy stays "decision records (hash-verifiable)", never "cryptographic proof of verdict" (C6).
+Signed decision records / tamper-evident receipts would upgrade Surface 3 (§10.2) from "depends on your log pipeline" to in-artifact tamper-evidence. **Not shipped**; copy stays "decision records (hash-verifiable)" before that upgrade, never "cryptographic proof of verdict" (C6).
 
 ---
 

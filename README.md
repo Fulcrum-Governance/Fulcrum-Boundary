@@ -46,9 +46,9 @@ denies a routed secret-exfiltration command before execution.
 Install a prebuilt binary — no Go toolchain, no C compiler:
 
 ```bash
-brew install fulcrum-governance/tap/boundary
-# or: docker run --rm ghcr.io/fulcrum-governance/boundary:latest selftest
-# or: download a release archive + SHA256SUMS (docs/INSTALL.md has the curl lines)
+brew install fulcrum-governance/tap/boundary          # macOS (Homebrew cask)
+# or: docker run --rm ghcr.io/fulcrum-governance/boundary:latest selftest   # any platform
+# or: download a release archive + SHA256SUMS (docs/INSTALL.md has the curl lines)   # Linux / Windows
 
 # see the MCP servers your agents can already reach — read-only, nothing is modified:
 boundary init --dry-run
@@ -150,7 +150,7 @@ go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.12.0
 ```
 
 `v0.12.0` is the current published release. The source install above reports
-`commit: unknown`; use a prebuilt release archive or container when the approved
+`commit: unknown`; use a prebuilt release archive or container if the approved
 revision must be visible at runtime. See the
 [public release-truth record](./docs/RELEASE_TRUTH_PUBLIC.md) for the tag,
 package, checksum, SBOM, and provenance evidence.

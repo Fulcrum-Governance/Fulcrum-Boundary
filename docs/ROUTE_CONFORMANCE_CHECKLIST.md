@@ -143,8 +143,8 @@ A preview route reaches production only when ALL of the following hold:
    conformance evidence) stays green.
 6. **Public copy is reconciled** in the same change: the readiness matrix, the
    claims ledger (`claims/boundary_claims.yaml`), `README.md`, and
-   `RELEASE_TRUTH_PUBLIC.md` must all agree. Until then the route stays labeled
-   preview everywhere.
+   `RELEASE_TRUTH_PUBLIC.md` must all agree. Before that reconciliation lands,
+   the route stays labeled preview everywhere.
 
 A preview label is not a smaller production label. A route MUST NOT be described
 as production until the items above are recorded.

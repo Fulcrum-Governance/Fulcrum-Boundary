@@ -197,4 +197,4 @@ A Secure MCP profile can be called production only when all items are true:
    service behavior, or protocol compatibility.
 6. README, changelog, claims ledger, and readiness matrix all match.
 
-Until then, use preview or planned language.
+Before those conditions are met, use preview or planned language.

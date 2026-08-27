@@ -41,6 +41,16 @@ var (
 		{"ghcr.io container tag", regexp.MustCompile(`ghcr\.io/fulcrum-governance/boundary:(v[0-9]+\.[0-9]+\.[0-9]+)`)},
 		{"surface-status diagram node", regexp.MustCompile(`\[Boundary (v[0-9]+\.[0-9]+\.[0-9]+)\]`)},
 	}
+	prePublicationConditionals = []string{
+		"when the approved",
+		"once both approved",
+		"once the approved",
+		"until then",
+		"tags publish",
+		"will publish",
+		"not yet published",
+		"once published",
+	}
 )
 
 // historical surfaces that legitimately pin an older tag; exempt from the guard.
@@ -69,7 +79,7 @@ func TestCanonicalInstallRefsTrackCurrentRelease(t *testing.T) {
 	refsFound := 0
 	tracked, trackedErr := trackedMarkdownSurfaces(root)
 	if trackedErr != nil {
-		t.Fatalf("listing tracked markdown surfaces: %v", trackedErr)
+		t.Skipf("skipping tracked markdown install-drift guard: git tracked-file list unavailable outside a git checkout: %v", trackedErr)
 	}
 	walkErr := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -119,6 +129,59 @@ func TestCanonicalInstallRefsTrackCurrentRelease(t *testing.T) {
 		t.Fatal("docs/RELEASE_TRUTH_PUBLIC.md: published-release section must precede its published baseline")
 	}
 	assertInstallRefsEqual(t, "docs/RELEASE_TRUTH_PUBLIC.md published-release section", releaseTruth[publishedStart:baselineStart], want)
+}
+
+func TestNoPrePublicationConditionals(t *testing.T) {
+	root := repoRoot(t)
+	tracked, trackedErr := trackedMarkdownSurfaces(root)
+	if trackedErr != nil {
+		t.Skipf("skipping tracked markdown pre-publication conditional guard: git tracked-file list unavailable outside a git checkout: %v", trackedErr)
+	}
+	walkErr := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			switch d.Name() {
+			case ".git", "node_modules", "vendor", "dist":
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if ext := filepath.Ext(path); ext != ".md" && ext != ".mmd" {
+			return nil
+		}
+		rel, relErr := filepath.Rel(root, path)
+		if relErr != nil {
+			return relErr
+		}
+		rel = filepath.ToSlash(rel)
+		if !tracked[rel] {
+			return nil
+		}
+		if isHistoricalSurface(rel) || rel == "docs/RELEASE_TRUTH_PUBLIC.md" {
+			return nil
+		}
+		body := read(t, root, rel)
+		bodyLower := strings.ToLower(body)
+		for _, phrase := range prePublicationConditionals {
+			searchFrom := 0
+			for {
+				idx := strings.Index(bodyLower[searchFrom:], phrase)
+				if idx == -1 {
+					break
+				}
+				offset := searchFrom + idx
+				line := 1 + strings.Count(body[:offset], "\n")
+				t.Errorf("%s:%d: stale pre-publication conditional %q was written for a release-publication window that has closed; reword the maintained doc instead of exempting it", rel, line, phrase)
+				searchFrom = offset + len(phrase)
+			}
+		}
+		return nil
+	})
+	if walkErr != nil {
+		t.Fatalf("walking the repo for pre-publication conditionals: %v", walkErr)
+	}
 }
 
 func trackedMarkdownSurfaces(root string) (map[string]bool, error) {

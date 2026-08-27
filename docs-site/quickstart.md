@@ -14,10 +14,12 @@ boundary demo command-secret-exfil
 boundary test --path tests/fixtures/policy-test/cases
 ```
 
-When the approved `v0.12.0` tags publish, its prebuilt channels will include
-Homebrew (`brew install fulcrum-governance/tap/boundary`), release archives,
-and the container image (`ghcr.io/fulcrum-governance/boundary:v0.12.0`). Until
-then, use the public `v0.11.0` release. See the canonical
+`v0.12.0` is the current published release, and its prebuilt channels are live:
+the Homebrew cask (`brew install fulcrum-governance/tap/boundary`, macOS only),
+release archives verified against `SHA256SUMS`, and the container image
+(`ghcr.io/fulcrum-governance/boundary:v0.12.0`). On Linux and Windows, use a
+release archive or the container image — Homebrew casks install only on macOS.
+See the canonical
 [Install](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/blob/main/docs/INSTALL.md)
 guide before choosing static versus cgo builds.
 
