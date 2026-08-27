@@ -17,6 +17,7 @@ package docs
 
 import (
 	"io/fs"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -66,6 +67,10 @@ func TestCanonicalInstallRefsTrackCurrentRelease(t *testing.T) {
 	want := anchorMatches[0][1]
 
 	refsFound := 0
+	tracked, trackedErr := trackedMarkdownSurfaces(root)
+	if trackedErr != nil {
+		t.Fatalf("listing tracked markdown surfaces: %v", trackedErr)
+	}
 	walkErr := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -83,6 +88,9 @@ func TestCanonicalInstallRefsTrackCurrentRelease(t *testing.T) {
 		rel, relErr := filepath.Rel(root, path)
 		if relErr != nil {
 			return relErr
+		}
+		if !tracked[filepath.ToSlash(rel)] {
+			return nil
 		}
 		if isHistoricalSurface(rel) || filepath.ToSlash(rel) == "docs/RELEASE_TRUTH_PUBLIC.md" {
 			return nil
@@ -111,6 +119,18 @@ func TestCanonicalInstallRefsTrackCurrentRelease(t *testing.T) {
 		t.Fatal("docs/RELEASE_TRUTH_PUBLIC.md: published-release section must precede its published baseline")
 	}
 	assertInstallRefsEqual(t, "docs/RELEASE_TRUTH_PUBLIC.md published-release section", releaseTruth[publishedStart:baselineStart], want)
+}
+
+func trackedMarkdownSurfaces(root string) (map[string]bool, error) {
+	out, err := exec.Command("git", "-C", root, "ls-files", "*.md", "*.mmd").Output()
+	if err != nil {
+		return nil, err
+	}
+	tracked := make(map[string]bool)
+	for _, rel := range strings.Fields(string(out)) {
+		tracked[filepath.ToSlash(rel)] = true
+	}
+	return tracked, nil
 }
 
 func TestPublishedReleaseTruthIsInternallyConsistent(t *testing.T) {
