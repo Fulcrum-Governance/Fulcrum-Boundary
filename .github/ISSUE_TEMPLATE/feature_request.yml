@@ -1,0 +1,44 @@
+name: Feature request
+description: Propose a scoped capability or change
+title: "[feature] "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Start with the routed-action problem. Larger adapters, extension points, release claims, and positioning changes require scope discussion before implementation.
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use case
+      description: What are you building, and what does the current Boundary contract prevent or force you to do?
+    validations:
+      required: true
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed solution
+      description: Describe the behavior, interface, or package shape you would like.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Include custom interceptors, adapters, or deployment approaches you tried.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Acceptance evidence
+      description: What test, demo, or deployment evidence would show this works without overstating the claim?
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: This belongs in the open routed-action boundary rather than a hosted Fulcrum surface.
+          required: true
+        - label: I have read the contribution scope and current limitations.
+          required: true

@@ -1,0 +1,62 @@
+name: Bug report
+description: Report a reproducible defect in Fulcrum Boundary
+title: "[bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Boundary. Do not include secrets or vulnerability details here. Security reports follow SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: Boundary version or commit
+      placeholder: v0.12.0 or commit SHA
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, architecture, installation method, and Go version when relevant.
+      placeholder: macOS 15 arm64, Homebrew cask
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include the smallest safe reproducer you can provide.
+      placeholder: |
+        1. Run ...
+        2. Configure ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include exact errors or the full surprising GovernanceDecision. Redact credentials and private data.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Note custom interceptors, PipelineConfig changes, or whether stock examples reproduce the issue.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Submission checks
+      options:
+        - label: I searched existing issues and discussions for this problem.
+          required: true
+        - label: This report contains no credentials, private data, or undisclosed vulnerability details.
+          required: true

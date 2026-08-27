@@ -1,37 +1,37 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title desc">
   <title id="title">Fulcrum Boundary social preview</title>
-  <desc id="desc">Fulcrum Boundary: the action boundary for routed agent tools. Before an agent touches a dangerous tool, Boundary decides.</desc>
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#0a0e13"/>
-      <stop offset="0.55" stop-color="#0d1620"/>
-      <stop offset="1" stop-color="#13212a"/>
-    </linearGradient>
-    <linearGradient id="line" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#7dd3fc"/>
-      <stop offset="1" stop-color="#86efac"/>
-    </linearGradient>
-  </defs>
-  <rect width="1280" height="640" fill="url(#bg)"/>
-  <rect x="72" y="72" width="1136" height="496" rx="28" fill="#f8fafc" fill-opacity="0.045" stroke="#dbeafe" stroke-opacity="0.20"/>
-  <g transform="translate(112 118)">
-    <rect x="0" y="0" width="128" height="128" rx="24" fill="#e2e8f0" fill-opacity="0.07" stroke="#cbd5e1" stroke-opacity="0.26"/>
-    <path d="M35 64h58" stroke="url(#line)" stroke-width="10" stroke-linecap="round"/>
-    <path d="M64 35v58" stroke="url(#line)" stroke-width="10" stroke-linecap="round"/>
-    <circle cx="64" cy="64" r="42" fill="none" stroke="#e2e8f0" stroke-opacity="0.32" stroke-width="6"/>
+  <desc id="desc">Fulcrum Boundary. Before agents act, Boundary decides. A proposed action is denied before execution and leaves a verifiable decision record.</desc>
+  <rect width="1280" height="640" fill="#0C0C14"/>
+  <path d="M1 1H1279V639H1Z" fill="none" stroke="#F0F1F5" stroke-opacity=".14"/>
+  <g transform="translate(64 54)" fill="none" stroke-linejoin="round">
+    <path d="M22 0 44 39H0Z" stroke="#57B3A4" stroke-width="2"/>
+    <circle cx="22" cy="0" r="3.2" fill="#DBB264" stroke="none"/>
+    <path d="M16 14v17m0-17h12m-12 9h11" stroke="#57B3A4" stroke-width="2"/>
   </g>
-  <text x="112" y="316" fill="#f8fafc" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="78" font-weight="800">Fulcrum Boundary</text>
-  <text x="116" y="386" fill="#cbd5e1" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="38" font-weight="600">The action boundary for routed agent tools</text>
-  <text x="116" y="452" fill="#f8fafc" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="32" font-weight="500">Before an agent touches a dangerous tool, Boundary decides.</text>
-  <g transform="translate(116 498)" font-family="'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace" font-size="22" font-weight="600">
-    <text x="0" y="0" fill="#ff7b86">DENY</text>
-    <text x="84" y="0" fill="#9fb4c7">before upstream</text>
-    <text x="330" y="0" fill="#7cc0ff">upstream_called=</text>
-    <text x="556" y="0" fill="#a6e3ab">false</text>
+  <text x="128" y="83" fill="#F0F1F5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="17" font-weight="600" letter-spacing="4.6">FULCRUM / BOUNDARY</text>
+  <text x="64" y="209" fill="#F0F1F5" font-family="Instrument Sans, Helvetica Neue, Arial, sans-serif" font-size="78" font-weight="700" letter-spacing="-2.8">Before agents act,</text>
+  <text x="64" y="289" fill="#F0F1F5" font-family="Instrument Sans, Helvetica Neue, Arial, sans-serif" font-size="78" font-weight="700" letter-spacing="-2.8">Boundary decides.</text>
+  <text x="68" y="346" fill="#F0F1F5" fill-opacity=".63" font-family="Instrument Sans, Helvetica Neue, Arial, sans-serif" font-size="26">The action boundary for routed agent tools.</text>
+  <text x="68" y="443" fill="#F0F1F5" fill-opacity=".5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" letter-spacing="1.8">PROPOSED ACTION</text>
+  <text x="68" y="478" fill="#F0F1F5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="17">github.create_or_update_file</text>
+  <path d="M354 472H571" stroke="#F0F1F5" stroke-opacity=".24" stroke-width="1.4"/>
+  <g transform="translate(572 407)" fill="none" stroke-linejoin="round">
+    <path d="M61 0 122 112H0Z" stroke="#F0F1F5" stroke-width="2"/>
+    <circle cx="61" cy="0" r="5" fill="#DBB264" stroke="none"/>
+    <path d="M46 38v54m0-54h33m-33 27h28" stroke="#57B3A4" stroke-width="4"/>
+    <rect x="8" y="70" width="13" height="13" fill="#E07A5C" stroke="none"/>
+    <rect x="24" y="78" width="10" height="10" fill="#E07A5C" fill-opacity=".55" stroke="none"/>
   </g>
-  <g transform="translate(116 528)" fill="none" stroke-linecap="round" stroke-width="4">
-    <path d="M0 0h180" stroke="#7dd3fc"/>
-    <path d="M208 0h180" stroke="#86efac"/>
-    <path d="M416 0h180" stroke="#fbbf24"/>
+  <text x="633" y="551" text-anchor="middle" fill="#E07A5C" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" font-weight="700" letter-spacing="1.4">DENY BEFORE UPSTREAM</text>
+  <path d="M694 472H765" stroke="#E07A5C" stroke-opacity=".56" stroke-width="1.4" stroke-dasharray="5 7"/>
+  <g transform="translate(786 408)">
+    <path d="M0 0H430V138H0Z" fill="#161620" stroke="#F0F1F5" stroke-opacity=".22"/>
+    <path d="M0 0H430" stroke="#57B3A4" stroke-width="3"/>
+    <text x="23" y="30" fill="#F0F1F5" fill-opacity=".5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" letter-spacing="1.5">DECISION RECORD</text>
+    <text x="23" y="69" fill="#E07A5C" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="22" font-weight="700">DENY</text>
+    <text x="113" y="69" fill="#F0F1F5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15">upstream_called=false</text>
+    <text x="23" y="105" fill="#F0F1F5" fill-opacity=".64" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14">record_id  rec_4c7433b0b55e</text>
+    <text x="23" y="127" fill="#57B3A4" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">sha256:4c7433b0…62104</text>
   </g>
+  <text x="1216" y="594" text-anchor="end" fill="#F0F1F5" fill-opacity=".45" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" letter-spacing="1.8">OPEN SOURCE · APACHE 2.0</text>
 </svg>

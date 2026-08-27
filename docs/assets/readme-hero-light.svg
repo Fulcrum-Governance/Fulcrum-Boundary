@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="520" viewBox="0 0 1440 520" role="img" aria-labelledby="title desc">
+  <title id="title">Fulcrum Boundary</title>
+  <desc id="desc">A proposed GitHub action reaches the Fulcrum wedge, is denied before execution, and leaves a verifiable decision record.</desc>
+  <rect width="1440" height="520" fill="#FAFAF9"/>
+  <path d="M1 1H1439V519H1Z" fill="none" stroke="#080503" stroke-opacity=".14"/>
+  <g transform="translate(64 45)" fill="none" stroke-linejoin="round">
+    <path d="M18 0 36 32H0Z" stroke="#0A7A6E" stroke-width="1.6"/>
+    <circle cx="18" cy="0" r="2.6" fill="#B8920A" stroke="none"/>
+    <path d="M13 11v14m0-14h9m-9 7h8" stroke="#0A7A6E" stroke-width="1.7"/>
+  </g>
+  <text x="118" y="69" fill="#080503" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="600" letter-spacing="3.8">FULCRUM / BOUNDARY</text>
+  <text x="1368" y="69" text-anchor="end" fill="#080503" fill-opacity=".55" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" letter-spacing="2">OPEN SOURCE · APACHE 2.0</text>
+  <text x="64" y="164" fill="#080503" font-family="Instrument Sans, Helvetica Neue, Arial, sans-serif" font-size="72" font-weight="700" letter-spacing="-2.5">Before agents act,</text>
+  <text x="64" y="238" fill="#080503" font-family="Instrument Sans, Helvetica Neue, Arial, sans-serif" font-size="72" font-weight="700" letter-spacing="-2.5">Boundary decides.</text>
+  <text x="68" y="292" fill="#080503" fill-opacity=".68" font-family="Instrument Sans, Helvetica Neue, Arial, sans-serif" font-size="23">The action boundary for routed agent tools.</text>
+  <text x="68" y="363" fill="#080503" fill-opacity=".52" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" letter-spacing="1.8">PROPOSED ACTION</text>
+  <text x="68" y="397" fill="#080503" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18">github.create_or_update_file</text>
+  <path d="M359 391H634" stroke="#080503" stroke-opacity=".25" stroke-width="1.4"/>
+  <g fill="#080503" fill-opacity=".32">
+    <rect x="438" y="386" width="6" height="6"/><rect x="488" y="386" width="6" height="6"/><rect x="538" y="386" width="6" height="6"/>
+  </g>
+  <g transform="translate(635 327)" fill="none" stroke-linejoin="round">
+    <path d="M64 0 128 118H0Z" stroke="#080503" stroke-width="2"/>
+    <circle cx="64" cy="0" r="5" fill="#B8920A" stroke="none"/>
+    <path d="M48 40v56m0-56h34m-34 28h29" stroke="#0A7A6E" stroke-width="4"/>
+    <rect x="8" y="72" width="13" height="13" fill="#E7000B" stroke="none"/>
+    <rect x="24" y="80" width="10" height="10" fill="#E7000B" fill-opacity=".55" stroke="none"/>
+  </g>
+  <text x="705" y="479" text-anchor="middle" fill="#E7000B" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" font-weight="700" letter-spacing="1.5">DENY BEFORE UPSTREAM</text>
+  <path d="M763 391H873" stroke="#E7000B" stroke-opacity=".55" stroke-width="1.4" stroke-dasharray="5 7"/>
+  <g transform="translate(894 333)">
+    <path d="M0 0H474V142H0Z" fill="none" stroke="#080503" stroke-opacity=".22"/>
+    <path d="M0 0H474" stroke="#0A7A6E" stroke-width="3"/>
+    <text x="24" y="30" fill="#080503" fill-opacity=".52" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" letter-spacing="1.6">DECISION RECORD</text>
+    <text x="24" y="68" fill="#E7000B" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="22" font-weight="700">DENY</text>
+    <text x="120" y="68" fill="#080503" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15">upstream_called=false</text>
+    <text x="24" y="105" fill="#080503" fill-opacity=".66" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14">record_id  rec_4c7433b0b55e</text>
+    <text x="24" y="128" fill="#0A7A6E" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">sha256:4c7433b0…62104</text>
+  </g>
+</svg>
