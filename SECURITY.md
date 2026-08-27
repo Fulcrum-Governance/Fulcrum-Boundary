@@ -1,8 +1,21 @@
 # Fulcrum Boundary Security Policy
 
+## Supported versions
+
+Boundary is pre-1.0. Security fixes target `main` and the latest published
+minor release. Older minors do not receive backports unless a release note
+explicitly says otherwise.
+
+| Version | Supported |
+|---|---|
+| `main` | Yes |
+| `0.12.x` | Yes |
+| `0.11.x` and earlier | No |
+
 ## Reporting a vulnerability
 
-Email: **agent@fulcrumlayer.io**
+Report privately through [GitHub Security Advisories](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/security/advisories/new)
+or email **agent@fulcrumlayer.io**.
 
 Please include:
 

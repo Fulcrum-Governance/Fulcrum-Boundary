@@ -4,7 +4,7 @@ Thank you for considering a contribution. Boundary is the action boundary for
 routed AI-agent tool paths, and scope discipline matters: changes should make
 that boundary clearer, safer, or easier to verify.
 
-Project docs: [Security](./SECURITY.md) | [Code of Conduct](./CODE_OF_CONDUCT.md) | [Changelog](./CHANGELOG.md) | [Citation](./CITATION.cff)
+Project docs: [Support](./SUPPORT.md) | [Security](./SECURITY.md) | [Maintainers](./MAINTAINERS.md) | [Code of Conduct](./CODE_OF_CONDUCT.md) | [Changelog](./CHANGELOG.md) | [Citation](./CITATION.cff)
 
 ## Maintainer Expectations
 
@@ -20,7 +20,7 @@ diagnose a report.
   result, and a minimal reproducer when possible.
 - Feature requests: the use case, the proposed behavior, and alternatives
   considered.
-- Questions: open an issue and use the `question` label when available.
+- Questions: use the [Q&A category in GitHub Discussions](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/discussions/categories/q-a).
 
 ## Submitting Pull Requests
 

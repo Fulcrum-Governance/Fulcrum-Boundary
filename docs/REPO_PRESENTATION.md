@@ -44,26 +44,41 @@ Keep only badges that reflect live, verifiable repo signals:
 Do not add coverage, downloads, Homebrew, npm, Docker, SOC2, or
 production-ready badges unless those signals are true and maintained.
 
+## README Hero
+
+The README uses theme-aware, repo-owned artwork:
+
+```text
+docs/assets/readme-hero-dark.svg
+docs/assets/readme-hero-light.svg
+```
+
+The dark asset is the fallback and the canonical visual direction. Both assets
+use the Fulcrum wedge, a proposed-action line, a deny-before-upstream verdict,
+and the decision record it leaves. Keep the same information hierarchy when
+updating either variant.
+
 ## Social Preview
 
-The repo-owned social preview source is:
+The canonical dark social-preview source is:
 
 ```text
 docs/assets/social-preview.svg
 ```
 
-Suggested text:
+It carries the same words and decision plot as the README hero:
 
 ```text
-Fulcrum Boundary
-The action boundary for routed agent tools
-Before an agent touches a dangerous tool, Boundary decides.
+Fulcrum / Boundary
+Before agents act, Boundary decides.
+The action boundary for routed agent tools.
 ```
 
-GitHub repository social preview settings may reject SVG uploads. If that
-happens, export a PNG manually from this SVG and upload the PNG through GitHub
-settings. Do not add a README image reference until the asset is actually
-served somewhere stable.
+GitHub repository settings require a raster upload. Export this source at
+1280x640 as `docs/assets/social-preview.png`, inspect the raster output, and
+upload that PNG through GitHub settings. The README hero and social card should
+change together so the repository does not drift away from the Fulcrum visual
+system.
 
 ## Public Demo Asset
 
