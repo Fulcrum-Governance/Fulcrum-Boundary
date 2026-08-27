@@ -123,6 +123,34 @@ If you build from a source checkout instead, `make build` writes the binary to
 `bin/boundary` in the repo and you invoke it as `./bin/boundary` (no `PATH`
 change needed).
 
+### Homebrew v0.11 formula to v0.12 cask migration
+
+Boundary v0.11.0 installed from the tap as a Homebrew formula. Boundary v0.12.0
+and later install from the tap as a Homebrew cask. The formula was retired, so
+`brew upgrade boundary` does not migrate an existing formula install to the cask.
+
+On a machine that installed the old formula, remove it first, then install the
+cask:
+
+```bash
+brew uninstall boundary
+brew install fulcrum-governance/tap/boundary
+boundary selftest
+```
+
+A fresh machine is unaffected: `brew install fulcrum-governance/tap/boundary`
+installs the current cask directly.
+
+### macOS Gatekeeper and ad-hoc signing
+
+The darwin release binaries are ad-hoc linker-signed, not notarized. As a result,
+`spctl -a -t install <path-to-boundary>` can report `rejected`. That result does
+not mean the CLI binary is broken.
+
+Terminal execution is still supported: the published binary runs with the
+quarantine xattr applied, and `boundary --version` exits `0`. Finder double-click
+launch is not supported for the CLI in this release path.
+
 ## First-run command failure modes
 
 Each first-run command is fixture-safe and exits `0` on success. Below is what a

@@ -58,5 +58,6 @@ independently verified.
 ## Release Gate
 
 Do not mark Secure GitHub production until deployment bypass evidence is
-recorded for the protected environment. Until then, public language must say
-preview and distinguish fixture proof from opt-in live conformance proof.
+recorded for the protected environment. Before that evidence exists, public
+language must say preview and distinguish fixture proof from opt-in live
+conformance proof.

@@ -8,11 +8,14 @@ Fulcrum Boundary ships the `boundary` CLI from the Go module
 
 | Channel | Command | SQL classification |
 |---|---|---|
-| Homebrew (macOS, Linux) | `brew install fulcrum-governance/tap/boundary` | Reduced — static build (see below) |
+| Homebrew cask (macOS only) | `brew install fulcrum-governance/tap/boundary` | Reduced — static build (see below) |
 | Release archives — static | download `*_static-nocgo` + verify `SHA256SUMS` | Reduced — static build |
 | Release archives — cgo | download `*_cgo` + verify `SHA256SUMS-cgo` | Full Postgres AST classifier |
 | Container image | `docker run --rm ghcr.io/fulcrum-governance/boundary:<tag>` | Reduced — static build |
 | Build from source | `go install …/cmd/boundary@<tag>` (Go 1.25+, C toolchain) | Full Postgres AST classifier |
+
+Homebrew is macOS-only: the tap publishes a cask, and Homebrew installs casks
+only on macOS. On Linux and Windows, use a release archive or the container image.
 
 Channel availability: prebuilt binaries, the tap cask, the container image,
 and both checksum manifests publish from the tag-gated release workflow
@@ -141,29 +144,26 @@ go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.12.0
 boundary selftest
 ```
 
-`@v0.12.0` is the recommended repeatable install target once both approved
-release tags publish. Until then, the currently published install target remains
-`@v0.11.0`; `@latest` resolves to the latest published release after the Go
-proxy refreshes.
+`@v0.12.0` is the current published release and the recommended repeatable
+install target; both approved release tags (`v0.12.0` and
+`verify-witnessed/v0.12.0`) are published, and `@latest` resolves to `v0.12.0`.
 
 ### Offline witnessed-log verifier
 
-The independently buildable verifier is a separate nested Go module. Until
-both the approved root release tag and its matching nested module tag are
-published, no versioned verifier install is available; build it from a public
-source checkout instead:
+The independently buildable verifier is a separate nested Go module. The
+versioned verifier install is available from the matching published nested tag:
+
+```bash
+go install github.com/Fulcrum-Governance/Fulcrum-Boundary/verify-witnessed@v0.12.0
+```
+
+Use the exact case-sensitive path above; Go resolves the verifier from
+`verify-witnessed/v0.12.0`. You can also build it from a public source checkout:
 
 ```bash
 git clone https://github.com/Fulcrum-Governance/Fulcrum-Boundary.git
 cd Fulcrum-Boundary/verify-witnessed
 go build -o fulcrum-verify-witnessed .
-```
-
-Go resolves the verifier from the matching published nested tag. Install it
-with the exact case-sensitive path:
-
-```bash
-go install github.com/Fulcrum-Governance/Fulcrum-Boundary/verify-witnessed@v0.12.0
 ```
 
 The root and nested tags both point to

@@ -17,9 +17,9 @@ Three rules govern this page:
   `DecisionRecordV2`, `boundary explain`, `boundary replay`, and record-location
   UX. It does not include `boundary test`.
 - **Source-main is not release truth.** A release-stamp candidate may land on
-  `main` before its tags publish. It is not installable until the release truth
-  update and both tags publish. Planned sections still should not be read as
-  delivered capabilities or dated commitments.
+  `main` before its release tags exist. It becomes installable only after the
+  release truth update and both tags are published. Planned sections still
+  should not be read as delivered capabilities or dated commitments.
 
 The product frame does not change across these phases. MCP is the first
 production route, not the identity; Command Boundary is a delivered preview lane
@@ -302,8 +302,8 @@ Stated as intent, with the honesty that governs the rest of this page:
   meaningless if a program can do consequential work inside a sub-call or REPL
   that the boundary never observes; that bypass must be characterized and
   contained before any witness-up-the-stack artifact is pursued.
-- Until both conditions hold, this remains `[INTENT]`: no command, no adapter, no
-  record field, no verdict, and no entry in the claims ledger.
+- Before both conditions hold, this remains `[INTENT]`: no command, no adapter,
+  no record field, no verdict, and no entry in the claims ledger.
 
 ---
 
