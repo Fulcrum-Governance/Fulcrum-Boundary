@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"strings"
 	"testing"
 	"time"
 )
@@ -53,11 +54,56 @@ func TestSlogAudit_AllowLogsAtInfo(t *testing.T) {
 		t.Errorf("expected msg=governance_decision, got %v", rec["msg"])
 	}
 	for _, key := range []string{
-		"request_id", "transport", "tool_name", "action", "agent_id",
-		"tenant_id", "trust_score", "envelope_id", "timestamp",
+		"request_id_hash", "transport", "tool_name_hash", "action", "agent_id_hash",
+		"tenant_id_hash", "trust_score", "envelope_id_hash", "timestamp",
 	} {
 		if _, ok := rec[key]; !ok {
 			t.Errorf("expected structured attr %q in output", key)
+		}
+	}
+}
+
+func TestSlogAudit_DigestsCallerControlledValues(t *testing.T) {
+	logger, buf := newCapturingLogger()
+	pub := NewSlogAuditPublisher(logger)
+
+	values := map[string]string{
+		"request_id_hash":  "secret-request-value",
+		"tool_name_hash":   "secret-tool-value",
+		"reason_hash":      "secret-reason-value",
+		"trace_id_hash":    "secret-trace-value",
+		"agent_id_hash":    "secret-agent-value",
+		"tenant_id_hash":   "secret-tenant-value",
+		"envelope_id_hash": "secret-envelope-value",
+		"route_id_hash":    "secret-route-value",
+	}
+	pub.Publish(context.Background(), AuditEvent{
+		RequestID:  values["request_id_hash"],
+		ToolName:   values["tool_name_hash"],
+		Action:     "deny",
+		Reason:     values["reason_hash"],
+		TraceID:    values["trace_id_hash"],
+		AgentID:    values["agent_id_hash"],
+		TenantID:   values["tenant_id_hash"],
+		EnvelopeID: values["envelope_id_hash"],
+		RouteID:    values["route_id_hash"],
+	})
+
+	rec := decodeLine(t, buf.Bytes())
+	for key, raw := range values {
+		if got := rec[key]; got != auditLogDigest(raw) {
+			t.Errorf("expected %s to contain a deterministic digest, got %v", key, got)
+		}
+		if strings.Contains(buf.String(), raw) {
+			t.Errorf("clear-text caller value for %s reached the audit log", key)
+		}
+	}
+	for _, rawKey := range []string{
+		"request_id", "tool_name", "reason", "trace_id",
+		"agent_id", "tenant_id", "envelope_id", "route_id",
+	} {
+		if _, ok := rec[rawKey]; ok {
+			t.Errorf("caller-controlled field %s must not be logged in clear text", rawKey)
 		}
 	}
 }
@@ -80,8 +126,8 @@ func TestSlogAudit_DenyLogsAtWarn(t *testing.T) {
 	if rec["action"] != "deny" {
 		t.Errorf("expected action=deny, got %v", rec["action"])
 	}
-	if rec["reason"] != "destructive" {
-		t.Errorf("expected reason=destructive, got %v", rec["reason"])
+	if rec["reason_hash"] != auditLogDigest("destructive") {
+		t.Errorf("expected reason_hash to digest the reason, got %v", rec["reason_hash"])
 	}
 }
 
@@ -143,7 +189,7 @@ func TestSlogAudit_IntegratesWithPipeline(t *testing.T) {
 	if rec["action"] != "deny" {
 		t.Errorf("expected action=deny, got %v", rec["action"])
 	}
-	if rec["tool_name"] != "rm" {
-		t.Errorf("expected tool_name=rm, got %v", rec["tool_name"])
+	if rec["tool_name_hash"] != auditLogDigest("rm") {
+		t.Errorf("expected tool_name_hash to digest the tool name, got %v", rec["tool_name_hash"])
 	}
 }
