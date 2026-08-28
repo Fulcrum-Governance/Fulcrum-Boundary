@@ -70,10 +70,13 @@ func runCommandClassify(args []string, stdout, stderr io.Writer) int {
 			"boundary command classify -- git status",
 			"boundary command classify -- git push origin main",
 			"boundary command classify --json -- rm -rf dist",
+			`boundary command classify -- 'git status && rm -rf dist'`,
 		},
 		Notes: []string{
 			"classify never executes the command.",
 			"secret-looking arguments are redacted in output.",
+			"a single argument carrying shell operators is decomposed per segment; the most restrictive segment becomes the verdict.",
+			"a compound line the tokenizer cannot decompose reports require_approval, never allow.",
 		},
 	})
 	jsonOut := fs.Bool("json", false, "write JSON classification output")
@@ -87,6 +90,12 @@ func runCommandClassify(args []string, stdout, stderr io.Writer) int {
 	if len(argv) == 0 {
 		fmt.Fprintln(stderr, "command classify: command is required after --")
 		return 1
+	}
+	// One unsplit argument carrying shell operators is a compound line, not an
+	// argv the caller already split. Decompose it per segment; every other
+	// invocation keeps the argv classification path unchanged.
+	if len(argv) == 1 && commandboundary.ContainsShellOperators(argv[0]) {
+		return runCommandClassifyLine(argv[0], *jsonOut, stdout, stderr)
 	}
 
 	classification, err := commandboundary.Classify(argv)
@@ -105,6 +114,55 @@ func runCommandClassify(args []string, stdout, stderr io.Writer) int {
 	}
 	writeCommandClassification(stdout, classification)
 	return 0
+}
+
+// commandLineClassifyOutput is the JSON form of a compound-line classification.
+// It embeds the aggregate Classification so the emitted object stays a superset
+// of the single-command payload: a consumer that reads only `class`,
+// `recommended_action`, and `reason` keeps reading the enforced verdict.
+type commandLineClassifyOutput struct {
+	commandboundary.Classification
+	LineSchemaVersion string                                  `json:"line_schema_version"`
+	Parseable         bool                                    `json:"parseable"`
+	Segments          []commandboundary.SegmentClassification `json:"segments"`
+}
+
+func runCommandClassifyLine(line string, jsonOut bool, stdout, stderr io.Writer) int {
+	classification, err := commandboundary.ClassifyLine(line)
+	if err != nil {
+		fmt.Fprintf(stderr, "command classify: %v\n", err)
+		return 1
+	}
+	if jsonOut {
+		enc := json.NewEncoder(stdout)
+		enc.SetIndent("", "  ")
+		output := commandLineClassifyOutput{
+			Classification:    classification.Aggregate,
+			LineSchemaVersion: classification.SchemaVersion,
+			Parseable:         classification.Parseable,
+			Segments:          classification.Segments,
+		}
+		if err := enc.Encode(output); err != nil {
+			fmt.Fprintf(stderr, "command classify: %v\n", err)
+			return 1
+		}
+		return 0
+	}
+	writeCommandLineClassification(stdout, classification)
+	return 0
+}
+
+func writeCommandLineClassification(w io.Writer, classification commandboundary.LineClassification) {
+	fmt.Fprintf(w, "Command: %s\n", classification.RedactedCommandLine())
+	fmt.Fprintf(w, "Class: %s\n", classification.AggregateClassLabel())
+	fmt.Fprintf(w, "Risk: %s\n", classification.Aggregate.Risk)
+	fmt.Fprintf(w, "Recommended action: %s\n", classification.Aggregate.RecommendedAction)
+	fmt.Fprintf(w, "Reason: %s\n", classification.Aggregate.Reason)
+	fmt.Fprintf(w, "Parseable: %t\n", classification.Parseable)
+	fmt.Fprintf(w, "Segments: %d\n", len(classification.Segments))
+	for i, segment := range classification.Segments {
+		fmt.Fprintf(w, "  %d. [%s | %s] %s\n", i+1, segment.ClassLabel(), segment.RecommendedAction, segment.Segment)
+	}
 }
 
 func writeCommandClassification(w io.Writer, classification commandboundary.Classification) {

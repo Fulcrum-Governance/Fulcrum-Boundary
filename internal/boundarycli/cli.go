@@ -86,6 +86,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runEdit(args[1:], stdout, stderr)
 	case "shell":
 		return runShell(args[1:], stdout, stderr)
+	case "hook":
+		return runHook(args[1:], os.Stdin, stdout, stderr)
 	case "policy":
 		return runFirewallPolicy(args[1:], stdout, stderr)
 	case "mcp":
@@ -146,6 +148,7 @@ Commands:
   command         Classify and govern project-local command paths
   edit            Classify proposed file mutations without applying them
   shell           Launch a project-local Command Boundary subshell
+  hook pretooluse Decide a Claude Code PreToolUse event read from stdin
   policy generate Generate starter Boundary firewall policies
   mcp proxy       Fail-closed generic MCP proxy entrypoint for installed routes
   mcp secure-github

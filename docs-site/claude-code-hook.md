@@ -13,17 +13,32 @@ reach the hook (an un-wired tool, an MCP tool, a subprocess Claude spawns, direc
 shell use outside Claude Code) is a bypass and is not governed. Closing those
 paths is a deployment responsibility, not a hook flag.
 
+The shipped `pretooluse-boundary.sh` is a thin wrapper: it probes for a
+`boundary` binary that carries the hook lane, then `exec`s `boundary hook
+pretooluse`. It parses no JSON, so `jq` is not used and not required.
+
 Routed surfaces:
 
 ```text
-Bash / shell tool            -> boundary command classify   (Command Boundary, preview)
-Edit / Write / MultiEdit     -> boundary edit inspect        (Edit Boundary, preview)
+Bash / shell tool                          -> Command Boundary (preview)
+Edit / Write / MultiEdit / NotebookEdit    -> Edit Boundary (preview)
 ```
 
 Command Boundary and Edit Boundary are **delivered previews**, not production GA.
-Treat their verdicts as preview-grade. The hook leaves a hash-verifiable
-classification (integrity, not authenticity); it does not re-run the tool, makes
-no claim of total coverage, and does not emit `proved` decisions.
+Treat their verdicts as preview-grade. Every decided call leaves a
+hash-verifiable decision record under `.boundary/hook` (integrity, not
+authenticity); the hook does not re-run the tool, makes no claim of total
+coverage, and does not emit `proved` decisions.
+
+Verdict mapping — the hook never emits `permissionDecision: "allow"`, because
+that value grants rather than merely permits:
+
+```text
+deny             -> "deny" (plus the legacy {"decision":"block"} keys)
+require_approval -> "ask"
+warn             -> "ask", carrying the warning as the reason
+allow            -> nothing at all; the host's own permission flow runs
+```
 
 Expected deny signal:
 

@@ -13,7 +13,7 @@ overall action.
 | E4 | secret-bearing edit | `.env`, private keys, tokens, credential files, raw secret additions | deny |
 | E5 | destructive deletion or broad rewrite | mass delete, `DELETE` patches, large rewrites, path wipes | deny |
 | E6 | execution behavior mutation | package scripts, CI workflows, Dockerfiles, Makefiles, shell scripts, hooks | require approval |
-| E7 | outside project scope | absolute path, traversal, symlink escape, `.git/hooks/*` | deny |
+| E7 | outside project scope | absolute path, traversal, symlink escape, `.git/hooks/*`, governance control surfaces | deny |
 
 ## Precedence
 
@@ -43,6 +43,21 @@ Examples of path-based signals:
 | `scripts/deploy.sh` | E6 | execution behavior change |
 | `.git/hooks/pre-commit` | E7 | repository control path |
 | `../outside.txt` | E7 | outside project scope |
+| `.claude/settings.json` | E7 | agent permission settings path |
+| `.claude/settings.local.json` | E7 | agent permission settings path |
+| `.claude/hooks/**` | E7 | agent hook path |
+| `**/claude-code/pretooluse-boundary.sh` | E7 | Boundary hook script path |
+| `.boundary/**` | E7 | Boundary control and evidence path |
+
+The last five are *governance control surfaces*: files that decide how an agent
+is governed, or that hold the record of what was decided. They sit inside the
+working tree but outside the edit envelope, the same distinction `.git` draws —
+a patch may change the code a project builds, but not the gate the patch itself
+passed through, and not the record of that passage. The list is a set of path
+shapes, not an inventory of every way governance could be disabled: a hook wired
+from a path not listed here is not matched. Matching is case-insensitive and
+applies at any position in the path; the rest of `.claude/` (skills, commands,
+docs) stays ordinary editable content.
 
 ## Content Signals
 

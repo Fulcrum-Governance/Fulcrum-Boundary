@@ -62,6 +62,9 @@ func Run(ctx context.Context, opts RunOptions) (*RunResult, error) {
 }
 
 func runScenario(ctx context.Context, pack Pack, scenario Scenario, mode string) (ScenarioResult, error) {
+	if scenario.CommandLine != "" {
+		return runCommandLineScenario(ctx, pack, scenario, mode)
+	}
 	if len(scenario.CommandArgv) > 0 {
 		return runCommandScenario(ctx, pack, scenario, mode)
 	}
@@ -220,6 +223,67 @@ func runCommandScenario(ctx context.Context, pack Pack, scenario Scenario, mode 
 		Command:        classification.RedactedCommandLine(),
 		CommandClass:   string(classification.Class),
 		CommandRisk:    string(classification.Risk),
+		Executed:       false,
+		Passed:         passed,
+		Reason:         decision.Reason,
+		MatchedRule:    decision.MatchedRule,
+		DecisionRecord: record,
+	}, nil
+}
+
+// runCommandLineScenario evaluates a compound shell line: the line is decomposed
+// into simple commands, the most restrictive segment becomes the request under
+// evaluation, and nothing is executed.
+func runCommandLineScenario(ctx context.Context, pack Pack, scenario Scenario, mode string) (ScenarioResult, error) {
+	classification, err := commandboundary.ClassifyLine(scenario.CommandLine)
+	if err != nil {
+		return ScenarioResult{}, fmt.Errorf("run command line redteam scenario %q: %w", scenario.ID, err)
+	}
+
+	argvHash := commandboundary.HashArgv([]string{scenario.CommandLine})
+	req := commandboundary.BuildGovernanceRequest(commandboundary.RunRequest{
+		CWD:      "/fixture/project",
+		AgentID:  "redteam-fixture-agent",
+		TenantID: "fixture-tenant",
+	}, classification.Aggregate, argvHash)
+	req.RequestID = "redteam-" + scenario.ID
+	req.EnvelopeID = "env-redteam-" + scenario.ID
+	req.TraceID = "trace-redteam-" + scenario.ID
+
+	auditor := &captureAuditPublisher{}
+	pipeline := governance.NewPipeline(governance.PipelineConfig{
+		StaticPolicies: commandboundary.DefaultPreviewPolicyRules(),
+		GatewayVersion: "command-line-redteam-fixture",
+		BuildDigest:    "fixture-only",
+	}, nil, nil, auditor)
+
+	decision, err := pipeline.Evaluate(ctx, req)
+	if err != nil {
+		return ScenarioResult{}, fmt.Errorf("run command line redteam scenario %q: %w", scenario.ID, err)
+	}
+	event, ok := auditor.LastDecisionEvent()
+	if !ok {
+		return ScenarioResult{}, fmt.Errorf("run command line redteam scenario %q: no decision record emitted", scenario.ID)
+	}
+	record := governance.BuildDecisionRecord(event)
+	passed := decision.Action == scenario.ExpectedAction
+	status := ResultPassed
+	if !passed {
+		status = ResultFailed
+	}
+	return ScenarioResult{
+		PackID:         pack.ID,
+		ScenarioID:     scenario.ID,
+		Name:           scenario.Name,
+		Mode:           mode,
+		Status:         status,
+		FixtureOnly:    scenario.FixtureOnly,
+		NoLiveMutation: scenario.NoLiveMutation,
+		ExpectedAction: scenario.ExpectedAction,
+		ActualAction:   decision.Action,
+		Command:        classification.RedactedCommandLine(),
+		CommandClass:   string(classification.Aggregate.Class),
+		CommandRisk:    string(classification.Aggregate.Risk),
 		Executed:       false,
 		Passed:         passed,
 		Reason:         decision.Reason,
