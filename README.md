@@ -1,15 +1,13 @@
-<picture>
-  <source media="(prefers-color-scheme: light)" srcset="./docs/assets/readme-hero-light.svg">
-  <source media="(prefers-color-scheme: dark)" srcset="./docs/assets/readme-hero-dark.svg">
-  <img alt="A proposed GitHub action reaches the Fulcrum wedge, is denied before execution, and leaves a verifiable decision record." src="./docs/assets/readme-hero-dark.svg">
-</picture>
-
 <h1 align="center">Fulcrum Boundary</h1>
 
-<p align="center"><strong>Before an AI agent touches a real system, Boundary decides.</strong></p>
+<p align="center"><strong>Auto mode decides. Boundary keeps the receipts.</strong></p>
 
 <p align="center">
-  The open action boundary for routed agent tools. Boundary decides whether a proposed action is allowed before the underlying tool executes, then records the verdict in a hash-verifiable decision record.
+  Boundary records the routed decision — a hash-verifiable receipt written
+  before the tool ran. Verification is integrity, not authenticity: it shows
+  the record was not altered after emission, not that the verdict was right.
+  Boundary does not replace Claude Code's own permission system or any other
+  safety mode; it is a separate, routed gate that runs alongside them.
 </p>
 
 <p align="center">
@@ -21,8 +19,9 @@
 </p>
 
 <p align="center">
-  <a href="#first-run-in-one-minute">Install</a> ·
-  <a href="#see-boundary-stop-the-action">Run the demo</a> ·
+  <a href="#60-second-quickstart">Claude Code hook</a> ·
+  <a href="#first-run-in-one-minute">Install Boundary</a> ·
+  <a href="#see-boundary-stop-the-action">Run the MCP demo</a> ·
   <a href="./docs/GOVERN_MCP_SERVER.md">Govern an MCP server</a> ·
   <a href="https://fulcrum-governance.github.io/Fulcrum-Boundary/">Docs</a> ·
   <a href="./SECURITY.md">Security</a>
@@ -30,8 +29,86 @@
 
 Boundary governs only actions whose route is forced through Boundary. Direct
 access to the same tool is a bypass unless deployment topology removes that
-path. MCP is the first production route; Command Boundary and Edit Boundary are
+path. MCP is the first production route; Command Boundary and Edit Boundary —
+including the Claude Code hook below, which routes through them — are
 delivered previews.
+
+![A staged Claude Code Bash tool call, "git status && rm -rf ~/", denied before it runs; boundary verify-record then recomputes the hash of the decision record Boundary wrote before the denial reached Claude Code.](./demo/boundary-drill.gif)
+
+*Real binary output against a staged event — the destructive command exists
+only as text inside a JSON payload, never a real shell call. If the GIF above
+has not rendered, that is exactly what it shows: a deny before execution, then
+a receipt verified after.*
+
+## 60-second quickstart
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Fulcrum-Governance/Fulcrum-Boundary/main/scripts/install-claude-code.sh | sh
+```
+
+Then, inside Claude Code:
+
+```
+/plugin marketplace add fulcrum-governance/boundary-plugins
+/plugin install boundary@boundary-plugins
+```
+
+> **Availability.** The hook lane is on `main` and not yet in a published
+> release: the one-line installer's default mode fetches the latest published
+> release (`v0.12.0`), which predates `boundary hook` — the wrapper will then
+> ask on every governed call instead of deciding. Until the next release
+> ships, install from a checkout: `git clone` this repo, `make build`, put
+> `bin/boundary` on `PATH` (or set `BOUNDARY_BIN`), then run
+> `sh scripts/install-claude-code.sh --plugin-drop`. `boundary-plugins` is
+> likewise a planned marketplace repository that does not exist on GitHub
+> today. The drop is personal — see [`/boundary:protect`](./skills/protect/SKILL.md) to wire a
+> floor every contributor to a project inherits.
+
+Restart Claude Code, then run `/boundary:drill`.
+
+## What just happened
+
+- **Decided before execution.** Claude Code's `PreToolUse` hook handed the
+  tool call to `boundary hook pretooluse` before the tool ran; a `deny` means
+  nothing reached a shell or a file.
+- **Recorded before the decision returned.** The decision record was written
+  to disk before the verdict reached stdout — the record exists whether or
+  not you go looking for it.
+- **Verify it yourself.** `boundary verify-record <file>` recomputes the
+  record's hash independently, so an edit after the fact is detectable by
+  recomputation — not by trusting this README or the transcript.
+- **A separate layer from permission prompts.** `PreToolUse` hooks run
+  before Claude Code's own permission handling, and Claude Code's hook
+  contract documents a `deny` as blocking the call in any permission mode —
+  that is the client's documented behavior, not something Boundary can
+  enforce from outside it. Ask-class verdicts surface through the client's
+  own prompting, which varies by mode; the decision record is written before
+  the verdict returns either way. (Enterprise `disableAllHooks` is a
+  host-level switch that turns hooks off entirely — see
+  `boundary hook doctor`.)
+
+## What it proves, and what it does not
+
+| This proves | This does not prove |
+| --- | --- |
+| The routed tool call was decided — allow, warn, ask, or deny — before it ran. | That every tool call in the session was governed. Only `Bash`/`Shell` and `Edit`/`Write`/`MultiEdit`/`NotebookEdit` route through this hook; an MCP tool, a subprocess's own command, or shell used outside Claude Code is a bypass. |
+| `boundary verify-record` recomputes the record's hash independently, so tampering after emission is detectable. | That the verdict was correct, or who produced the record. Hashes are integrity, not authenticity. |
+| A denied call's `execution_claim` reports `upstream_called=false` / `executed=false`. | Anything about upstream side effects beyond this route — that field is the hook's own self-report, not independent corroboration. |
+| The hook is a routed pre-execution gate that runs independently of Claude Code's permission prompts. | That Boundary is a sandbox, contains the agent, or detects prompt injection in tool inputs. It classifies and records; it does not isolate the process or inspect prompt content. |
+| Command Boundary and Edit Boundary classified this call under their current preview posture. | Production-grade classification coverage. Both are delivered previews — validate against your own policy before relying on a verdict for anything load-bearing. |
+
+Full detail: [`docs/integrations/CLAUDE_CODE_HOOK.md`](./docs/integrations/CLAUDE_CODE_HOOK.md)
+(honest scope and limitations) and [`LIMITATIONS.md`](./LIMITATIONS.md)
+(repo-wide). The Claude Code hook landed on `main` after the `v0.12.0` tag and
+is not yet in a published release — see the "On `main` after `v0.12.0`"
+section of the [Boundary Roadmap](./docs/BOUNDARY_ROADMAP.md).
+
+## The wider Boundary project
+
+The Claude Code hook above routes Bash and Edit/Write tool calls into
+Boundary's existing Command Boundary and Edit Boundary preview classifiers —
+it adds no new governed action surface. The rest of this README covers the
+project those classifiers, and the production MCP route, belong to.
 
 ## First run in one minute
 
@@ -74,6 +151,12 @@ A coding agent reads untrusted GitHub issue content and proposes a write to a
 private repository. On the routed MCP path, Boundary returns `DENY` before the
 GitHub mutation call, reports `upstream_called=false`, and emits a decision
 record.
+
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="./docs/assets/readme-hero-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="./docs/assets/readme-hero-dark.svg">
+  <img alt="A proposed GitHub action reaches the Fulcrum wedge, is denied before execution, and leaves a verifiable decision record." src="./docs/assets/readme-hero-dark.svg">
+</picture>
 
 ![Boundary denies a GitHub write-after-taint action before upstream execution, with upstream_called=false and a hash-verifiable decision record](./docs/assets/github-lethal-trifecta-demo.gif)
 
@@ -161,6 +244,9 @@ or policy. Secure GitHub remains preview.
   boundary unless topology removes them.
 - Secure GitHub, Command Boundary, Edit Boundary, and the remaining non-MCP
   adapters are labeled previews.
+- The Claude Code `PreToolUse` hook governs only the tool calls it is wired to
+  intercept; an un-wired tool, an MCP tool, a tool a subprocess runs on its
+  own, or shell used outside Claude Code is a bypass.
 - Generated policies are starter policies for operator review.
 - Decision records provide checkable integrity for covered fields, not a proof
   of correct enforcement or production safety.
@@ -173,6 +259,10 @@ The repository's claims and controlled language are mechanically checked by
 `go test ./claims/...` and `make release-check`.
 
 ## Current release truth
+
+This table describes the published `v0.12.0` baseline. The Claude Code hook
+above is newer — delivered on `main`, not yet in a tagged release; see the
+[Boundary Roadmap](./docs/BOUNDARY_ROADMAP.md).
 
 | Surface | Status | Limit |
 |---|---|---|
@@ -211,6 +301,7 @@ against the [Adapter Readiness Matrix](./docs/ADAPTER_READINESS_MATRIX.md).
 
 | Need | Start here |
 |---|---|
+| Wire the Claude Code hook | [Claude Code PreToolUse Hook](./docs/integrations/CLAUDE_CODE_HOOK.md) |
 | Install and verify a release | [Install](./docs/INSTALL.md) |
 | Govern an MCP server | [Govern Your MCP Server](./docs/GOVERN_MCP_SERVER.md) |
 | Configure a supported host | [Host Setup](./docs/firewall/HOST_SETUP.md) |
@@ -250,8 +341,8 @@ security reports follow [SECURITY.md](./SECURITY.md).
 ## Part of the Fulcrum architecture
 
 Boundary is the open action boundary in the Fulcrum repo family. The hosted
-operator surfaces remain private during build; `fulcrum-trust` supplies public
-trust-modeling work, and [Fulcrum-Proofs](https://github.com/Fulcrum-Governance/Fulcrum-Proofs)
+operator surfaces remain private during build; [`fulcrum-trust`](https://github.com/Fulcrum-Governance/fulcrum-trust)
+supplies public trust-modeling work, and [Fulcrum-Proofs](https://github.com/Fulcrum-Governance/Fulcrum-Proofs)
 holds the Lean proof work used through documented correspondence.
 
 Boundary's runtime behavior corresponds by design to a machine-checked equilibrium analysis
@@ -269,3 +360,10 @@ decisions. See [Proof Boundary](./docs/PROOF_BOUNDARY.md).
 - [Code of Conduct](./CODE_OF_CONDUCT.md)
 - [Changelog](./CHANGELOG.md)
 - [Citation](./CITATION.cff)
+
+---
+
+Boundary is the open edge of Fulcrum. Join the waitlist for the hosted
+operator surfaces at [fulcrumlayer.io](https://fulcrumlayer.io); the trust
+modeling behind Boundary's Stage-1 trust checks is public in
+[`fulcrum-trust`](https://github.com/Fulcrum-Governance/fulcrum-trust).

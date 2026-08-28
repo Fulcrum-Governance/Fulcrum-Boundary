@@ -118,7 +118,13 @@ or that hold the evidence of what was governed:
 .claude/settings.local.json
 .claude/hooks/**
 **/claude-code/pretooluse-boundary.sh
+**/claude-code/sessionend-boundary.sh
+**/hooks/hooks.json
 ```
+
+This is the list `editboundary.ControlSurfacePaths()` returns, and
+`TestControlSurfacePathsMatchTheImplementedRules` fails the build if it drifts
+from the rules the classifier applies.
 
 An agent that can rewrite its own `PreToolUse` wiring can turn the hook off
 before its next tool call, so this is closed at the classifier rather than left

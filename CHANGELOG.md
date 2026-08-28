@@ -6,6 +6,105 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- `boundary hook pretooluse` (`BND-CLAIM-HOOK-001`, `delivered`): a
+  binary-native Claude Code `PreToolUse` boundary that replaces the previous `jq`
+  shell hook. Every tool call the hook is wired to intercept — `Bash`/`Shell`
+  through Command Boundary, `Edit`/`Write`/`MultiEdit`/`NotebookEdit` through Edit
+  Boundary — gets a pre-execution verdict and a canonical `DecisionRecordV1`
+  persisted *before* the decision reaches Claude Code, under `BOUNDARY_HOOK_DIR`
+  (default `.boundary/hook`, mode `0600` inside a `0700` directory);
+  `verify-record`, `explain`, and `replay` read those records directly. `deny` is
+  emitted in both the legacy `{"decision":"block"}` shape and
+  `hookSpecificOutput`; `warn` and `require_approval` both surface as `ask`;
+  `allow` is silent. The hook never emits `permissionDecision: "allow"` — a grant
+  it has no standing to make — and that invariant is pinned by test. A decision
+  the sink cannot write escalates the call instead of allowing it unrecorded, and
+  escalation may only strengthen a verdict, never soften one. Routed-only: a tool
+  the matcher does not list, an MCP tool, a tool a subprocess runs on its own, and
+  shell use outside Claude Code are bypasses and are not governed. See
+  `docs/integrations/CLAUDE_CODE_HOOK.md`.
+
+- Compound-command decomposition in Command Boundary (`BND-CLAIM-CMD-003`,
+  `delivered`): `commandboundary.ClassifyLine` splits a command line on `&&`,
+  `||`, `;`, `|`, `&`, and newline, decomposes subshells, command substitution,
+  and `sh -c` payloads recursively, classifies a redirect target as the write it
+  is, peels wrapper prefixes, and decomposes commands in argument position
+  (`find -exec`, `xargs`). The most restrictive segment sets the line's verdict,
+  so a destructive tail behind a benign head is no longer classified on its
+  leading command. A line the decomposer cannot model — heredocs, process
+  substitution, `eval`, unbalanced quotes, nesting past `MaxLineDepth` — is
+  floored at `require_approval` and never allowed, and no class claim is made
+  about it. `boundary command classify` takes this path when handed one unsplit
+  argument containing shell operators; `boundary command run` and `boundary shell`
+  receive an already-split argv and are unchanged.
+
+- Governance control surfaces denied on both routes (`BND-CLAIM-HOOK-002`,
+  `delivered`): `.boundary/**`, `.claude/settings.json`,
+  `.claude/settings.local.json`, `.claude/hooks/**`, both shipped wrapper scripts,
+  and `hooks/hooks.json` classify as outside the edit envelope (`E7` deny) on the
+  edit route, and a command segment that writes one of those shapes is denied on
+  the command route. An agent that can rewrite its own `PreToolUse` wiring can
+  turn the hook off before its next tool call, so this is closed at the classifier
+  rather than left to policy. It is a set of path shapes, not an inventory of
+  every way governance could be disabled: a hook wired from an unlisted path, a
+  settings file outside those shapes, or a path an interpreter builds at runtime
+  is not matched. Project-root canonicalization also closes the absolute-path and
+  symlink-escape gaps on the edit route: a target is judged where the write
+  actually lands, as far as the filesystem resolves it at check time. That is a
+  point-in-time answer — a symlink swapped between the check and the write is not
+  caught, and case is not folded.
+
+- Claude Code plugin, installer, skills, and hook operator surfaces
+  (`BND-CLAIM-HOOK-003`, `delivered`): a repo-root `.claude-plugin/plugin.json`
+  and `hooks/hooks.json` wiring `PreToolUse` and `SessionEnd`;
+  `scripts/install-claude-code.sh` (Homebrew or SHA256-verified release binary,
+  `--plugin-drop` into the user's Claude Code directory, and a receipt-driven
+  `--uninstall` that reverses exactly what the receipt names and leaves a
+  Homebrew-managed binary to Homebrew with explicit advice); `skills/` (drill,
+  report, protect, verify) plus a `README_AI.md` entry point; `boundary hook
+  doctor`, which reports settings and plugin-manifest discovery, shadowing,
+  dormancy, the enterprise `disableAllHooks` / `allowManagedHooksOnly` states, and
+  the bypasses it knows about rather than claiming it is the only thing routing
+  tool calls; and `boundary hook sessionend`, a per-session summary line that
+  gates nothing and stays silent on any fault. Summaries are appended to
+  `session-summaries.jsonl` beside the records they count, and carry a pointer to
+  `.boundary-receipts/` — the sibling directory the `report` skill writes a
+  session receipt to, because `.boundary/**` is itself a denied control surface
+  and no routed tool call could write there. The pointer is a hint, not an
+  assertion: nothing creates that directory or checks that anything is in it. A
+  marketplace scaffold sits unpublished at
+  `integrations/claude-code/marketplace/`.
+
+### Changed
+
+- **Behavior change — `warn` now prompts instead of passing silently.** On the
+  Claude Code hook route a `warn` verdict surfaces as `permissionDecision: "ask"`
+  with the warning as its reason. The previous shell hook mapped
+  `allow`/`warn`/`require_approval` alike to a silent allow, so a warn produced no
+  prompt.
+- **Behavior change — `require_approval` now surfaces as `ask`.** Command classes
+  that resolve to `require_approval` — network egress `C2`, repo mutation `C3`,
+  package lifecycle `C7` — prompt rather than being waved through.
+- **Behavior change — `cp .claude/settings.json backup.json` now denies.** The
+  control-surface check matches a path shape anywhere in a write segment's
+  arguments and does not analyze argument position, so a control surface named as
+  the *source* of a write is refused too. Telling source from destination would
+  need a per-command table of argument grammars, and a table that is wrong about
+  one command is wrong in the permissive direction.
+- **Behavior change — benign `find -exec` idioms now prompt.** A command in
+  argument position is decomposed and classified on its own terms, conservatively,
+  so ordinary maintenance one-liners can reach `ask` where they previously ran
+  unremarked. A `find` with no `-exec` / `-execdir` / `-ok` / `-okdir` payload is
+  unaffected.
+- **Behavior change — the hook fail-mode default moved from open to `ask`.**
+  `BOUNDARY_HOOK_FAILMODE` now defaults to `ask`: on an internal fault (event
+  unparseable, nothing to classify, classifier error) Boundary declines to answer
+  for the operator in either direction. `open` restores the older permissive
+  posture where a fault allowed silently, `closed` denies on a fault, and a
+  Boundary `deny` always blocks regardless of the setting.
+
 ### Security
 
 - `SlogAuditPublisher` no longer writes caller-controlled request, tool, reason,

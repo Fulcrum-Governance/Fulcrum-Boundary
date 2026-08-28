@@ -51,6 +51,43 @@ key custody (see [`docs/SIGNING.md`](docs/SIGNING.md)).
 of the hashed record. See [`docs/RECEIPTS.md`](docs/RECEIPTS.md) and
 [`docs/DECISION_RECORDS.md`](docs/DECISION_RECORDS.md).
 
+## Claude Code hook
+
+The `boundary hook pretooluse` route decides a Claude Code tool call only when
+the hook is wired to intercept that call. The `matcher` in `settings.json`, or
+the plugin manifest at `hooks/hooks.json`, is the whole of the boundary: a tool
+that is not listed, an MCP tool, a tool a subagent or subprocess runs on its own,
+and any shell used outside Claude Code are bypasses and are not governed. Only
+`Bash`/`Shell` and `Edit`/`Write`/`MultiEdit`/`NotebookEdit` are routed today;
+every other tool is allowed silently and leaves no record, because nothing was
+decided. The classifiers behind both routes are delivered previews, so treat
+their verdicts as preview-grade.
+
+The host can also switch the route off above the project. Claude Code's
+enterprise managed settings carry `disableAllHooks`, under which no `PreToolUse`
+hook runs on that machine and nothing reaches Boundary at all, and
+`allowManagedHooksOnly`, under which a hook wired outside the managed file may
+not run. `boundary hook doctor` reports both when it can read that file, and
+lists the bypasses it knows about rather than claiming it is the only thing
+routing tool calls.
+
+Hook decision records carry the record limits above: hash-verifiable for
+integrity, not authenticity, and not proof the verdict was correct. They are also
+not evidence about upstream side effects. `execution_claim` reports
+`upstream_called=false` / `executed=false` because this route decides before
+execution and never runs the command or writes the file — a self-report about the
+hook, not corroboration that nothing else ran. A decision that cannot be recorded
+is escalated to the user rather than allowed unrecorded, which is a posture, not
+a guarantee that a record exists for every action the agent took.
+
+The governance control surfaces both routes refuse to write are a set of path
+shapes, not an inventory of every way governance could be disabled. A hook wired
+from a path not in the list, a settings file outside those shapes, or a path an
+interpreter builds at runtime is not matched. Command-route matching is
+shape-only and does not analyze argument position, so a control surface named as
+the source of a write is refused too. See
+[`docs/integrations/CLAUDE_CODE_HOOK.md`](docs/integrations/CLAUDE_CODE_HOOK.md).
+
 ## Proof-receipt and checker correspondence
 
 Boundary does not emit `proved` decisions. The proof-receipt sidecar

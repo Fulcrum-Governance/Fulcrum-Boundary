@@ -921,7 +921,7 @@ claims:
     depends_on: []
 
   - id: BND-CLAIM-CMD-001
-    claim: "Boundary provides preview project-local command governance for commands routed through boundary command run, boundary shell, or project-local shims"
+    claim: "Boundary provides preview project-local command governance for commands routed through boundary command run, boundary shell, project-local shims, or the Claude Code PreToolUse hook route"
     status: delivered
     evidence:
       tests:
@@ -944,8 +944,8 @@ claims:
           section: "Command Boundary Status"
     public_language:
       allowed:
-        - "Boundary can govern project-local command paths when commands route through boundary command run, boundary shell, or project-local shims."
-        - "Boundary provides preview project-local command governance for commands routed through boundary command run, boundary shell, or project-local shims."
+        - "Boundary can govern project-local command paths when commands route through boundary command run, boundary shell, project-local shims, or the Claude Code PreToolUse hook."
+        - "Boundary provides preview project-local command governance for commands routed through boundary command run, boundary shell, project-local shims, or the Claude Code PreToolUse hook route."
       forbidden:
         - "Boundary controls your shell"
         - "Boundary protects all CLI activity"
@@ -1012,7 +1012,7 @@ claims:
     public_language:
       allowed:
         - "Boundary can classify and gate proposed file mutations before they are applied."
-        - "Edit Boundary applies only to file mutations routed through a Boundary edit envelope."
+        - "Edit Boundary applies only to file mutations routed through a Boundary edit envelope, including the path-shape envelopes the Claude Code hook synthesizes for Edit/Write tool calls."
         - "Boundary provides preview Edit Boundary governance for proposed file mutations routed through Boundary edit envelopes."
       forbidden:
         - "Boundary controls all file writes"
@@ -1020,7 +1020,7 @@ claims:
         - "Boundary prevents every unsafe edit"
         - "Boundary provides filesystem sandboxing"
         - "Boundary provides universal coding-agent file safety"
-        - "Boundary governs direct file edits outside routed edit envelopes"
+        - "Boundary governs file edits on routes that never pass through Boundary"
     gaps: []
     depends_on:
       - BND-CLAIM-EDIT-002
@@ -1225,3 +1225,124 @@ claims:
     gaps: []
     depends_on:
       - BND-CLAIM-010
+
+  - id: BND-CLAIM-HOOK-001
+    claim: "Boundary decides Claude Code PreToolUse tool calls on the routes the hook is wired to intercept, and persists a canonical DecisionRecordV1 for every decided verdict — allow, warn, require_approval, and deny alike — before the decision reaches Claude Code; the hook never emits a permission grant, and a decision it cannot record is escalated to the user instead of allowed unrecorded"
+    status: delivered
+    evidence:
+      tests:
+        - path: tests/hookboundary/hook_decision_test.go
+          assertion: "driving the built binary as a real process, the hook denies a compound line on its chained tail, escalates an undecomposable line, denies control-surface writes on both routes, denies an absolute edit outside the project, and leaves exactly one record per decided call that verifies the way boundary verify-record verifies it"
+        - path: internal/hookboundary/decide_test.go
+          assertion: "every routed verdict maps to its PreToolUse permission (allow silent, warn and require_approval ask, deny deny), each decided call writes its record before the decision is returned, ungoverned tools are allowed without touching disk, secrets are redacted before persistence, and a sink that cannot write degrades the call to ask rather than to an unrecorded allow"
+        - path: internal/hookboundary/decision_test.go
+          assertion: "TestHookNeverEmitsAGrant pins that no verdict maps to permissionDecision allow, TestVerdictAtLeastAsStrictNeverSoftensADecision pins that escalation may only strengthen a verdict, and the deny output carries both the legacy block keys and hookSpecificOutput"
+      docs:
+        - path: docs/integrations/CLAUDE_CODE_HOOK.md
+          section: "The decision contract"
+        - path: docs/integrations/CLAUDE_CODE_HOOK.md
+          section: "The decision Boundary leaves"
+    public_language:
+      allowed:
+        - "Every tool call the Claude Code hook decides — allow, warn, ask, or deny — produces a decision record, persisted before the decision reaches Claude Code."
+        - "The hook governs only the tool calls it is wired to intercept; an un-wired tool, an MCP tool, a tool a subprocess runs on its own, or a shell outside Claude Code is a bypass and is not governed."
+        - "The hook can deny, ask, or stay silent; it never emits a permission grant, and a decision it cannot record is escalated rather than allowed."
+        - "Hook records are hash-verifiable for integrity with boundary verify-record; they are not authenticity, not proof the verdict was correct, and not proof the action was executed or prevented."
+      forbidden:
+        - "Boundary governs everything Claude Code does"
+        - "the hook proves the tool call did not run"
+        - "the hook makes Claude Code safe"
+        - "Boundary provides Claude Code sandboxing"
+        - "a hook record proves authenticity"
+    gaps: []
+    depends_on:
+      - BND-CLAIM-005
+      - BND-CLAIM-CMD-001
+      - BND-CLAIM-CMD-003
+      - BND-CLAIM-EDIT-001
+
+  - id: BND-CLAIM-CMD-003
+    claim: "Command Boundary classifies a whole command line by decomposing it into segments — `&&`, `||`, `;`, `|`, subshells, command substitution, `sh -c` payloads, redirect write targets, and `find -exec` / `xargs` payloads — and takes the most restrictive segment's action as the line's verdict, flooring a line it cannot decompose at require_approval rather than allowing it"
+    status: delivered
+    evidence:
+      tests:
+        - path: internal/commandboundary/line_test.go
+          assertion: "ClassifyLine decomposes every modelled operator, nested payload, quoting edge, wrapper prefix, and argument-position command, classifies a redirect target as the write it is without treating reads as writes, takes the most restrictive segment as the aggregate, redacts secrets in every segment, and never returns allow for a line it cannot decompose (heredocs, process substitution, eval, unbalanced quotes, nesting past the depth cap)"
+        - path: internal/redteam/command_smuggling_test.go
+          assertion: "the compound-smuggling redteam pack classifies a destructive tail hidden behind a benign head as deny or require_approval with executed=false, and the pack is listed among the command packs"
+      docs:
+        - path: docs/command-boundary/CLASSIFY.md
+          section: "Compound Command Lines"
+        - path: docs/command-boundary/CLASSIFY.md
+          section: "When the line cannot be decomposed"
+    public_language:
+      allowed:
+        - "Command Boundary decomposes a compound command line into segments and takes the most restrictive segment's action as the line's verdict, so a destructive tail behind a benign head is not allowed on the strength of the leading command."
+        - "A line Boundary cannot decompose is floored at require_approval; it is never allowed, and no class claim is made about it."
+        - "Decomposition is a model of shell syntax, not a shell: heredocs, process substitution, eval, unbalanced quotes, and nesting past the depth cap come back undecomposable, and argument-position shapes outside the modelled set leave their payload unclassified."
+        - "Whole-line decomposition applies where Boundary is handed a command line — boundary command classify with an unsplit line, the redteam packs, and the Claude Code hook's Bash route; boundary command run and boundary shell receive an already-split argv."
+      forbidden:
+        - "Boundary parses shell the way a shell does"
+        - "Boundary detects every smuggled command"
+        - "Boundary blocks all malicious shell commands"
+        - "decomposition proves the command did not run"
+        - "Boundary provides shell sandboxing"
+    gaps: []
+    depends_on:
+      - BND-CLAIM-CMD-001
+
+  - id: BND-CLAIM-HOOK-002
+    claim: "Boundary treats its own governance control surfaces — `.boundary/**`, `.claude/settings.json`, `.claude/settings.local.json`, `.claude/hooks/**`, the shipped hook wrapper scripts, and `hooks/hooks.json` — as outside the edit envelope and denies writes to those path shapes on the command route as well as the edit route"
+    status: delivered
+    evidence:
+      tests:
+        - path: internal/editboundary/classifier_test.go
+          assertion: "CheckProjectPath rejects every control-surface shape as ClassOutsideProjectScope, the documented shape list matches the implemented rules, control-surface edits classify to a deny action, and ordinary agent content under .claude (skills, commands) stays editable"
+        - path: internal/redteam/edit_control_surface_test.go
+          assertion: "the governance-control-surface redteam pack denies each shape with applied=false, and the pack is listed among the edit packs"
+        - path: tests/hookboundary/hook_decision_test.go
+          assertion: "driven as a real process, the hook denies both an Edit of a control surface and a Bash command that writes one, leaves a verifiable record for each, and keeps ordinary agent content under .claude allowed"
+      docs:
+        - path: docs/integrations/CLAUDE_CODE_HOOK.md
+          section: "Governance control surfaces"
+        - path: docs/edit-boundary/EDIT_TAXONOMY.md
+          section: "Path Signals"
+    public_language:
+      allowed:
+        - "Boundary denies writes to the files that decide how this agent is governed, and to the records of what it decided, on the edit route and the command route alike."
+        - "The control-surface list is a set of path shapes, not an inventory of every way governance could be disabled: a hook wired from a path not listed, a settings file outside these shapes, or a path an interpreter builds at runtime is not matched."
+        - "On the command route only segments whose class writes a file are scanned and argument position is not analyzed, so a control surface named as the source of a write is refused too."
+      forbidden:
+        - "Boundary prevents an agent from disabling its own governance"
+        - "the control-surface list is exhaustive"
+        - "Boundary protects its records from every writer"
+        - "control-surface denial closes direct shell access"
+    gaps: []
+    depends_on:
+      - BND-CLAIM-EDIT-001
+      - BND-CLAIM-HOOK-001
+
+  - id: BND-CLAIM-HOOK-003
+    claim: "Boundary ships a POSIX installer for the Claude Code surface that records what it installed in a receipt and reverses exactly what that receipt names on --uninstall, leaving a Homebrew-managed binary to Homebrew with explicit advice rather than removing it by hand"
+    status: delivered
+    evidence:
+      tests:
+        - path: tests/hookboundary/installer_test.go
+          assertion: "the installer parses under sh -n, refuses --uninstall with no receipt, drops the plugin into an isolated HOME idempotently and independently of the caller's working directory, refuses to drop outside a checkout, reverses a plugin drop byte for byte, removes the binary its receipt recorded, leaves a brew-installed binary to brew, and rejects conflicting or unknown arguments"
+      docs:
+        - path: integrations/claude-code/README.md
+          section: "Quick install"
+        - path: docs/integrations/CLAUDE_CODE_HOOK.md
+          section: "Install"
+    public_language:
+      allowed:
+        - "The installer records what it placed and its uninstall reverses exactly that; a Homebrew-managed binary is left to Homebrew with explicit advice rather than removed by hand."
+        - "The plugin drop is idempotent and confined to the user's Claude Code directory."
+        - "Installing the plugin wires the hook; it does not by itself govern tool calls the hook is not wired to intercept."
+      forbidden:
+        - "the installer secures your machine"
+        - "installing the plugin governs every Claude Code tool call"
+        - "uninstall removes every trace Boundary ever wrote"
+    gaps: []
+    depends_on:
+      - BND-CLAIM-HOOK-001

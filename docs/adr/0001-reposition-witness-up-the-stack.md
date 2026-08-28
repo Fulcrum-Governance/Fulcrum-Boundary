@@ -56,8 +56,9 @@ this project already sits and others do not, stated as an **exact conjunction**:
   circuit breaker — that is **coupled to live enforcement**, not just modeled on
   paper; and
 - **(B)** a **per-decision certifying witness** for each governed action, checked
-  by a formally verified checker against two specific invariants: the budget
-  invariant `B_prev >= C_req` and the privilege invariant `P_req ⊆ P_avail`.
+  by a formally verified checker against two named invariants and not against the
+  verdict, the record as a whole, or the implementation: the budget invariant
+  `B_prev >= C_req` and the privilege invariant `P_req ⊆ P_avail`.
 
 Neither half is the differentiator. The differentiator is the **conjunction of
 both, wired to enforcement.** The Lean correspondence for the equilibrium and the
@@ -107,8 +108,8 @@ ledger remain the source of truth for what is delivered.
 
 3. **Stop positioning Boundary as a gateway or firewall.** The product headline
    must not present Boundary as a generic gateway product or as a firewall. (The
-   controlled phrase "SQL firewall" is named here only to forbid it as a
-   headline; it does **not** describe this product.) Boundary is positioned as
+   controlled phrase "SQL firewall" does not describe this product; it is
+   named here only to forbid it as a headline.) Boundary is positioned as
    the open, enforced proof-of-life for the conjunction above — not as another
    entrant in the commoditized gate layer.
 
@@ -127,7 +128,7 @@ ledger remain the source of truth for what is delivered.
    evaluator can place us. This is a legibility and mapping commitment; it is
    **not** a blanket conformance claim. Any conformance statement remains scoped
    to the decision record (whose canonicalization is RFC 8785 / JCS), and it is
-   **not** a claim that Boundary as a whole is standards-conformant. Known
+   not a claim that Boundary **as a whole** is standards-conformant. Known
    reference liabilities tracked in the internal record must be corrected before
    any external citation rests on them.
 

@@ -55,6 +55,31 @@ corroborated by it. Boundary does not emit `proved` decisions itself.
 
 ---
 
+## On `main` after `v0.12.0` — the Claude Code hook lane
+
+> **Source-main, not release truth** (rule 3 above). This landed after the
+> `v0.12.0` tag and is installable from source only until the next release is
+> published; it is tracked under `[Unreleased]` in
+> [`CHANGELOG.md`](../CHANGELOG.md). It is listed here rather than in the
+> Baseline because the Baseline is the published release.
+
+| Capability | What it does today |
+| --- | --- |
+| `boundary hook pretooluse` | Decides a Claude Code `PreToolUse` event before the tool runs and persists a canonical `DecisionRecordV1` for every decided verdict — allow, warn, require_approval, deny — before the decision reaches Claude Code. `deny` blocks, `warn` and `require_approval` ask, `allow` is silent, and the hook never emits a permission grant. Reference: [`docs/integrations/CLAUDE_CODE_HOOK.md`](integrations/CLAUDE_CODE_HOOK.md). |
+| Compound-line decomposition | A command line is split into segments and governed by its most restrictive one, so a destructive tail behind a benign head is no longer classified on its leading command; a line the decomposer cannot model is floored at `require_approval` and never allowed. Reference: [`docs/command-boundary/CLASSIFY.md`](command-boundary/CLASSIFY.md). |
+| Governance control surfaces | Writes to `.boundary/**`, the Claude Code settings and hook files, and the shipped wrapper scripts are denied on the edit route and the command route alike — a set of path shapes, not an inventory of every way governance could be disabled. |
+| `boundary hook doctor` / `boundary hook sessionend` | Report how the hook is wired and what it does **not** govern; summarize a finished session. Neither gates a tool call. Reference: [`docs/CLI_REFERENCE.md`](CLI_REFERENCE.md) §17. |
+
+This adds no new governed action surface in this roadmap's sense: the hook routes
+Claude Code tool calls into the existing Command Boundary and Edit Boundary
+preview classifiers, and both stay preview. It governs only the calls the hook is
+wired to intercept — an un-wired tool, an MCP tool, a tool a subprocess runs on
+its own, and shell use outside Claude Code are bypasses. Ledger entries:
+`BND-CLAIM-HOOK-001`, `BND-CLAIM-HOOK-002`, `BND-CLAIM-HOOK-003`, and
+`BND-CLAIM-CMD-003`.
+
+---
+
 ## Phase 0A — Trust the Record / Evidence UX (shipped in `v0.8.0`, included in `v0.12.0`)
 
 > **In the `v0.8.0` release and included in the published `v0.12.0` release.** Everything in this
@@ -356,6 +381,11 @@ behavior. To keep that contract intact:
   published `v0.12.0` release includes them.
 - `v0.8.0` remains the historical Phase 0A tag and does not include
   `boundary test`.
+- The Claude Code hook lane is on `main` after `v0.12.0` and is **not** in a
+  published release. Its ledger entries (`BND-CLAIM-HOOK-001`,
+  `BND-CLAIM-HOOK-002`, `BND-CLAIM-HOOK-003`, `BND-CLAIM-CMD-003`) are delivered
+  claims about behavior on `main`, gated by the same tests; installability
+  follows the next release, not this page.
 - When any planned item lands, it ships behind the same release gates as the rest
   of the repository — tests, the claims and language gate, a strict docs build,
   and the full release check — and the claims ledger is updated in the same

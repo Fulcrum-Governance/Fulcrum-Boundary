@@ -589,7 +589,7 @@ func TestDecideCommandRouteDeniesGovernanceControlSurfaces(t *testing.T) {
 		"cp /tmp/evil.sh .claude/hooks/pretooluse.sh",
 		"touch .boundary/hook/decision-records.jsonl",
 		"cat /tmp/evil.json > .claude/settings.json",
-		"ls -R / > /Users/me/proj/.claude/settings.json",
+		"ls -R / > /opt/workspace/proj/.claude/settings.json",
 		"cp /tmp/evil.sh integrations/claude-code/pretooluse-boundary.sh",
 		"git status && cp /tmp/evil .claude/settings.json",
 		"cp /tmp/evil .CLAUDE/Settings.json",
