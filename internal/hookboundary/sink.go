@@ -202,12 +202,12 @@ func appendJSONLine(path, artifact string, body []byte) error {
 	if err := refuseSymlink(path, artifact); err != nil {
 		return err
 	}
-	// #nosec G304 -- the log path is composed from the operator-selected record
-	// directory and a fixed file name; no event-supplied string reaches it.
 	if len(body) > maxRecordLineBytes {
 		return &WriteError{Op: "encode " + artifact, Path: path,
 			Err: errors.New("record line exceeds the sink's size bound")}
 	}
+	// #nosec G304 -- the log path is composed from the operator-selected record
+	// directory and a fixed file name; no event-supplied string reaches it.
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, recordFileMode)
 	if err != nil {
 		return &WriteError{Op: "open " + artifact, Path: path, Err: err}
