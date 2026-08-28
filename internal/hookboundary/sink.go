@@ -24,6 +24,12 @@ const (
 	DecisionLogName = "decision-records.jsonl"
 	// RecordsDirName holds one single-record JSON object per decision.
 	RecordsDirName = "records"
+	// maxRecordLineBytes bounds one persisted record line. Records carry
+	// metadata (redacted argv, hashes, reasons) and stay far below this; the
+	// bound makes the line-allocation arithmetic provably overflow-safe and
+	// turns a pathological record into a loud sink error — which the decision
+	// path escalates — instead of an unbounded write.
+	maxRecordLineBytes = 4 << 20
 )
 
 // File modes for the sink. Records name governed commands and paths, so they are
@@ -198,6 +204,10 @@ func appendJSONLine(path, artifact string, body []byte) error {
 	}
 	// #nosec G304 -- the log path is composed from the operator-selected record
 	// directory and a fixed file name; no event-supplied string reaches it.
+	if len(body) > maxRecordLineBytes {
+		return &WriteError{Op: "encode " + artifact, Path: path,
+			Err: errors.New("record line exceeds the sink's size bound")}
+	}
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, recordFileMode)
 	if err != nil {
 		return &WriteError{Op: "open " + artifact, Path: path, Err: err}

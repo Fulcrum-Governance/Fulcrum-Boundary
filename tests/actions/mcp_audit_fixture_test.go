@@ -43,6 +43,7 @@ func TestMCPAuditScriptAuditsRepoLocalConfigsOnly(t *testing.T) {
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build boundary: %v\n%s", err, string(output))
 	}
+	unquarantineDarwinTestBinary(bin)
 
 	auditRoot := t.TempDir()
 	writeFile(t, filepath.Join(auditRoot, ".mcp.json"), `{
@@ -126,6 +127,7 @@ func TestMCPAuditScriptCanFailOnCritical(t *testing.T) {
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build boundary: %v\n%s", err, string(output))
 	}
+	unquarantineDarwinTestBinary(bin)
 	auditRoot := t.TempDir()
 	writeFile(t, filepath.Join(auditRoot, ".mcp.json"), `{"mcpServers":{"github":{"command":"github-mcp-server","tools":[{"name":"merge_pull_request"}]}}}`)
 
@@ -147,6 +149,13 @@ func TestMCPAuditScriptCanFailOnCritical(t *testing.T) {
 	if !strings.Contains(string(output), "critical MCP risk paths found") {
 		t.Fatalf("missing fail-on-critical message:\n%s", string(output))
 	}
+}
+
+func unquarantineDarwinTestBinary(path string) {
+	if runtime.GOOS != "darwin" {
+		return
+	}
+	_ = exec.Command("/usr/bin/xattr", "-d", "com.apple.quarantine", path).Run()
 }
 
 func testRepoRoot(t *testing.T) string {
