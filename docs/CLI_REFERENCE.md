@@ -19,7 +19,7 @@ Every command below carries one of these maturity labels. They match
 
 ## Command Map
 
-All 29 top-level commands. Sub-commands and compound entries (`demo <name>`,
+All 30 top-level commands. Sub-commands and compound entries (`demo <name>`,
 `policy generate`, `mcp proxy`) are noted in the Purpose column. Status follows
 [README Current Release Truth](../README.md#current-release-truth) and
 [docs/ADAPTER_READINESS_MATRIX.md](./ADAPTER_READINESS_MATRIX.md).
@@ -41,6 +41,7 @@ All 29 top-level commands. Sub-commands and compound entries (`demo <name>`,
 | `command` | Classify and govern project-local command paths (`command classify`, `command run`, `command install`, `command uninstall`). | Delivered preview | [docs/command-boundary/README.md](./command-boundary/README.md) |
 | `edit` | Classify proposed file mutations routed through Boundary edit envelopes (`edit inspect`, `edit apply`). | Delivered preview | [docs/edit-boundary/README.md](./edit-boundary/README.md) |
 | `shell` | Launch a project-local Command Boundary subshell with `.boundary/bin` prepended to PATH. | Delivered preview | [docs/command-boundary/SHELL.md](./command-boundary/SHELL.md) |
+| `hook` | Decide an agent hook event read from stdin before the tool runs, and record the verdict (`hook pretooluse`, `hook doctor`, `hook sessionend`). | Delivered preview | This file §17, [docs/integrations/CLAUDE_CODE_HOOK.md](./integrations/CLAUDE_CODE_HOOK.md) |
 | `policy` | Generate starter YAML firewall policies (`policy generate`). | Local-only | This file §2 |
 | `mcp` | Fail-closed generic MCP proxy entrypoint for installed routes (`mcp proxy`). | Production-route | This file §12 |
 | `serve` | Start the Boundary HTTP gateway — the production MCP route. | Production-route | This file §13, [docs/adapters/MCP.md](./adapters/MCP.md) |
@@ -598,3 +599,110 @@ subcommands). The scripts are generated from the binary's own command table
 and are static: re-run the command after upgrading Boundary (or rely on your
 package manager's completion install) to pick up new commands. An unknown
 shell name exits 1 and enumerates the valid options.
+
+## 17. Agent Hook Commands
+
+> **Availability:** the `boundary hook` family is new on `main` and is not part
+> of the published `v0.12.0` release.
+
+```bash
+printf '{"tool_name":"Bash","tool_input":{"command":"rm -rf dist"}}' | boundary hook pretooluse
+boundary hook pretooluse --failmode closed < event.json
+boundary hook doctor
+boundary hook doctor --json
+printf '{"hook_event_name":"SessionEnd","session_id":"abc"}' | boundary hook sessionend
+```
+
+`boundary hook` (Delivered preview) decides one agent hook event read from stdin,
+before the tool runs, and records the verdict. It is the binary behind the
+`PreToolUse` and `SessionEnd` wrappers in `integrations/claude-code/`: the
+wrappers parse nothing and `exec` this command, so there is no reduced shell path
+that can diverge from it. The full integration is
+[docs/integrations/CLAUDE_CODE_HOOK.md](./integrations/CLAUDE_CODE_HOOK.md).
+
+### `boundary hook pretooluse`
+
+| Flag | Default | Effect |
+| --- | --- | --- |
+| `--dir DIR` | `.boundary/hook` (`BOUNDARY_HOOK_DIR`) | Directory decision records are written to. |
+| `--failmode open\|closed\|ask` | `ask` (`BOUNDARY_HOOK_FAILMODE`) | Posture on an internal **fault** — event unparseable, nothing to classify, classifier error. `ask` prompts, `open` allows, `closed` denies. A Boundary `deny` always blocks regardless. |
+| `--agent-id ID` | `claude-code` (`BOUNDARY_HOOK_AGENT_ID`) | Advisory agent-id label written to the record. Nothing authenticates it. |
+
+Reads one Claude Code `PreToolUse` event as JSON on stdin and writes the decision
+as JSON on stdout. The JSON, not the exit code, is what stops a tool call: the
+command exits 0 on every decided path. `Bash`/`Shell` routes to Command Boundary
+and `Edit` / `Write` / `MultiEdit` / `NotebookEdit` to Edit Boundary; every other
+tool is allowed silently and leaves no record, because nothing was decided. A
+compound Bash line is decomposed into segments and governed by its most
+restrictive one; a line the decomposer cannot model escalates to `ask` rather than
+being allowed.
+
+Verdicts map to: `deny` → `permissionDecision: "deny"` (emitted in both the legacy
+`{"decision":"block"}` shape and `hookSpecificOutput`); `require_approval` and
+`warn` → `ask`; `allow` → no output at all. The command never emits
+`permissionDecision: "allow"` — in Claude Code's vocabulary that value skips the
+host's permission system, a grant Boundary has no standing to make.
+
+Every decided event is recorded under `--dir` **before** the decision reaches
+stdout: an append-only `decision-records.jsonl` plus one
+`records/<ts>-<record_id>.json` per decision, at mode `0600` inside a `0700`
+directory. Verify one with `boundary verify-record` (it takes the per-record file;
+it rejects a multi-record `.jsonl`), and read it with `boundary explain` or
+`boundary replay`. A record that cannot be written escalates the call rather than
+allowing it unrecorded, and escalation may only strengthen a verdict.
+
+This command governs only the tool calls the hook is wired to intercept. An
+un-wired tool, an MCP tool, a tool a subprocess runs on its own, and shell use
+outside Claude Code are bypasses. Its records are hash-verifiable for integrity —
+not authenticity, not proof the verdict was correct, and not proof the action was
+executed or prevented.
+
+### `boundary hook doctor`
+
+| Flag | Default | Effect |
+| --- | --- | --- |
+| `--dir DIR` | `.boundary/hook` (`BOUNDARY_HOOK_DIR`) | Decision-record directory to inspect. |
+| `--json` | off | Emit the report as JSON instead of text. |
+
+Reports how the hook is wired, what it has recorded, and what it does not govern.
+It exits 1 when a check is **broken** — nothing wired, hooks switched off,
+evidence that cannot be written — so a setup script can tell "Boundary is not in
+front of this agent" from "Boundary is wired with a caveat"; `ok`, `warn`, and
+`unknown` all exit 0.
+
+It is read-only except for one probe: the evidence check writes a marker file into
+the record directory and removes it, because writability cannot be answered by
+`stat` alone. The marker is never a decision record. Settings registrations and
+plugin `hooks.json` manifests are matched by **path shape** in
+`.claude/settings.json`, `.claude/settings.local.json`, `~/.claude/settings.json`,
+the project root, and under `~/.claude`; nothing is executed and no command is
+resolved on `PATH`. A manifest says what a plugin registers when Claude Code has
+it enabled, which is not readable from the file, so it is reported as `unknown`
+rather than wired, and a hook wired through an unrecognized wrapper is reported as
+a peer rather than as Boundary. Other `PreToolUse` hooks are reported as merge
+peers: Claude Code takes the most restrictive result, which Boundary neither
+implements nor verifies. Enterprise `disableAllHooks` and `allowManagedHooksOnly`
+are reported when the managed settings file can be read.
+
+The bypass list is fixed, not discovered. Doctor never reports that Boundary is
+the only route an agent has to a shell or the filesystem, because it cannot
+establish that.
+
+### `boundary hook sessionend`
+
+| Flag | Default | Effect |
+| --- | --- | --- |
+| `--dir DIR` | `.boundary/hook` (`BOUNDARY_HOOK_DIR`) | Directory the session summary is written to. |
+
+Reads one `SessionEnd` event from stdin and appends a line to
+`session-summaries.jsonl`, beside the records it counts, tallying the decision
+records whose `trace_id` belongs to that session. It gates nothing, writes nothing
+to stdout, and exits 0 once the event is read — SessionEnd output is not a
+decision, and a session that has already ended must not be disturbed by its own
+bookkeeping. Only a malformed command line exits non-zero. An event it cannot
+read, or one naming another hook, writes nothing rather than a summary attributed
+to the wrong session, and a session in which Boundary decided nothing still gets a
+line so the log has no silent gaps.
+
+The counts are recomputable from `decision-records.jsonl`. A summary is not
+hashed, not signed, and is not evidence.

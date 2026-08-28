@@ -1065,8 +1065,33 @@ func recordMatches(record map[string]any, key, want string) bool {
 	if want == "" {
 		return true
 	}
-	got, _ := record[key].(string)
-	return got == want
+	return firstRecordString(record, key) == want
+}
+
+// auditFieldFallbacks maps an audit column's primary JSON key to the
+// alternative keys other Boundary record schemas serialize the same fact
+// under: command/audit-event records carry tool_name and request_id, while
+// canonical DecisionRecordV1 (the hook route's decision-records.jsonl)
+// carries tool and trace_id. Reading through the fallbacks keeps one
+// `boundary audit` honest across both streams instead of printing blank
+// columns for whichever schema it was not written against.
+var auditFieldFallbacks = map[string][]string{
+	"tool_name":  {"tool"},
+	"request_id": {"trace_id", "record_id"},
+}
+
+// firstRecordString returns the record's string value for key, trying the
+// key's documented fallbacks before giving up.
+func firstRecordString(record map[string]any, key string) string {
+	if value, ok := record[key].(string); ok && value != "" {
+		return value
+	}
+	for _, alt := range auditFieldFallbacks[key] {
+		if value, ok := record[alt].(string); ok && value != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func printAuditRecord(w io.Writer, record map[string]any) {
@@ -1080,11 +1105,11 @@ func printAuditRecord(w io.Writer, record map[string]any) {
 		color,
 		strings.ToUpper(action),
 		reset,
-		valueString(record, "tool_name"),
+		firstRecordString(record, "tool_name"),
 		valueString(record, "agent_id"),
 		valueString(record, "matched_rule"),
 		valueString(record, "reason"),
-		valueString(record, "request_id"),
+		firstRecordString(record, "request_id"),
 	)
 }
 

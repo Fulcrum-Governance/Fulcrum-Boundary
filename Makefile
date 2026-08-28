@@ -1,4 +1,4 @@
-.PHONY: build demo test selftest demo-github release-check docs-build
+.PHONY: build demo test selftest demo-github demo-tape release-check docs-build
 
 COMPOSE := docker compose -f examples/mcp-postgres-gateway/docker-compose.yml
 BOUNDARY_DEMO_PORT ?= 18080
@@ -23,6 +23,13 @@ selftest:
 
 demo-github:
 	./scripts/demo-github.sh
+
+demo-tape: build
+	@command -v vhs >/dev/null 2>&1 || { \
+		echo "vhs not installed: see https://github.com/charmbracelet/vhs#installation, then re-run 'make demo-tape'"; \
+		exit 1; \
+	}
+	PATH="$(CURDIR)/bin:$$PATH" vhs demo/boundary-drill.tape
 
 release-check:
 	./scripts/release-check.sh
