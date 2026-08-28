@@ -28,7 +28,8 @@ Full documentation, scope, and honest limitations:
 | File | Purpose |
 | --- | --- |
 | `pretooluse-boundary.sh` | The hook entrypoint. POSIX `sh`; probes for the binary, then `exec`s `boundary hook pretooluse`. |
-| `settings.snippet.json` | The `hooks.PreToolUse` wiring to merge into your Claude Code settings. |
+| `sessionend-boundary.sh` | The `SessionEnd` companion. Same probe-then-`exec` shape; writes one session summary line and gates nothing. Exits 0 silently when Boundary is absent or too old. |
+| `settings.snippet.json` | The `hooks.PreToolUse` and `hooks.SessionEnd` wiring to merge into your Claude Code settings. |
 
 ## Quick install
 
@@ -43,13 +44,18 @@ Full documentation, scope, and honest limitations:
 
    ```bash
    chmod +x integrations/claude-code/pretooluse-boundary.sh
+   chmod +x integrations/claude-code/sessionend-boundary.sh
    ```
 
 3. Merge `settings.snippet.json` into your Claude Code settings
    (`.claude/settings.json` in the project, or `~/.claude/settings.json` for all
-   projects). The snippet uses `$CLAUDE_PROJECT_DIR` so the path resolves from
-   the project root. If your `boundary` binary is not on `PATH`, also export
-   `BOUNDARY_BIN` in your environment.
+   projects). It carries two blocks: the `PreToolUse` hook that decides tool
+   calls, and the `SessionEnd` hook that writes a session summary line. The
+   `SessionEnd` half is optional — dropping it costs you the summary log and
+   changes nothing about what is governed. The snippet uses
+   `$CLAUDE_PROJECT_DIR` so both paths resolve from the project root. If your
+   `boundary` binary is not on `PATH`, also export `BOUNDARY_BIN` in your
+   environment.
 
 4. Restart Claude Code (or run `/hooks`) so it picks up the new hook.
 

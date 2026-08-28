@@ -66,6 +66,8 @@ func ControlSurfacePaths() []string {
 		".claude/settings.local.json",
 		".claude/hooks/**",
 		"**/claude-code/pretooluse-boundary.sh",
+		"**/claude-code/sessionend-boundary.sh",
+		"**/hooks/hooks.json",
 	}
 }
 
@@ -114,7 +116,10 @@ func ControlSurfacePath(raw string) (reason string, ok bool) {
 //   - a `.claude` component followed by `settings.json`, `settings.local.json`,
 //     or anything under `hooks/` — the rest of `.claude/` (skills, commands,
 //     docs) stays ordinary editable content;
-//   - a `claude-code/pretooluse-boundary.sh` suffix — the shell hook itself.
+//   - a `claude-code/pretooluse-boundary.sh` or `claude-code/sessionend-boundary.sh`
+//     suffix — the shell hook scripts themselves;
+//   - a `hooks/hooks.json` suffix — the plugin hook manifest that wires those
+//     scripts into Claude Code.
 //
 // Comparison is case-insensitive: on a case-insensitive filesystem
 // `.Claude/Settings.json` names the same file, so a case flip must not slip past
@@ -141,8 +146,12 @@ func controlSurfaceReason(parts []string) (string, bool) {
 				return "agent hook path is outside the edit envelope scope", true
 			}
 		case "claude-code":
-			if i+1 == len(lower)-1 && lower[i+1] == "pretooluse-boundary.sh" {
+			if i+1 == len(lower)-1 && (lower[i+1] == "pretooluse-boundary.sh" || lower[i+1] == "sessionend-boundary.sh") {
 				return "Boundary hook script path is outside the edit envelope scope", true
+			}
+		case "hooks":
+			if i+1 == len(lower)-1 && lower[i+1] == "hooks.json" {
+				return "agent hook manifest path is outside the edit envelope scope", true
 			}
 		}
 	}

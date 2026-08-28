@@ -149,6 +149,8 @@ Commands:
   edit            Classify proposed file mutations without applying them
   shell           Launch a project-local Command Boundary subshell
   hook pretooluse Decide a Claude Code PreToolUse event read from stdin
+  hook doctor     Report how the Claude Code hook is wired and what it records
+  hook sessionend Summarize a finished session from a SessionEnd event
   policy generate Generate starter Boundary firewall policies
   mcp proxy       Fail-closed generic MCP proxy entrypoint for installed routes
   mcp secure-github

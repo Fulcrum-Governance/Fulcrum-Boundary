@@ -1,0 +1,27 @@
+{
+  "name": "boundary-plugins",
+  "owner": {
+    "name": "Fulcrum Governance"
+  },
+  "description": "Marketplace listing for the Fulcrum Boundary Claude Code plugin: pre-execution deny and verifiable session receipts for routed tool calls.",
+  "plugins": [
+    {
+      "name": "boundary",
+      "description": "Pre-execution deny and verifiable session receipts for Claude Code tool calls routed through this hook.",
+      "version": "0.13.0",
+      "homepage": "https://github.com/fulcrum-governance/fulcrum-boundary",
+      "license": "Apache-2.0",
+      "keywords": [
+        "governance",
+        "pre-execution",
+        "receipts",
+        "hooks",
+        "audit"
+      ],
+      "source": {
+        "source": "github",
+        "repo": "fulcrum-governance/fulcrum-boundary"
+      }
+    }
+  ]
+}

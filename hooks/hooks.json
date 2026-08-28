@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/integrations/claude-code/pretooluse-boundary.sh"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/integrations/claude-code/pretooluse-boundary.sh\""
           }
         ]
       }
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/integrations/claude-code/sessionend-boundary.sh"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/integrations/claude-code/sessionend-boundary.sh\""
           }
         ]
       }
