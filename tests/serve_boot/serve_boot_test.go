@@ -42,7 +42,15 @@ func buildBoundary(t *testing.T) string {
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build boundary: %v\n%s", err, string(output))
 	}
+	unquarantineDarwinTestBinary(bin)
 	return bin
+}
+
+func unquarantineDarwinTestBinary(path string) {
+	if runtime.GOOS != "darwin" {
+		return
+	}
+	_ = exec.Command("/usr/bin/xattr", "-d", "com.apple.quarantine", path).Run()
 }
 
 // freePort returns a free localhost port by opening a listener, noting its

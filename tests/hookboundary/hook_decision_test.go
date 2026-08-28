@@ -46,10 +46,18 @@ func TestMain(m *testing.M) {
 		os.RemoveAll(dir)
 		panic("build boundary: " + err.Error() + "\n" + string(output))
 	}
+	unquarantineDarwinTestBinary(boundaryBin)
 
 	code := m.Run()
 	os.RemoveAll(dir)
 	os.Exit(code)
+}
+
+func unquarantineDarwinTestBinary(path string) {
+	if runtime.GOOS != "darwin" {
+		return
+	}
+	_ = exec.Command("/usr/bin/xattr", "-d", "com.apple.quarantine", path).Run()
 }
 
 // hookDecision is the PreToolUse decision shape Claude Code reads.
