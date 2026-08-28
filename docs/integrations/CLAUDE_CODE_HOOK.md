@@ -22,7 +22,10 @@ The integration lives at
 [`integrations/claude-code/`](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/blob/main/integrations/claude-code):
 
 - `pretooluse-boundary.sh` — the hook entrypoint (POSIX `sh`).
-- `settings.snippet.json` — the `hooks.PreToolUse` wiring.
+- `sessionend-boundary.sh` — the `SessionEnd` companion (POSIX `sh`). It gates
+  nothing; it appends one summary line counting what Boundary decided during the
+  session, and exits 0 silently when Boundary is absent or too old.
+- `settings.snippet.json` — the `hooks.PreToolUse` and `hooks.SessionEnd` wiring.
 - `README.md` — short, install-focused.
 
 ## How it works
@@ -144,13 +147,14 @@ these shapes, or a path an interpreter builds at runtime is not matched.
    pretooluse`; the wrapper checks and asks rather than falling through if it is
    not.
 
-2. **Make the hook executable** (after a fresh clone):
+2. **Make the hooks executable** (after a fresh clone):
 
    ```bash
    chmod +x integrations/claude-code/pretooluse-boundary.sh
+   chmod +x integrations/claude-code/sessionend-boundary.sh
    ```
 
-3. **Wire the hook** by merging this into your Claude Code settings —
+3. **Wire the hooks** by merging this into your Claude Code settings —
    `.claude/settings.json` in the project (committed or local), or
    `~/.claude/settings.json` for all projects:
 
@@ -167,14 +171,30 @@ these shapes, or a path an interpreter builds at runtime is not matched.
              }
            ]
          }
+       ],
+       "SessionEnd": [
+         {
+           "hooks": [
+             {
+               "type": "command",
+               "command": "$CLAUDE_PROJECT_DIR/integrations/claude-code/sessionend-boundary.sh"
+             }
+           ]
+         }
        ]
      }
    }
    ```
 
    The `matcher` is a Claude Code tool-name pattern. `$CLAUDE_PROJECT_DIR`
-   resolves the hook path from the project root. If `boundary` is not on `PATH`,
+   resolves the hook paths from the project root. If `boundary` is not on `PATH`,
    also export `BOUNDARY_BIN` in the environment Claude Code runs in.
+
+   The `PreToolUse` block is what governs tool calls; the `SessionEnd` block only
+   writes the summary log below. Omitting `SessionEnd` costs you that log and
+   changes nothing about what is governed. The plugin manifest at
+   `hooks/hooks.json` registers the same two hooks, so a plugin install needs no
+   settings edit at all.
 
 4. **Reload** — restart Claude Code or run `/hooks` so it loads the hook.
 

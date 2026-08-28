@@ -1,6 +1,8 @@
 package hookboundary
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"io/fs"
@@ -179,24 +181,36 @@ func ensureRecordDir(path string) error {
 // appendRecordLine appends one JSON line to the decision log, refusing a
 // symlinked log path.
 func appendRecordLine(path string, body []byte) error {
-	if err := refuseSymlink(path, "decision record log"); err != nil {
+	return appendJSONLine(path, "decision record log", body)
+}
+
+// appendJSONLine appends one JSON line to an owner-only, append-only log,
+// refusing a symlinked target.
+//
+// It is the shared append discipline behind every .jsonl artifact this package
+// writes — the decision log and the session summary log — so a second artifact
+// cannot drift into weaker permissions or a followed symlink. artifact names
+// what the file holds, so a failure reads the same way whichever log was
+// refused. The caller owns creating the directory (see ensureRecordDir).
+func appendJSONLine(path, artifact string, body []byte) error {
+	if err := refuseSymlink(path, artifact); err != nil {
 		return err
 	}
 	// #nosec G304 -- the log path is composed from the operator-selected record
 	// directory and a fixed file name; no event-supplied string reaches it.
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, recordFileMode)
 	if err != nil {
-		return &WriteError{Op: "open decision record log", Path: path, Err: err}
+		return &WriteError{Op: "open " + artifact, Path: path, Err: err}
 	}
 	line := make([]byte, 0, len(body)+1)
 	line = append(line, body...)
 	line = append(line, '\n')
 	if _, err := file.Write(line); err != nil {
 		_ = file.Close()
-		return &WriteError{Op: "append decision record to log", Path: path, Err: err}
+		return &WriteError{Op: "append to " + artifact, Path: path, Err: err}
 	}
 	if err := file.Close(); err != nil {
-		return &WriteError{Op: "close decision record log", Path: path, Err: err}
+		return &WriteError{Op: "close " + artifact, Path: path, Err: err}
 	}
 	return nil
 }
@@ -221,6 +235,61 @@ func writeRecordFile(path string, body []byte) error {
 	}
 	if err := file.Close(); err != nil {
 		return &WriteError{Op: "close decision record", Path: path, Err: err}
+	}
+	return nil
+}
+
+// maxLogLineBytes bounds one decision log line a reader will accept. Reasons are
+// clipped to maxReasonLen and no event content is persisted, so a real record
+// line is a few kilobytes; the cap exists so a corrupted or hostile log cannot
+// make a reader allocate without limit.
+const maxLogLineBytes = 1 << 20 // 1 MiB
+
+// logEntry is the subset of a persisted decision record a reader of the decision
+// log needs to summarize it: which session it belonged to, what was decided, and
+// when. It is deliberately not the whole record — a summary reader has no
+// business materializing fields it does not count.
+type logEntry struct {
+	TraceID   string    `json:"trace_id"`
+	Action    string    `json:"action"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+// scanDecisionLog reads the append-only decision log at path and calls visit
+// once per line: with the decoded entry and ok true, or with a zero entry and ok
+// false for a line that could not be read as a record.
+//
+// An unreadable line is REPORTED rather than skipped silently, because a summary
+// built over a log the reader could only partly understand must say so instead
+// of quietly under-counting. Blank lines are ignored — they are not records and
+// not damage. A missing log returns an fs.ErrNotExist the caller can test for;
+// every other read failure is returned as-is, because a summary written over a
+// log that could not be read would be a false statement about what happened.
+func scanDecisionLog(path string, visit func(entry logEntry, ok bool)) error {
+	// #nosec G304 -- the log path is composed from the operator-selected record
+	// directory and a fixed file name; no event-supplied string reaches it.
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = file.Close() }()
+
+	scanner := bufio.NewScanner(file)
+	scanner.Buffer(make([]byte, 0, 64*1024), maxLogLineBytes)
+	for scanner.Scan() {
+		line := bytes.TrimSpace(scanner.Bytes())
+		if len(line) == 0 {
+			continue
+		}
+		var entry logEntry
+		if err := json.Unmarshal(line, &entry); err != nil {
+			visit(logEntry{}, false)
+			continue
+		}
+		visit(entry, true)
+	}
+	if err := scanner.Err(); err != nil {
+		return err
 	}
 	return nil
 }

@@ -226,6 +226,9 @@ func TestCheckProjectPathRejectsControlSurfaces(t *testing.T) {
 		".CLAUDE/Settings.json",
 		"integrations/claude-code/pretooluse-boundary.sh",
 		"vendor/integrations/claude-code/pretooluse-boundary.sh",
+		"integrations/claude-code/sessionend-boundary.sh",
+		"hooks/hooks.json",
+		"nested/plugin/hooks/hooks.json",
 		".boundary/command/decision-records.jsonl",
 		".boundary/evidence/bundle.json",
 		".boundary/bin/git",
@@ -255,6 +258,8 @@ func TestControlSurfacePathsMatchTheImplementedRules(t *testing.T) {
 		".claude/settings.local.json",
 		".claude/hooks/pretooluse.sh",
 		"integrations/claude-code/pretooluse-boundary.sh",
+		"integrations/claude-code/sessionend-boundary.sh",
+		"hooks/hooks.json",
 	}
 	shapes := ControlSurfacePaths()
 	if len(shapes) != len(concrete) {

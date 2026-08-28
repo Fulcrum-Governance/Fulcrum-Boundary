@@ -64,7 +64,7 @@ var compoundSubcommands = map[string][]string{
 	"trust":     {"show", "reset"},
 	"command":   {"classify", "run", "install", "uninstall"},
 	"edit":      {"inspect", "apply"},
-	"hook":      {"pretooluse"},
+	"hook":      {"pretooluse", "doctor", "sessionend"},
 	"inventory": {"ingest"},
 }
 
