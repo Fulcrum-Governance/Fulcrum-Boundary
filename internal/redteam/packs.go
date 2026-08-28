@@ -36,12 +36,14 @@ func findPack(id string) (Pack, bool) {
 func allPacks() []Pack {
 	return []Pack{
 		githubLethalTrifectaPack(),
+		commandCompoundSmugglingPack(),
 		commandOvereagerCleanupPack(),
 		commandRepoMutationPack(),
 		commandSecretExfilPack(),
 		editCIDeployMutationPack(),
 		editCrossScopeMutationPack(),
 		editDestructiveDeletePack(),
+		editGovernanceControlSurfacePack(),
 		editPackageScriptMutationPack(),
 		editSecretExfilPack(),
 		stubPack("filesystem-credential-read", "Filesystem Credential Read", "Fixture stub for attempts to read local credential material through a filesystem MCP surface."),

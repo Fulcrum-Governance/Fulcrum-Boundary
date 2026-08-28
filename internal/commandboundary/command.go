@@ -17,6 +17,23 @@ const (
 	ClassPackageLifecycle       Class = "C7"
 )
 
+// MutatesFiles reports whether a class names a command that writes, replaces, or
+// removes a file on the local filesystem.
+//
+// It is the narrow "this command changes a file's bytes" question, answered from
+// the taxonomy alone: C1 local file write and C4 destructive local mutation.
+// Repository mutation (C3) and package lifecycle (C7) can also touch files, but
+// they are not asserted here — a caller that needs those must say so. It is a
+// property of the CLASS, not evidence about a particular path.
+func (c Class) MutatesFiles() bool {
+	switch c {
+	case ClassLocalFileWrite, ClassDestructiveMutation:
+		return true
+	default:
+		return false
+	}
+}
+
 type Risk string
 
 const (

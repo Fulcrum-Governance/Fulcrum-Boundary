@@ -1,6 +1,7 @@
 package editboundary
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -208,6 +209,107 @@ func TestCheckProjectPathRejectsUnsafeForms(t *testing.T) {
 			got := CheckProjectPath(raw)
 			if got.Safe {
 				t.Fatalf("path %q was marked safe", raw)
+			}
+		})
+	}
+}
+
+// TestCheckProjectPathRejectsControlSurfaces covers the self-protection rules:
+// an agent must not be able to edit the gate its own tool calls pass through,
+// nor the evidence of what that gate decided.
+func TestCheckProjectPathRejectsControlSurfaces(t *testing.T) {
+	for _, raw := range []string{
+		".claude/settings.json",
+		".claude/settings.local.json",
+		".claude/hooks/pretooluse.sh",
+		".claude/hooks/nested/deep.sh",
+		".CLAUDE/Settings.json",
+		"integrations/claude-code/pretooluse-boundary.sh",
+		"vendor/integrations/claude-code/pretooluse-boundary.sh",
+		".boundary/command/decision-records.jsonl",
+		".boundary/evidence/bundle.json",
+		".boundary/bin/git",
+		"nested/repo/.boundary/hook/decision-records.jsonl",
+		"nested/repo/.claude/settings.json",
+	} {
+		t.Run(raw, func(t *testing.T) {
+			got := CheckProjectPath(raw)
+			if got.Safe {
+				t.Fatalf("control-surface path %q was marked safe", raw)
+			}
+			if !strings.Contains(got.Reason, "outside the edit envelope scope") {
+				t.Fatalf("reason = %q, want the edit-envelope framing", got.Reason)
+			}
+		})
+	}
+}
+
+// TestControlSurfacePathsMatchTheImplementedRules is a drift guard: every shape
+// the documented list advertises must actually be rejected, and the list must
+// not grow a shape the classifier does not implement.
+func TestControlSurfacePathsMatchTheImplementedRules(t *testing.T) {
+	// One concrete path per documented shape, in the same order.
+	concrete := []string{
+		".boundary/hook/decision-records.jsonl",
+		".claude/settings.json",
+		".claude/settings.local.json",
+		".claude/hooks/pretooluse.sh",
+		"integrations/claude-code/pretooluse-boundary.sh",
+	}
+	shapes := ControlSurfacePaths()
+	if len(shapes) != len(concrete) {
+		t.Fatalf("documented shapes = %d, sample paths = %d; keep them in step: %v",
+			len(shapes), len(concrete), shapes)
+	}
+	for i, path := range concrete {
+		if got := CheckProjectPath(path); got.Safe {
+			t.Fatalf("documented shape %q (sample %q) is not rejected", shapes[i], path)
+		}
+	}
+}
+
+// TestCheckProjectPathKeepsOrdinaryAgentContentEditable pins the narrow scope of
+// the control-surface rules: the rest of `.claude/` is ordinary content, and a
+// file that merely mentions a control surface's name is not one.
+func TestCheckProjectPathKeepsOrdinaryAgentContentEditable(t *testing.T) {
+	for _, raw := range []string{
+		".claude/skills/thing/SKILL.md",
+		".claude/commands/ship.md",
+		".claude/settings.example.json",
+		"docs/integrations/claude-code/README.md",
+		"integrations/claude-code/settings.snippet.json",
+		"boundary/config.yaml",
+	} {
+		t.Run(raw, func(t *testing.T) {
+			if got := CheckProjectPath(raw); !got.Safe {
+				t.Fatalf("path %q was rejected as a control surface: %q", raw, got.Reason)
+			}
+		})
+	}
+}
+
+// TestControlSurfaceEditsClassifyToADenyAction is the end-to-end posture: a
+// synthesized one-file patch against each control surface must reach a
+// deny-action class, not merely a require-approval one.
+func TestControlSurfaceEditsClassifyToADenyAction(t *testing.T) {
+	for _, target := range []string{
+		".claude/settings.json",
+		".claude/settings.local.json",
+		".claude/hooks/pretooluse.sh",
+		"integrations/claude-code/pretooluse-boundary.sh",
+		".boundary/command/decision-records.jsonl",
+	} {
+		t.Run(target, func(t *testing.T) {
+			patch := fmt.Sprintf("diff --git a/%s b/%s\n--- a/%s\n+++ b/%s\n", target, target, target, target)
+			got, err := InspectPatch([]byte(patch))
+			if err != nil {
+				t.Fatalf("InspectPatch(%q): %v", target, err)
+			}
+			if got.RecommendedAction != ActionDeny {
+				t.Fatalf("action = %q, want deny", got.RecommendedAction)
+			}
+			if got.HighestClass != ClassOutsideProjectScope {
+				t.Fatalf("class = %q, want %q", got.HighestClass, ClassOutsideProjectScope)
 			}
 		})
 	}

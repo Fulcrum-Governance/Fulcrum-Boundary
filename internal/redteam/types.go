@@ -38,6 +38,7 @@ type Scenario struct {
 	NoLiveMutation bool                          `json:"no_live_mutation"`
 	ExpectedAction string                        `json:"expected_action"`
 	CommandArgv    []string                      `json:"command_argv,omitempty"`
+	CommandLine    string                        `json:"command_line,omitempty"`
 	EditPatch      []byte                        `json:"-"`
 	EditPatchLabel string                        `json:"edit_patch_label,omitempty"`
 	Request        governance.GovernanceRequest  `json:"request"`

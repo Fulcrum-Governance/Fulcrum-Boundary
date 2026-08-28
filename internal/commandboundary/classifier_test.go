@@ -1,6 +1,9 @@
 package commandboundary
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestClassifyCommandTaxonomy(t *testing.T) {
 	tests := []struct {
@@ -105,6 +108,68 @@ func TestClassifyRedactsSecretArguments(t *testing.T) {
 		if arg == "abc123" || arg == "@.env" || arg == "Authorization: bearer abc123" {
 			t.Fatalf("secret argument was not redacted: %#v", got.ArgsRedacted)
 		}
+	}
+}
+
+// TestClassifyRedactsInlineURLCredentials covers the canonical secret shape on a
+// command line: credentials embedded in a connection string. Nothing else in the
+// redaction table matches `scheme://user:pass@host`, so the password used to
+// survive into the classification, the operator-facing reason, and the persisted
+// decision record.
+func TestClassifyRedactsInlineURLCredentials(t *testing.T) {
+	tests := []struct {
+		name string
+		argv []string
+		want []string
+	}{
+		{
+			name: "dsn keeps the account and drops the password",
+			argv: []string{"psql", "postgres://admin:hunter2@db.internal/prod", "-c", "select 1"},
+			want: []string{"postgres://admin:[redacted]@db.internal/prod", "-c", "select 1"},
+		},
+		{
+			name: "bare userinfo is a token and is dropped whole",
+			argv: []string{"git", "clone", "https://ghp_A1b2C3d4@github.com/o/r.git"},
+			want: []string{"clone", "https://[redacted]@github.com/o/r.git"},
+		},
+		{
+			name: "flag value carrying a dsn",
+			argv: []string{"myapp", "--dsn=mysql://root:s3cr3t@localhost:3306/app"},
+			want: []string{"--dsn=mysql://root:[redacted]@localhost:3306/app"},
+		},
+		{
+			name: "scp-style remote has no userinfo to redact",
+			argv: []string{"git", "clone", "git@github.com:o/r.git"},
+			want: []string{"clone", "git@github.com:o/r.git"},
+		},
+		{
+			name: "an at sign in the path is not userinfo",
+			argv: []string{"curl", "https://example.invalid/a@b"},
+			want: []string{"https://example.invalid/a@b"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Classify(tt.argv)
+			if err != nil {
+				t.Fatalf("Classify(%v): %v", tt.argv, err)
+			}
+			if len(got.ArgsRedacted) != len(tt.want) {
+				t.Fatalf("args = %#v, want %#v", got.ArgsRedacted, tt.want)
+			}
+			for i, want := range tt.want {
+				if got.ArgsRedacted[i] != want {
+					t.Fatalf("args[%d] = %q, want %q", i, got.ArgsRedacted[i], want)
+				}
+			}
+			for _, arg := range got.ArgsRedacted {
+				for _, secret := range []string{"hunter2", "ghp_A1b2C3d4", "s3cr3t"} {
+					if strings.Contains(arg, secret) {
+						t.Fatalf("secret %q survived redaction in %q", secret, arg)
+					}
+				}
+			}
+		})
 	}
 }
 
