@@ -116,6 +116,37 @@ resolve_repo_root() {
 	CDPATH= cd -- "$script_dir/.." 2>/dev/null && pwd
 }
 
+# hook_lane_ok probes whether the boundary at $1 carries the `hook` lane this
+# plugin's wrapper execs into — the same side-effect-free probe
+# integrations/claude-code/pretooluse-boundary.sh runs before every decision.
+# It decides nothing, writes no record, and never reads stdin.
+hook_lane_ok() {
+	"$1" hook --help >/dev/null 2>&1
+}
+
+# print_upgrade_command prints the exact supported upgrade for the too-old
+# boundary at $1, through the printer named by $2 (say or err): brew upgrades
+# what brew manages; anything else is re-running this script after removing
+# the old binary, or BOUNDARY_BIN pointed at a current one.
+print_upgrade_command() {
+	old_path=$1
+	printer=$2
+	brew_prefix=""
+	if command -v brew >/dev/null 2>&1; then
+		brew_prefix=$(brew --prefix 2>/dev/null || true)
+	fi
+	if [ -n "$brew_prefix" ]; then
+		case "$old_path" in
+		"$brew_prefix"/*)
+			"$printer" "upgrade it with exactly: brew upgrade $BREW_TAP_FORMULA"
+			return 0
+			;;
+		esac
+	fi
+	"$printer" "upgrade it by removing that binary and re-running: sh '$0'"
+	"$printer" "(or set BOUNDARY_BIN to the absolute path of a current binary; the hook wrapper reads it)"
+}
+
 # write_receipt atomically (best-effort) writes $2 as the body of a receipt at
 # $1, preceded by a schema line and a timestamp. Receipts are plain
 # key=value lines, one per line, deliberately not JSON: this script is the
@@ -218,8 +249,17 @@ COMPONENTS
 	say "  wrote receipt: $PLUGIN_DROP_RECEIPT"
 
 	if command -v boundary >/dev/null 2>&1; then
-		say ""
-		say "boundary is on PATH ($(command -v boundary)); the hook can decide once wired."
+		boundary_path=$(command -v boundary)
+		if hook_lane_ok "$boundary_path"; then
+			say ""
+			say "boundary is on PATH ($boundary_path) and supports the hook; it can decide once wired."
+		else
+			say ""
+			say "WARNING: the boundary on PATH ($boundary_path) is too old for this plugin's hook"
+			say "(it does not support 'boundary hook pretooluse'). Until it is upgraded, the hook"
+			say "will ask on every tool call instead of deciding;"
+			print_upgrade_command "$boundary_path" say
+		fi
 	else
 		say ""
 		say "Note: no 'boundary' binary was found on PATH. The hook installed above"
@@ -227,6 +267,7 @@ COMPONENTS
 		say "'$0' (no flags), or 'brew install $BREW_TAP_FORMULA', or 'make build'."
 	fi
 	say ""
+	say "To reverse this install: sh '$0' --uninstall"
 	say "Restart Claude Code, then run /boundary:drill."
 	return 0
 }
@@ -256,10 +297,22 @@ detect_os_arch() {
 
 do_binary_install() {
 	if command -v boundary >/dev/null 2>&1; then
-		say "boundary is already on PATH at $(command -v boundary); nothing to install."
-		say "(run '$0 --uninstall' first if you want this script to manage it, or"
-		say "upgrade via whatever method installed it.)"
-		return 0
+		existing_path=$(command -v boundary)
+		# "already installed" is only true when the installed binary can do the
+		# job the plugin needs. A boundary that predates the `hook` lane would
+		# leave the plugin asking on every tool call while this script reports
+		# "nothing to install" — the exact poisoned state G3-A blocker 6 names.
+		if hook_lane_ok "$existing_path"; then
+			say "boundary is already on PATH at $existing_path and supports the Claude Code hook; nothing to install."
+			say "(run '$0 --uninstall' first if you want this script to manage it, or"
+			say "upgrade via whatever method installed it.)"
+			return 0
+		fi
+		err "boundary is already on PATH at $existing_path but is too old for the Claude Code hook:"
+		err "it does not support 'boundary hook pretooluse', so the plugin's wrapper would ask on"
+		err "every tool call instead of deciding. Refusing to report it as installed;"
+		print_upgrade_command "$existing_path" err
+		return 1
 	fi
 
 	if [ -n "${BOUNDARY_INSTALL_NO_NETWORK:-}" ]; then
@@ -294,6 +347,7 @@ path=$installed_path
 			say "Installed via Homebrew: $installed_path"
 			say "  wrote receipt: $BINARY_RECEIPT"
 			say ""
+			say "To reverse this install: sh '$0' --uninstall"
 			say "Next: run '$0 --plugin-drop' to wire it into Claude Code."
 			say "Then restart Claude Code, then run /boundary:drill."
 			return 0
@@ -420,6 +474,7 @@ path=$INSTALL_BIN_DIR/boundary
 		;;
 	esac
 	say ""
+	say "To reverse this install: sh '$0' --uninstall"
 	say "Next: run '$0 --plugin-drop' to wire it into Claude Code."
 	say "Then restart Claude Code, then run /boundary:drill."
 	return 0

@@ -453,3 +453,113 @@ func TestInstallerRejectsUnknownArgument(t *testing.T) {
 		t.Fatalf("stderr does not explain the rejection: %s", stderr)
 	}
 }
+
+// writeFakeBoundaryOnPath plants an executable named `boundary` in its own
+// directory and returns an env whose PATH resolves it first. hookLane decides
+// whether the fake supports `boundary hook --help` (a current build, exit 0)
+// or predates the hook lane (a too-old build, exit 1 on the hook verb) — the
+// same distinction the plugin wrapper's probe draws.
+func writeFakeBoundaryOnPath(t *testing.T, home string, hookLane bool) []string {
+	t.Helper()
+	binDir := filepath.Join(home, "fakebin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", binDir, err)
+	}
+	body := "#!/bin/sh\nexit 0\n"
+	if !hookLane {
+		body = "#!/bin/sh\nif [ \"$1\" = \"hook\" ]; then exit 1; fi\nexit 0\n"
+	}
+	if err := os.WriteFile(filepath.Join(binDir, "boundary"), []byte(body), 0o755); err != nil {
+		t.Fatalf("write fake boundary: %v", err)
+	}
+	return []string{
+		"HOME=" + home,
+		"PATH=" + binDir + ":" + systemPathWithoutBoundary(),
+		// Belt over suspenders: the too-old refusal must fire before any
+		// network path is reached, and if it ever does not, the guard keeps
+		// the test off brew and curl instead of hitting the real network.
+		"BOUNDARY_INSTALL_NO_NETWORK=1",
+	}
+}
+
+// TestInstallerBinaryModeRefusesATooOldBoundaryOnPath is G3-A blocker 6: an
+// existing pre-hook boundary must never produce "nothing to install" and then
+// a too-old plugin failure. The installer must version-check what PATH
+// resolves and stop with the exact supported upgrade guidance.
+func TestInstallerBinaryModeRefusesATooOldBoundaryOnPath(t *testing.T) {
+	home := t.TempDir()
+	env := writeFakeBoundaryOnPath(t, home, false)
+
+	code, stdout, stderr := runInstaller(t, env)
+	if code == 0 {
+		t.Fatalf("exit = 0, want non-zero for a too-old boundary on PATH\nstdout=%s", stdout)
+	}
+	if strings.Contains(stdout, "nothing to install") {
+		t.Fatalf("installer still reports nothing to install over a too-old binary:\n%s", stdout)
+	}
+	lower := strings.ToLower(stderr)
+	if !strings.Contains(lower, "too old") || !strings.Contains(stderr, "hook pretooluse") {
+		t.Fatalf("stderr does not explain the too-old refusal: %s", stderr)
+	}
+	if !strings.Contains(stderr, "BOUNDARY_BIN") {
+		t.Fatalf("stderr does not print the supported upgrade guidance: %s", stderr)
+	}
+}
+
+// TestInstallerBinaryModeAcceptsACurrentBoundaryOnPath keeps the healthy early
+// exit: a binary that carries the hook lane really is "nothing to install".
+func TestInstallerBinaryModeAcceptsACurrentBoundaryOnPath(t *testing.T) {
+	home := t.TempDir()
+	env := writeFakeBoundaryOnPath(t, home, true)
+
+	code, stdout, stderr := runInstaller(t, env)
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0\nstdout=%s\nstderr=%s", code, stdout, stderr)
+	}
+	if !strings.Contains(stdout, "nothing to install") || !strings.Contains(stdout, "supports the Claude Code hook") {
+		t.Fatalf("stdout does not report the probed early exit:\n%s", stdout)
+	}
+}
+
+// TestInstallerPluginDropWarnsOnATooOldBoundary: the plugin drop still lands
+// (install order is the user's to choose), but a too-old binary on PATH is
+// called out loudly with the upgrade guidance, not discovered later as an
+// every-call ask.
+func TestInstallerPluginDropWarnsOnATooOldBoundary(t *testing.T) {
+	home := t.TempDir()
+	env := writeFakeBoundaryOnPath(t, home, false)
+
+	code, stdout, stderr := runInstaller(t, env, "--plugin-drop")
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0 (the drop itself succeeds)\nstdout=%s\nstderr=%s", code, stdout, stderr)
+	}
+	if !strings.Contains(stdout, "WARNING") || !strings.Contains(strings.ToLower(stdout), "too old") {
+		t.Fatalf("stdout does not warn about the too-old binary:\n%s", stdout)
+	}
+}
+
+// TestInstallerPluginDropPrintsTheReversalCommand is G3-A blocker 5's exit
+// path: a successful plugin drop must print the exact reversal command, not
+// leave --uninstall discoverable only through separate help.
+func TestInstallerPluginDropPrintsTheReversalCommand(t *testing.T) {
+	home := t.TempDir()
+	code, stdout, stderr := runInstaller(t, baseEnv(home), "--plugin-drop")
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0\nstderr=%s", code, stderr)
+	}
+	if !strings.Contains(stdout, "To reverse this install:") || !strings.Contains(stdout, "--uninstall") {
+		t.Fatalf("plugin-drop does not print the reversal command:\n%s", stdout)
+	}
+}
+
+// TestInstallerEverySuccessPathPrintsTheReversalCommand pins the source: the
+// plugin-drop and both binary-install success branches each print the exact
+// reversal line. The binary branches cannot be driven end to end in a test
+// (brew or a release download), so the assertion is on the script body, in
+// the same style as the receipt-newline pin above.
+func TestInstallerEverySuccessPathPrintsTheReversalCommand(t *testing.T) {
+	body := mustReadFile(t, installerPath(t))
+	if got := strings.Count(body, `say "To reverse this install: sh '$0' --uninstall"`); got < 3 {
+		t.Fatalf("reversal line appears %d time(s) in the installer, want it on all three success paths", got)
+	}
+}
