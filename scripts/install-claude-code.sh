@@ -49,6 +49,7 @@ PROG_NAME=${0##*/}
 REPO_SLUG="fulcrum-governance/fulcrum-boundary"
 GITHUB_REPO_URL="https://github.com/$REPO_SLUG"
 BREW_TAP_FORMULA="fulcrum-governance/tap/boundary"
+INSTALLER_RAW_URL="https://raw.githubusercontent.com/$REPO_SLUG/main/scripts/install-claude-code.sh"
 
 INSTALL_BIN_DIR="${BOUNDARY_INSTALL_BIN_DIR:-$HOME/.local/bin}"
 PLUGIN_DROP_DIR="${BOUNDARY_PLUGIN_DROP_DIR:-$HOME/.claude/skills/boundary}"
@@ -124,27 +125,69 @@ hook_lane_ok() {
 	"$1" hook --help >/dev/null 2>&1
 }
 
-# print_upgrade_command prints the exact supported upgrade for the too-old
-# boundary at $1, through the printer named by $2 (say or err): brew upgrades
-# what brew manages; anything else is re-running this script after removing
-# the old binary, or BOUNDARY_BIN pointed at a current one.
+# self_invocation prints a command line that re-runs this installer with the
+# arguments given, in a form the CURRENT invocation proves is executable:
+# when $0 names a readable file, that file; otherwise this is a piped
+# `curl ... | sh` run — $0 is the shell's own name, not a path anyone can
+# re-execute — so the documented re-pipe is printed, with the arguments after
+# `sh -s --`.
+self_invocation() {
+	if [ -f "$0" ]; then
+		if [ $# -gt 0 ]; then
+			printf "sh '%s' %s" "$0" "$*"
+		else
+			printf "sh '%s'" "$0"
+		fi
+		return 0
+	fi
+	if [ $# -gt 0 ]; then
+		printf 'curl -fsSL %s | sh -s -- %s' "$INSTALLER_RAW_URL" "$*"
+	else
+		printf 'curl -fsSL %s | sh' "$INSTALLER_RAW_URL"
+	fi
+}
+
+# print_upgrade_command prints supported resolution guidance for the
+# incompatible binary at $1, through the printer named by $2 (say or err).
+#
+# Ownership is never inferred from the install path alone: a `boundary` under
+# a Homebrew prefix may be an older Fulcrum build or an entirely different
+# product that shares the name. The binary's own `version` self-report decides
+# which guidance applies, and Homebrew is named only when the binary
+# self-reports as Fulcrum Boundary, sits under brew's prefix, AND `brew list`
+# itself reports a boundary install (formula or cask).
 print_upgrade_command() {
 	old_path=$1
 	printer=$2
-	brew_prefix=""
-	if command -v brew >/dev/null 2>&1; then
-		brew_prefix=$(brew --prefix 2>/dev/null || true)
+	if "$old_path" version 2>/dev/null | grep -q '^Fulcrum Boundary'; then
+		brew_prefix=""
+		if command -v brew >/dev/null 2>&1; then
+			brew_prefix=$(brew --prefix 2>/dev/null || true)
+		fi
+		if [ -n "$brew_prefix" ]; then
+			case "$old_path" in
+			"$brew_prefix"/*)
+				if brew list --versions boundary >/dev/null 2>&1; then
+					"$printer" "it self-reports as Fulcrum Boundary and Homebrew lists a 'boundary' formula;"
+					"$printer" "upgrade it with exactly: brew upgrade boundary"
+					return 0
+				fi
+				if brew list --cask --versions boundary >/dev/null 2>&1; then
+					"$printer" "it self-reports as Fulcrum Boundary and Homebrew lists a 'boundary' cask;"
+					"$printer" "upgrade it with exactly: brew upgrade --cask boundary"
+					return 0
+				fi
+				;;
+			esac
+		fi
+		"$printer" "it self-reports as Fulcrum Boundary; upgrade it by removing that binary and re-running:"
+		"$printer" "  $(self_invocation)"
+		"$printer" "(or set BOUNDARY_BIN to the absolute path of a current binary; the hook wrapper reads it)"
+		return 0
 	fi
-	if [ -n "$brew_prefix" ]; then
-		case "$old_path" in
-		"$brew_prefix"/*)
-			"$printer" "upgrade it with exactly: brew upgrade $BREW_TAP_FORMULA"
-			return 0
-			;;
-		esac
-	fi
-	"$printer" "upgrade it by removing that binary and re-running: sh '$0'"
-	"$printer" "(or set BOUNDARY_BIN to the absolute path of a current binary; the hook wrapper reads it)"
+	"$printer" "that binary may be an older Fulcrum Boundary build or a different product that shares the name."
+	"$printer" "If it is not Fulcrum Boundary, leave it in place and set BOUNDARY_BIN to a current Fulcrum"
+	"$printer" "binary (install one with: $(self_invocation)); if it is, upgrade it via whatever installed it."
 }
 
 # write_receipt atomically (best-effort) writes $2 as the body of a receipt at
@@ -189,6 +232,22 @@ do_plugin_drop() {
 		err "run --plugin-drop from a checkout of $GITHUB_REPO_URL, e.g.:"
 		err "  git clone $GITHUB_REPO_URL && cd fulcrum-boundary && ./scripts/install-claude-code.sh --plugin-drop"
 		return 1
+	fi
+
+	# Compatibility preflight, BEFORE any file or receipt is written: a plugin
+	# whose resolved binary lacks the hook lane would leave every tool call
+	# asking instead of decided, so an incompatible binary stops the drop
+	# instead of poisoning it. No binary at all stays allowed — the wrapper
+	# asks visibly with install instructions until one appears.
+	if command -v boundary >/dev/null 2>&1; then
+		preflight_path=$(command -v boundary)
+		if ! hook_lane_ok "$preflight_path"; then
+			err "the 'boundary' on PATH at $preflight_path does not support 'boundary hook pretooluse',"
+			err "which this plugin's hook requires. Nothing was installed and no receipt was written."
+			print_upgrade_command "$preflight_path" err
+			err "Then re-run: $(self_invocation --plugin-drop)"
+			return 1
+		fi
 	fi
 
 	say "Plugin drop: installing the boundary plugin into $PLUGIN_DROP_DIR"
@@ -249,25 +308,17 @@ COMPONENTS
 	say "  wrote receipt: $PLUGIN_DROP_RECEIPT"
 
 	if command -v boundary >/dev/null 2>&1; then
-		boundary_path=$(command -v boundary)
-		if hook_lane_ok "$boundary_path"; then
-			say ""
-			say "boundary is on PATH ($boundary_path) and supports the hook; it can decide once wired."
-		else
-			say ""
-			say "WARNING: the boundary on PATH ($boundary_path) is too old for this plugin's hook"
-			say "(it does not support 'boundary hook pretooluse'). Until it is upgraded, the hook"
-			say "will ask on every tool call instead of deciding;"
-			print_upgrade_command "$boundary_path" say
-		fi
+		# The preflight above already proved this binary carries the hook lane.
+		say ""
+		say "boundary is on PATH ($(command -v boundary)) and supports the hook; it can decide once wired."
 	else
 		say ""
 		say "Note: no 'boundary' binary was found on PATH. The hook installed above"
 		say "asks rather than silently allowing until one is present — install it with"
-		say "'$0' (no flags), or 'brew install $BREW_TAP_FORMULA', or 'make build'."
+		say "'$(self_invocation)', or 'brew install $BREW_TAP_FORMULA', or 'make build'."
 	fi
 	say ""
-	say "To reverse this install: sh '$0' --uninstall"
+	say "To reverse this install: $(self_invocation --uninstall)"
 	say "Restart Claude Code, then run /boundary:drill."
 	return 0
 }
@@ -308,9 +359,9 @@ do_binary_install() {
 			say "upgrade via whatever method installed it.)"
 			return 0
 		fi
-		err "boundary is already on PATH at $existing_path but is too old for the Claude Code hook:"
-		err "it does not support 'boundary hook pretooluse', so the plugin's wrapper would ask on"
-		err "every tool call instead of deciding. Refusing to report it as installed;"
+		err "a 'boundary' on PATH at $existing_path does not support 'boundary hook pretooluse',"
+		err "which the Claude Code hook requires; the plugin's wrapper would ask on every tool"
+		err "call instead of deciding. Refusing to report it as installed;"
 		print_upgrade_command "$existing_path" err
 		return 1
 	fi
@@ -347,8 +398,8 @@ path=$installed_path
 			say "Installed via Homebrew: $installed_path"
 			say "  wrote receipt: $BINARY_RECEIPT"
 			say ""
-			say "To reverse this install: sh '$0' --uninstall"
-			say "Next: run '$0 --plugin-drop' to wire it into Claude Code."
+			say "To reverse this install: $(self_invocation --uninstall)"
+			say "Next, wire it into Claude Code: $(self_invocation --plugin-drop)"
 			say "Then restart Claude Code, then run /boundary:drill."
 			return 0
 		fi
@@ -474,8 +525,8 @@ path=$INSTALL_BIN_DIR/boundary
 		;;
 	esac
 	say ""
-	say "To reverse this install: sh '$0' --uninstall"
-	say "Next: run '$0 --plugin-drop' to wire it into Claude Code."
+	say "To reverse this install: $(self_invocation --uninstall)"
+	say "Next, wire it into Claude Code: $(self_invocation --plugin-drop)"
 	say "Then restart Claude Code, then run /boundary:drill."
 	return 0
 }

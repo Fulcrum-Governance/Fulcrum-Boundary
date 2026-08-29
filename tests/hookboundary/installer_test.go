@@ -495,14 +495,16 @@ func TestInstallerBinaryModeRefusesATooOldBoundaryOnPath(t *testing.T) {
 		t.Fatalf("exit = 0, want non-zero for a too-old boundary on PATH\nstdout=%s", stdout)
 	}
 	if strings.Contains(stdout, "nothing to install") {
-		t.Fatalf("installer still reports nothing to install over a too-old binary:\n%s", stdout)
+		t.Fatalf("installer still reports nothing to install over an incompatible binary:\n%s", stdout)
 	}
-	lower := strings.ToLower(stderr)
-	if !strings.Contains(lower, "too old") || !strings.Contains(stderr, "hook pretooluse") {
-		t.Fatalf("stderr does not explain the too-old refusal: %s", stderr)
+	if !strings.Contains(stderr, "hook pretooluse") {
+		t.Fatalf("stderr does not name the missing hook lane: %s", stderr)
 	}
-	if !strings.Contains(stderr, "BOUNDARY_BIN") {
-		t.Fatalf("stderr does not print the supported upgrade guidance: %s", stderr)
+	// The stub does not self-report as Fulcrum Boundary, so the guidance must
+	// stay product-neutral — never inferring ownership from the install path —
+	// and offer BOUNDARY_BIN rather than guessing at brew.
+	if !strings.Contains(stderr, "different product") || !strings.Contains(stderr, "BOUNDARY_BIN") {
+		t.Fatalf("stderr does not carry the product-neutral resolution guidance: %s", stderr)
 	}
 }
 
@@ -521,45 +523,163 @@ func TestInstallerBinaryModeAcceptsACurrentBoundaryOnPath(t *testing.T) {
 	}
 }
 
-// TestInstallerPluginDropWarnsOnATooOldBoundary: the plugin drop still lands
-// (install order is the user's to choose), but a too-old binary on PATH is
-// called out loudly with the upgrade guidance, not discovered later as an
-// every-call ask.
-func TestInstallerPluginDropWarnsOnATooOldBoundary(t *testing.T) {
+// TestInstallerPluginDropStopsBeforeWritingOnIncompatibleBoundary is the
+// review-tightened contract for an incompatible binary: the compatibility
+// preflight runs BEFORE any plugin file or receipt is written, the drop exits
+// non-zero, and the fake HOME is left exactly as it was — no plugin
+// directory, no receipt, nothing to reverse.
+func TestInstallerPluginDropStopsBeforeWritingOnIncompatibleBoundary(t *testing.T) {
 	home := t.TempDir()
 	env := writeFakeBoundaryOnPath(t, home, false)
 
 	code, stdout, stderr := runInstaller(t, env, "--plugin-drop")
-	if code != 0 {
-		t.Fatalf("exit = %d, want 0 (the drop itself succeeds)\nstdout=%s\nstderr=%s", code, stdout, stderr)
+	if code == 0 {
+		t.Fatalf("exit = 0, want non-zero for an incompatible binary\nstdout=%s", stdout)
 	}
-	if !strings.Contains(stdout, "WARNING") || !strings.Contains(strings.ToLower(stdout), "too old") {
-		t.Fatalf("stdout does not warn about the too-old binary:\n%s", stdout)
+	if !strings.Contains(stderr, "hook pretooluse") || !strings.Contains(stderr, "no receipt was written") {
+		t.Fatalf("stderr does not explain the stop: %s", stderr)
+	}
+	pluginDir := filepath.Join(home, ".claude", "skills", "boundary")
+	if _, err := os.Stat(pluginDir); !os.IsNotExist(err) {
+		t.Fatalf("plugin directory was written despite the incompatible binary (err=%v)", err)
+	}
+	receiptPath := filepath.Join(home, ".local", "state", "boundary", "plugin-drop.receipt")
+	if _, err := os.Stat(receiptPath); !os.IsNotExist(err) {
+		t.Fatalf("a receipt was written despite the incompatible binary (err=%v)", err)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".claude")); !os.IsNotExist(err) {
+		t.Fatalf("~/.claude was created despite the stop (err=%v)", err)
 	}
 }
 
 // TestInstallerPluginDropPrintsTheReversalCommand is G3-A blocker 5's exit
-// path: a successful plugin drop must print the exact reversal command, not
-// leave --uninstall discoverable only through separate help.
+// path: a successful local-file plugin drop must print a reversal command
+// that names the actual script file — a command the user can paste and run.
 func TestInstallerPluginDropPrintsTheReversalCommand(t *testing.T) {
 	home := t.TempDir()
 	code, stdout, stderr := runInstaller(t, baseEnv(home), "--plugin-drop")
 	if code != 0 {
 		t.Fatalf("exit = %d, want 0\nstderr=%s", code, stderr)
 	}
-	if !strings.Contains(stdout, "To reverse this install:") || !strings.Contains(stdout, "--uninstall") {
-		t.Fatalf("plugin-drop does not print the reversal command:\n%s", stdout)
+	want := "To reverse this install: sh '" + installerPath(t) + "' --uninstall"
+	if !strings.Contains(stdout, want) {
+		t.Fatalf("plugin-drop does not print the executable reversal command %q:\n%s", want, stdout)
 	}
 }
 
-// TestInstallerEverySuccessPathPrintsTheReversalCommand pins the source: the
-// plugin-drop and both binary-install success branches each print the exact
-// reversal line. The binary branches cannot be driven end to end in a test
-// (brew or a release download), so the assertion is on the script body, in
-// the same style as the receipt-newline pin above.
-func TestInstallerEverySuccessPathPrintsTheReversalCommand(t *testing.T) {
-	body := mustReadFile(t, installerPath(t))
-	if got := strings.Count(body, `say "To reverse this install: sh '$0' --uninstall"`); got < 3 {
-		t.Fatalf("reversal line appears %d time(s) in the installer, want it on all three success paths", got)
+// runInstallerPiped executes the installer the way the public launch path
+// does — `curl ... | sh` — by streaming the script body over stdin, so $0 is
+// the shell's own name and never a usable script path. No network involved.
+func runInstallerPiped(t *testing.T, env []string, args ...string) (int, string, string) {
+	t.Helper()
+	body, err := os.ReadFile(installerPath(t))
+	if err != nil {
+		t.Fatalf("read installer: %v", err)
+	}
+	cmdArgs := append([]string{"-s", "--"}, args...)
+	cmd := exec.Command("sh", cmdArgs...)
+	cmd.Dir = t.TempDir()
+	cmd.Env = env
+	cmd.Stdin = bytes.NewReader(body)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	code := 0
+	if runErr := cmd.Run(); runErr != nil {
+		exitErr, ok := runErr.(*exec.ExitError)
+		if !ok {
+			t.Fatalf("run piped installer: %v\nstderr=%s", runErr, stderr.String())
+		}
+		code = exitErr.ExitCode()
+	}
+	return code, stdout.String(), stderr.String()
+}
+
+// writeFakeBrew plants a fake `brew` in binDir whose `install` subcommand
+// drops an executable `boundary` stub into the same directory. It lets the
+// binary lane's brew SUCCESS branch run end to end with zero network, which
+// is what makes the reversal-line assertions functional rather than
+// source-string counting.
+func writeFakeBrew(t *testing.T, binDir string) {
+	t.Helper()
+	brew := "#!/bin/sh\n" +
+		"if [ \"$1\" = \"install\" ]; then\n" +
+		"  printf '#!/bin/sh\\nexit 0\\n' > " + binDir + "/boundary\n" +
+		"  chmod 755 " + binDir + "/boundary\n" +
+		"  exit 0\n" +
+		"fi\n" +
+		"exit 1\n"
+	if err := os.WriteFile(filepath.Join(binDir, "brew"), []byte(brew), 0o755); err != nil {
+		t.Fatalf("write fake brew: %v", err)
+	}
+}
+
+// brewEnv is the environment for the fake-brew success runs: isolated HOME, a
+// PATH that resolves the fake brew (and later its installed stub) plus the
+// system utilities, and NO network guard — the point is to traverse the real
+// brew success branch, which the fake keeps entirely local.
+func brewEnv(t *testing.T, home string) []string {
+	t.Helper()
+	binDir := filepath.Join(home, "fakebin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", binDir, err)
+	}
+	writeFakeBrew(t, binDir)
+	return []string{
+		"HOME=" + home,
+		"PATH=" + binDir + ":" + systemPathWithoutBoundary(),
+	}
+}
+
+// TestInstallerLocalBinaryInstallPrintsExecutableReversal drives the brew
+// success branch from a local script file: the reversal command must name the
+// script file itself.
+func TestInstallerLocalBinaryInstallPrintsExecutableReversal(t *testing.T) {
+	home := t.TempDir()
+	code, stdout, stderr := runInstaller(t, brewEnv(t, home))
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0\nstdout=%s\nstderr=%s", code, stdout, stderr)
+	}
+	want := "To reverse this install: sh '" + installerPath(t) + "' --uninstall"
+	if !strings.Contains(stdout, want) {
+		t.Fatalf("local binary install does not print the executable reversal %q:\n%s", want, stdout)
+	}
+	mustExist(t, filepath.Join(home, ".local", "state", "boundary", "binary.receipt"))
+}
+
+// TestInstallerPipedBinaryInstallPrintsRePipeableReversal is the piped/stdin
+// argv0 case the review named: under `curl ... | sh`, $0 is `sh`, so the
+// reversal must be the documented re-pipe with `--uninstall` after `sh -s --`
+// — and never a command built from $0.
+func TestInstallerPipedBinaryInstallPrintsRePipeableReversal(t *testing.T) {
+	home := t.TempDir()
+	code, stdout, stderr := runInstallerPiped(t, brewEnv(t, home))
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0\nstdout=%s\nstderr=%s", code, stdout, stderr)
+	}
+	want := "To reverse this install: curl -fsSL https://raw.githubusercontent.com/fulcrum-governance/fulcrum-boundary/main/scripts/install-claude-code.sh | sh -s -- --uninstall"
+	if !strings.Contains(stdout, want) {
+		t.Fatalf("piped binary install does not print the re-pipeable reversal %q:\n%s", want, stdout)
+	}
+	if strings.Contains(stdout, "sh 'sh'") {
+		t.Fatalf("piped install still builds a command from $0:\n%s", stdout)
+	}
+	mustExist(t, filepath.Join(home, ".local", "state", "boundary", "binary.receipt"))
+}
+
+// TestInstallerPipedUpgradeGuidanceUsesThePipeForm covers the remove-and-rerun
+// guidance under a piped invocation: an incompatible binary refused during a
+// `curl ... | sh` run must be pointed at the re-pipe, never at $0.
+func TestInstallerPipedUpgradeGuidanceUsesThePipeForm(t *testing.T) {
+	home := t.TempDir()
+	code, stdout, stderr := runInstallerPiped(t, writeFakeBoundaryOnPath(t, home, false))
+	if code == 0 {
+		t.Fatalf("exit = 0, want non-zero for an incompatible binary\nstdout=%s", stdout)
+	}
+	if !strings.Contains(stderr, "curl -fsSL https://raw.githubusercontent.com/fulcrum-governance/fulcrum-boundary/main/scripts/install-claude-code.sh | sh") {
+		t.Fatalf("piped refusal guidance does not use the re-pipe form: %s", stderr)
+	}
+	if strings.Contains(stderr, "sh 'sh'") {
+		t.Fatalf("piped refusal still builds a command from $0: %s", stderr)
 	}
 }
