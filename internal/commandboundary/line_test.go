@@ -182,17 +182,21 @@ func TestClassifyLineQuotingEdges(t *testing.T) {
 		wantSegment string
 		wantClass   Class
 	}{
+		// The echo cases prove the QUOTING property: the quoted rm -rf never
+		// becomes its own segment, so the aggregate stays echo's own class —
+		// C0 now that echo is classified output-only — and never C4. A C4
+		// aggregate here would mean quoting stopped suppressing decomposition.
 		{
 			name:        "single quotes suppress substitution",
 			line:        "echo '$(rm -rf fixture-home)'",
 			wantSegment: "echo $(rm -rf fixture-home)",
-			wantClass:   ClassPackageLifecycle,
+			wantClass:   ClassObserveRead,
 		},
 		{
 			name:        "single quotes suppress operators",
 			line:        "echo 'a && rm -rf fixture-home'",
 			wantSegment: "echo a && rm -rf fixture-home",
-			wantClass:   ClassPackageLifecycle,
+			wantClass:   ClassObserveRead,
 		},
 		{
 			name:        "double quotes hold the command name",
@@ -210,13 +214,13 @@ func TestClassifyLineQuotingEdges(t *testing.T) {
 			name:        "escaped operator stays inside one word",
 			line:        `echo a\&\&b`,
 			wantSegment: "echo a&&b",
-			wantClass:   ClassPackageLifecycle,
+			wantClass:   ClassObserveRead,
 		},
 		{
 			name:        "escaped quote inside double quotes",
 			line:        `echo "a\"b"`,
 			wantSegment: `echo a"b`,
-			wantClass:   ClassPackageLifecycle,
+			wantClass:   ClassObserveRead,
 		},
 	}
 
@@ -717,4 +721,48 @@ func findSegment(got LineClassification, text string) (SegmentClassification, bo
 		}
 	}
 	return SegmentClassification{}, false
+}
+
+// TestClassifyLineDrillWorkflowLines pins the drill's own command lines at the
+// line level, where compound decomposition and aggregation run. The staged
+// destructive command exists only as TEXT inside the printf payload — the
+// decomposer must keep governing the pipeline by its real segments, and the
+// same rm -rf issued as a real command line must stay a C4 deny.
+func TestClassifyLineDrillWorkflowLines(t *testing.T) {
+	staging := `printf '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"git status && rm -rf .boundary-drill/vault"}}' | boundary hook pretooluse --print-record`
+	got, err := ClassifyLine(staging)
+	if err != nil {
+		t.Fatalf("ClassifyLine(staging): %v", err)
+	}
+	if got.Aggregate.Class != ClassObserveRead || got.Aggregate.RecommendedAction != ActionAllow {
+		t.Fatalf("staging pipeline aggregate = class %s action %s (reason %q), want %s/%s",
+			got.Aggregate.Class, got.Aggregate.RecommendedAction, got.Aggregate.Reason, ClassObserveRead, ActionAllow)
+	}
+
+	cleanup, err := ClassifyLine("boundary drill cleanup")
+	if err != nil {
+		t.Fatalf("ClassifyLine(cleanup): %v", err)
+	}
+	if cleanup.Aggregate.Class != ClassLocalFileWrite || cleanup.Aggregate.RecommendedAction != ActionWarn {
+		t.Fatalf("drill cleanup aggregate = class %s action %s, want %s/%s",
+			cleanup.Aggregate.Class, cleanup.Aggregate.RecommendedAction, ClassLocalFileWrite, ActionWarn)
+	}
+
+	raw, err := ClassifyLine("rm -rf .boundary-drill")
+	if err != nil {
+		t.Fatalf("ClassifyLine(rm): %v", err)
+	}
+	if raw.Aggregate.Class != ClassDestructiveMutation || raw.Aggregate.RecommendedAction != ActionDeny {
+		t.Fatalf("raw rm -rf aggregate = class %s action %s, want %s/%s",
+			raw.Aggregate.Class, raw.Aggregate.RecommendedAction, ClassDestructiveMutation, ActionDeny)
+	}
+
+	staged, err := ClassifyLine("git status && rm -rf .boundary-drill/vault")
+	if err != nil {
+		t.Fatalf("ClassifyLine(staged): %v", err)
+	}
+	if staged.Aggregate.Class != ClassDestructiveMutation || staged.Aggregate.RecommendedAction != ActionDeny {
+		t.Fatalf("staged compound aggregate = class %s action %s, want %s/%s",
+			staged.Aggregate.Class, staged.Aggregate.RecommendedAction, ClassDestructiveMutation, ActionDeny)
+	}
 }

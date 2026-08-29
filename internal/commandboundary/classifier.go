@@ -63,6 +63,17 @@ func classifyCommand(command string, args []string) (class Class, reason string)
 			return ClassCredentialAccess, "credential or secret path with network egress"
 		}
 		return ClassNetworkEgress, "network egress"
+	case "echo", "printf":
+		// Output-only: both write to stdout and nothing else. A redirected
+		// `echo x > file` is not laundered through this case — the decomposer
+		// classifies the redirect target as its own file-write segment.
+		return ClassObserveRead, "output-only command"
+	case "grep":
+		return ClassObserveRead, "file content search"
+	case "date":
+		return classifyDate(args)
+	case "boundary":
+		return classifyBoundary(args)
 	case "git":
 		return classifyGit(args)
 	case "gh":
@@ -83,6 +94,118 @@ func classifyCommand(command string, args []string) (class Class, reason string)
 	default:
 		return ClassPackageLifecycle, "unclassified command requires review"
 	}
+}
+
+// classifyDate distinguishes reading the clock from setting it. Format
+// operands (`+...`) and dash flags read; `-s`/`--set` write the system clock,
+// and a bare operand is the BSD set-form (`date [[[mm]dd]HH]MM...`), so both
+// escalate instead of riding the observe class.
+func classifyDate(args []string) (class Class, reason string) {
+	for _, arg := range args {
+		if arg == "-s" || strings.HasPrefix(arg, "--set") {
+			return ClassInfrastructureMutation, "system clock mutation"
+		}
+		if !strings.HasPrefix(arg, "-") && !strings.HasPrefix(arg, "+") {
+			return ClassPackageLifecycle, "unclassified command requires review"
+		}
+	}
+	return ClassObserveRead, "time observation"
+}
+
+// classifyBoundary classifies an invocation of Boundary's own CLI.
+//
+// This is an exact-form allowlist, not trust in the binary's name: only the
+// first-party verbs the documented first-run workflow uses, in the exact
+// shapes it uses them, classify as safe. Every other verb — and every listed
+// verb carrying a flag this table does not recognize — falls through to the
+// C7 catch-all exactly like any unrecognized command, so an unknown
+// `boundary` subcommand cannot ride on the reputation of the verbs here, and
+// a flag that redirects writes elsewhere (`hook pretooluse --dir`) stays
+// unrecognized on purpose.
+//
+// The listed verbs earn their classes:
+//   - version, verify-record, explain, and the help forms read and print;
+//     they mutate nothing.
+//   - hook doctor reads wiring and evidence; its one write is its own
+//     self-erasing writability probe, and its reason says so.
+//   - hook pretooluse decides a piped event and appends the decision to
+//     Boundary's own evidence log; it executes nothing and touches no user
+//     file, so it carries the observe class with a reason that states the
+//     record append.
+//   - drill cleanup deletes the drill's own fixture and nothing else, and a
+//     command that deletes must stay visible, so it keeps the C1
+//     local-file-write class (warn) rather than passing silently.
+func classifyBoundary(args []string) (class Class, reason string) {
+	if len(args) == 0 {
+		return ClassObserveRead, "Boundary CLI help"
+	}
+	verb := strings.ToLower(args[0])
+	rest := args[1:]
+	switch verb {
+	case "--help", "-h", "help":
+		if len(rest) == 0 {
+			return ClassObserveRead, "Boundary CLI help"
+		}
+	case "version":
+		return ClassObserveRead, "Boundary version self-report"
+	case "verify-record":
+		return ClassObserveRead, "Boundary record verification (reads and rehashes a record)"
+	case "explain":
+		return ClassObserveRead, "Boundary record rendering (read-only)"
+	case "hook":
+		return classifyBoundaryHook(rest)
+	case "drill":
+		if len(rest) == 1 && strings.EqualFold(rest[0], "cleanup") {
+			return ClassLocalFileWrite, "scoped drill cleanup (removes only the drill's own fixture under .boundary-drill/)"
+		}
+	}
+	return ClassPackageLifecycle, "unclassified command requires review"
+}
+
+// classifyBoundaryHook classifies `boundary hook ...` sub-verbs. Same
+// exact-form rule as classifyBoundary: recognized flags only, everything else
+// falls back to the catch-all.
+func classifyBoundaryHook(args []string) (class Class, reason string) {
+	if len(args) == 0 {
+		return ClassObserveRead, "Boundary hook help"
+	}
+	sub := strings.ToLower(args[0])
+	rest := args[1:]
+	switch sub {
+	case "--help", "-h", "help":
+		if len(rest) == 0 {
+			return ClassObserveRead, "Boundary hook help"
+		}
+	case "doctor":
+		if onlyRecognizedFlags(rest, "--json") {
+			return ClassObserveRead, "Boundary hook diagnostics (read-only, plus its own self-erasing writability probe)"
+		}
+	case "pretooluse":
+		if onlyRecognizedFlags(rest, "--print-record") {
+			return ClassObserveRead, "Boundary hook decision path (classifies a piped event and appends Boundary's own decision record; executes nothing)"
+		}
+	}
+	return ClassPackageLifecycle, "unclassified command requires review"
+}
+
+// onlyRecognizedFlags reports whether every argument is one of the recognized
+// flags, exactly. Any other argument — another flag, a value, a path — fails
+// it, so an allowlisted verb in an unexpected shape falls back to the
+// catch-all rather than stretching the allowlist.
+func onlyRecognizedFlags(args []string, recognized ...string) bool {
+	for _, arg := range args {
+		match := false
+		for _, want := range recognized {
+			if arg == want {
+				match = true
+				break
+			}
+		}
+		if !match {
+			return false
+		}
+	}
+	return true
 }
 
 func classifyGit(args []string) (class Class, reason string) {
