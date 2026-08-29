@@ -909,7 +909,7 @@ func TestDoctorReportsAnUnsearchableEnvironmentAsUnknown(t *testing.T) {
 	// withDefaults fills a missing project root and home from the process, so
 	// the check is exercised directly with the empty scope list it would then
 	// receive.
-	check := registrationCheck(nil, nil, nil, managedSettings{})
+	check := registrationCheck(nil, nil, nil, managedSettings{}, routedEvidence{}, time.Now())
 	if check.State != StateUnknown {
 		t.Fatalf("registration state = %q (%s), want unknown", check.State, check.Detail)
 	}
@@ -1027,5 +1027,92 @@ func TestDoctorReportRoundTripsAsJSON(t *testing.T) {
 		if !strings.Contains(string(body), key) {
 			t.Fatalf("JSON does not render %s as a list:\n%s", key, body)
 		}
+	}
+}
+
+// writeDecisionLog materializes a decision log under dir, one JSON line per
+// entry, in the field shape the sink writes and the doctor reads back.
+func writeDecisionLog(t *testing.T, dir string, lines ...string) {
+	t.Helper()
+	// 0700, the mode the sink itself creates the record dir with, so the
+	// evidence-directory check grades the fixture the way it grades a real one.
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatalf("mkdir %s: %v", dir, err)
+	}
+	body := strings.Join(lines, "\n") + "\n"
+	if err := os.WriteFile(filepath.Join(dir, DecisionLogName), []byte(body), 0o600); err != nil {
+		t.Fatalf("write decision log: %v", err)
+	}
+}
+
+// A plugin-drop install plus fresh session-bearing decision records is the
+// state Run A reached: the manifest declares the hook AND routed tool calls
+// are demonstrably being decided in this project. That must grade ok — the
+// determinate answer — with both sources and the integrity caveat named, and
+// the synthetic no-session record in the same log must not be what earns it.
+func TestDoctorPluginRegistrationWithFreshRoutedEvidenceIsOK(t *testing.T) {
+	f := newFixture(t)
+	manifest := writePlugin(t, filepath.Join(f.home, ".claude", "skills", "boundary"), pluginSnippet)
+	now := time.Date(2026, 8, 29, 12, 0, 0, 0, time.UTC)
+	writeDecisionLog(t, f.dir,
+		`{"trace_id":"ab86e362-238a-4b83-bbc2-9b2b02dfc59f#1","action":"allow","timestamp":"2026-08-29T11:58:30Z"}`,
+		`{"trace_id":"no-session#1","action":"deny","timestamp":"2026-08-29T11:59:40Z"}`,
+	)
+	cfg := f.config()
+	cfg.Now = func() time.Time { return now }
+
+	report := Doctor(cfg)
+	check := checkByName(t, report, CheckRegistration)
+	if check.State != StateOK {
+		t.Fatalf("registration state = %q (%s), want ok for manifest plus fresh routed evidence", check.State, check.Detail)
+	}
+	for _, want := range []string{manifest, "session id", "not authenticity", "/boundary:drill"} {
+		if !strings.Contains(check.Detail, want) {
+			t.Fatalf("detail %q does not carry %q", check.Detail, want)
+		}
+	}
+	if !strings.Contains(check.Detail, "1 record(s)") {
+		t.Fatalf("detail %q counts wrong: the no-session synthetic must not be counted", check.Detail)
+	}
+	if report.Status != StateOK {
+		t.Fatalf("status = %q, want the determinate ok headline; checks: %+v", report.Status, report.Checks)
+	}
+}
+
+// The same install with only STALE session-bearing records stays unknown:
+// yesterday's routing does not answer whether the plugin is enabled now.
+func TestDoctorPluginRegistrationWithStaleEvidenceStaysUnknown(t *testing.T) {
+	f := newFixture(t)
+	writePlugin(t, filepath.Join(f.home, ".claude", "skills", "boundary"), pluginSnippet)
+	now := time.Date(2026, 8, 29, 12, 0, 0, 0, time.UTC)
+	writeDecisionLog(t, f.dir,
+		`{"trace_id":"ab86e362-238a-4b83-bbc2-9b2b02dfc59f#1","action":"allow","timestamp":"2026-08-29T11:20:00Z"}`,
+	)
+	cfg := f.config()
+	cfg.Now = func() time.Time { return now }
+
+	check := checkByName(t, Doctor(cfg), CheckRegistration)
+	if check.State != StateUnknown {
+		t.Fatalf("registration state = %q (%s), want unknown for stale evidence", check.State, check.Detail)
+	}
+}
+
+// Only no-session records — exactly what the drill's synthetic staging mints —
+// must never flip the registration to ok: the drill cannot vouch for its own
+// wiring by writing records outside a session.
+func TestDoctorPluginRegistrationWithOnlySyntheticEvidenceStaysUnknown(t *testing.T) {
+	f := newFixture(t)
+	writePlugin(t, filepath.Join(f.home, ".claude", "skills", "boundary"), pluginSnippet)
+	now := time.Date(2026, 8, 29, 12, 0, 0, 0, time.UTC)
+	writeDecisionLog(t, f.dir,
+		`{"trace_id":"no-session#1","action":"deny","timestamp":"2026-08-29T11:59:40Z"}`,
+		`{"trace_id":"no-session#2","action":"deny","timestamp":"2026-08-29T11:59:50Z"}`,
+	)
+	cfg := f.config()
+	cfg.Now = func() time.Time { return now }
+
+	check := checkByName(t, Doctor(cfg), CheckRegistration)
+	if check.State != StateUnknown {
+		t.Fatalf("registration state = %q (%s), want unknown when only synthetic records exist", check.State, check.Detail)
 	}
 }

@@ -81,6 +81,14 @@ const (
 // dormant log is equally consistent with a working hook and an uninstalled one.
 const DormancyThreshold = 7 * 24 * time.Hour
 
+// RoutedEvidenceWindow is how fresh the newest session-bearing decision record
+// must be for the registration check to fold routed evidence into a
+// plugin-manifest registration. Fifteen minutes spans a working session's
+// recent activity without letting yesterday's records vouch for today's
+// wiring; evidence older than this returns the manifest to the open question
+// it is on its own.
+const RoutedEvidenceWindow = 15 * time.Minute
+
 // PeerMergeNote states how a host resolves several PreToolUse hooks on one tool
 // call. It is quoted in the peer check and in the rendered report so an operator
 // who sees a peer listed also sees what the peer can and cannot do.
@@ -308,10 +316,11 @@ func Doctor(cfg DoctorConfig) DoctorReport {
 	managed := readManagedSettings(cfg.ManagedSettingsPath)
 	registrations, peers := splitHookEntries(entries)
 	pluginRegistrations, _ := splitHookEntries(pluginEntries)
+	routed := summarizeRoutedDecisions(cfg.Dir)
 
 	checks := []DoctorCheck{
 		versionCheck(cfg.Version),
-		registrationCheck(files, registrations, pluginRegistrations, managed),
+		registrationCheck(files, registrations, pluginRegistrations, managed, routed, cfg.Now()),
 		peerCheck(peers),
 		evidenceDirCheck(cfg.Dir),
 		recordsCheck(cfg.Dir, cfg.Now()),
@@ -398,15 +407,20 @@ func versionCheck(info versioninfo.Info) DoctorCheck {
 // because the project file looks right would be the one lie this command must
 // not tell.
 //
-// A registration a PLUGIN manifest declares is graded separately, as UNKNOWN,
-// and never as ok or broken. A hooks/hooks.json states what a plugin registers
-// when Claude Code has that plugin enabled; whether it is enabled is not in the
-// file, so neither answer can be given from here. Unknown is the honest grade
-// and, unlike broken, exits 0 — a plugin install must not be told "Boundary is
-// not in front of this agent", which is the one thing exit 1 is supposed to
-// mean. Only settings-scope registrations can reach ok, so a manifest can never
-// manufacture a clean bill.
-func registrationCheck(files []SettingsFile, registrations, pluginRegistrations []HookEntry, managed managedSettings) DoctorCheck {
+// A registration a PLUGIN manifest declares is graded on the manifest PLUS
+// observed effect. A hooks/hooks.json states what a plugin registers when
+// Claude Code has that plugin enabled; whether it is enabled is not in the
+// file. When the decision log ALSO holds fresh records carrying a Claude Code
+// session id — the shape only a routed event produces, and one the drill's
+// no-session synthetic submissions never carry — that open question is
+// answered by observed routed decisions, and the grade is ok with both
+// sources named and the integrity-not-authenticity caveat attached. Without
+// that evidence the grade stays UNKNOWN, never broken, and unknown exits 0 —
+// a plugin install must not be told "Boundary is not in front of this agent",
+// which is the one thing exit 1 is supposed to mean. A manifest alone can
+// never manufacture a clean bill; only settings wiring, or a manifest plus
+// fresh session-bearing evidence, can reach ok.
+func registrationCheck(files []SettingsFile, registrations, pluginRegistrations []HookEntry, managed managedSettings, routed routedEvidence, now time.Time) DoctorCheck {
 	if managed.read && managed.disable {
 		return DoctorCheck{
 			Name:  CheckRegistration,
@@ -435,6 +449,19 @@ func registrationCheck(files []SettingsFile, registrations, pluginRegistrations 
 	}
 	if len(registrations) == 0 {
 		if len(pluginRegistrations) > 0 {
+			if routed.fresh(now) {
+				return DoctorCheck{
+					Name:  CheckRegistration,
+					State: StateOK,
+					Detail: "no PreToolUse hook matching a Boundary shape in " + scopeList(files) + ", but " +
+						entryPathList(pluginRegistrations) + " declares one, and the decision log holds " +
+						fmt.Sprintf("%d record(s) carrying a Claude Code session id, newest at %s (%s ago)",
+							routed.Count, routed.Newest.UTC().Format(time.RFC3339), now.Sub(routed.Newest).Round(time.Second)) +
+						" — routed tool calls are being decided in this project, which is the fact a manifest alone " +
+						"cannot establish. Consistent with live enforcement; records are hash-verifiable integrity, " +
+						"not authenticity, and /boundary:drill re-proves the route live",
+				}
+			}
 			return DoctorCheck{
 				Name:  CheckRegistration,
 				State: StateUnknown,
@@ -713,6 +740,43 @@ func recordsCheck(dir string, now time.Time) DoctorCheck {
 		}
 	}
 	return DoctorCheck{Name: CheckRecords, State: StateOK, Detail: summary}
+}
+
+// routedEvidence summarizes the decision-log lines whose trace carries a
+// session id — the shape a live-routed Claude Code event always produces and a
+// synthetic no-session submission (the drill's staged event) never does.
+type routedEvidence struct {
+	// Count is how many session-bearing records the log holds.
+	Count int
+	// Newest is the youngest session-bearing record's timestamp.
+	Newest time.Time
+}
+
+// fresh reports whether the newest session-bearing record falls inside the
+// routed-evidence window ending at now.
+func (r routedEvidence) fresh(now time.Time) bool {
+	return r.Count > 0 && !r.Newest.IsZero() && now.Sub(r.Newest) <= RoutedEvidenceWindow
+}
+
+// summarizeRoutedDecisions scans the decision log for session-bearing records.
+// A missing or unreadable log is simply zero evidence: the registration check
+// treats absence as the open question it is, never as a failure of its own.
+func summarizeRoutedDecisions(dir string) routedEvidence {
+	var routed routedEvidence
+	_ = scanDecisionLog(filepath.Join(dir, DecisionLogName), func(entry logEntry, ok bool) {
+		if !ok {
+			return
+		}
+		trace := strings.TrimSpace(entry.TraceID)
+		if trace == "" || strings.HasPrefix(trace, noSessionLabel) {
+			return
+		}
+		routed.Count++
+		if entry.Timestamp.After(routed.Newest) {
+			routed.Newest = entry.Timestamp
+		}
+	})
+	return routed
 }
 
 // summarizeDecisionLog returns the record count, the newest record timestamp,
