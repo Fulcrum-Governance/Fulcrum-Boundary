@@ -147,11 +147,17 @@ func classifyBoundary(args []string) (class Class, reason string) {
 			return ClassObserveRead, "Boundary CLI help"
 		}
 	case "version":
-		return ClassObserveRead, "Boundary version self-report"
+		if boundaryVersionShape.matches(rest) {
+			return ClassObserveRead, "Boundary version self-report"
+		}
 	case "verify-record":
-		return ClassObserveRead, "Boundary record verification (reads and rehashes a record)"
+		if boundaryVerifyRecordShape.matches(rest) {
+			return ClassObserveRead, "Boundary record verification (reads and rehashes a record)"
+		}
 	case "explain":
-		return ClassObserveRead, "Boundary record rendering (read-only)"
+		if boundaryExplainShape.matches(rest) {
+			return ClassObserveRead, "Boundary record rendering (read-only)"
+		}
 	case "hook":
 		return classifyBoundaryHook(rest)
 	case "drill":
@@ -163,8 +169,8 @@ func classifyBoundary(args []string) (class Class, reason string) {
 }
 
 // classifyBoundaryHook classifies `boundary hook ...` sub-verbs. Same
-// exact-form rule as classifyBoundary: recognized flags only, everything else
-// falls back to the catch-all.
+// exact-form rule as classifyBoundary: recognized shapes only, everything
+// else falls back to the catch-all.
 func classifyBoundaryHook(args []string) (class Class, reason string) {
 	if len(args) == 0 {
 		return ClassObserveRead, "Boundary hook help"
@@ -177,35 +183,94 @@ func classifyBoundaryHook(args []string) (class Class, reason string) {
 			return ClassObserveRead, "Boundary hook help"
 		}
 	case "doctor":
-		if onlyRecognizedFlags(rest, "--json") {
+		if boundaryHookDoctorShape.matches(rest) {
 			return ClassObserveRead, "Boundary hook diagnostics (read-only, plus its own self-erasing writability probe)"
 		}
 	case "pretooluse":
-		if onlyRecognizedFlags(rest, "--print-record") {
+		if boundaryHookPretoolUseShape.matches(rest) {
 			return ClassObserveRead, "Boundary hook decision path (classifies a piped event and appends Boundary's own decision record; executes nothing)"
 		}
 	}
 	return ClassPackageLifecycle, "unclassified command requires review"
 }
 
-// onlyRecognizedFlags reports whether every argument is one of the recognized
-// flags, exactly. Any other argument — another flag, a value, a path — fails
-// it, so an allowlisted verb in an unexpected shape falls back to the
-// catch-all rather than stretching the allowlist.
-func onlyRecognizedFlags(args []string, recognized ...string) bool {
-	for _, arg := range args {
-		match := false
-		for _, want := range recognized {
-			if arg == want {
-				match = true
-				break
-			}
+// boundaryVerbShape is the exact argument shape a first-party verb is
+// recognized in: the boolean flags it documents, the value-taking flags it
+// documents, and how many positional arguments it takes. It exists so the
+// allowlist recognizes only the shapes the CLI intentionally supports —
+// anything outside the shape (an unknown flag, a boolean flag written with a
+// value, a value flag missing its value, a wrong positional count) is NOT
+// first-party and falls back to the C7 catch-all.
+type boundaryVerbShape struct {
+	boolFlags   map[string]bool
+	valueFlags  map[string]bool
+	positionals int
+}
+
+// The shapes below mirror the corresponding flag sets in
+// internal/boundarycli, in their documented double-dash spellings, and must
+// change in lockstep with them.
+var (
+	boundaryVersionShape = boundaryVerbShape{
+		boolFlags: map[string]bool{"--json": true},
+	}
+	boundaryExplainShape = boundaryVerbShape{
+		boolFlags:   map[string]bool{"--json": true},
+		positionals: 1,
+	}
+	boundaryVerifyRecordShape = boundaryVerbShape{
+		boolFlags: map[string]bool{"--json": true, "--verify-signature": true},
+		valueFlags: map[string]bool{
+			"--request":       true,
+			"--policies":      true,
+			"--binary-digest": true,
+			"--public-key":    true,
+		},
+		positionals: 1,
+	}
+	boundaryHookDoctorShape = boundaryVerbShape{
+		boolFlags: map[string]bool{"--json": true},
+	}
+	boundaryHookPretoolUseShape = boundaryVerbShape{
+		boolFlags: map[string]bool{"--print-record": true},
+	}
+)
+
+// matches walks args against the shape. Value flags are accepted in both
+// documented spellings, `--flag value` and `--flag=value`; flags and
+// positionals may intersperse (the CLIs parse them that way). A boolean flag
+// carrying `=value`, a value flag with a missing or empty value, an
+// unrecognized flag, and a wrong positional count all fail the shape.
+func (s boundaryVerbShape) matches(args []string) bool {
+	positionals := 0
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if !strings.HasPrefix(arg, "-") {
+			positionals++
+			continue
 		}
-		if !match {
+		name, value, hasValue := strings.Cut(arg, "=")
+		switch {
+		case s.boolFlags[name]:
+			if hasValue {
+				return false
+			}
+		case s.valueFlags[name]:
+			if hasValue {
+				if value == "" {
+					return false
+				}
+				continue
+			}
+			i++
+			if i >= len(args) || strings.HasPrefix(args[i], "-") {
+				return false
+			}
+		default:
 			return false
 		}
 	}
-	return true
+	return positionals == s.positionals
 }
 
 func classifyGit(args []string) (class Class, reason string) {
