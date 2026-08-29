@@ -178,3 +178,95 @@ func TestClassifyRejectsMissingCommand(t *testing.T) {
 		t.Fatal("expected missing command to fail")
 	}
 }
+
+// TestClassifyBoundaryFirstPartyVerbs pins the exact-form allowlist for
+// Boundary's own CLI: the documented first-run verbs classify as first-party
+// reads (or, for the one deleting verb, a visible C1 warn), while every other
+// verb and every unrecognized flag keeps the C7 catch-all. This is the
+// regression wall around G3-A blocker 1: the guided activation path must not
+// generate C7 asks, and an unknown control command still must.
+func TestClassifyBoundaryFirstPartyVerbs(t *testing.T) {
+	tests := []struct {
+		name   string
+		argv   []string
+		class  Class
+		action RecommendedAction
+	}{
+		{"bare boundary prints help", []string{"boundary"}, ClassObserveRead, ActionAllow},
+		{"top-level help", []string{"boundary", "--help"}, ClassObserveRead, ActionAllow},
+		{"version self-report", []string{"boundary", "version"}, ClassObserveRead, ActionAllow},
+		{"verify-record reads a record", []string{"boundary", "verify-record", ".boundary/hook/records/x.json"}, ClassObserveRead, ActionAllow},
+		{"explain renders a record", []string{"boundary", "explain", ".boundary/hook/records/x.json"}, ClassObserveRead, ActionAllow},
+		{"hook help", []string{"boundary", "hook", "--help"}, ClassObserveRead, ActionAllow},
+		{"hook doctor", []string{"boundary", "hook", "doctor"}, ClassObserveRead, ActionAllow},
+		{"hook doctor json", []string{"boundary", "hook", "doctor", "--json"}, ClassObserveRead, ActionAllow},
+		{"hook pretooluse bare", []string{"boundary", "hook", "pretooluse"}, ClassObserveRead, ActionAllow},
+		{"hook pretooluse print-record", []string{"boundary", "hook", "pretooluse", "--print-record"}, ClassObserveRead, ActionAllow},
+		{"drill cleanup is a visible warn, not a silent allow", []string{"boundary", "drill", "cleanup"}, ClassLocalFileWrite, ActionWarn},
+
+		{"unknown verb keeps the catch-all", []string{"boundary", "nuke"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"bare drill keeps the catch-all", []string{"boundary", "drill"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"drill cleanup with extra args keeps the catch-all", []string{"boundary", "drill", "cleanup", "--force"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"pretooluse --dir aims writes elsewhere and keeps the catch-all", []string{"boundary", "hook", "pretooluse", "--dir", "/tmp/elsewhere"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"doctor --dir keeps the catch-all", []string{"boundary", "hook", "doctor", "--dir", "/tmp/elsewhere"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"hook sessionend is not first-run surface", []string{"boundary", "hook", "sessionend"}, ClassPackageLifecycle, ActionRequireApproval},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Classify(tt.argv)
+			if err != nil {
+				t.Fatalf("Classify(%v): %v", tt.argv, err)
+			}
+			if got.Class != tt.class || got.RecommendedAction != tt.action {
+				t.Fatalf("Classify(%v) = class %s action %s, want class %s action %s (reason %q)",
+					tt.argv, got.Class, got.RecommendedAction, tt.class, tt.action, got.Reason)
+			}
+		})
+	}
+}
+
+// TestClassifyBoundarySecretArgumentStillEscalates pins precedence: the global
+// secret-argument guard outranks the first-party allowlist, so a boundary verb
+// carrying a credential-shaped argument is credential access, not a quiet read.
+func TestClassifyBoundarySecretArgumentStillEscalates(t *testing.T) {
+	got, err := Classify([]string{"boundary", "explain", "--token=abc123"})
+	if err != nil {
+		t.Fatalf("Classify: %v", err)
+	}
+	if got.Class != ClassCredentialAccess || got.RecommendedAction != ActionDeny {
+		t.Fatalf("got class %s action %s, want %s/%s", got.Class, got.RecommendedAction, ClassCredentialAccess, ActionDeny)
+	}
+}
+
+// TestClassifyFirstRunUtilities pins the four benign utilities the documented
+// drill/report workflow leans on. Output-only and read-only forms observe;
+// clock mutation and set-form operands escalate; a genuinely unknown command
+// still requires review.
+func TestClassifyFirstRunUtilities(t *testing.T) {
+	tests := []struct {
+		name   string
+		argv   []string
+		class  Class
+		action RecommendedAction
+	}{
+		{"echo is output-only", []string{"echo", "---"}, ClassObserveRead, ActionAllow},
+		{"printf is output-only", []string{"printf", `{"tool_name":"Bash"}`}, ClassObserveRead, ActionAllow},
+		{"grep reads file content", []string{"grep", "-l", "C4", ".boundary/hook/records/x.json"}, ClassObserveRead, ActionAllow},
+		{"date reads the clock", []string{"date", "-u", "+%Y-%m-%dT%H:%M:%SZ"}, ClassObserveRead, ActionAllow},
+		{"date -s sets the clock", []string{"date", "-s", "2026-01-01"}, ClassInfrastructureMutation, ActionDeny},
+		{"date bare operand is the BSD set-form", []string{"date", "0828120026"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"unknown command still requires review", []string{"frobnicate", "--x"}, ClassPackageLifecycle, ActionRequireApproval},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Classify(tt.argv)
+			if err != nil {
+				t.Fatalf("Classify(%v): %v", tt.argv, err)
+			}
+			if got.Class != tt.class || got.RecommendedAction != tt.action {
+				t.Fatalf("Classify(%v) = class %s action %s, want class %s action %s (reason %q)",
+					tt.argv, got.Class, got.RecommendedAction, tt.class, tt.action, got.Reason)
+			}
+		})
+	}
+}

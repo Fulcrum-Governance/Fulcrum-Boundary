@@ -49,6 +49,17 @@ class plus policy-relevant tags when a command spans multiple risks.
 | `cargo build` | C7 | Build scripts can execute code. |
 | `node script.js` | C7 | Local code execution unless script is allowlisted. |
 | `python script.py` | C7 | Local code execution unless script is allowlisted. |
+| `echo ---` | C0 | Output-only; a redirect target is classified separately as the write it is. |
+| `printf '...'` | C0 | Output-only; same redirect rule. |
+| `grep -l pattern file` | C0 | File content search; secret-shaped arguments still escalate to C6. |
+| `date -u +%Y-%m-%dT%H:%M:%SZ` | C0 | Time observation; `-s`/`--set` is C5 and a bare operand (BSD set-form) stays C7. |
+| `boundary version` | C0 | First-party read: Boundary's own version self-report. |
+| `boundary verify-record r.json` | C0 | First-party read: verifies a decision record. |
+| `boundary explain r.json` | C0 | First-party read: renders a decision record. |
+| `boundary hook doctor --json` | C0 | First-party diagnostics; its only write is its own self-erasing probe. |
+| `boundary hook pretooluse` | C0 | Decides a piped event and appends Boundary's own decision record; executes nothing. Exact form (only `--print-record` recognized); `--dir` keeps the catch-all. |
+| `boundary drill cleanup` | C1 | Scoped first-party delete of the drill fixture; a deleting command stays visible. |
+| `boundary anything-else` | C7 | An unrecognized first-party verb keeps the catch-all. |
 | `docker run image` | C5 | Runtime mutation. |
 | `docker run -v $HOME:/host image` | C5/C6 | Runtime mutation plus host data exposure risk. |
 | `kubectl apply -f deploy.yaml` | C5 | Infrastructure mutation. |
