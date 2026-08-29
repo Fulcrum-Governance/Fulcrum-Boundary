@@ -270,3 +270,55 @@ func TestClassifyFirstRunUtilities(t *testing.T) {
 		})
 	}
 }
+
+// TestClassifyBoundaryExactFormShapes pins the review-tightened allowlist:
+// each first-party verb is C0 only in the argument shapes its CLI
+// intentionally supports, and every deviation — unknown flags, malformed
+// flag/value pairs, missing or excess positionals — stays C7.
+func TestClassifyBoundaryExactFormShapes(t *testing.T) {
+	tests := []struct {
+		name   string
+		argv   []string
+		class  Class
+		action RecommendedAction
+	}{
+		// Positive: the documented shapes.
+		{"version --json", []string{"boundary", "version", "--json"}, ClassObserveRead, ActionAllow},
+		{"explain --json with one record", []string{"boundary", "explain", "--json", "r.json"}, ClassObserveRead, ActionAllow},
+		{"verify-record with one record", []string{"boundary", "verify-record", "r.json"}, ClassObserveRead, ActionAllow},
+		{"verify-record json flag", []string{"boundary", "verify-record", "--json", "r.json"}, ClassObserveRead, ActionAllow},
+		{"verify-record request and policies values", []string{"boundary", "verify-record", "--request", "req.json", "--policies", "pol", "r.json"}, ClassObserveRead, ActionAllow},
+		{"verify-record equals spelling", []string{"boundary", "verify-record", "--request=req.json", "r.json"}, ClassObserveRead, ActionAllow},
+		{"verify-record signature pair", []string{"boundary", "verify-record", "--verify-signature", "--public-key", "receipt.pub", "r.json"}, ClassObserveRead, ActionAllow},
+		{"verify-record flags after positional", []string{"boundary", "verify-record", "r.json", "--json"}, ClassObserveRead, ActionAllow},
+
+		// Negative: outside the supported shape, back to the catch-all.
+		{"version with a positional", []string{"boundary", "version", "extra"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"version with an unknown flag", []string{"boundary", "version", "--verbose"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"version boolean flag with a value", []string{"boundary", "version", "--json=true"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"explain with no record", []string{"boundary", "explain"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"explain with two records", []string{"boundary", "explain", "a.json", "b.json"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"explain with an unknown flag", []string{"boundary", "explain", "--deep", "r.json"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"verify-record with no record", []string{"boundary", "verify-record", "--json"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"verify-record with two records", []string{"boundary", "verify-record", "a.json", "b.json"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"verify-record dangling value flag", []string{"boundary", "verify-record", "r.json", "--request"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"verify-record value flag eating a flag", []string{"boundary", "verify-record", "--request", "--json", "r.json"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"verify-record empty equals value", []string{"boundary", "verify-record", "--request=", "r.json"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"verify-record unknown flag", []string{"boundary", "verify-record", "--force", "r.json"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"hook doctor boolean with value", []string{"boundary", "hook", "doctor", "--json=1"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"hook doctor with a positional", []string{"boundary", "hook", "doctor", "now"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"hook pretooluse with a positional", []string{"boundary", "hook", "pretooluse", "event.json"}, ClassPackageLifecycle, ActionRequireApproval},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Classify(tt.argv)
+			if err != nil {
+				t.Fatalf("Classify(%v): %v", tt.argv, err)
+			}
+			if got.Class != tt.class || got.RecommendedAction != tt.action {
+				t.Fatalf("Classify(%v) = class %s action %s, want class %s action %s (reason %q)",
+					tt.argv, got.Class, got.RecommendedAction, tt.class, tt.action, got.Reason)
+			}
+		})
+	}
+}

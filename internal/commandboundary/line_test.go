@@ -766,3 +766,43 @@ func TestClassifyLineDrillWorkflowLines(t *testing.T) {
 			staged.Aggregate.Class, staged.Aggregate.RecommendedAction, ClassDestructiveMutation, ActionDeny)
 	}
 }
+
+// TestClassifyLineFirstPartyVerbsDoNotLaunderShellStructure pins the
+// decomposition controls around the first-party allowlist: a recognized
+// boundary verb cannot carry a pipeline partner, a redirect, a substitution,
+// or a compound tail past the aggregate.
+func TestClassifyLineFirstPartyVerbsDoNotLaunderShellStructure(t *testing.T) {
+	compound, err := ClassifyLine("boundary version && rm -rf fixture-home")
+	if err != nil {
+		t.Fatalf("ClassifyLine(compound): %v", err)
+	}
+	if compound.Aggregate.Class != ClassDestructiveMutation || compound.Aggregate.RecommendedAction != ActionDeny {
+		t.Fatalf("compound aggregate = %s/%s, want C4 deny", compound.Aggregate.Class, compound.Aggregate.RecommendedAction)
+	}
+
+	piped, err := ClassifyLine("boundary version | frobnicate")
+	if err != nil {
+		t.Fatalf("ClassifyLine(piped): %v", err)
+	}
+	if piped.Aggregate.Class != ClassPackageLifecycle || piped.Aggregate.RecommendedAction != ActionRequireApproval {
+		t.Fatalf("piped aggregate = %s/%s, want C7 ask from the unknown pipe partner", piped.Aggregate.Class, piped.Aggregate.RecommendedAction)
+	}
+
+	redirected, err := ClassifyLine("boundary explain r.json > out.txt")
+	if err != nil {
+		t.Fatalf("ClassifyLine(redirected): %v", err)
+	}
+	if redirected.Aggregate.RecommendedAction == ActionAllow {
+		t.Fatalf("redirected aggregate = %s/%s (reason %q); the redirect write must not be silently allowed",
+			redirected.Aggregate.Class, redirected.Aggregate.RecommendedAction, redirected.Aggregate.Reason)
+	}
+
+	substituted, err := ClassifyLine("boundary verify-record $(rm -rf fixture-home)")
+	if err != nil {
+		t.Fatalf("ClassifyLine(substituted): %v", err)
+	}
+	if substituted.Aggregate.RecommendedAction == ActionAllow {
+		t.Fatalf("substituted aggregate = %s/%s (reason %q); a substitution must never ride a first-party verb to allow",
+			substituted.Aggregate.Class, substituted.Aggregate.RecommendedAction, substituted.Aggregate.Reason)
+	}
+}
