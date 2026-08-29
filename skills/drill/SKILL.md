@@ -36,22 +36,28 @@ independent reasons:
 Do not change step 3 to run the command through the real Bash tool instead of
 piping it to `boundary hook pretooluse`.
 
-Step 6's cleanup is the one exception, and it is deliberate: `rm -rf
-.boundary-drill` IS a real Bash tool call, issued against this drill's own
-scratch directory and nothing else. It is not part of the proof -- the proof
-already happened in steps 3 to 5 -- so it is allowed to be governed like any
-other call. Under a live-wired hook it will itself be asked or denied, which is
-the correct outcome; step 6 says to leave the inert fixture behind rather than
-work around a Boundary verdict.
+Step 6's cleanup is a real Bash tool call, and it is deliberately NOT
+`rm -rf .boundary-drill`: a raw recursive delete is class C4 and Boundary
+correctly denies it -- the same rule that just protected the user applies to
+this drill's own litter. Cleanup instead runs `boundary drill cleanup`, a
+scoped first-party verb that removes exactly the fixture this drill wrote,
+refuses symlinks and recursion, and lists and leaves anything it does not
+recognize. Never "fix" a denied `rm -rf` by deleting outside the session --
+that is the exact bypass pattern the receipt's limitations section warns
+about.
 
 One more thing worth knowing going in: Command Boundary's preview classifier
-does not yet special-case the `boundary` binary itself, so `boundary
-verify-record`, `boundary explain`, and `boundary hook pretooluse` each
-classify as class C7 ("unclassified command requires review") when run as a
-Bash tool call. Under a live-wired hook this means every `boundary` command in
-this drill -- not just the staged one -- may itself prompt for approval once.
-That is Boundary treating its own CLI like any other unrecognized command, not
-a malfunction; approve each prompt and continue.
+recognizes the exact first-party commands this drill uses -- `boundary
+version`, `boundary hook doctor --json`, `boundary hook pretooluse
+[--print-record]`, `boundary verify-record`, and `boundary explain` classify
+as read-only (class C0) and are allowed silently, so the guided path
+generates no Boundary approval prompts of its own. The recognition is
+exact-form, not trust in the name: any other `boundary` verb, or a recognized
+verb with an unexpected flag, still classifies C7 ("unclassified command
+requires review") like any unknown command. The one deliberate exception is
+step 6's `boundary drill cleanup`, which deletes the drill fixture and
+therefore classifies C1 and surfaces one visible warn-grade confirmation -- a
+deleting command stays visible, even Boundary's own.
 
 ## Step 1 -- Confirm the decision path is real
 
@@ -67,14 +73,20 @@ anything -- say so and stop.
      object, the decision path itself is confirmed functional -- you do not
      also need step 1.3. Find the entry in `.checks[]` whose `name` is
      `"hook registration"` and read its `state`, which is one of three:
-     - `"ok"` -- this project's settings wire the hook; the `detail` names the
-       scope and which tools.
-     - `"unknown"` -- no settings file wires it, but a Claude Code **plugin
-       manifest** the doctor found does. A plugin registers its hooks only
-       when Claude Code has that plugin enabled, which cannot be read from
-       the file, so this is genuinely undetermined. Do not report it as "not
-       wired": the `detail` names the manifest, and this drill is exactly the
-       thing that settles it in practice.
+     - `"ok"` -- either this project's settings wire the hook (the `detail`
+       names the scope and tools), or a plugin manifest declares it AND the
+       decision log holds fresh records carrying a Claude Code session id --
+       routed calls are being decided here, which is the fact a manifest
+       alone cannot establish; the `detail` names both sources. In this drill
+       the second form is the expected state: step 1.1's `boundary version`
+       was itself decided and recorded moments before doctor ran.
+     - `"unknown"` -- no settings file wires it, a Claude Code **plugin
+       manifest** the doctor found declares it, and no fresh session-bearing
+       records yet show routed calls being decided. A plugin registers its
+       hooks only when Claude Code has that plugin enabled, which cannot be
+       read from the file, so this is genuinely undetermined. Do not report
+       it as "not wired": the `detail` names the manifest, and this drill is
+       exactly the thing that settles it in practice.
      - `"broken"` -- nothing the doctor could read registers the hook. That is
        still a statement about what it read, not proof nothing routes here;
        the `detail` says which files it searched.
@@ -134,12 +146,15 @@ decomposition, and submit it to `boundary hook pretooluse` directly (never
 through the real Bash tool -- see the safety note above):
 
 ```
-printf '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"git status && rm -rf .boundary-drill/vault"}}' | boundary hook pretooluse
+printf '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"git status && rm -rf .boundary-drill/vault"}}' | boundary hook pretooluse --print-record
 ```
 
-Expect a JSON object containing `"decision":"block"` and
-`"permissionDecision":"deny"`, with a reason naming class C4 and noting it
-picked the most restrictive of two compound segments. Point out to the user:
+Expect TWO JSON lines. First the decision: an object containing
+`"decision":"block"` and `"permissionDecision":"deny"`, with a reason naming
+class C4 and noting it picked the most restrictive of two compound segments.
+Then the record pointer: a `boundary.hook.record-pointer.v1` object whose
+`record_id` and `record_path` name the exact record this submission wrote --
+keep both for steps 4 and 5. Point out to the user:
 `git status` alone is harmless (class C0); chaining `rm -rf` after it does not
 launder the verdict, because the whole line is decomposed and the most
 restrictive segment wins. Then confirm the fixture is untouched:
@@ -155,15 +170,14 @@ above.
 ## Step 4 -- Locate the record this decision just wrote
 
 Every decided event, including this deny, is persisted before the JSON above
-was even printed:
-
-```
-ls -t .boundary/hook/records/*.json | head -1
-```
+was even printed, and step 3's record pointer already names it: use its
+`record_path` exactly as returned. Do not select by newest file -- your own
+next command mints a newer record the moment it is decided, so "newest" stops
+meaning "the deny" the instant you look for it.
 
 ## Step 5 -- Verify and explain it, and show both outputs to the user
 
-Using the file path from step 4:
+Using the `record_path` from step 3's pointer:
 
 ```
 boundary verify-record <the file from step 4>
@@ -179,15 +193,18 @@ not boilerplate to skip past.
 ## Step 6 -- Clean up
 
 ```
-rm -rf .boundary-drill
+boundary drill cleanup
 ```
 
-This delete is itself class C4. If this project's hook is genuinely wired
-live, Boundary may ask or deny this too -- exactly as it should, since the
-same rule that just protected the user also applies to this drill's own
-cleanup. If it does not complete immediately, do not retry, force, or work
-around it: leave the tiny fixture directory behind (it is inert, two small
-files under `.boundary-drill/`) and say so in the closing summary instead.
+This scoped first-party verb removes exactly the fixture this drill wrote --
+`.boundary-drill/vault/fixture.txt` and the two directories that held it --
+and nothing else: it refuses symlinks, never deletes recursively, and lists
+and leaves anything it does not recognize. It classifies C1 (a deleting
+command stays visible, even Boundary's own), so under a live-wired hook it
+surfaces one warn-grade confirmation; approve it and the drill ends with no
+residue. Do NOT use `rm -rf .boundary-drill` instead: that is class C4 and
+Boundary denies it -- correctly. If cleanup reports content it does not own,
+leave that content in place and say so in the closing summary.
 
 ## Step 7 -- Tell the user exactly what just happened
 
@@ -201,10 +218,15 @@ State this plainly, without hedging into vagueness:
   description of one.
 - State plainly what step 1.2's `"hook registration"` check (or step 1.4's
   fallback grep, if doctor was unavailable) established, using its own words:
-  - `"ok"` -- this project's settings wire the hook. Name the scope.
-  - `"unknown"` -- a plugin manifest declares it and no settings file does, so
-    whether it is live depends on that plugin being enabled. Say that, name
-    the manifest, and offer `/boundary:protect` as the way to make it a
+  - `"ok"` via settings -- this project's settings wire the hook. Name the
+    scope.
+  - `"ok"` via manifest plus routed evidence -- a plugin manifest declares
+    the hook and fresh session-bearing decision records show routed calls
+    being decided here. Name both sources, and keep the check's own caveat:
+    records are integrity evidence, not authenticity.
+  - `"unknown"` -- a plugin manifest declares it, no settings file does, and
+    no fresh session-bearing records yet show routing. Say that, name the
+    manifest, and offer `/boundary:protect` as the way to make it a
     project-level floor rather than a personal one.
   - `"broken"` -- nothing it could read wires the hook. Say so and point to
     `/boundary:protect`.
