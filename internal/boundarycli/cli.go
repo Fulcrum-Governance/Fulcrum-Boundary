@@ -88,6 +88,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runShell(args[1:], stdout, stderr)
 	case "hook":
 		return runHook(args[1:], os.Stdin, stdout, stderr)
+	case "drill":
+		return runDrill(args[1:], stdout, stderr)
 	case "policy":
 		return runFirewallPolicy(args[1:], stdout, stderr)
 	case "mcp":
@@ -151,6 +153,7 @@ Commands:
   hook pretooluse Decide a Claude Code PreToolUse event read from stdin
   hook doctor     Report how the Claude Code hook is wired and what it records
   hook sessionend Summarize a finished session from a SessionEnd event
+  drill cleanup   Remove the /boundary:drill fixture — and only the fixture
   policy generate Generate starter Boundary firewall policies
   mcp proxy       Fail-closed generic MCP proxy entrypoint for installed routes
   mcp secure-github

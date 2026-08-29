@@ -33,6 +33,7 @@ var topLevelCommands = []string{
 	"edit",
 	"shell",
 	"hook",
+	"drill",
 	"policy",
 	"mcp",
 	"serve",
@@ -65,6 +66,7 @@ var compoundSubcommands = map[string][]string{
 	"command":   {"classify", "run", "install", "uninstall"},
 	"edit":      {"inspect", "apply"},
 	"hook":      {"pretooluse", "doctor", "sessionend"},
+	"drill":     {"cleanup"},
 	"inventory": {"ingest"},
 }
 

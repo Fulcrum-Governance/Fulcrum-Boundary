@@ -65,7 +65,7 @@ Notes:
 func runHookPreToolUse(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	fs := newHelpFlagSet("boundary hook pretooluse", stderr, commandHelp{
 		Purpose: "Decide a Claude Code PreToolUse event read from stdin and record the verdict.",
-		Usage:   "boundary hook pretooluse [--dir DIR] [--failmode open|closed|ask] [--agent-id ID]",
+		Usage:   "boundary hook pretooluse [--dir DIR] [--failmode open|closed|ask] [--agent-id ID] [--print-record]",
 		Common: []string{
 			`printf '{"tool_name":"Bash","tool_input":{"command":"rm -rf dist"}}' | boundary hook pretooluse`,
 			`printf '{"tool_name":"Bash","tool_input":{"command":"git status"}}' | boundary hook pretooluse`,
@@ -80,12 +80,14 @@ func runHookPreToolUse(args []string, stdin io.Reader, stdout, stderr io.Writer)
 			"A deny always blocks. An internal fault follows --failmode (default ask); a record that cannot be written escalates the call rather than allowing it unrecorded.",
 			"Command Boundary and Edit Boundary are delivered previews, so treat these verdicts as preview-grade.",
 			"Records are hash-verifiable for integrity, not authenticity, and are not proof the action was executed or prevented.",
+			"--print-record appends one JSON line naming the persisted record (record_id, record_path) after the decision, so a caller selects the record this exact submission wrote — by identity, never by newest file. The live hook wrapper does not pass it, so hook stdout under Claude Code is unchanged.",
 		},
 	})
 	env := hookboundary.ConfigFromEnv(os.Getenv, currentVersionInfo().Version)
 	dir := fs.String("dir", env.Dir, "directory decision records are written to (default "+hookboundary.DefaultRecordDir+")")
 	failMode := fs.String("failmode", string(env.FailMode), "fault posture: open, closed, or ask")
 	agentID := fs.String("agent-id", env.AgentID, "agent id recorded on the decision (advisory)")
+	printRecord := fs.Bool("print-record", false, "after the decision, print one JSON line naming the persisted record (id and path)")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return 0
@@ -107,8 +109,43 @@ func runHookPreToolUse(args []string, stdin io.Reader, stdout, stderr io.Writer)
 	if len(result.Stdout) > 0 {
 		fmt.Fprint(stdout, string(result.Stdout))
 	}
+	if *printRecord {
+		writeRecordPointer(stdout, result)
+	}
 	writeHookDiagnostics(stderr, result)
 	return 0
+}
+
+// recordPointerSchemaVersion versions the one-line record pointer
+// --print-record emits, so a consumer can tell the pointer from the decision
+// JSON above it and from any future shape.
+const recordPointerSchemaVersion = "boundary.hook.record-pointer.v1"
+
+// writeRecordPointer prints the identity of the record this invocation
+// persisted, as one JSON line AFTER the decision output. The pointer is how
+// the drill selects the record its own staged submission wrote — by returned
+// identity rather than by newest file, which the drill's next inspection
+// command would immediately outdate. Empty id and path state that nothing was
+// persisted (an ungoverned tool), which is itself the honest answer.
+func writeRecordPointer(stdout io.Writer, result hookboundary.Result) {
+	pointer := struct {
+		SchemaVersion string `json:"schema_version"`
+		RecordID      string `json:"record_id"`
+		RecordPath    string `json:"record_path"`
+		Verdict       string `json:"verdict"`
+	}{
+		SchemaVersion: recordPointerSchemaVersion,
+		Verdict:       string(result.Verdict),
+	}
+	if result.Record != nil {
+		pointer.RecordID = result.Record.RecordID
+		pointer.RecordPath = result.Paths.Record
+	}
+	encoded, err := json.Marshal(pointer)
+	if err != nil {
+		return
+	}
+	fmt.Fprintln(stdout, string(encoded))
 }
 
 // runHookDoctor reports the local hook installation.
@@ -133,7 +170,7 @@ func runHookDoctor(args []string, stdout, stderr io.Writer) int {
 		Notes: []string{
 			"Read-only except one probe: the evidence check writes a marker file into the record directory and removes it, because writability cannot be answered by stat alone. The marker is never a decision record.",
 			"Registration is matched by path shape in .claude/settings.json, .claude/settings.local.json, and ~/.claude/settings.json; nothing is executed and no command is resolved on PATH.",
-			"Plugin hooks.json manifests are also found by path shape, in the project root and under ~/.claude. A manifest says what a plugin registers when Claude Code has it enabled, which is not readable from the file, so it is reported as unknown rather than wired.",
+			"Plugin hooks.json manifests are also found by path shape, in the project root and under ~/.claude. A manifest says what a plugin registers when Claude Code has it enabled, which is not readable from the file — so it is reported as unknown, unless the decision log also holds fresh records carrying a Claude Code session id, in which case routed calls are being decided here and the registration reports ok with both sources named.",
 			"A hook wired through a wrapper this check does not recognize is reported as a peer rather than as Boundary, so a registration is never claimed on a guess.",
 			"Other PreToolUse hooks are reported as merge peers: Claude Code takes the most restrictive result (deny > defer > ask > allow), which Boundary neither implements nor verifies.",
 			"The bypass list is fixed, not discovered. MCP tools, processes a governed tool spawns, and shell outside Claude Code are never governed here, and enterprise managed settings usually cannot be verified from this machine.",
