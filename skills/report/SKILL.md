@@ -11,14 +11,13 @@ the records, and instructions so a third party can re-verify the rest
 themselves.
 
 A note before you start: this skill mostly reads files (the Read tool, plus
-`cat`/`tail`/`head`, which classify as observe-only and are never asked or
-denied). It deliberately avoids leaning on `jq` or `grep` for the parts that
-matter, because Command Boundary's preview classifier does not yet recognize
-either of them and would flag them class C7 ("unclassified command requires
-review") under a live-wired hook. You can still use `jq` for your own
-convenience if you want to; just expect an approval prompt for it under live
-governance, and do not let that block the parts of this skill that do not need
-it.
+`cat`/`tail`/`head`/`grep`, which classify as observe-only and are never
+asked or denied). It still avoids leaning on `jq` for the parts that matter:
+the preview classifier does not recognize `jq`, so it flags class C7
+("unclassified command requires review") under a live-wired hook. You can use
+`jq` for your own convenience; just expect an approval prompt for it under
+live governance, and do not let that block the parts of this skill that do
+not need it.
 
 ## Step 1 -- Find the log
 
@@ -90,9 +89,8 @@ boundary verify-record <file>
 
 Capture the exact output (`record verification: ok` and the `record_id`) to
 paste into the receipt. This is a real Bash invocation of the `boundary`
-binary, which Command Boundary's preview classifier does not yet recognize
-(class C7); under a live-wired hook it may prompt for approval once per
-invocation. That is expected -- approve it and continue.
+binary; `boundary verify-record` classifies as a first-party read (class C0)
+and is allowed silently under a live-wired hook.
 
 ## Step 5 -- Write the receipt
 

@@ -54,11 +54,11 @@ that produced the decision, add `--request <request.json>` and/or `--policies
 <dir>` to also recompute `request_hash` and `policy_bundle_hash` -- without
 them, verification still runs, it just checks less.
 
-Note: this runs the `boundary` binary as a real Bash command. Command
-Boundary's preview classifier does not yet recognize `boundary` itself, so
-under a live-wired hook this may prompt for approval once (class C7,
-"unclassified command requires review"). That is expected; approve it and
-continue.
+Note: this runs the `boundary` binary as a real Bash command. `boundary
+verify-record` and `boundary explain` classify as first-party reads (class
+C0) and are allowed silently under a live-wired hook; an unrecognized
+`boundary` verb, or a recognized one with unexpected flags, still classifies
+C7 and prompts like any unknown command.
 
 ## Step 3 -- State plainly what a passing verification proves
 
