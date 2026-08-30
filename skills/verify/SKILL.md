@@ -34,9 +34,15 @@ session, `/boundary:drill` and `/boundary:report` already cover that.
 ## Step 2 -- Run the two checks and show both outputs
 
 ```
-boundary verify-record <record.json>
-boundary explain <record.json>
+"${BOUNDARY_BIN:-boundary}" verify-record <record.json>
+"${BOUNDARY_BIN:-boundary}" explain <record.json>
 ```
+
+The spelling is the shared effective-binary contract (`BOUNDARY_BIN` when
+set, else `boundary` on `PATH`) -- the same resolution the hook wrapper and
+installer preflight use. Run the commands as written; if `BOUNDARY_BIN` is
+set but broken, report that exact failure rather than silently retrying a
+different `PATH` binary.
 
 Show the exact output of both, not a paraphrase. `verify-record` prints
 `record verification: ok` and the `record_id` on success, or a specific failure
@@ -45,9 +51,10 @@ fields, describes its hashes, and prints its own "What this does not prove"
 section -- include that section in what you show the user; it says the same
 thing this skill says, in the tool's own words.
 
-If the person only wants a machine-readable result, `boundary verify-record
---json <record.json>` emits a versioned `boundary.verify_record.v1` object with
-`ok` and (on failure) `error` fields.
+If the person only wants a machine-readable result,
+`"${BOUNDARY_BIN:-boundary}" verify-record --json <record.json>` emits a
+versioned `boundary.verify_record.v1` object with `ok` and (on failure)
+`error` fields.
 
 If someone also hands you the original request JSON or the policy directory
 that produced the decision, add `--request <request.json>` and/or `--policies
@@ -56,7 +63,8 @@ them, verification still runs, it just checks less.
 
 Note: this runs the `boundary` binary as a real Bash command. `boundary
 verify-record` and `boundary explain` classify as first-party reads (class
-C0) and are allowed silently under a live-wired hook; an unrecognized
+C0) through either spelling -- bare `boundary` or the effective-binary form
+above -- and are allowed silently under a live-wired hook; an unrecognized
 `boundary` verb, or a recognized one with unexpected flags, still classifies
 C7 and prompts like any unknown command.
 

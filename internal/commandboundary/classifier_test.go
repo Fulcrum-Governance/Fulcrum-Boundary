@@ -225,6 +225,94 @@ func TestClassifyBoundaryFirstPartyVerbs(t *testing.T) {
 	}
 }
 
+// TestClassifyEffectiveBoundaryArgv0 pins the split-binary regression wall
+// (second BOU-13 remediation): the shipped skills invoke Boundary through the
+// exact effective-binary spelling `${BOUNDARY_BIN:-boundary}` — the same
+// resolution the hook wrapper execs and the installer preflight validates —
+// and that spelling must classify exactly as `boundary` does: first-party
+// verbs stay C0/C1, everything else keeps the C7 catch-all. Only that one
+// literal is the contract: a bare `$BOUNDARY_BIN`, a fallback-less
+// `${BOUNDARY_BIN}`, another variable's expansion, or a case-variant names a
+// different resolution and must NOT ride the allowlist.
+func TestClassifyEffectiveBoundaryArgv0(t *testing.T) {
+	const eff = "${BOUNDARY_BIN:-boundary}"
+	tests := []struct {
+		name   string
+		argv   []string
+		class  Class
+		action RecommendedAction
+	}{
+		{"version self-report", []string{eff, "version"}, ClassObserveRead, ActionAllow},
+		{"hook help", []string{eff, "hook", "--help"}, ClassObserveRead, ActionAllow},
+		{"hook doctor json", []string{eff, "hook", "doctor", "--json"}, ClassObserveRead, ActionAllow},
+		{"hook pretooluse", []string{eff, "hook", "pretooluse"}, ClassObserveRead, ActionAllow},
+		{"hook pretooluse print-record", []string{eff, "hook", "pretooluse", "--print-record"}, ClassObserveRead, ActionAllow},
+		{"verify-record reads a record", []string{eff, "verify-record", ".boundary/hook/records/x.json"}, ClassObserveRead, ActionAllow},
+		{"verify-record json", []string{eff, "verify-record", "--json", "r.json"}, ClassObserveRead, ActionAllow},
+		{"explain renders a record", []string{eff, "explain", ".boundary/hook/records/x.json"}, ClassObserveRead, ActionAllow},
+		{"drill cleanup stays a visible warn", []string{eff, "drill", "cleanup"}, ClassLocalFileWrite, ActionWarn},
+
+		{"unknown verb through the spelling keeps the catch-all", []string{eff, "nuke"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"recognized verb with an unknown flag keeps the catch-all", []string{eff, "hook", "pretooluse", "--dir", "/tmp/elsewhere"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"bare variable is not the contract", []string{"$BOUNDARY_BIN", "version"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"fallback-less expansion is not the contract", []string{"${BOUNDARY_BIN}", "version"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"another variable's expansion is not the contract", []string{"${EVIL_BIN:-boundary}", "version"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"case-variant names a different variable", []string{"${boundary_bin:-boundary}", "version"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"secret argument still outranks the allowlist", []string{eff, "explain", "--token=abc123"}, ClassCredentialAccess, ActionDeny},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Classify(tt.argv)
+			if err != nil {
+				t.Fatalf("Classify(%v): %v", tt.argv, err)
+			}
+			if got.Class != tt.class || got.RecommendedAction != tt.action {
+				t.Fatalf("Classify(%v) = class %s action %s, want class %s action %s (reason %q)",
+					tt.argv, got.Class, got.RecommendedAction, tt.class, tt.action, got.Reason)
+			}
+		})
+	}
+}
+
+// TestClassifyLineEffectiveBoundaryForms drives the shipped skill command
+// text through the real line decomposer, quotes and pipes included, pinning
+// that the forms the skills print classify C0/C1 end to end — the tokenizer
+// strips the double quotes and keeps `${BOUNDARY_BIN:-boundary}` literal, so
+// this is the exact argv the hook classifies during a drill.
+func TestClassifyLineEffectiveBoundaryForms(t *testing.T) {
+	tests := []struct {
+		name   string
+		line   string
+		class  Class
+		action RecommendedAction
+	}{
+		{"quoted version", `"${BOUNDARY_BIN:-boundary}" version`, ClassObserveRead, ActionAllow},
+		{"quoted hook doctor json", `"${BOUNDARY_BIN:-boundary}" hook doctor --json`, ClassObserveRead, ActionAllow},
+		{"quoted hook help", `"${BOUNDARY_BIN:-boundary}" hook --help`, ClassObserveRead, ActionAllow},
+		{"piped functional probe", `printf '{"tool_name":"Bash","tool_input":{"command":"git status"}}' | "${BOUNDARY_BIN:-boundary}" hook pretooluse`, ClassObserveRead, ActionAllow},
+		{"piped staging with print-record", `printf '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"ls"}}' | "${BOUNDARY_BIN:-boundary}" hook pretooluse --print-record`, ClassObserveRead, ActionAllow},
+		{"quoted verify-record", `"${BOUNDARY_BIN:-boundary}" verify-record .boundary/hook/records/x.json`, ClassObserveRead, ActionAllow},
+		{"quoted explain", `"${BOUNDARY_BIN:-boundary}" explain .boundary/hook/records/x.json`, ClassObserveRead, ActionAllow},
+		{"quoted drill cleanup warns", `"${BOUNDARY_BIN:-boundary}" drill cleanup`, ClassLocalFileWrite, ActionWarn},
+		{"unknown verb still requires approval", `"${BOUNDARY_BIN:-boundary}" secure --now`, ClassPackageLifecycle, ActionRequireApproval},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ClassifyLine(tt.line)
+			if err != nil {
+				t.Fatalf("ClassifyLine(%q): %v", tt.line, err)
+			}
+			if !got.Parseable {
+				t.Fatalf("ClassifyLine(%q) not parseable; segments=%v", tt.line, got.Segments)
+			}
+			if got.Aggregate.Class != tt.class || got.Aggregate.RecommendedAction != tt.action {
+				t.Fatalf("ClassifyLine(%q) aggregate = class %s action %s, want class %s action %s (reason %q)",
+					tt.line, got.Aggregate.Class, got.Aggregate.RecommendedAction, tt.class, tt.action, got.Aggregate.Reason)
+			}
+		})
+	}
+}
+
 // TestClassifyBoundarySecretArgumentStillEscalates pins precedence: the global
 // secret-argument guard outranks the first-party allowlist, so a boundary verb
 // carrying a credential-shaped argument is credential access, not a quiet read.

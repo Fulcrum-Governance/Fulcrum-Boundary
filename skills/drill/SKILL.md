@@ -51,24 +51,49 @@ recognizes the exact first-party commands this drill uses -- `boundary
 version`, `boundary hook doctor --json`, `boundary hook pretooluse
 [--print-record]`, `boundary verify-record`, and `boundary explain` classify
 as read-only (class C0) and are allowed silently, so the guided path
-generates no Boundary approval prompts of its own. The recognition is
-exact-form, not trust in the name: any other `boundary` verb, or a recognized
-verb with an unexpected flag, still classifies C7 ("unclassified command
-requires review") like any unknown command. The one deliberate exception is
-step 6's `boundary drill cleanup`, which deletes the drill fixture and
-therefore classifies C1 and surfaces one visible warn-grade confirmation -- a
-deleting command stays visible, even Boundary's own.
+generates no Boundary approval prompts of its own. The recognition covers
+those verbs invoked either as bare `boundary` or through the exact
+effective-binary spelling `"${BOUNDARY_BIN:-boundary}"` this skill uses (see
+the next section), and it is exact-form, not trust in the name: any other
+`boundary` verb, or a recognized verb with an unexpected flag, still
+classifies C7 ("unclassified command requires review") like any unknown
+command -- through either spelling. The one deliberate exception is step 6's
+`boundary drill cleanup`, which deletes the drill fixture and therefore
+classifies C1 and surfaces one visible warn-grade confirmation -- a deleting
+command stays visible, even Boundary's own.
+
+## The effective binary -- run every command below exactly as written
+
+Every Boundary invocation in this skill is spelled
+`"${BOUNDARY_BIN:-boundary}"`: the binary `BOUNDARY_BIN` names when that
+variable is set, else `boundary` on `PATH`. That is the same effective-binary
+resolution the installed hook wrapper execs and the installer's plugin-drop
+preflight validates, so the binary this drill exercises is the binary that is
+actually deciding this session's tool calls. Do not shorten the commands to
+bare `boundary`: that re-resolves `PATH` on its own and, when `BOUNDARY_BIN`
+points at a newer binary than `PATH` carries, silently drills the wrong one --
+the drill would then report a broken decision path while the real hook is
+deciding fine.
+
+If a command fails because `BOUNDARY_BIN` is set but names something that
+cannot run, report that exact failure and stop. Do not unset or work around
+`BOUNDARY_BIN` to fall back to a different `PATH` binary -- an explicit
+override that is broken is the user's to fix, not this drill's to
+second-guess.
 
 ## Step 1 -- Confirm the decision path is real
 
 Do not skip this. If Boundary cannot actually decide anything, do not stage
 anything -- say so and stop.
 
-1. Run `boundary version`. If this fails (binary not found), stop: tell the
-   user Boundary is not installed and point to `README_AI.md`.
-2. Run `boundary hook doctor --json`. **This subcommand may not exist yet** on
-   an older installed build -- treat that as informational, not a failure of
-   Boundary itself, and fall back to step 1.3.
+1. Run `"${BOUNDARY_BIN:-boundary}" version`. If this fails because no binary
+   was found (and `BOUNDARY_BIN` is not set), stop: tell the user Boundary is
+   not installed and point to `README_AI.md`. If it fails because
+   `BOUNDARY_BIN` is set but does not run, stop and report that instead -- see
+   the effective-binary section above; do not retry against `PATH`.
+2. Run `"${BOUNDARY_BIN:-boundary}" hook doctor --json`. **This subcommand may
+   not exist yet** on an older installed build -- treat that as informational,
+   not a failure of Boundary itself, and fall back to step 1.3.
    - If it runs and prints a `schema_version: "boundary.hook.doctor.v1"`
      object, the decision path itself is confirmed functional -- you do not
      also need step 1.3. Find the entry in `.checks[]` whose `name` is
@@ -101,11 +126,11 @@ anything -- say so and stop.
    - If stderr contains `unknown hook subcommand`, this build predates `hook
      doctor` -- continue to step 1.3.
 3. Fallback probe (only needed when step 1.2's subcommand was unavailable):
-   - `boundary hook --help` should exit 0 and list `pretooluse` among its
-     commands.
+   - `"${BOUNDARY_BIN:-boundary}" hook --help` should exit 0 and list
+     `pretooluse` among its commands.
    - Then run the functional probe:
      ```
-     printf '{"tool_name":"Bash","tool_input":{"command":"git status"}}' | boundary hook pretooluse
+     printf '{"tool_name":"Bash","tool_input":{"command":"git status"}}' | "${BOUNDARY_BIN:-boundary}" hook pretooluse
      ```
      A working hook exits 0 and prints **nothing** (a silent allow, since
      `git status` classifies as an observe-only command). Any error, or output
@@ -146,7 +171,7 @@ decomposition, and submit it to `boundary hook pretooluse` directly (never
 through the real Bash tool -- see the safety note above):
 
 ```
-printf '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"git status && rm -rf .boundary-drill/vault"}}' | boundary hook pretooluse --print-record
+printf '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"git status && rm -rf .boundary-drill/vault"}}' | "${BOUNDARY_BIN:-boundary}" hook pretooluse --print-record
 ```
 
 Expect TWO JSON lines. First the decision: an object containing
@@ -180,8 +205,8 @@ meaning "the deny" the instant you look for it.
 Using the `record_path` from step 3's pointer:
 
 ```
-boundary verify-record <the file from step 4>
-boundary explain <the file from step 4>
+"${BOUNDARY_BIN:-boundary}" verify-record <the file from step 4>
+"${BOUNDARY_BIN:-boundary}" explain <the file from step 4>
 ```
 
 `verify-record` recomputes `decision_hash` and reports `record verification:
@@ -193,7 +218,7 @@ not boilerplate to skip past.
 ## Step 6 -- Clean up
 
 ```
-boundary drill cleanup
+"${BOUNDARY_BIN:-boundary}" drill cleanup
 ```
 
 This scoped first-party verb removes exactly the fixture this drill wrote --

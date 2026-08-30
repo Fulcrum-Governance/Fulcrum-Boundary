@@ -105,6 +105,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   posture where a fault allowed silently, `closed` denies on a fault, and a
   Boundary `deny` always blocks regardless of the setting.
 
+### Fixed
+
+- **Split effective-binary resolution in the shipped skills.** The
+  `/boundary:drill`, `/boundary:protect`, `/boundary:report`, and
+  `/boundary:verify` skills invoked bare `boundary`, resolving `PATH` even when
+  `BOUNDARY_BIN` named the binary the installed hook wrapper and installer
+  preflight had validated — with an older `boundary` on `PATH`, the drill
+  diagnosed the wrong binary and reported the decision path unavailable while
+  the real hook was deciding. Every skill invocation is now spelled
+  `"${BOUNDARY_BIN:-boundary}"`, the same resolution the wrapper execs and the
+  preflight validates; a set-but-broken `BOUNDARY_BIN` fails visibly instead of
+  silently falling back to `PATH`. Command Boundary's preview classifier
+  recognizes that exact spelling as Boundary's own CLI, so the first-run verbs
+  keep their C0/C1 classes through it; recognition stays exact-form and
+  case-sensitive, and unknown verbs or near-miss expansions still classify C7.
+
 ### Security
 
 - `SlogAuditPublisher` no longer writes caller-controlled request, tool, reason,

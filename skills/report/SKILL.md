@@ -84,13 +84,18 @@ one exists and differs from the first). For each, using its file under
 prefix):
 
 ```
-boundary verify-record <file>
+"${BOUNDARY_BIN:-boundary}" verify-record <file>
 ```
 
-Capture the exact output (`record verification: ok` and the `record_id`) to
-paste into the receipt. This is a real Bash invocation of the `boundary`
-binary; `boundary verify-record` classifies as a first-party read (class C0)
-and is allowed silently under a live-wired hook.
+The spelling is the shared effective-binary contract (`BOUNDARY_BIN` when
+set, else `boundary` on `PATH`) -- the same resolution the hook wrapper
+itself uses, so the binary that verifies the record is the binary that wrote
+it. Run it as written; if `BOUNDARY_BIN` is set but broken, report that
+rather than falling back to a different `PATH` binary. Capture the exact
+output (`record verification: ok` and the `record_id`) to paste into the
+receipt. This is a real Bash invocation of the `boundary` binary;
+`boundary verify-record` classifies as a first-party read (class C0) through
+either spelling and is allowed silently under a live-wired hook.
 
 ## Step 5 -- Write the receipt
 

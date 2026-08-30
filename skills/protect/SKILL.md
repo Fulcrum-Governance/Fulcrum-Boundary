@@ -34,12 +34,19 @@ and is not governed by this hook. See `README_AI.md` and
 ## Step 1 -- Confirm the binary is ready
 
 ```
-boundary version
+"${BOUNDARY_BIN:-boundary}" version
 ```
 
-If this fails, stop and point the user to `README_AI.md` to build or install
-`boundary` first. Everything below assumes it is already on `PATH` (or
-`BOUNDARY_BIN` is set).
+That spelling is the effective-binary contract this whole integration shares:
+`BOUNDARY_BIN` when set, else `boundary` on `PATH` -- the same resolution the
+hook wrapper execs and the installer preflight validates. Use it for every
+Boundary command in this skill, and do not shorten it to bare `boundary`,
+which re-resolves `PATH` and can reach a different (older) binary than the one
+the hook runs. If it fails because no binary was found (and `BOUNDARY_BIN` is
+not set), stop and point the user to `README_AI.md` to build or install
+`boundary` first. If it fails because `BOUNDARY_BIN` is set but does not run,
+report that exact failure instead -- a broken explicit override is the user's
+to fix; do not fall back to `PATH` on their behalf.
 
 ## Step 2 -- Read what is already there
 
@@ -131,9 +138,9 @@ After the user says they have pasted and saved the change, re-Read
 they put it) to confirm the `PreToolUse` block is present -- this is a Read,
 not a governed write. Then either:
 
-- Run `boundary hook doctor` (`--json` for the structured form -- **this
-  subcommand may not exist yet** on an older build). Look at the `.checks[]`
-  entry named `"hook registration"`:
+- Run `"${BOUNDARY_BIN:-boundary}" hook doctor` (`--json` for the structured
+  form -- **this subcommand may not exist yet** on an older build). Look at
+  the `.checks[]` entry named `"hook registration"`:
   - `"ok"` -- this project's settings now wire the hook; the `detail` names
     the scope and tools covered. This is what you are aiming for here.
   - `"unknown"` -- no settings file wires it, but a plugin manifest the doctor
