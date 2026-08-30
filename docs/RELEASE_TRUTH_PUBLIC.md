@@ -1,14 +1,64 @@
 # Final Public Release Truth
 
-Date: 2026-08-10
+Date: 2026-08-30
 
 Branch: `main`
 
-Current release: `v0.12.0`
+Current release target: `v0.13.0`
 
-Current release date: `2026-08-10`
+Current release date: `2026-08-30`
 
-Published release: `v0.12.0`
+Release-stamp target: `v0.13.0` — **not published**
+
+## Release-stamp status — not published
+
+This branch contains the prospective `v0.13.0` release stamp, not a published
+release. The public release remains `v0.12.0` until both approved tags publish.
+Neither `v0.13.0` nor `verify-witnessed/v0.13.0` exists yet — as tag, release,
+or draft. Every command targeting `v0.13.0` is unavailable until then. No
+GitHub release, container, Homebrew cask update, plugin repository,
+marketplace submission, or public-release status change is authorized by this
+release-stamp candidate.
+
+Both proposed annotated tags must resolve to the same exact commit, after the
+candidate PR is merged and an operator gives explicit exact-commit and dual-tag
+approval. This document records no annotated-tag object IDs, release asset
+counts, checksums, image digests, Homebrew tap commits, attestations, or
+marketplace status for `v0.13.0`, because none of those artifacts exist yet.
+
+The prospective `v0.13.0` install commands, unavailable until publication:
+
+```bash
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.13.0
+go install github.com/Fulcrum-Governance/Fulcrum-Boundary/verify-witnessed@v0.13.0
+docker run --rm ghcr.io/fulcrum-governance/boundary:v0.13.0 selftest
+```
+
+The `v0.13.0` release target is the Session Receipts and Claude Code hook
+release: `boundary hook pretooluse` (a binary-native Claude Code `PreToolUse`
+boundary that decides routed `Bash`/`Shell` and `Edit`/`Write`/`MultiEdit`/
+`NotebookEdit` tool calls before execution and persists a canonical
+`DecisionRecordV1` first), compound-command decomposition in Command Boundary,
+governance control-surface denials on both routed lanes, and the Claude Code
+plugin, installer, skills, and hook operator surfaces
+(`BND-CLAIM-HOOK-001/002/003`, `BND-CLAIM-CMD-003`). The hook is routed-only:
+a tool the matcher does not list, an MCP tool, a tool a subprocess runs on its
+own, and shell use outside Claude Code are bypasses and are not governed.
+Records remain hash-verifiable for covered-field integrity only — integrity,
+not authenticity, correctness, or execution proof. Command Boundary and Edit
+Boundary — the classifiers the hook routes into — remain delivered previews.
+It does not change adapter maturity, and Boundary does not emit `proved`
+decisions.
+
+Post-tag publication evidence — GitHub assets and attestations, container
+pull/version behavior, Homebrew upgrade/version behavior, nested `go install`,
+source-fresh-clone tests, and protected-branch checks — must be recorded
+before any part of this section can be promoted to published truth.
+
+## Published baseline before this release stamp: v0.12.0
+
+The published release surface is `v0.12.0`, reconciled below exactly as
+published. Nothing in the stamp section above changes it.
 
 ## Published v0.12.0 release
 

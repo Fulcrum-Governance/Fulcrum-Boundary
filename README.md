@@ -53,15 +53,16 @@ Then, inside Claude Code:
 /plugin install boundary@boundary-plugins
 ```
 
-> **Availability.** The hook lane is on `main` and not yet in a published
-> release: the one-line installer's default mode fetches the latest published
-> release (`v0.12.0`), which predates `boundary hook` — the wrapper will then
-> ask on every governed call instead of deciding. Until the next release
-> ships, install from a checkout: `git clone` this repo, `make build`, put
-> `bin/boundary` on `PATH` (or set `BOUNDARY_BIN`), then run
+> **Availability.** The hook lane ships in the `v0.13.0` release target — a
+> release-stamp candidate on `main`, not a published release. Until the
+> `v0.13.0` tag publishes, the one-line installer's default mode fetches the
+> latest published release (`v0.12.0`), which predates `boundary hook` — the
+> wrapper will then ask on every governed call instead of deciding. Until
+> publication, install from a checkout: `git clone` this repo, `make build`,
+> put `bin/boundary` on `PATH` (or set `BOUNDARY_BIN`), then run
 > `sh scripts/install-claude-code.sh --plugin-drop`. `boundary-plugins` is
 > likewise a planned marketplace repository that does not exist on GitHub
-> today. The drop is personal — see [`/boundary:protect`](./skills/protect/SKILL.md) to wire a
+> until publication. The drop is personal — see [`/boundary:protect`](./skills/protect/SKILL.md) to wire a
 > floor every contributor to a project inherits.
 
 Restart Claude Code, then run `/boundary:drill`.
@@ -100,7 +101,8 @@ Restart Claude Code, then run `/boundary:drill`.
 Full detail: [`docs/integrations/CLAUDE_CODE_HOOK.md`](./docs/integrations/CLAUDE_CODE_HOOK.md)
 (honest scope and limitations) and [`LIMITATIONS.md`](./LIMITATIONS.md)
 (repo-wide). The Claude Code hook landed on `main` after the `v0.12.0` tag and
-is not yet in a published release — see the "On `main` after `v0.12.0`"
+is carried by the `v0.13.0` release-stamp candidate; the published release
+remains `v0.12.0` — see the "On `main` after `v0.12.0`"
 section of the [Boundary Roadmap](./docs/BOUNDARY_ROADMAP.md).
 
 ## The wider Boundary project
@@ -126,10 +128,11 @@ denies a routed GitHub write-after-taint action before upstream execution and
 writes a decision record that `verify-record` recomputes independently.
 
 On Linux or Windows, use a signed-checksum [release archive](./docs/INSTALL.md)
-or the container image:
+or the container image (`v0.13.0` is the release-stamp target; until it
+publishes, the published image tag remains the `v0.12.0` release):
 
 ```bash
-docker run --rm ghcr.io/fulcrum-governance/boundary:v0.12.0 selftest
+docker run --rm ghcr.io/fulcrum-governance/boundary:v0.13.0 selftest
 ```
 
 To inspect the MCP servers your agents can already reach without modifying
@@ -261,7 +264,8 @@ The repository's claims and controlled language are mechanically checked by
 ## Current release truth
 
 This table describes the published `v0.12.0` baseline. The Claude Code hook
-above is newer — delivered on `main`, not yet in a tagged release; see the
+above is newer — delivered on `main` and carried by the `v0.13.0`
+release-stamp candidate, not by any published tag; see the
 [Boundary Roadmap](./docs/BOUNDARY_ROADMAP.md).
 
 | Surface | Status | Limit |
@@ -275,7 +279,8 @@ above is newer — delivered on `main`, not yet in a tagged release; see the
 | Dashboard | Local artifact visibility | Not hosted monitoring. |
 | Witnessed-log verifier | Delivered, air-gapped | Checks bundle integrity and cosignatures against supplied keys; it does not establish independent witness operation. |
 
-Current published release: **v0.12.0**. See the [release notes](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/releases/tag/v0.12.0),
+Current published release: **v0.12.0**. The `v0.13.0` release stamp on `main`
+is a candidate, not a published release. See the [release notes](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/releases/tag/v0.12.0),
 [changelog](./CHANGELOG.md), and [public release-truth record](./docs/RELEASE_TRUTH_PUBLIC.md).
 
 ## Adapter readiness
@@ -321,8 +326,11 @@ Requires Go 1.25+. The default source build links the full Postgres classifier
 through cgo and requires a C toolchain:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.12.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.13.0
 ```
+
+`v0.13.0` is the release-stamp target, not a published install yet. Until both
+approved tags publish, use the current public `v0.12.0` release.
 
 Before submitting a change:
 

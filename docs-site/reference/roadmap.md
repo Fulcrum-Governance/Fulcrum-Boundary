@@ -5,7 +5,7 @@ Canonical repository reference:
 
 A developer-facing roadmap organized around one question: how far can you trust
 the decision record a verdict leaves behind? It separates what is in the
-the published `v0.12.0` release, what remains planned, and which caveats still apply.
+the `v0.13.0` release target, what remains planned, and which caveats still apply.
 
 The **shipped baseline** includes the `DecisionRecordV1` structured decision
 record (`schema_version "1"`), `boundary verify-record` receipt-grade
