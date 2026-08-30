@@ -25,10 +25,34 @@ func Classify(argv []string) (Classification, error) {
 	}, nil
 }
 
+// effectiveBoundaryArgv0 is the one effective-binary resolution expression the
+// shipped Claude Code integration invokes Boundary through: BOUNDARY_BIN when
+// set, else `boundary` on PATH. It is the exact spelling the hook wrapper execs
+// (integrations/claude-code/pretooluse-boundary.sh), the installer preflight
+// validates (scripts/install-claude-code.sh --plugin-drop), and every shipped
+// skill command uses (skills/*/SKILL.md), so a first-run session resolves ONE
+// binary everywhere instead of splitting between BOUNDARY_BIN and PATH.
+//
+// classifyCommand treats an argv0 that is exactly this literal as `boundary`.
+// That extends no trust the hook has not already spent: the wrapper resolves
+// its own decider through the identical expression, so an environment whose
+// BOUNDARY_BIN is hostile already controls the decision path itself — the
+// classifier recognizing the same spelling adds no new reach. Recognition
+// stays exact-form: the verb and flag shapes below still gate the class, an
+// unknown verb through this spelling still lands in the C7 catch-all, and the
+// match is case-sensitive because `${boundary_bin:-boundary}` names a
+// different variable. `$BOUNDARY_BIN` alone, `${BOUNDARY_BIN}` without the
+// fallback, and any other variable's expansion are NOT this contract and stay
+// unclassified.
+const effectiveBoundaryArgv0 = "${BOUNDARY_BIN:-boundary}"
+
 func classifyCommand(command string, args []string) (class Class, reason string) {
 	name := strings.ToLower(command)
 	if hasSecretArgument(args) {
 		return ClassCredentialAccess, "credential or secret access"
+	}
+	if command == effectiveBoundaryArgv0 {
+		return classifyBoundary(args)
 	}
 
 	switch name {
@@ -112,7 +136,10 @@ func classifyDate(args []string) (class Class, reason string) {
 	return ClassObserveRead, "time observation"
 }
 
-// classifyBoundary classifies an invocation of Boundary's own CLI.
+// classifyBoundary classifies an invocation of Boundary's own CLI — reached
+// through argv0 `boundary` or through the exact effective-binary spelling
+// effectiveBoundaryArgv0; both resolve the same contract and classify
+// identically.
 //
 // This is an exact-form allowlist, not trust in the binary's name: only the
 // first-party verbs the documented first-run workflow uses, in the exact

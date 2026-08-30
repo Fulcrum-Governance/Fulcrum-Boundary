@@ -262,7 +262,7 @@ that could read as a verdict the hook did not enforce.
 
 | Variable | Default | Effect |
 | --- | --- | --- |
-| `BOUNDARY_BIN` | `boundary` | Path to the boundary binary. Read by the wrapper; everything below is read by the binary. |
+| `BOUNDARY_BIN` | `boundary` | Path to the boundary binary. Read by the wrapper; everything below is read by the binary. The whole shipped surface resolves it the same way — the wrapper execs `"${BOUNDARY_BIN:-boundary}"`, the installer's plugin-drop preflight validates that exact resolution, and every `/boundary:*` skill command is spelled `"${BOUNDARY_BIN:-boundary}" …` — so one binary decides, gets drilled, and verifies records. A set-but-broken `BOUNDARY_BIN` fails visibly on every one of those surfaces; none of them falls back to a different `PATH` binary on its own. |
 | `BOUNDARY_HOOK_FAILMODE` | `ask` | Posture on an internal **fault** (event unparseable, nothing to classify, classifier error): `ask` prompts the user, `open` allows so a flaky hook never bricks a session, `closed` denies. A Boundary `deny` always blocks regardless. |
 | `BOUNDARY_HOOK_AGENT_ID` | `claude-code` | Advisory agent-id label written to the decision record. Nothing authenticates it. |
 | `BOUNDARY_HOOK_DIR` | `.boundary/hook` | Directory decision records are written to. |
