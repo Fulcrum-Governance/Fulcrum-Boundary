@@ -8,11 +8,13 @@ decision yourself" — without changing what Boundary actually governs.
 
 Three rules govern this page:
 
-- **Published release means `v0.12.0`.** The baseline below,
-  all of Phase 0A, and Phase 1 (`boundary test`) are released in `v0.9.0` and
-  exercised by tests and the two proof-lane demos. The published `v0.12.0` release
-  includes the Phase 0A commands, route-context record fields, and the
-  policy-as-code test runner.
+- **Published release means `v0.12.0`; the release target is the prospective
+  `v0.13.0` tag.** The baseline below, all of Phase 0A, and Phase 1
+  (`boundary test`) are released in `v0.9.0` and exercised by tests and the two
+  proof-lane demos. The published `v0.12.0` release includes the Phase 0A
+  commands, route-context record fields, and the policy-as-code test runner.
+  The `v0.13.0` release target adds the Claude Code hook lane below; it is not
+  publicly available until the tag publishes.
 - **History stays history.** `v0.8.0` remains the Phase 0A record-trust tag:
   `DecisionRecordV2`, `boundary explain`, `boundary replay`, and record-location
   UX. It does not include `boundary test`.
@@ -58,8 +60,9 @@ corroborated by it. Boundary does not emit `proved` decisions itself.
 ## On `main` after `v0.12.0` — the Claude Code hook lane
 
 > **Source-main, not release truth** (rule 3 above). This landed after the
-> `v0.12.0` tag and is installable from source only until the next release is
-> published; it is tracked under `[Unreleased]` in
+> `v0.12.0` tag and is the headline of the `v0.13.0` release target; it is
+> installable from source only until that tag is published. It is tracked
+> under `[0.13.0]` in
 > [`CHANGELOG.md`](../CHANGELOG.md). It is listed here rather than in the
 > Baseline because the Baseline is the published release.
 
@@ -382,10 +385,11 @@ behavior. To keep that contract intact:
 - `v0.8.0` remains the historical Phase 0A tag and does not include
   `boundary test`.
 - The Claude Code hook lane is on `main` after `v0.12.0` and is **not** in a
-  published release. Its ledger entries (`BND-CLAIM-HOOK-001`,
+  published release; it is carried by the `v0.13.0` release target. Its ledger
+  entries (`BND-CLAIM-HOOK-001`,
   `BND-CLAIM-HOOK-002`, `BND-CLAIM-HOOK-003`, `BND-CLAIM-CMD-003`) are delivered
   claims about behavior on `main`, gated by the same tests; installability
-  follows the next release, not this page.
+  follows tag publication, not this page.
 - When any planned item lands, it ships behind the same release gates as the rest
   of the repository — tests, the claims and language gate, a strict docs build,
   and the full release check — and the claims ledger is updated in the same
