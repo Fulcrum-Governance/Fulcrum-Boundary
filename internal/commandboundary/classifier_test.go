@@ -322,3 +322,36 @@ func TestClassifyBoundaryExactFormShapes(t *testing.T) {
 		})
 	}
 }
+
+// TestClassifyBoundaryFlagPairingAndOrdering pins the round-3 truth fixes:
+// explain accepts flags after its positional because the CLI now parses
+// interspersed (mirroring verify-record), and --verify-signature without its
+// required --public-key is a form the CLI rejects, so it must not classify
+// as first-party.
+func TestClassifyBoundaryFlagPairingAndOrdering(t *testing.T) {
+	tests := []struct {
+		name   string
+		argv   []string
+		class  Class
+		action RecommendedAction
+	}{
+		{"explain flags after positional", []string{"boundary", "explain", "r.json", "--json"}, ClassObserveRead, ActionAllow},
+		{"verify-record signature pair in equals spelling", []string{"boundary", "verify-record", "--verify-signature", "--public-key=receipt.pub", "r.json"}, ClassObserveRead, ActionAllow},
+		{"public-key without verify-signature stays a supported read", []string{"boundary", "verify-record", "--public-key", "receipt.pub", "r.json"}, ClassObserveRead, ActionAllow},
+
+		{"verify-signature without public-key is rejected by the CLI", []string{"boundary", "verify-record", "--verify-signature", "r.json"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"verify-signature with unrelated flags but no key", []string{"boundary", "verify-record", "--verify-signature", "--json", "r.json"}, ClassPackageLifecycle, ActionRequireApproval},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Classify(tt.argv)
+			if err != nil {
+				t.Fatalf("Classify(%v): %v", tt.argv, err)
+			}
+			if got.Class != tt.class || got.RecommendedAction != tt.action {
+				t.Fatalf("Classify(%v) = class %s action %s, want class %s action %s (reason %q)",
+					tt.argv, got.Class, got.RecommendedAction, tt.class, tt.action, got.Reason)
+			}
+		})
+	}
+}

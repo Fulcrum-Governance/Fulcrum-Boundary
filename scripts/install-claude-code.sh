@@ -125,6 +125,21 @@ hook_lane_ok() {
 	"$1" hook --help >/dev/null 2>&1
 }
 
+# receipt_records_path reports whether the binary receipt this script wrote
+# names $1 as its installed path — i.e. whether the binary is one this
+# script's --uninstall would actually manage. A binary this script never
+# recorded must not be pointed at --uninstall, which would refuse (no
+# receipt) or reverse something else entirely.
+receipt_records_path() {
+	[ -f "$BINARY_RECEIPT" ] || return 1
+	while read_receipt_line; do
+		if [ "$key" = "path" ] && [ "$value" = "$1" ]; then
+			return 0
+		fi
+	done <"$BINARY_RECEIPT"
+	return 1
+}
+
 # self_invocation prints a command line that re-runs this installer with the
 # arguments given, in a form the CURRENT invocation proves is executable:
 # when $0 names a readable file, that file; otherwise this is a piped
@@ -234,20 +249,39 @@ do_plugin_drop() {
 		return 1
 	fi
 
-	# Compatibility preflight, BEFORE any file or receipt is written: a plugin
-	# whose resolved binary lacks the hook lane would leave every tool call
-	# asking instead of decided, so an incompatible binary stops the drop
-	# instead of poisoning it. No binary at all stays allowed — the wrapper
-	# asks visibly with install instructions until one appears.
-	if command -v boundary >/dev/null 2>&1; then
-		preflight_path=$(command -v boundary)
-		if ! hook_lane_ok "$preflight_path"; then
-			err "the 'boundary' on PATH at $preflight_path does not support 'boundary hook pretooluse',"
-			err "which this plugin's hook requires. Nothing was installed and no receipt was written."
-			print_upgrade_command "$preflight_path" err
-			err "Then re-run: $(self_invocation --plugin-drop)"
+	# Compatibility preflight, BEFORE any file or receipt is written, against
+	# the binary the shipped wrapper will actually execute:
+	# pretooluse-boundary.sh runs ${BOUNDARY_BIN:-boundary}, so that exact
+	# resolution — an explicit BOUNDARY_BIN first, else `boundary` on PATH —
+	# is what gets validated here, never an unrelated PATH binary the wrapper
+	# would ignore. An incompatible or unresolvable effective binary stops the
+	# drop instead of poisoning it. Only the no-override, no-binary case
+	# proceeds: the wrapper then asks visibly, with install instructions,
+	# until a binary appears — documented, deliberate behavior.
+	validated_path=""
+	validated_via=""
+	if [ -n "${BOUNDARY_BIN:-}" ]; then
+		if ! command -v "$BOUNDARY_BIN" >/dev/null 2>&1; then
+			err "BOUNDARY_BIN is set to '$BOUNDARY_BIN', but that is not an executable command,"
+			err "and the shipped hook executes \${BOUNDARY_BIN:-boundary} — it would fail against"
+			err "this override rather than fall back to PATH. Nothing was installed and no"
+			err "receipt was written. Fix or unset BOUNDARY_BIN, then re-run:"
+			err "  $(self_invocation --plugin-drop)"
 			return 1
 		fi
+		validated_path=$(command -v "$BOUNDARY_BIN")
+		validated_via="BOUNDARY_BIN"
+	elif command -v boundary >/dev/null 2>&1; then
+		validated_path=$(command -v boundary)
+		validated_via="PATH"
+	fi
+	if [ -n "$validated_path" ] && ! hook_lane_ok "$validated_path"; then
+		err "the hook's effective binary ($validated_via: $validated_path) does not support"
+		err "'boundary hook pretooluse', which this plugin's hook requires. Nothing was"
+		err "installed and no receipt was written."
+		print_upgrade_command "$validated_path" err
+		err "Then re-run: $(self_invocation --plugin-drop)"
+		return 1
 	fi
 
 	say "Plugin drop: installing the boundary plugin into $PLUGIN_DROP_DIR"
@@ -307,15 +341,23 @@ COMPONENTS
 	fi
 	say "  wrote receipt: $PLUGIN_DROP_RECEIPT"
 
-	if command -v boundary >/dev/null 2>&1; then
-		# The preflight above already proved this binary carries the hook lane.
+	if [ -n "$validated_path" ]; then
+		# The preflight above already proved this exact binary carries the
+		# hook lane; name it, so the user knows what will decide.
 		say ""
-		say "boundary is on PATH ($(command -v boundary)) and supports the hook; it can decide once wired."
+		if [ "$validated_via" = "BOUNDARY_BIN" ]; then
+			say "The hook's effective binary is BOUNDARY_BIN ($validated_path); validated: it supports the hook."
+			say "Note: BOUNDARY_BIN must be present in the environment that LAUNCHES Claude Code —"
+			say "a value exported only in this shell does not reach the hook, which would then"
+			say "fall back to 'boundary' on PATH."
+		else
+			say "The hook's effective binary is boundary on PATH ($validated_path); validated: it supports the hook."
+		fi
 	else
 		say ""
-		say "Note: no 'boundary' binary was found on PATH. The hook installed above"
-		say "asks rather than silently allowing until one is present — install it with"
-		say "'$(self_invocation)', or 'brew install $BREW_TAP_FORMULA', or 'make build'."
+		say "Note: no 'boundary' binary was found on PATH (and BOUNDARY_BIN is not set). The"
+		say "hook installed above asks rather than silently allowing until one is present —"
+		say "install it with '$(self_invocation)', or 'brew install $BREW_TAP_FORMULA', or 'make build'."
 	fi
 	say ""
 	say "To reverse this install: $(self_invocation --uninstall)"
@@ -355,8 +397,12 @@ do_binary_install() {
 		# "nothing to install" — the exact poisoned state G3-A blocker 6 names.
 		if hook_lane_ok "$existing_path"; then
 			say "boundary is already on PATH at $existing_path and supports the Claude Code hook; nothing to install."
-			say "(run '$0 --uninstall' first if you want this script to manage it, or"
-			say "upgrade via whatever method installed it.)"
+			if receipt_records_path "$existing_path"; then
+				say "This script's receipt records that install; to reverse it: $(self_invocation --uninstall)"
+			else
+				say "That binary was not installed or recorded by this script, so '--uninstall' here"
+				say "will not manage it; upgrade or remove it via whatever method installed it."
+			fi
 			return 0
 		fi
 		err "a 'boundary' on PATH at $existing_path does not support 'boundary hook pretooluse',"
