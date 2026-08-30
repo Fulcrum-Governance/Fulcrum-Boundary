@@ -60,7 +60,7 @@ class plus policy-relevant tags when a command spans multiple risks.
 | `boundary hook pretooluse [--print-record]` | C0 | Decides a piped event and appends Boundary's own decision record; executes nothing. Exact form; `--dir` keeps the catch-all. |
 | `boundary drill cleanup` | C1 | Scoped first-party delete of the drill fixture; a deleting command stays visible. |
 | `boundary anything-else` | C7 | An unrecognized first-party verb keeps the catch-all. |
-| `boundary verify-record --force r.json` | C7 | A recognized verb outside its exact supported shape — unknown flags, malformed flag/value pairs, missing or excess record paths — keeps the catch-all. |
+| `boundary verify-record --force r.json` | C7 | A recognized verb outside its exact supported shape — unknown flags, malformed flag/value pairs, missing or excess record paths, or `--verify-signature` without its required `--public-key` — keeps the catch-all. |
 | `docker run image` | C5 | Runtime mutation. |
 | `docker run -v $HOME:/host image` | C5/C6 | Runtime mutation plus host data exposure risk. |
 | `kubectl apply -f deploy.yaml` | C5 | Infrastructure mutation. |

@@ -683,3 +683,160 @@ func TestInstallerPipedUpgradeGuidanceUsesThePipeForm(t *testing.T) {
 		t.Fatalf("piped refusal still builds a command from $0: %s", stderr)
 	}
 }
+
+// writeStubAt plants an executable boundary stub at an arbitrary absolute
+// path, for BOUNDARY_BIN overrides. hookLane as in writeFakeBoundaryOnPath.
+func writeStubAt(t *testing.T, path string, hookLane bool) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", filepath.Dir(path), err)
+	}
+	body := "#!/bin/sh\nexit 0\n"
+	if !hookLane {
+		body = "#!/bin/sh\nif [ \"$1\" = \"hook\" ]; then exit 1; fi\nexit 0\n"
+	}
+	if err := os.WriteFile(path, []byte(body), 0o755); err != nil {
+		t.Fatalf("write stub %s: %v", path, err)
+	}
+}
+
+// assertNothingDropped asserts the plugin-drop wrote neither plugin files nor
+// a receipt into the fake HOME.
+func assertNothingDropped(t *testing.T, home string) {
+	t.Helper()
+	if _, err := os.Stat(filepath.Join(home, ".claude")); !os.IsNotExist(err) {
+		t.Fatalf("~/.claude was created despite the stop (err=%v)", err)
+	}
+	receiptPath := filepath.Join(home, ".local", "state", "boundary", "plugin-drop.receipt")
+	if _, err := os.Stat(receiptPath); !os.IsNotExist(err) {
+		t.Fatalf("a receipt was written despite the stop (err=%v)", err)
+	}
+}
+
+// TestInstallerPluginDropPrefersACompatibleBoundaryBin is the wrapper-parity
+// control: the shipped hook executes ${BOUNDARY_BIN:-boundary}, so a
+// compatible absolute BOUNDARY_BIN must be what the preflight validates —
+// and the drop must succeed even when an incompatible unrelated binary sits
+// on PATH.
+func TestInstallerPluginDropPrefersACompatibleBoundaryBin(t *testing.T) {
+	home := t.TempDir()
+	env := writeFakeBoundaryOnPath(t, home, false) // incompatible on PATH
+	override := filepath.Join(home, "override", "boundary")
+	writeStubAt(t, override, true)
+	env = append(env, "BOUNDARY_BIN="+override)
+
+	code, stdout, stderr := runInstaller(t, env, "--plugin-drop")
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0\nstdout=%s\nstderr=%s", code, stdout, stderr)
+	}
+	mustExist(t, filepath.Join(home, ".claude", "skills", "boundary", "hooks", "hooks.json"))
+	mustExist(t, filepath.Join(home, ".local", "state", "boundary", "plugin-drop.receipt"))
+	if !strings.Contains(stdout, "BOUNDARY_BIN ("+override+")") {
+		t.Fatalf("stdout does not name the validated effective binary:\n%s", stdout)
+	}
+	if !strings.Contains(stdout, "LAUNCHES Claude Code") {
+		t.Fatalf("stdout does not state where BOUNDARY_BIN must be present:\n%s", stdout)
+	}
+}
+
+// TestInstallerPluginDropStopsOnIncompatibleBoundaryBinOverride: an explicit
+// override is what the wrapper will execute, so a compatible PATH binary must
+// not rescue an incompatible BOUNDARY_BIN — stop, write nothing.
+func TestInstallerPluginDropStopsOnIncompatibleBoundaryBinOverride(t *testing.T) {
+	home := t.TempDir()
+	env := writeFakeBoundaryOnPath(t, home, true) // compatible on PATH
+	override := filepath.Join(home, "override", "boundary")
+	writeStubAt(t, override, false)
+	env = append(env, "BOUNDARY_BIN="+override)
+
+	code, stdout, stderr := runInstaller(t, env, "--plugin-drop")
+	if code == 0 {
+		t.Fatalf("exit = 0, want non-zero for an incompatible BOUNDARY_BIN\nstdout=%s", stdout)
+	}
+	if !strings.Contains(stderr, "BOUNDARY_BIN: "+override) || !strings.Contains(stderr, "no receipt was written") {
+		t.Fatalf("stderr does not name the incompatible effective binary: %s", stderr)
+	}
+	assertNothingDropped(t, home)
+}
+
+// TestInstallerPluginDropStopsOnMissingBoundaryBinOverride: an override that
+// resolves to nothing would make the wrapper fail against it rather than
+// fall back, so the drop stops before writing anything.
+func TestInstallerPluginDropStopsOnMissingBoundaryBinOverride(t *testing.T) {
+	home := t.TempDir()
+	env := writeFakeBoundaryOnPath(t, home, true) // compatible on PATH
+	env = append(env, "BOUNDARY_BIN="+filepath.Join(home, "missing", "boundary"))
+
+	code, stdout, stderr := runInstaller(t, env, "--plugin-drop")
+	if code == 0 {
+		t.Fatalf("exit = 0, want non-zero for a missing BOUNDARY_BIN\nstdout=%s", stdout)
+	}
+	if !strings.Contains(stderr, "not an executable command") || !strings.Contains(stderr, "no") {
+		t.Fatalf("stderr does not explain the unresolvable override: %s", stderr)
+	}
+	assertNothingDropped(t, home)
+}
+
+// TestInstallerPluginDropSucceedsWithOnlyBoundaryBin: no PATH binary at all,
+// compatible absolute BOUNDARY_BIN — the effective binary exists, so the
+// drop proceeds and names it.
+func TestInstallerPluginDropSucceedsWithOnlyBoundaryBin(t *testing.T) {
+	home := t.TempDir()
+	override := filepath.Join(home, "override", "boundary")
+	writeStubAt(t, override, true)
+	env := append(baseEnv(home), "BOUNDARY_BIN="+override)
+
+	code, stdout, stderr := runInstaller(t, env, "--plugin-drop")
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0\nstdout=%s\nstderr=%s", code, stdout, stderr)
+	}
+	mustExist(t, filepath.Join(home, ".claude", "skills", "boundary", "hooks", "hooks.json"))
+	if !strings.Contains(stdout, "BOUNDARY_BIN ("+override+")") {
+		t.Fatalf("stdout does not name the validated effective binary:\n%s", stdout)
+	}
+}
+
+// TestInstallerPipedNothingToInstallHasNoArgvZero is the round-3 piped
+// control for the compatible-existing-binary early exit: with no receipt the
+// message must say this script does not manage the binary, and no command
+// built from $0 may appear.
+func TestInstallerPipedNothingToInstallHasNoArgvZero(t *testing.T) {
+	home := t.TempDir()
+	env := writeFakeBoundaryOnPath(t, home, true)
+
+	code, stdout, stderr := runInstallerPiped(t, env)
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0\nstdout=%s\nstderr=%s", code, stdout, stderr)
+	}
+	if !strings.Contains(stdout, "not installed or recorded by this script") {
+		t.Fatalf("early exit is not receipt-aware:\n%s", stdout)
+	}
+	if strings.Contains(stdout, "sh 'sh'") || strings.Contains(stdout, "$0") {
+		t.Fatalf("piped early exit still leaks an argv0-built command:\n%s", stdout)
+	}
+}
+
+// TestInstallerPipedNothingToInstallPrintsRePipeableReversalWhenRecorded: the
+// same early exit, but the binary IS the one this script's receipt records —
+// so the reversal is printed, in the piped-safe re-pipe form.
+func TestInstallerPipedNothingToInstallPrintsRePipeableReversalWhenRecorded(t *testing.T) {
+	home := t.TempDir()
+	installed := writeBinaryReceipt(t, home, "release-download", "\n")
+	env := []string{
+		"HOME=" + home,
+		"PATH=" + filepath.Dir(installed) + ":" + systemPathWithoutBoundary(),
+		"BOUNDARY_INSTALL_NO_NETWORK=1",
+	}
+
+	code, stdout, stderr := runInstallerPiped(t, env)
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0\nstdout=%s\nstderr=%s", code, stdout, stderr)
+	}
+	if !strings.Contains(stdout, "This script's receipt records that install") {
+		t.Fatalf("early exit did not recognize its own receipt:\n%s", stdout)
+	}
+	want := "curl -fsSL https://raw.githubusercontent.com/fulcrum-governance/fulcrum-boundary/main/scripts/install-claude-code.sh | sh -s -- --uninstall"
+	if !strings.Contains(stdout, want) {
+		t.Fatalf("recorded-install early exit does not print the re-pipeable reversal:\n%s", stdout)
+	}
+}

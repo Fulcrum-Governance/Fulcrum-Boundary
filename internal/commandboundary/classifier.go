@@ -202,8 +202,12 @@ func classifyBoundaryHook(args []string) (class Class, reason string) {
 // value, a value flag missing its value, a wrong positional count) is NOT
 // first-party and falls back to the C7 catch-all.
 type boundaryVerbShape struct {
-	boolFlags   map[string]bool
-	valueFlags  map[string]bool
+	boolFlags  map[string]bool
+	valueFlags map[string]bool
+	// requires names a co-flag that must accompany a flag: a form carrying the
+	// key flag without its value is one the CLI rejects, so it is not a
+	// supported shape and must not classify as first-party.
+	requires    map[string]string
 	positionals int
 }
 
@@ -226,6 +230,7 @@ var (
 			"--binary-digest": true,
 			"--public-key":    true,
 		},
+		requires:    map[string]string{"--verify-signature": "--public-key"},
 		positionals: 1,
 	}
 	boundaryHookDoctorShape = boundaryVerbShape{
@@ -240,9 +245,11 @@ var (
 // documented spellings, `--flag value` and `--flag=value`; flags and
 // positionals may intersperse (the CLIs parse them that way). A boolean flag
 // carrying `=value`, a value flag with a missing or empty value, an
-// unrecognized flag, and a wrong positional count all fail the shape.
+// unrecognized flag, a wrong positional count, and a flag missing its
+// required co-flag all fail the shape.
 func (s boundaryVerbShape) matches(args []string) bool {
 	positionals := 0
+	seen := map[string]bool{}
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		if !strings.HasPrefix(arg, "-") {
@@ -255,7 +262,9 @@ func (s boundaryVerbShape) matches(args []string) bool {
 			if hasValue {
 				return false
 			}
+			seen[name] = true
 		case s.valueFlags[name]:
+			seen[name] = true
 			if hasValue {
 				if value == "" {
 					return false
@@ -270,7 +279,15 @@ func (s boundaryVerbShape) matches(args []string) bool {
 			return false
 		}
 	}
-	return positionals == s.positionals
+	if positionals != s.positionals {
+		return false
+	}
+	for flagName, coFlag := range s.requires {
+		if seen[flagName] && !seen[coFlag] {
+			return false
+		}
+	}
+	return true
 }
 
 func classifyGit(args []string) (class Class, reason string) {
