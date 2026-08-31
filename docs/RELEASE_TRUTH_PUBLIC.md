@@ -13,9 +13,9 @@ Published release: `v0.13.0`
 ## Published v0.13.0 release
 
 The annotated root tag object `c420c4b8043f52de05899b9c5ca5b68cc1307f07`
-(`v0.13.0^{}`) and annotated nested-module tag object
+(`refs/tags/v0.13.0`) and annotated nested-module tag object
 `302334ba71732f4aee0df9034f2ecdf9b02e4ed8`
-(`verify-witnessed/v0.13.0^{}`) both peel to the approved release commit
+(`refs/tags/verify-witnessed/v0.13.0`) both peel to the approved release commit
 `8abd10be7c3f3e5a3727bb73acd0a84811431d3b`.
 
 The [GitHub release](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/releases/tag/v0.13.0)
