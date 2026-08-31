@@ -144,24 +144,23 @@ go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.13.0
 boundary selftest
 ```
 
-`@v0.13.0` is the release-stamp target, not a published install yet. Until
-both approved release tags (`v0.13.0` and `verify-witnessed/v0.13.0`) publish,
-the currently published install target remains `@v0.12.0`; `@latest` resolves
-to the latest published release after the Go proxy refreshes.
+`@v0.13.0` is the current published release and the recommended repeatable
+install target; both approved release tags (`v0.13.0` and
+`verify-witnessed/v0.13.0`) are published, and `@latest` resolves to `v0.13.0`
+after the Go proxy refreshes.
 
 ### Offline witnessed-log verifier
 
 The independently buildable verifier is a separate nested Go module. The
-versioned verifier install resolves from the matching published nested tag:
+versioned verifier install is available from the matching published nested tag:
 
 ```bash
 go install github.com/Fulcrum-Governance/Fulcrum-Boundary/verify-witnessed@v0.13.0
 ```
 
 Use the exact case-sensitive path above; Go resolves the verifier from
-`verify-witnessed/v0.13.0` once that tag publishes — until then the published
-nested tag remains `verify-witnessed/v0.12.0`. You can also build it from a
-public source checkout:
+`verify-witnessed/v0.13.0`. You can also build it from a public source
+checkout:
 
 ```bash
 git clone https://github.com/Fulcrum-Governance/Fulcrum-Boundary.git
@@ -169,9 +168,8 @@ cd Fulcrum-Boundary/verify-witnessed
 go build -o fulcrum-verify-witnessed .
 ```
 
-The published `v0.12.0` root and nested tags both point to
-`a2fd0b81fdec312f6b676a96e1fce45b661f00cf`; the `v0.13.0` tags do not exist
-yet. The verifier does not ship as a
+The published `v0.13.0` root and nested tags both point to
+`8abd10be7c3f3e5a3727bb73acd0a84811431d3b`. The verifier does not ship as a
 separate archive, container, Homebrew package, or versioned binary surface. See [`verify-witnessed/README.md`](../verify-witnessed/README.md)
 for the offline bundle and keyring contract.
 

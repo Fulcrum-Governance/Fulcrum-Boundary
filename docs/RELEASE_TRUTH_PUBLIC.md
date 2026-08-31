@@ -1,42 +1,72 @@
 # Final Public Release Truth
 
-Date: 2026-08-30
+Date: 2026-08-31
 
 Branch: `main`
 
-Current release target: `v0.13.0`
+Current release: `v0.13.0`
 
-Current release date: `2026-08-30`
+Current release date: `2026-08-31`
 
-Release-stamp target: `v0.13.0` — **not published**
+Published release: `v0.13.0`
 
-## Release-stamp status — not published
+## Published v0.13.0 release
 
-This branch contains the prospective `v0.13.0` release stamp, not a published
-release. The public release remains `v0.12.0` until both approved tags publish.
-Neither `v0.13.0` nor `verify-witnessed/v0.13.0` exists yet — as tag, release,
-or draft. Every command targeting `v0.13.0` is unavailable until then. No
-GitHub release, container, Homebrew cask update, plugin repository,
-marketplace submission, or public-release status change is authorized by this
-release-stamp candidate.
+The annotated root tag object `c420c4b8043f52de05899b9c5ca5b68cc1307f07`
+(`v0.13.0^{}`) and annotated nested-module tag object
+`302334ba71732f4aee0df9034f2ecdf9b02e4ed8`
+(`verify-witnessed/v0.13.0^{}`) both peel to the approved release commit
+`8abd10be7c3f3e5a3727bb73acd0a84811431d3b`.
 
-Both proposed annotated tags must resolve to the same exact commit, after the
-candidate PR is merged and an operator gives explicit exact-commit and dual-tag
-approval. This document records no annotated-tag object IDs, release asset
-counts, checksums, image digests, Homebrew tap commits, attestations, or
-marketplace status for `v0.13.0`, because none of those artifacts exist yet.
+The [GitHub release](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/releases/tag/v0.13.0)
+is published (not draft or prerelease) with 23 assets: six static archives,
+six static SPDX SBOMs, four native-cgo archives, four native-cgo SPDX SBOMs,
+`SHA256SUMS`, `SHA256SUMS-cgo`, and the fixture-safe
+`boundary-evidence.tar.gz`. It was published by the tag-triggered
+[release workflow run 33350936936](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/actions/runs/33350936936)
+(natural `push` trigger, 8/8 jobs successful). All 23 assets match their
+GitHub API SHA-256 digests; `SHA256SUMS` verifies the twelve static files and
+`SHA256SUMS-cgo` verifies the four native-cgo archives. All 22 configured
+GitHub build-provenance attestations verify against
+`release.yml@refs/tags/v0.13.0` at source digest `8abd10b`; `SHA256SUMS-cgo`
+is the one expected un-attested asset, matching the documented v0.12.0
+workflow behavior. Attestation coverage is 22 configured artifacts, not all
+23 assets.
 
-The prospective `v0.13.0` install commands, unavailable until publication:
+`ghcr.io/fulcrum-governance/boundary:v0.13.0` and `:latest` resolve to
+`sha256:cccd3943939dca5b370e6f388797dc3e32f290b562fa680651d0be40a6ba125c`.
+That index provides linux/amd64
+(`sha256:a56b3f630b41466df3ffc2cfbba57e05fee42aff0af119908e9e1ce6e766b0e9`)
+and linux/arm64
+(`sha256:96c87ce158b2900c0d749a34de82be6eb523e013aa8505690000db9f290d6e40`)
+variants whose labels record version `v0.13.0` and the approved revision. The
+Homebrew cask advanced to tap commit
+`55396e40e5df1458c2461e02f70140a284da7694` (`Casks/boundary.rb`, version
+0.13.0); all four cask SHA-256 values equal the corresponding `SHA256SUMS`
+entries. Install/upgrade smoke of the published channels on a user machine is
+not yet claimed and is recorded separately when it happens.
+
+Install the root command from the published lowercase root module path:
 
 ```bash
 go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.13.0
-go install github.com/Fulcrum-Governance/Fulcrum-Boundary/verify-witnessed@v0.13.0
-docker run --rm ghcr.io/fulcrum-governance/boundary:v0.13.0 selftest
 ```
 
-The `v0.13.0` release target is the Session Receipts and Claude Code hook
-release: `boundary hook pretooluse` (a binary-native Claude Code `PreToolUse`
-boundary that decides routed `Bash`/`Shell` and `Edit`/`Write`/`MultiEdit`/
+Install the nested verifier with this exact, case-sensitive module path:
+
+```bash
+go install github.com/Fulcrum-Governance/Fulcrum-Boundary/verify-witnessed@v0.13.0
+```
+
+Both resolve on the public Go proxy to the approved release commit — the root
+module via `refs/tags/v0.13.0` and the nested module via
+`refs/tags/verify-witnessed/v0.13.0`. The nested verifier remains
+source-distributed only: no verifier-specific archive, container, Homebrew
+package, or version flag.
+
+The v0.13.0 release is the Session Receipts and Claude Code hook release:
+`boundary hook pretooluse` (a binary-native Claude Code `PreToolUse` boundary
+that decides routed `Bash`/`Shell` and `Edit`/`Write`/`MultiEdit`/
 `NotebookEdit` tool calls before execution and persists a canonical
 `DecisionRecordV1` first), compound-command decomposition in Command Boundary,
 governance control-surface denials on both routed lanes, and the Claude Code
@@ -47,18 +77,15 @@ own, and shell use outside Claude Code are bypasses and are not governed.
 Records remain hash-verifiable for covered-field integrity only — integrity,
 not authenticity, correctness, or execution proof. Command Boundary and Edit
 Boundary — the classifiers the hook routes into — remain delivered previews.
-It does not change adapter maturity, and Boundary does not emit `proved`
-decisions.
+The release does not change adapter maturity or any claim status, and
+Boundary does not emit `proved` decisions. The `boundary-plugins` marketplace
+repository does not exist and no marketplace submission has been made; the
+marketplace scaffold in this repository remains unpublished.
 
-Post-tag publication evidence — GitHub assets and attestations, container
-pull/version behavior, Homebrew upgrade/version behavior, nested `go install`,
-source-fresh-clone tests, and protected-branch checks — must be recorded
-before any part of this section can be promoted to published truth.
+## Published baseline before v0.13.0: v0.12.0
 
-## Published baseline before this release stamp: v0.12.0
-
-The published release surface is `v0.12.0`, reconciled below exactly as
-published. Nothing in the stamp section above changes it.
+The published `v0.12.0` record is preserved below exactly as reconciled at
+its own publication. Nothing in the v0.13.0 section above rewrites it.
 
 ## Published v0.12.0 release
 
@@ -223,6 +250,17 @@ documented, additive change.
 | `make release-check` | Pass |
 | `go test ./claims/... -count=1` | Pass |
 | `go test ./... -count=1 -timeout 5m` | Pass |
+
+Post-tag verification for `v0.13.0` (recorded 2026-08-31 UTC): the natural
+tag-push release run 33350936936 completed with all 8 jobs successful
+(release-target validation, the release-check gate, static matrix + release
+publish, all four native-cgo builds, and the combined cgo checksums); all 23
+release assets were downloaded and digest-verified; both checksum manifests
+verified; 22 configured attestations verified (`SHA256SUMS-cgo` expectedly
+un-attested); the container index and both runtime-platform digests were
+inspected; the Homebrew cask advanced at tap commit `55396e4` with matching
+hashes; and both Go module paths resolved on the public proxy to the release
+commit.
 
 Historical verification: 2026-06-11 at the `v0.11.0` tag commit `a394488` (`make
 release-check` exit 0 on the release-prep branch at the same tree, and the
