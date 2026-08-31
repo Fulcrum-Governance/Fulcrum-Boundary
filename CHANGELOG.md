@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- **Installer direct-release checksum verification failed on every published
+  static archive.** `scripts/install-claude-code.sh` selected the `SHA256SUMS`
+  entry with an unanchored fixed-string match, which also captured the
+  archive's `<archive>.spdx.json` SBOM line (the archive name is a prefix of
+  the SBOM name); `shasum -c` then failed on the never-downloaded SBOM and the
+  installer refused to install — fail-closed, nothing written. The manifest
+  entry is now selected by the complete filename field and exactly one entry
+  is required: zero or duplicate exact entries still refuse to install.
+  Hermetic regression tests now drive the real direct-release lane against a
+  collision-shaped manifest, including the receipt and uninstall round trip.
+  The Homebrew lane was unaffected.
+
 ## [0.13.0] - 2026-08-31
 
 ### Added
