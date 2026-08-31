@@ -212,10 +212,13 @@ func TestPublishedReleaseTruthIsInternallyConsistent(t *testing.T) {
 		t.Fatal("docs/RELEASE_TRUTH_PUBLIC.md: published-release section must precede its published baseline")
 	}
 	publishedSection := releaseTruth[publishedStart:baselineStart]
-	nestedTag := "verify-witnessed/" + published
+	rootRef := "refs/tags/" + published
+	nestedRef := "refs/tags/verify-witnessed/" + published
 	if !strings.Contains(publishedSection, "The annotated root tag object") ||
-		!strings.Contains(publishedSection, nestedTag+"^{}`) both peel to the approved release commit") {
-		t.Fatal("docs/RELEASE_TRUTH_PUBLIC.md: published-release section must state that both annotated tags peel to the approved commit")
+		!strings.Contains(publishedSection, "(`"+rootRef+"`)") ||
+		!strings.Contains(publishedSection, "(`"+nestedRef+"`)") ||
+		!strings.Contains(publishedSection, "both peel to the approved release commit") {
+		t.Fatal("docs/RELEASE_TRUTH_PUBLIC.md: published-release section must name both actual tag refs and state that both annotated tags peel to the approved commit")
 	}
 	assertInstallRefsEqual(t, "docs/RELEASE_TRUTH_PUBLIC.md published-release section", publishedSection, published)
 

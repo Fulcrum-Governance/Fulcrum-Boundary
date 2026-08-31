@@ -4,7 +4,7 @@ Canonical repository reference:
 [docs/BOUNDARY_ROADMAP.md](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/blob/main/docs/BOUNDARY_ROADMAP.md)
 
 A developer-facing roadmap organized around one question: how far can you trust
-the decision record a verdict leaves behind? It separates what is in the
+the decision record a verdict leaves behind? It separates what is in
 the published `v0.13.0` release, what remains planned, and which caveats still apply.
 
 The **shipped baseline** includes the `DecisionRecordV1` structured decision

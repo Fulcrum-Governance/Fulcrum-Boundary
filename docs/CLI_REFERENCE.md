@@ -88,7 +88,7 @@ local fixtures, does not call the network, and does not perform live mutation.
 and bypass caveats for MCP, Command Boundary, and Edit Boundary, plus first-run
 environment diagnostics for the Go toolchain, cgo / C-toolchain readiness, and
 `go install` PATH resolution. It does not call the network. Doctor output is
-local diagnostics, not proof that every deployment route is protected. The
+local diagnostics, not proof that every deployment route is protected.
 The published `v0.13.0` release also includes `boundary doctor --report`, which emits
 redacted JSON for support threads. See [docs/DOCTOR.md](./DOCTOR.md).
 
