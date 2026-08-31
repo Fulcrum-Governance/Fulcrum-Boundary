@@ -517,9 +517,18 @@ path=$installed_path
 	fi
 
 	say "Verifying checksum ..."
-	expected_line=$(grep -F "  $asset" "$stage/SHA256SUMS" || true)
-	if [ -z "$expected_line" ]; then
+	# Select by the complete filename field, never a substring: every archive
+	# name in the manifest is a prefix of its own `<archive>.spdx.json` SBOM
+	# entry, so an unanchored match selects both lines and verification then
+	# fails on the never-downloaded SBOM.
+	expected_line=$(awk -v name="$asset" '$2 == name' "$stage/SHA256SUMS")
+	match_count=$(awk -v name="$asset" '$2 == name { n++ } END { print n + 0 }' "$stage/SHA256SUMS")
+	if [ "$match_count" -eq 0 ]; then
 		err "no SHA256SUMS entry for $asset; refusing to install an unverifiable binary"
+		return 1
+	fi
+	if [ "$match_count" -ne 1 ]; then
+		err "$match_count SHA256SUMS entries for $asset; refusing to install against an ambiguous manifest"
 		return 1
 	fi
 	printf '%s\n' "$expected_line" >"$stage/SHA256SUMS.expected"

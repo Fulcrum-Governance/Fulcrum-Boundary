@@ -2,6 +2,8 @@ package hookboundary_test
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -290,10 +292,10 @@ func TestInstallerUninstallReversesPluginDropByteForByte(t *testing.T) {
 // writeBinaryReceipt plants a binary install receipt in an isolated HOME,
 // alongside the fake installed binary it names, and returns that binary's path.
 //
-// The binary lane cannot be driven end to end in a test — installing it means
-// brew or a release download, and BOUNDARY_INSTALL_NO_NETWORK deliberately
-// writes no receipt — so the receipt is written here in exactly the shape the
-// installer writes it. terminator lets a caller choose whether the final
+// The direct-release lane is driven end to end by the fake-curl tests below;
+// these receipt-shape cases still plant the receipt by hand because they pin
+// how uninstall treats bodies the installer (or an older installer) already
+// wrote, independent of any install run. terminator lets a caller choose whether the final
 // `path=` line ends in a newline: a receipt an older installer wrote did not,
 // because its body came from `$(printf ...)` and command substitution strips
 // every trailing newline.
@@ -838,5 +840,193 @@ func TestInstallerPipedNothingToInstallPrintsRePipeableReversalWhenRecorded(t *t
 	want := "curl -fsSL https://raw.githubusercontent.com/fulcrum-governance/fulcrum-boundary/main/scripts/install-claude-code.sh | sh -s -- --uninstall"
 	if !strings.Contains(stdout, want) {
 		t.Fatalf("recorded-install early exit does not print the re-pipeable reversal:\n%s", stdout)
+	}
+}
+
+// writeFakeCurl plants an executable `curl` that serves the installer's
+// direct-release lane entirely from local fixtures: the latest-release
+// resolution (`-o /dev/null -w '%{url_effective}'`) prints latestURL, and
+// every other `-o <target> <url>` download copies the fixture file named by
+// the URL's basename. No network is reachable through it.
+func writeFakeCurl(t *testing.T, binDir, fixtureDir, latestURL string) {
+	t.Helper()
+	script := `#!/bin/sh
+out=""
+want_effective=0
+prev=""
+for a in "$@"; do
+	case "$prev" in
+	-o) out=$a ;;
+	-w) want_effective=1 ;;
+	esac
+	prev=$a
+done
+url=""
+for a in "$@"; do url=$a; done
+if [ "$want_effective" -eq 1 ]; then
+	printf '%s' "` + latestURL + `"
+	exit 0
+fi
+exec cp "` + fixtureDir + `/$(basename "$url")" "$out"
+`
+	if err := os.WriteFile(filepath.Join(binDir, "curl"), []byte(script), 0o755); err != nil {
+		t.Fatalf("write fake curl: %v", err)
+	}
+}
+
+// stageDirectRelease builds the local fixtures a direct-release install needs:
+// a real tar.gz archive whose root contains a fake `boundary` binary, named
+// exactly as the installer will request it for this host, plus that archive's
+// true SHA-256. The manifest itself is written per test case.
+func stageDirectRelease(t *testing.T, fixtureDir, version string) (asset, archiveSum string) {
+	t.Helper()
+	goos := runtime.GOOS
+	goarch := runtime.GOARCH
+	if (goos != "darwin" && goos != "linux") || (goarch != "amd64" && goarch != "arm64") {
+		t.Skipf("direct-release lane supports darwin/linux amd64/arm64; host is %s/%s", goos, goarch)
+	}
+	content := t.TempDir()
+	if err := os.WriteFile(filepath.Join(content, "boundary"), []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatalf("write fake boundary payload: %v", err)
+	}
+	asset = "boundary_" + version + "_" + goos + "_" + goarch + "_static-nocgo.tar.gz"
+	archivePath := filepath.Join(fixtureDir, asset)
+	if out, err := exec.Command("tar", "-czf", archivePath, "-C", content, "boundary").CombinedOutput(); err != nil {
+		t.Fatalf("build fixture archive: %v\n%s", err, out)
+	}
+	body, err := os.ReadFile(archivePath)
+	if err != nil {
+		t.Fatalf("read fixture archive: %v", err)
+	}
+	sum := sha256.Sum256(body)
+	return asset, hex.EncodeToString(sum[:])
+}
+
+// directReleaseEnv is the hermetic environment for a default-mode run that
+// must take the direct-release lane: an isolated HOME, and a PATH whose first
+// entry holds only the fake curl — so `brew` cannot resolve, forcing the
+// no-Homebrew fallback, while every ordinary utility (sh, uname, tar, awk,
+// shasum/sha256sum) still comes from the system directories.
+func directReleaseEnv(t *testing.T, home, fakeBinDir string) []string {
+	t.Helper()
+	return []string{
+		"HOME=" + home,
+		"PATH=" + fakeBinDir + ":" + systemPathWithoutBoundary(),
+	}
+}
+
+// TestInstallerDirectReleaseInstallsDespiteSBOMPrefixCollision drives the
+// actual download/verify/extract/install/receipt path against the manifest
+// shape the published v0.13.0 release actually has — every archive entry
+// followed by its `<archive>.spdx.json` entry, whose filename contains the
+// archive's as a prefix. The shipped v0.13.0 installer selected both lines
+// with an unanchored fixed-string grep and then failed closed on the
+// never-downloaded SBOM; this pins the exact-field selection fix, the
+// resulting receipt, and the receipt-driven uninstall round trip.
+func TestInstallerDirectReleaseInstallsDespiteSBOMPrefixCollision(t *testing.T) {
+	home := t.TempDir()
+	fixtures := t.TempDir()
+	fakeBin := t.TempDir()
+	asset, sum := stageDirectRelease(t, fixtures, "9.9.9")
+	manifest := sum + "  " + asset + "\n" +
+		strings.Repeat("1", 64) + "  " + asset + ".spdx.json\n"
+	if err := os.WriteFile(filepath.Join(fixtures, "SHA256SUMS"), []byte(manifest), 0o644); err != nil {
+		t.Fatalf("write manifest fixture: %v", err)
+	}
+	writeFakeCurl(t, fakeBin, fixtures, "https://github.com/fulcrum-governance/fulcrum-boundary/releases/tag/v9.9.9")
+	env := directReleaseEnv(t, home, fakeBin)
+
+	code, stdout, stderr := runInstaller(t, env)
+	if code != 0 {
+		t.Fatalf("direct-release install: exit = %d, want 0\nstdout=%s\nstderr=%s", code, stdout, stderr)
+	}
+	if !strings.Contains(stdout, "Checksum OK.") {
+		t.Fatalf("install did not report checksum success:\n%s", stdout)
+	}
+	installed := filepath.Join(home, ".local", "bin", "boundary")
+	mustExist(t, installed)
+	receiptPath := filepath.Join(home, ".local", "state", "boundary", "binary.receipt")
+	receipt := mustReadFile(t, receiptPath)
+	for _, want := range []string{"mode=binary\n", "method=release-download\n", "version=v9.9.9\n", "path=" + installed + "\n"} {
+		if !strings.Contains(receipt, want) {
+			t.Fatalf("release-download receipt is missing %q:\n%s", want, receipt)
+		}
+	}
+
+	code2, stdout2, stderr2 := runInstaller(t, env, "--uninstall")
+	if code2 != 0 {
+		t.Fatalf("uninstall after direct-release install: exit = %d, want 0\nstdout=%s\nstderr=%s", code2, stdout2, stderr2)
+	}
+	if _, err := os.Stat(installed); !os.IsNotExist(err) {
+		t.Fatalf("installed binary still present after uninstall (err=%v)", err)
+	}
+	if _, err := os.Stat(receiptPath); !os.IsNotExist(err) {
+		t.Fatalf("binary receipt still present after uninstall (err=%v)", err)
+	}
+}
+
+// TestInstallerDirectReleaseFailsClosedWithoutExactManifestEntry pins the
+// zero-match side of exact-field selection: a manifest that carries only the
+// SBOM entry — a filename the archive's name merely prefixes — must not
+// satisfy verification, and nothing may be installed or receipted.
+func TestInstallerDirectReleaseFailsClosedWithoutExactManifestEntry(t *testing.T) {
+	home := t.TempDir()
+	fixtures := t.TempDir()
+	fakeBin := t.TempDir()
+	asset, _ := stageDirectRelease(t, fixtures, "9.9.9")
+	manifest := strings.Repeat("1", 64) + "  " + asset + ".spdx.json\n"
+	if err := os.WriteFile(filepath.Join(fixtures, "SHA256SUMS"), []byte(manifest), 0o644); err != nil {
+		t.Fatalf("write manifest fixture: %v", err)
+	}
+	writeFakeCurl(t, fakeBin, fixtures, "https://github.com/fulcrum-governance/fulcrum-boundary/releases/tag/v9.9.9")
+	env := directReleaseEnv(t, home, fakeBin)
+
+	code, stdout, stderr := runInstaller(t, env)
+	if code == 0 {
+		t.Fatalf("exit = 0, want non-zero for a manifest with no exact entry\nstdout=%s", stdout)
+	}
+	if !strings.Contains(stderr, "no SHA256SUMS entry for "+asset) {
+		t.Fatalf("stderr does not explain the missing exact entry: %s", stderr)
+	}
+	assertNothingInstalled(t, home)
+}
+
+// TestInstallerDirectReleaseFailsClosedOnDuplicateManifestEntries pins the
+// many-match side: two exact entries for the same archive are an ambiguous
+// manifest, and the installer must refuse rather than pick one, with nothing
+// installed or receipted.
+func TestInstallerDirectReleaseFailsClosedOnDuplicateManifestEntries(t *testing.T) {
+	home := t.TempDir()
+	fixtures := t.TempDir()
+	fakeBin := t.TempDir()
+	asset, sum := stageDirectRelease(t, fixtures, "9.9.9")
+	manifest := sum + "  " + asset + "\n" +
+		strings.Repeat("2", 64) + "  " + asset + "\n" +
+		strings.Repeat("1", 64) + "  " + asset + ".spdx.json\n"
+	if err := os.WriteFile(filepath.Join(fixtures, "SHA256SUMS"), []byte(manifest), 0o644); err != nil {
+		t.Fatalf("write manifest fixture: %v", err)
+	}
+	writeFakeCurl(t, fakeBin, fixtures, "https://github.com/fulcrum-governance/fulcrum-boundary/releases/tag/v9.9.9")
+	env := directReleaseEnv(t, home, fakeBin)
+
+	code, stdout, stderr := runInstaller(t, env)
+	if code == 0 {
+		t.Fatalf("exit = 0, want non-zero for duplicate exact manifest entries\nstdout=%s", stdout)
+	}
+	if !strings.Contains(stderr, "SHA256SUMS entries for "+asset) {
+		t.Fatalf("stderr does not explain the ambiguous manifest: %s", stderr)
+	}
+	assertNothingInstalled(t, home)
+}
+
+// assertNothingInstalled proves a failed direct-release run wrote neither the
+// binary nor a receipt into the isolated HOME.
+func assertNothingInstalled(t *testing.T, home string) {
+	t.Helper()
+	if _, err := os.Stat(filepath.Join(home, ".local", "bin", "boundary")); !os.IsNotExist(err) {
+		t.Fatalf("a binary was installed by a failed run (err=%v)", err)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".local", "state", "boundary", "binary.receipt")); !os.IsNotExist(err) {
+		t.Fatalf("a receipt was written by a failed run (err=%v)", err)
 	}
 }
