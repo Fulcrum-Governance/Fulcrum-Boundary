@@ -8,13 +8,11 @@ decision yourself" — without changing what Boundary actually governs.
 
 Three rules govern this page:
 
-- **Published release means `v0.12.0`; the release target is the prospective
-  `v0.13.0` tag.** The baseline below, all of Phase 0A, and Phase 1
-  (`boundary test`) are released in `v0.9.0` and exercised by tests and the two
-  proof-lane demos. The published `v0.12.0` release includes the Phase 0A
-  commands, route-context record fields, and the policy-as-code test runner.
-  The `v0.13.0` release target adds the Claude Code hook lane below; it is not
-  publicly available until the tag publishes.
+- **Published release means `v0.13.0`.** The baseline below, all of Phase 0A,
+  and Phase 1 (`boundary test`) are released in `v0.9.0` and exercised by tests
+  and the two proof-lane demos. The published `v0.13.0` release includes the
+  Phase 0A commands, route-context record fields, the policy-as-code test
+  runner, and the Claude Code hook lane below.
 - **History stays history.** `v0.8.0` remains the Phase 0A record-trust tag:
   `DecisionRecordV2`, `boundary explain`, `boundary replay`, and record-location
   UX. It does not include `boundary test`.
@@ -57,14 +55,13 @@ corroborated by it. Boundary does not emit `proved` decisions itself.
 
 ---
 
-## On `main` after `v0.12.0` — the Claude Code hook lane
+## Shipped in `v0.13.0` — the Claude Code hook lane
 
-> **Source-main, not release truth** (rule 3 above). This landed after the
-> `v0.12.0` tag and is the headline of the `v0.13.0` release target; it is
-> installable from source only until that tag is published. It is tracked
-> under `[0.13.0]` in
+> **In the published `v0.13.0` release.** This landed on `main` after the
+> `v0.12.0` tag as the headline of the `v0.13.0` release and is published in
+> it. It is tracked under `[0.13.0]` in
 > [`CHANGELOG.md`](../CHANGELOG.md). It is listed here rather than in the
-> Baseline because the Baseline is the published release.
+> Baseline because the Baseline table predates it.
 
 | Capability | What it does today |
 | --- | --- |
@@ -83,11 +80,11 @@ its own, and shell use outside Claude Code are bypasses. Ledger entries:
 
 ---
 
-## Phase 0A — Trust the Record / Evidence UX (shipped in `v0.8.0`, included in `v0.12.0`)
+## Phase 0A — Trust the Record / Evidence UX (shipped in `v0.8.0`, included in `v0.13.0`)
 
-> **In the `v0.8.0` release and included in the published `v0.12.0` release.** Everything in this
+> **In the `v0.8.0` release and included in the published `v0.13.0` release.** Everything in this
 > section is released, exercised by tests, and reflected in the claims ledger.
-> The published `v0.12.0` release includes these commands and record fields. Command and
+> The published `v0.13.0` release includes these commands and record fields. Command and
 > field reference:
 > [`docs/CLI_REFERENCE.md`](CLI_REFERENCE.md) (§§10–11) and the route-context
 > section of [`docs/DECISION_RECORDS.md`](DECISION_RECORDS.md).
@@ -122,7 +119,7 @@ human-readable account of the verdict — the matched rule, the reason, the
 decision mode, and the route context above — so a record can be understood
 without reverse-engineering JSON by hand. `boundary explain` is a released
 command (reference: [`docs/CLI_REFERENCE.md`](CLI_REFERENCE.md) §10), included
-in the published `v0.12.0` release.
+in the published `v0.13.0` release.
 
 ### `boundary replay <record>`
 
@@ -131,7 +128,7 @@ reproduce the verdict locally, so a developer can confirm a record's decision is
 deterministic and recompute it on their own machine. Replay is a local,
 fixture-safe reproduction step. It reproduces the *decision*, not the absence of
 upstream side effects. `boundary replay` is a released command (reference:
-[`docs/CLI_REFERENCE.md`](CLI_REFERENCE.md) §11), included in the published `v0.12.0` release.
+[`docs/CLI_REFERENCE.md`](CLI_REFERENCE.md) §11), included in the published `v0.13.0` release.
 
 ### Both proof-lane records are first-class
 
@@ -156,9 +153,9 @@ claimed:
 
 ---
 
-## Phase 0B — Diagnostics & first-impression clarity (included in `v0.12.0`)
+## Phase 0B — Diagnostics & first-impression clarity (included in `v0.13.0`)
 
-> **Included in the published `v0.12.0` release.** These Phase 0B slices landed
+> **Included in the published `v0.13.0` release.** These Phase 0B slices landed
 > on source `main` after `v0.9.0`:
 > doctor environment diagnostics, the redacted `--report`, and the clearer
 > first-run hierarchy.
@@ -186,7 +183,7 @@ governed surface and does **not** change any verdict.
 ## Phase 1 — Policy-as-code testing (shipped in `v0.9.0`)
 
 > **In the `v0.9.0` release.** `boundary test` is delivered in `v0.9.0`; the
-> published `v0.12.0` release includes it. The historical `@v0.8.0` install does not.
+> published `v0.13.0` release includes it. The historical `@v0.8.0` install does not.
 
 `boundary test` is a **local, fixture-only policy-as-code test runner**. It lets
 an operator author request fixtures and expected verdicts against local YAML
@@ -381,15 +378,14 @@ behavior. To keep that contract intact:
 - The Baseline, Phase 0A, and Phase 1 sections describe behavior that is
   released in `v0.9.0`. `explain`, `replay`, `DecisionRecordV2`, the
   route-context fields, and `boundary test` are released in `v0.9.0`, and the
-  published `v0.12.0` release includes them.
+  published `v0.13.0` release includes them.
 - `v0.8.0` remains the historical Phase 0A tag and does not include
   `boundary test`.
-- The Claude Code hook lane is on `main` after `v0.12.0` and is **not** in a
-  published release; it is carried by the `v0.13.0` release target. Its ledger
-  entries (`BND-CLAIM-HOOK-001`,
+- The Claude Code hook lane is published in `v0.13.0`. Its ledger entries
+  (`BND-CLAIM-HOOK-001`,
   `BND-CLAIM-HOOK-002`, `BND-CLAIM-HOOK-003`, `BND-CLAIM-CMD-003`) are delivered
-  claims about behavior on `main`, gated by the same tests; installability
-  follows tag publication, not this page.
+  claims gated by the same tests; the published `v0.13.0` install includes the
+  hook, and routed-only limits are unchanged.
 - When any planned item lands, it ships behind the same release gates as the rest
   of the repository — tests, the claims and language gate, a strict docs build,
   and the full release check — and the claims ledger is updated in the same

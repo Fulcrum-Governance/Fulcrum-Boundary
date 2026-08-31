@@ -6,7 +6,7 @@ credentials, does not call upstream tools, does not use the network, and does
 not mutate live systems.
 
 Availability note: `boundary test` shipped in `v0.9.0` and remains included in
-the `v0.13.0` release target; the historical `@v0.8.0` install does not.
+the published `v0.13.0` release; the historical `@v0.8.0` install does not.
 
 ```bash
 boundary test --path tests/fixtures/policy-test/cases
