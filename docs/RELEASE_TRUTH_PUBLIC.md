@@ -1,14 +1,61 @@
 # Final Public Release Truth
 
-Date: 2026-08-31
+Date: 2026-09-01
 
 Branch: `main`
 
-Current release: `v0.13.0`
+Current release target: `v0.13.1`
 
-Current release date: `2026-08-31`
+Current release date: `2026-09-01`
 
-Published release: `v0.13.0`
+Release-stamp target: `v0.13.1` — **not published**
+
+## Release-stamp status — not published
+
+This branch contains the prospective `v0.13.1` release stamp, not a published
+release. The public release remains `v0.13.0` until both approved tags publish.
+Neither `v0.13.1` nor `verify-witnessed/v0.13.1` exists yet — as tag, release,
+or draft. Every command targeting `v0.13.1` is unavailable until then. No
+GitHub release, container, Homebrew cask update, plugin repository,
+marketplace submission, or public-release status change is authorized by this
+release-stamp candidate.
+
+`v0.13.1` is a patch: its only delta over `v0.13.0` is the already-merged
+installer checksum-selector repair. The published `v0.13.0` installer's
+direct-release lane selected its `SHA256SUMS` entry with an unanchored match
+that also captured the archive's `.spdx.json` SBOM line, so checksum
+verification failed on the never-downloaded SBOM and the installer refused to
+install — fail-closed, nothing written. The immutable `v0.13.0` tag retains
+that defect; the repair exists on `main` and ships in the `v0.13.1` release
+target. It selects the manifest entry by the complete filename field,
+requires exactly one exact entry (zero or duplicates still refuse), and is
+pinned by hermetic direct-release regression tests. The Homebrew lane was
+unaffected. A fresh stable public-install smoke has not run and is not
+claimed.
+
+Both proposed annotated tags must resolve to the same exact commit, after the
+candidate PR is merged and an operator gives explicit exact-commit and dual-tag
+approval. This document records no annotated-tag object IDs, release asset
+counts, checksums, image digests, Homebrew tap commits, attestations, or
+marketplace status for `v0.13.1`, because none of those artifacts exist yet.
+
+The prospective `v0.13.1` install commands, unavailable until publication:
+
+```bash
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.13.1
+go install github.com/Fulcrum-Governance/Fulcrum-Boundary/verify-witnessed@v0.13.1
+docker run --rm ghcr.io/fulcrum-governance/boundary:v0.13.1 selftest
+```
+
+`v0.13.1` changes no product behavior, adapter maturity, or claim status:
+Session Receipts and the Claude Code hook first shipped in `v0.13.0`, records
+remain hash-verifiable for covered-field integrity only, the hook remains
+routed-only, and Boundary does not emit `proved` decisions.
+
+## Published baseline before this release stamp: v0.13.0
+
+The published release surface is `v0.13.0`, reconciled below exactly as
+published. Nothing in the stamp section above changes it.
 
 ## Published v0.13.0 release
 

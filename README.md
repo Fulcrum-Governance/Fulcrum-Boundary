@@ -126,10 +126,11 @@ denies a routed GitHub write-after-taint action before upstream execution and
 writes a decision record that `verify-record` recomputes independently.
 
 On Linux or Windows, use a signed-checksum [release archive](./docs/INSTALL.md)
-or the container image:
+or the container image (`v0.13.1` is the release-stamp target; until it
+publishes, the published image tag remains the `v0.13.0` release):
 
 ```bash
-docker run --rm ghcr.io/fulcrum-governance/boundary:v0.13.0 selftest
+docker run --rm ghcr.io/fulcrum-governance/boundary:v0.13.1 selftest
 ```
 
 To inspect the MCP servers your agents can already reach without modifying
@@ -275,7 +276,8 @@ above ships in it; see the
 | Dashboard | Local artifact visibility | Not hosted monitoring. |
 | Witnessed-log verifier | Delivered, air-gapped | Checks bundle integrity and cosignatures against supplied keys; it does not establish independent witness operation. |
 
-Current published release: **v0.13.0**. See the [release notes](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/releases/tag/v0.13.0),
+Current published release: **v0.13.0**. The `v0.13.1` release stamp on `main`
+is a patch candidate, not a published release. See the [release notes](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/releases/tag/v0.13.0),
 [changelog](./CHANGELOG.md), and [public release-truth record](./docs/RELEASE_TRUTH_PUBLIC.md).
 
 ## Adapter readiness
@@ -321,8 +323,11 @@ Requires Go 1.25+. The default source build links the full Postgres classifier
 through cgo and requires a C toolchain:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.13.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.13.1
 ```
+
+`v0.13.1` is the release-stamp target, not a published install yet. Until both
+approved tags publish, use the current public `v0.13.0` release.
 
 Before submitting a change:
 
