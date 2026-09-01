@@ -1,6 +1,6 @@
 {
   "name": "boundary",
-  "version": "0.13.0",
+  "version": "0.13.1",
   "description": "Pre-execution deny and verifiable session receipts for Claude Code tool calls routed through this hook.",
   "author": {
     "name": "Fulcrum Governance"
