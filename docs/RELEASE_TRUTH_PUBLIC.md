@@ -1,12 +1,12 @@
 # Final Public Release Truth
 
-Date: 2026-09-01
+Date: 2026-09-02
 
 Branch: `main`
 
 Current release: `v0.13.1`
 
-Current release date: `2026-09-01`
+Current release date: `2026-09-02`
 
 Published release: `v0.13.1`
 
@@ -55,8 +55,10 @@ resolves through `refs/tags/verify-witnessed/v0.13.1` with module sum
 `h1:Ea7VTGK+NgOtwJqTnDgU9Dk+4fPZ2h6e5H5E011zvW8=` and `go.mod` sum
 `h1:XxhbOvnpQ4R5Z413N/bQAuNq427ZzqErOvjaxaLLSk8=`.
 
-`v0.13.1` is a patch: its only delta over `v0.13.0` is the installer
-checksum-selector repair. The published `v0.13.0` installer's
+`v0.13.1` is a patch: its only product-behavior fix over `v0.13.0` is the
+installer checksum-selector repair. The tagged release delta also contains
+the accompanying documentation and release-metadata reconciliation across
+four commits and 30 files. The published `v0.13.0` installer's
 direct-release lane selected its `SHA256SUMS` entry with an unanchored match
 that also captured the archive's `.spdx.json` SBOM line, so checksum
 verification failed on the never-downloaded SBOM and the installer refused to
