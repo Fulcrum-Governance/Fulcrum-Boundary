@@ -1,38 +1,46 @@
-# boundary-plugins (scaffold)
+# boundary-plugins
 
-This directory is the ready-to-push content for a future, standalone
-`fulcrum-governance/boundary-plugins` repository: a Claude Code plugin
-marketplace listing the `boundary` plugin. No remote repository has been
-created; nothing here has been pushed anywhere. This is staged content only.
+Claude Code plugin marketplace for
+[Fulcrum Boundary](https://github.com/Fulcrum-Governance/Fulcrum-Boundary).
+The marketplace lists the `boundary` plugin and resolves its source from the
+Fulcrum Boundary repository.
 
-At launch, the intended flow is:
+Boundary evaluates tool calls delivered through a configured Claude Code
+`PreToolUse` hook before execution. It can deny a routed call before the tool
+runs and writes hash-verifiable session receipts. Boundary governs only routed
+calls; direct or bypass routes remain outside it. Receipt verification proves
+covered-field hash integrity, not authenticity, correctness, execution, or
+total coverage.
 
-1. Create the `fulcrum-governance/boundary-plugins` GitHub repository.
-2. Push the contents of this directory (`.claude-plugin/marketplace.json` and
-   this `README.md`) as its initial commit.
-3. Users add it as a marketplace and install from it:
+## Install
 
-   ```
-   /plugin marketplace add fulcrum-governance/boundary-plugins
-   /plugin install boundary@boundary-plugins
-   ```
+Add this marketplace and install the plugin from Claude Code:
 
-Until that repository exists, install the plugin directly from this
-(`fulcrum-governance/fulcrum-boundary`) repository instead; see
-[`docs/integrations/CLAUDE_CODE_HOOK.md`](../../docs/integrations/CLAUDE_CODE_HOOK.md)
-and [`scripts/install-claude-code.sh`](../../scripts/install-claude-code.sh).
+```
+/plugin marketplace add fulcrum-governance/boundary-plugins
+/plugin install boundary@boundary-plugins
+```
+
+The plugin source is pinned to the immutable v0.13.1 release commit.
+
+For setup, behavior, and limitations, use the immutable v0.13.1 source
+documentation:
+
+- [Claude Code hook guide](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/blob/v0.13.1/docs/integrations/CLAUDE_CODE_HOOK.md)
+- [Direct-install script](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/blob/v0.13.1/scripts/install-claude-code.sh)
 
 ## Contents
 
 | Path | Purpose |
 | --- | --- |
-| `.claude-plugin/marketplace.json` | The marketplace manifest: one entry, `boundary`, sourced from this GitHub repository. |
-| `README.md` | This file. |
+| `.claude-plugin/marketplace.json` | The marketplace manifest: one `boundary` entry sourced from the Fulcrum Boundary repository. |
+| `README.md` | Installation, proof-boundary, and update guidance for this marketplace. |
 
-## Keeping this in sync
+## Update contract
 
-The `plugins[0].version`, `description`, and `keywords` fields here should
-track [`/.claude-plugin/plugin.json`](../../.claude-plugin/plugin.json) at the
-repository root: that file is the plugin's own manifest and is the source of
-truth. This scaffold does not run any check that keeps the two in sync; that is
-a manual step until (or unless) one is added.
+Before publishing an update, keep `plugins[0].name`, `description`, `homepage`,
+`license`, and `keywords` aligned with the
+[canonical plugin manifest](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/blob/main/.claude-plugin/plugin.json).
+Keep `plugins[0].source.ref` and `source.sha` pinned to that version's immutable
+release tag and commit. The Fulcrum Boundary test suite enforces both contracts
+for the retained scaffold.
