@@ -78,7 +78,8 @@ go install github.com/Fulcrum-Governance/Fulcrum-Boundary/verify-witnessed@v0.13
 docker run --rm ghcr.io/fulcrum-governance/boundary:v0.13.1 selftest
 ```
 
-`v0.13.1` changes no product behavior, adapter maturity, or claim status:
+`v0.13.1` changes no Boundary enforcement behavior, classifier, hook semantics,
+adapter maturity, or claim status:
 Session Receipts and the Claude Code hook first shipped in `v0.13.0`, records
 remain hash-verifiable for covered-field integrity only, the hook remains
 routed-only, and Boundary does not emit `proved` decisions. The
