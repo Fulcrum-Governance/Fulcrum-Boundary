@@ -92,8 +92,9 @@ gh attestation verify boundary_<version>_<os>_<arch>_static-nocgo.tar.gz \
 This is provenance for the release distribution — distinct from runtime
 decision-record signing, which Boundary does not do by default. See
 [SUPPLY_CHAIN.md](./SUPPLY_CHAIN.md) for what ships, how to verify, and the
-honest scope (`BND-CLAIM-DIST-002`, `partial` — SBOM verified via snapshot,
-provenance live from the next tagged release).
+honest scope (`BND-CLAIM-DIST-002`, `delivered`): attestations cover the
+configured static and native-cgo archives and their SBOMs plus `SHA256SUMS`;
+`SHA256SUMS-cgo` is not attested by the workflow.
 
 ## Static Vs Cgo Builds
 

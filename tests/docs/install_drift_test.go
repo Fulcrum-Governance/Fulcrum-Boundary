@@ -50,6 +50,7 @@ var (
 		"will publish",
 		"not yet published",
 		"once published",
+		"next tagged release",
 	}
 )
 
