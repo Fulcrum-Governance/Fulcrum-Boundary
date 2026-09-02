@@ -180,7 +180,7 @@ the three surfaces (`mcp`, `command`, `edit`) reports `"status": "warn"` on a
 fresh checkout because the optional `.boundary/firewall`, `.boundary/bin`, and
 `.boundary/edit` workspaces do not exist yet. **`warn` here is the expected
 first-run state, not an error** — see "Reading `boundary doctor --json`" below.
-The published `v0.13.0` release also includes first-run environment diagnostics and
+The published `v0.13.1` release includes first-run environment diagnostics and
 `boundary doctor --report` for redacted support reports.
 
 - **`boundary: command not found`** — `PATH` issue; see above.
@@ -298,7 +298,7 @@ deployment protection. Full reference: [DOCTOR.md](DOCTOR.md).
 | `environment[]` | First-run diagnostics for Go 1.25+, cgo / C-toolchain readiness, and `go install` PATH resolution. |
 | `surfaces[]` | One entry per routed surface (`mcp`, `command`, `edit`). |
 
-The published `v0.13.0` release can use `boundary doctor --report` to emit the same
+The published `v0.13.1` release can use `boundary doctor --report` to emit the same
 diagnostics with `report_redacted: true` and `project_root: "<redacted>"`.
 
 ### Per-surface fields
