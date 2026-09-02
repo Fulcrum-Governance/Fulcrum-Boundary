@@ -8,7 +8,6 @@
     {
       "name": "boundary",
       "description": "Pre-execution deny and verifiable session receipts for Claude Code tool calls routed through this hook.",
-      "version": "0.13.1",
       "homepage": "https://github.com/fulcrum-governance/fulcrum-boundary",
       "license": "Apache-2.0",
       "keywords": [
@@ -20,7 +19,9 @@
       ],
       "source": {
         "source": "github",
-        "repo": "fulcrum-governance/fulcrum-boundary"
+        "repo": "fulcrum-governance/fulcrum-boundary",
+        "ref": "v0.13.1",
+        "sha": "8a5762888be8404f8a4a0e64a2ad6206667b71b6"
       }
     }
   ]
