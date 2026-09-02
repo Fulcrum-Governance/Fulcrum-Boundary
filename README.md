@@ -53,7 +53,8 @@ Then, inside Claude Code:
 /plugin install boundary@boundary-plugins
 ```
 
-> **Availability.** The hook ships in the published `v0.13.0` release: the
+> **Availability.** The hook first shipped in `v0.13.0` and remains included in
+> the current `v0.13.1` release: the
 > one-line installer's default mode fetches the latest published release
 > binary, which now includes `boundary hook`. The plugin content itself
 > (manifest, hook wiring, skills) still installs from a checkout — `git
@@ -100,7 +101,7 @@ Restart Claude Code, then run `/boundary:drill`.
 Full detail: [`docs/integrations/CLAUDE_CODE_HOOK.md`](./docs/integrations/CLAUDE_CODE_HOOK.md)
 (honest scope and limitations) and [`LIMITATIONS.md`](./LIMITATIONS.md)
 (repo-wide). The Claude Code hook landed on `main` after the `v0.12.0` tag and
-ships in the published `v0.13.0` release — see the Claude Code hook lane
+first shipped in `v0.13.0` and remains included in `v0.13.1` — see the Claude Code hook lane
 section of the [Boundary Roadmap](./docs/BOUNDARY_ROADMAP.md).
 
 ## The wider Boundary project
@@ -126,8 +127,7 @@ denies a routed GitHub write-after-taint action before upstream execution and
 writes a decision record that `verify-record` recomputes independently.
 
 On Linux or Windows, use a signed-checksum [release archive](./docs/INSTALL.md)
-or the container image (`v0.13.1` is the release-stamp target; until it
-publishes, the published image tag remains the `v0.13.0` release):
+or the published `v0.13.1` container image:
 
 ```bash
 docker run --rm ghcr.io/fulcrum-governance/boundary:v0.13.1 selftest
@@ -261,8 +261,8 @@ The repository's claims and controlled language are mechanically checked by
 
 ## Current release truth
 
-This table describes the published `v0.13.0` release. The Claude Code hook
-above ships in it; see the
+This table describes the published `v0.13.1` release. The Claude Code hook
+above first shipped in `v0.13.0` and remains included; see the
 [Boundary Roadmap](./docs/BOUNDARY_ROADMAP.md).
 
 | Surface | Status | Limit |
@@ -276,8 +276,7 @@ above ships in it; see the
 | Dashboard | Local artifact visibility | Not hosted monitoring. |
 | Witnessed-log verifier | Delivered, air-gapped | Checks bundle integrity and cosignatures against supplied keys; it does not establish independent witness operation. |
 
-Current published release: **v0.13.0**. The `v0.13.1` release stamp on `main`
-is a patch candidate, not a published release. See the [release notes](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/releases/tag/v0.13.0),
+Current published release: **v0.13.1**. See the [release notes](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/releases/tag/v0.13.1),
 [changelog](./CHANGELOG.md), and [public release-truth record](./docs/RELEASE_TRUTH_PUBLIC.md).
 
 ## Adapter readiness
@@ -326,8 +325,8 @@ through cgo and requires a C toolchain:
 go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.13.1
 ```
 
-`v0.13.1` is the release-stamp target, not a published install yet. Until both
-approved tags publish, use the current public `v0.13.0` release.
+`v0.13.1` is the current public release. The root and nested-module tags both
+resolve to the same immutable release commit; see the release-truth record.
 
 Before submitting a change:
 

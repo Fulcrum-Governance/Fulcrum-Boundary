@@ -146,10 +146,9 @@ that checks this directly). The versioned nested-module install target is:
 go install github.com/Fulcrum-Governance/Fulcrum-Boundary/verify-witnessed@v0.13.1
 ```
 
-Use that exact case-sensitive module path. `@v0.13.1` resolves only after the
-`verify-witnessed/v0.13.1` tag publishes; the published root `v0.13.0` and
-matching `verify-witnessed/v0.13.0` tags both resolve to
-`8abd10be7c3f3e5a3727bb73acd0a84811431d3b`. Pin the module or clone to that
+Use that exact case-sensitive module path. The published root `v0.13.1` and
+matching `verify-witnessed/v0.13.1` tags both resolve to
+`8a5762888be8404f8a4a0e64a2ad6206667b71b6`. Pin the module or clone to that
 matching release to align with your bundle's `exporter.boundary_wire_contract_version`
 — the same convention used for the existing decision-record verifiers.
 

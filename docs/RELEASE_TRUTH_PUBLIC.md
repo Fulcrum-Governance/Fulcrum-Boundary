@@ -4,42 +4,71 @@ Date: 2026-09-01
 
 Branch: `main`
 
-Current release target: `v0.13.1`
+Current release: `v0.13.1`
 
 Current release date: `2026-09-01`
 
-Release-stamp target: `v0.13.1` — **not published**
+Published release: `v0.13.1`
 
-## Release-stamp status — not published
+## Published v0.13.1 release
 
-This branch contains the prospective `v0.13.1` release stamp, not a published
-release. The public release remains `v0.13.0` until both approved tags publish.
-Neither `v0.13.1` nor `verify-witnessed/v0.13.1` exists yet — as tag, release,
-or draft. Every command targeting `v0.13.1` is unavailable until then. No
-GitHub release, container, Homebrew cask update, plugin repository,
-marketplace submission, or public-release status change is authorized by this
-release-stamp candidate.
+The annotated root tag object `aa32b87ceb4f82e6b4b1525168923aadcd3a93a8`
+(`refs/tags/v0.13.1`) and annotated nested-module tag object
+`ea3b9b79a2d895ad563be3eba9a4b6742bd48dd6`
+(`refs/tags/verify-witnessed/v0.13.1`) both peel to the approved release commit
+`8a5762888be8404f8a4a0e64a2ad6206667b71b6`.
 
-`v0.13.1` is a patch: its only delta over `v0.13.0` is the already-merged
-installer checksum-selector repair. The published `v0.13.0` installer's
+The [GitHub release](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/releases/tag/v0.13.1)
+is published (not draft or prerelease) with 23 assets: six static archives,
+six static SPDX SBOMs, four native-cgo archives, four native-cgo SPDX SBOMs,
+`SHA256SUMS`, `SHA256SUMS-cgo`, and the fixture-safe
+`boundary-evidence.tar.gz`. It was published by the natural tag-triggered
+[release workflow run 33656858833](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/actions/runs/33656858833)
+(`push` event, 8/8 jobs successful). All 23 assets match their GitHub API
+SHA-256 digests; both checksum manifests verify; and all ten SPDX files parse
+and pass structural checks. All 22 configured GitHub build-provenance
+attestations verify against `release.yml@refs/tags/v0.13.1` at source digest
+`8a57628`. `SHA256SUMS-cgo` is the one expected unattested asset, matching the
+configured workflow: attestation coverage is 22 artifacts, not all 23 assets.
+
+`ghcr.io/fulcrum-governance/boundary:v0.13.1` and `:latest` resolve to the same
+multi-architecture index,
+`sha256:86d21b48baba1700dd79eb7d4026b972aba0792ee73adc21ff5f42038c7d0741`.
+That index provides linux/amd64
+(`sha256:8cd53330844b01b9769b763ed80989fdc0c7f0a32817428b4e6bffc885bbd7be`)
+and linux/arm64
+(`sha256:b1542d1b6910a78247170eb9c99fce9c05690aea3a277fa430824216bc8dd5bd`)
+variants for version `v0.13.1` and the approved revision. The Homebrew cask
+advanced to tap commit `5c3492b29fed9028db3c198779d5af56f66fff28`
+(`Casks/boundary.rb`, version 0.13.1); all four cask SHA-256 values equal the
+corresponding release-manifest entries.
+
+The published Go modules resolve to the same approved release commit through
+their actual tag refs. The root module
+`github.com/fulcrum-governance/fulcrum-boundary@v0.13.1` resolves through
+`refs/tags/v0.13.1` with module sum
+`h1:1X2uXHNAOroHO9aLVNWsELPpuwfqqGdVYJYAox0mcbg=` and `go.mod` sum
+`h1:C8i1oWLA1qfjwEHzu9fgMNKk2EnEIU4rhMu4AZNfPNw=`. The exact case-sensitive
+nested module
+`github.com/Fulcrum-Governance/Fulcrum-Boundary/verify-witnessed@v0.13.1`
+resolves through `refs/tags/verify-witnessed/v0.13.1` with module sum
+`h1:Ea7VTGK+NgOtwJqTnDgU9Dk+4fPZ2h6e5H5E011zvW8=` and `go.mod` sum
+`h1:XxhbOvnpQ4R5Z413N/bQAuNq427ZzqErOvjaxaLLSk8=`.
+
+`v0.13.1` is a patch: its only delta over `v0.13.0` is the installer
+checksum-selector repair. The published `v0.13.0` installer's
 direct-release lane selected its `SHA256SUMS` entry with an unanchored match
 that also captured the archive's `.spdx.json` SBOM line, so checksum
 verification failed on the never-downloaded SBOM and the installer refused to
 install — fail-closed, nothing written. The immutable `v0.13.0` tag retains
-that defect; the repair exists on `main` and ships in the `v0.13.1` release
-target. It selects the manifest entry by the complete filename field,
+that defect; `v0.13.1` ships the repair. It selects the manifest entry by the
+complete filename field,
 requires exactly one exact entry (zero or duplicates still refuse), and is
 pinned by hermetic direct-release regression tests. The Homebrew lane was
 unaffected. A fresh stable public-install smoke has not run and is not
 claimed.
 
-Both proposed annotated tags must resolve to the same exact commit, after the
-candidate PR is merged and an operator gives explicit exact-commit and dual-tag
-approval. This document records no annotated-tag object IDs, release asset
-counts, checksums, image digests, Homebrew tap commits, attestations, or
-marketplace status for `v0.13.1`, because none of those artifacts exist yet.
-
-The prospective `v0.13.1` install commands, unavailable until publication:
+Install from the published versioned surfaces:
 
 ```bash
 go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.13.1
@@ -50,12 +79,15 @@ docker run --rm ghcr.io/fulcrum-governance/boundary:v0.13.1 selftest
 `v0.13.1` changes no product behavior, adapter maturity, or claim status:
 Session Receipts and the Claude Code hook first shipped in `v0.13.0`, records
 remain hash-verifiable for covered-field integrity only, the hook remains
-routed-only, and Boundary does not emit `proved` decisions.
+routed-only, and Boundary does not emit `proved` decisions. The
+`boundary-plugins` marketplace repository does not exist and no marketplace
+submission or public post has been made; the marketplace scaffold in this
+repository remains unpublished.
 
-## Published baseline before this release stamp: v0.13.0
+## Published baseline before v0.13.1: v0.13.0
 
-The published release surface is `v0.13.0`, reconciled below exactly as
-published. Nothing in the stamp section above changes it.
+The published `v0.13.0` record is preserved below exactly as reconciled at its
+own publication. Nothing in the v0.13.1 section above rewrites it.
 
 ## Published v0.13.0 release
 
