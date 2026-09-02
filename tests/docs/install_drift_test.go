@@ -54,6 +54,12 @@ var (
 		"once published",
 		"next tagged release",
 	}
+	staleMarketplaceAvailability = []string{
+		"planned marketplace repository",
+		"marketplace repository does not exist",
+		"they do not work yet",
+		"marketplace scaffold in this repository remains unpublished",
+	}
 )
 
 // historical surfaces that legitimately pin an older tag; exempt from the guard.
@@ -184,6 +190,56 @@ func TestNoPrePublicationConditionals(t *testing.T) {
 	})
 	if walkErr != nil {
 		t.Fatalf("walking the repo for pre-publication conditionals: %v", walkErr)
+	}
+}
+
+func TestPublishedMarketplaceTruthIsCurrent(t *testing.T) {
+	root := repoRoot(t)
+	releaseTruth := read(t, root, "docs/RELEASE_TRUTH_PUBLIC.md")
+	current := oneAnchor(t, "current release target", currentReleaseAnchor, releaseTruth)
+	publishedStart := strings.Index(releaseTruth, "## Published "+current+" release")
+	baselineStart := strings.Index(releaseTruth, "## Published baseline before "+current+":")
+	if publishedStart == -1 || baselineStart == -1 || publishedStart >= baselineStart {
+		t.Fatal("docs/RELEASE_TRUTH_PUBLIC.md: published-release section must precede its historical baseline")
+	}
+
+	const (
+		publicRepo        = "https://github.com/Fulcrum-Governance/boundary-plugins"
+		marketplaceAdd    = "/plugin marketplace add fulcrum-governance/boundary-plugins"
+		pluginInstall     = "/plugin install boundary@boundary-plugins"
+		marketplaceAddCLI = "claude plugin marketplace add Fulcrum-Governance/boundary-plugins --scope user"
+		pluginInstallCLI  = "claude plugin install boundary@boundary-plugins --scope user --yes"
+		claudeVersion     = "Claude Code `2.1.258`"
+		releaseCommit     = "8a5762888be8404f8a4a0e64a2ad6206667b71b6"
+	)
+	activeSurfaces := map[string]string{
+		"README.md": read(t, root, "README.md"),
+		"docs/RELEASE_TRUTH_PUBLIC.md current release": releaseTruth[publishedStart:baselineStart],
+	}
+	for name, body := range activeSurfaces {
+		for _, want := range []string{publicRepo, claudeVersion, releaseCommit} {
+			if !strings.Contains(body, want) {
+				t.Errorf("%s is missing current marketplace publication fact %q", name, want)
+			}
+		}
+		bodyLower := strings.ToLower(body)
+		for _, stale := range staleMarketplaceAvailability {
+			if strings.Contains(bodyLower, stale) {
+				t.Errorf("%s retains stale marketplace availability claim %q", name, stale)
+			}
+		}
+	}
+	readme := activeSurfaces["README.md"]
+	for _, want := range []string{marketplaceAdd, pluginInstall} {
+		if !strings.Contains(readme, want) {
+			t.Errorf("README.md is missing copy-pasteable marketplace instruction %q", want)
+		}
+	}
+	releaseSection := activeSurfaces["docs/RELEASE_TRUTH_PUBLIC.md current release"]
+	for _, want := range []string{marketplaceAddCLI, pluginInstallCLI} {
+		if !strings.Contains(releaseSection, want) {
+			t.Errorf("docs/RELEASE_TRUTH_PUBLIC.md is missing executed marketplace validation command %q", want)
+		}
 	}
 }
 

@@ -56,14 +56,21 @@ Then, inside Claude Code:
 > **Availability.** The hook first shipped in `v0.13.0` and remains included in
 > the current `v0.13.1` release: the
 > one-line installer's default mode fetches the latest published release
-> binary, which now includes `boundary hook`. The plugin content itself
-> (manifest, hook wiring, skills) still installs from a checkout — `git
-> clone` this repo, then `sh scripts/install-claude-code.sh --plugin-drop` —
-> because the two `/plugin` commands above are the eventual marketplace path
-> only: `boundary-plugins` is a planned marketplace repository that does not
-> exist on GitHub today, so they do not work yet. The drop is personal — see
+> binary, which now includes `boundary hook`. The public
+> [`boundary-plugins`](https://github.com/Fulcrum-Governance/boundary-plugins)
+> repository publishes the exact two-file marketplace package retained in
+> this repository. On 2026-09-02, Claude Code `2.1.258` added that public
+> repository, installed `boundary@boundary-plugins` `v0.13.1`, resolved the
+> plugin to release commit
+> `8a5762888be8404f8a4a0e64a2ad6206667b71b6`, and validated the installed
+> manifest. A checkout remains an alternative: `git clone` this repo, then
+> `sh scripts/install-claude-code.sh --plugin-drop`. Either installation is
+> personal — see
 > [`/boundary:protect`](./skills/protect/SKILL.md) to wire a
-> floor every contributor to a project inherits.
+> floor every contributor to a project inherits. Marketplace installation
+> changes distribution, not coverage: Boundary still governs only tool calls
+> routed through the configured hook, and direct or bypass routes remain
+> outside it.
 
 Restart Claude Code, then run `/boundary:drill`.
 

@@ -94,6 +94,27 @@ install path and those local fitness commands. It does not validate Homebrew
 installation, plugin or marketplace availability, routed deployment coverage,
 authenticity, execution proof, or protection of bypass paths.
 
+Marketplace availability was validated separately on 2026-09-02. The public
+[`Fulcrum-Governance/boundary-plugins`](https://github.com/Fulcrum-Governance/boundary-plugins)
+repository was created at Tony-authored root commit
+`d233fbdb8a37693898cdd9974baa3d01c6ab1f78` with exactly the approved
+`README.md` and `.claude-plugin/marketplace.json` copied byte-for-byte from
+this repository. Their SHA-256 values are
+`1274fd85c37c9289cb2b1b9dbad54032194c71a53fd9b2c604201f2f5aa23492`
+and `735dfad47cb402346393b06a3e2f6bd4e204e18f4174417ce4733bc665e7d1ab`.
+In a fresh isolated `CLAUDE_CONFIG_DIR`, Claude Code `2.1.258` validated the
+public marketplace manifest, added it with the slash command's CLI equivalent,
+`claude plugin marketplace add Fulcrum-Governance/boundary-plugins --scope user`,
+and installed it with
+`claude plugin install boundary@boundary-plugins --scope user --yes`. The
+installed plugin reported version `0.13.1`, four skills, two hooks, and source
+commit
+`8a5762888be8404f8a4a0e64a2ad6206667b71b6`; its installed manifest also
+validated. This proves the standalone repository's public discovery,
+resolution, installation, and manifest shape. It does not prove hook routing
+coverage, protection of bypass paths, receipt authenticity or correctness,
+execution, Homebrew installation, or acceptance by a community marketplace.
+
 Install from the published versioned surfaces:
 
 ```bash
@@ -106,10 +127,10 @@ docker run --rm ghcr.io/fulcrum-governance/boundary:v0.13.1 selftest
 adapter maturity, or claim status:
 Session Receipts and the Claude Code hook first shipped in `v0.13.0`, records
 remain hash-verifiable for covered-field integrity only, the hook remains
-routed-only, and Boundary does not emit `proved` decisions. The
-`boundary-plugins` marketplace repository does not exist and no marketplace
-submission or public post has been made; the marketplace scaffold in this
-repository remains unpublished.
+routed-only, and Boundary does not emit `proved` decisions. The public
+`boundary-plugins` repository distributes the exact release-pinned marketplace
+package described above. Repository publication and CLI validation do not
+constitute community-marketplace acceptance or any broader launch claim.
 
 ## Published baseline before v0.13.1: v0.13.0
 
