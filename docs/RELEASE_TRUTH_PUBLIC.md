@@ -67,8 +67,32 @@ that defect; `v0.13.1` ships the repair. It selects the manifest entry by the
 complete filename field,
 requires exactly one exact entry (zero or duplicates still refuse), and is
 pinned by hermetic direct-release regression tests. The Homebrew lane was
-unaffected. A fresh stable public-install smoke has not run and is not
-claimed.
+unaffected.
+
+The founder-controlled immutable public-install smoke passed on 2026-09-02.
+The public raw `main` and immutable `v0.13.1` installers were byte-identical
+at SHA-256
+`c4bf951e9849e1a48142adb35d55bb2e67f1fe4bd9dfc3b1d68d8a71e27a6a23`.
+With Homebrew and existing Boundary binaries excluded, the installer selected
+`boundary_0.13.1_darwin_arm64_static-nocgo.tar.gz` through the direct-release
+lane. The selector found exactly one full filename-field match despite two
+prefix matches including the SBOM; the archive matched `SHA256SUMS` at
+`bfc5603bd3080a6b1b0365ebad2f22c87e5b384cab817c644c02a84b0235218f`.
+The installed binary matched the binary extracted from that manifest-verified
+archive at
+`db33d702d9ed51e74699aa6650188cd0e58f158bd3353e954e121cde9bb38334`,
+reported `v0.13.1` at the approved release commit, and passed `version`,
+`selftest`, `hook --help`, and the fixture-only
+`demo github-lethal-trifecta`. The demo denied before upstream execution.
+Receipt-driven uninstall removed the binary and receipt, the disposable root
+was removed, and pre/post manifests of the monitored real-environment Boundary
+surfaces were byte-identical. An independent read-only review returned
+`SMOKE EVIDENCE APPROVED`.
+
+That smoke validates only the published direct-release Apple Silicon static
+install path and those local fitness commands. It does not validate Homebrew
+installation, plugin or marketplace availability, routed deployment coverage,
+authenticity, execution proof, or protection of bypass paths.
 
 Install from the published versioned surfaces:
 

@@ -28,6 +28,8 @@ var (
 	currentReleaseAnchor     = regexp.MustCompile("(?m)^Current release: `(v[0-9]+\\.[0-9]+\\.[0-9]+)`")
 	publishedReleaseAnchor   = regexp.MustCompile("(?m)^Published release: `(v[0-9]+\\.[0-9]+\\.[0-9]+)`$")
 	currentReleaseDateAnchor = regexp.MustCompile("(?m)^Current release date: `([0-9]{4}-[0-9]{2}-[0-9]{2})`$")
+	publicInstallSmokeAnchor = regexp.MustCompile(`The founder-controlled immutable public-install smoke passed on ([0-9]{4}-[0-9]{2}-[0-9]{2})\.`)
+	stalePublicInstallSmoke  = regexp.MustCompile("(?i)public-install smoke(?: against the published `v[0-9]+\\.[0-9]+\\.[0-9]+` channels)? has not run")
 
 	// Canonical, copy-pasteable install / version references that must track the
 	// current release. Each capturing group yields the pinned version.
@@ -243,9 +245,23 @@ func TestPublishedReleaseTruthIsInternallyConsistent(t *testing.T) {
 
 	releaseNotes := read(t, root, "docs/releases/"+published+".md")
 	normalizedReleaseNotes := strings.Join(strings.Fields(strings.ReplaceAll(releaseNotes, "\n>", "\n")), " ")
+	normalizedReleaseTruth := strings.Join(strings.Fields(releaseTruth), " ")
 	if !strings.Contains(normalizedReleaseNotes, "**Published release — "+releaseDate+".**") ||
 		!strings.Contains(normalizedReleaseNotes, "not a draft or prerelease") {
 		t.Fatalf("docs/releases/%s.md must identify the public release state", published)
+	}
+	truthSmokeDate := oneAnchor(t, "public release-truth smoke date", publicInstallSmokeAnchor, normalizedReleaseTruth)
+	notesSmokeDate := oneAnchor(t, "current release-note smoke date", publicInstallSmokeAnchor, normalizedReleaseNotes)
+	if truthSmokeDate != notesSmokeDate {
+		t.Fatalf("public-install smoke date differs between release truth (%s) and current release notes (%s)", truthSmokeDate, notesSmokeDate)
+	}
+	for surface, body := range map[string]string{
+		"docs/RELEASE_TRUTH_PUBLIC.md": normalizedReleaseTruth,
+		"current release notes":        normalizedReleaseNotes,
+	} {
+		if stalePublicInstallSmoke.MatchString(body) {
+			t.Fatalf("%s retains a stale claim that the current public-install smoke has not run", surface)
+		}
 	}
 	assertInstallRefsEqual(t, "release notes", releaseNotes, published)
 }
