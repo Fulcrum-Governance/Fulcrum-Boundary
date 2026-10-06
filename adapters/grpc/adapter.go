@@ -44,6 +44,7 @@ type CallInfo struct {
 	Metadata metadata.MD // Incoming metadata headers
 	AgentID  string      // Optional override; falls back to metadata
 	TenantID string      // Optional override; falls back to metadata
+	Action   string      // Optional action override; falls back to "grpc/unary"
 }
 
 // Adapter implements governance.TransportAdapter for gRPC unary calls.
@@ -92,13 +93,18 @@ func (a *Adapter) ParseRequest(_ context.Context, raw any) (*governance.Governan
 		tenantID = a.DefaultTenantID
 	}
 
+	action := info.Action
+	if action == "" {
+		action = "grpc/unary"
+	}
+
 	return &governance.GovernanceRequest{
 		RequestID: uuid.New().String(),
 		Transport: governance.TransportGRPC,
 		AgentID:   agentID,
 		TenantID:  tenantID,
 		ToolName:  info.Method,
-		Action:    "grpc/unary",
+		Action:    action,
 		TraceID:   traceID,
 	}, nil
 }

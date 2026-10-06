@@ -28,6 +28,7 @@ fail_closed_transports:
 evidence:
   tests:
     - adapters/grpc/adapter_test.go
+    - adapters/grpc/stream_test.go
     - tests/adapter_conformance/grpc_conformance_test.go
   docs:
     - docs/adapters/GRPC.md

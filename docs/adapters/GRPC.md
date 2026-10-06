@@ -38,6 +38,8 @@ Trailer emission is best effort when the interceptor runs inside a real gRPC ser
 
 The adapter governs the initial unary request path only. Streaming RPC messages are not individually governed by this adapter. A deployment can claim production readiness for unary RPCs only if the interceptor is the sole path to the protected service and the deployment provides bypass evidence. Streaming workloads remain preview unless every message is individually routed through a governed interceptor with lifecycle tests.
 
+Currently, the adapter provides a `StreamInterceptor` to govern streaming RPCs. Unlike unary RPCs, streaming RPCs are governed per-message. Every incoming message on a client or bidirectional stream (`RecvMsg`) is parsed as a discrete request with the action `grpc/stream-recv` and evaluated against the pipeline. If a message is denied by policy or causes an evaluator error, the stream is immediately terminated with `PermissionDenied` and a governance status trailer is emitted. Subsequent messages are not delivered to the handler. Unary behavior is unchanged. The adapter remains preview pending bypass evidence for the reference topology (FUL-643).
+
 ## Bypass Model
 
 Governance applies when clients reach the service through the Boundary gRPC interceptor. Direct access to the underlying gRPC service, a second unguarded listener, sidecar escape path, or service mesh route that skips the interceptor bypasses Boundary.

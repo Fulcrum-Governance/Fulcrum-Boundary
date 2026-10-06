@@ -1,0 +1,13 @@
+syntax = "proto3";
+package grpc;
+option go_package = "github.com/fulcrum-governance/fulcrum-boundary/adapters/grpc";
+
+service StreamSvc {
+  rpc ClientStream(stream Msg) returns (Msg);
+  rpc ServerStream(Msg) returns (stream Msg);
+  rpc BidiStream(stream Msg) returns (stream Msg);
+}
+
+message Msg {
+  string content = 1;
+}
