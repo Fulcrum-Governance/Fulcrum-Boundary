@@ -1,16 +1,17 @@
 package hookboundary_test
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
 
 func TestHookEscapeClasses(t *testing.T) {
 	tests := []struct {
-		name       string
-		command    string
+		name        string
+		command     string
 		wantVerdict string
-		isBypass   bool // document whether this is an enforced escape or a bypass
+		isBypass    bool // document whether this is an enforced escape or a bypass
 	}{
 		// Enforced nested shells
 		{"sh -c", "sh -c 'rm -rf /'", "deny", false},
@@ -42,7 +43,14 @@ func TestHookEscapeClasses(t *testing.T) {
 		{"alias definition", "alias r=rm; r -rf /", "ask", false}, // alias definition is ask, usage is not blocked unless name matches
 
 		// Absolute path binaries
-		{"absolute binary", "/bin/rm -rf /", "deny", false}, // Needs fix
+		{"absolute binary /bin/rm", "/bin/rm -rf /", "deny", false},
+		{"absolute binary /usr/bin/rm", "/usr/bin/rm -rf /", "deny", false},
+		{"absolute binary ./rm", "./rm -rf /", "ask", false}, // Unknown absolute path
+		{"absolute binary /tmp/x/ls", "/tmp/x/ls", "ask", false},
+		{"absolute binary path traversal /usr/bin/../../tmp/x/cat", "/usr/bin/../../tmp/x/cat", "ask", false}, // Traversal is cleaned and rejected
+		{"absolute binary trick /usr/bin/./rm", "/usr/bin/./rm -rf /", "deny", false},                         // dot is cleaned and denied like rm
+		{"absolute binary trick /usr/bin//rm", "/usr/bin//rm -rf /", "deny", false},                           // duplicate slash is cleaned and denied like rm
+		{"absolute binary trick /usr/bin/subdir/rm", "/usr/bin/subdir/rm -rf /", "ask", false},                // Not directly inside bin dirs
 
 		// Writes to Boundary binary/config/policy (Self-protection)
 		{"write to boundary config", "echo 'x' > .claude/settings.json", "deny", false},
@@ -52,8 +60,18 @@ func TestHookEscapeClasses(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			dir := t.TempDir()
-			code, stdout, stderr := runHook(t, dir,
-				`{"tool_name":"Bash","tool_input":{"command": "`+tt.command+`"}}`)
+
+			eventBytes, err := json.Marshal(map[string]any{
+				"tool_name": "Bash",
+				"tool_input": map[string]string{
+					"command": tt.command,
+				},
+			})
+			if err != nil {
+				t.Fatalf("marshal event: %v", err)
+			}
+
+			code, stdout, stderr := runHook(t, dir, string(eventBytes))
 
 			if code != 0 {
 				t.Fatalf("exit = %d, want 0\nstdout:\n%s\nstderr:\n%s", code, stdout, stderr)
@@ -72,8 +90,18 @@ func TestHookEscapeClasses(t *testing.T) {
 	// Also test an unmatched tool class as a documented bypass
 	t.Run("unmatched tool class", func(t *testing.T) {
 		dir := t.TempDir()
-		code, stdout, _ := runHook(t, dir,
-			`{"tool_name":"UnknownTool","tool_input":{"command": "rm -rf /"}}`)
+
+		eventBytes, err := json.Marshal(map[string]any{
+			"tool_name": "UnknownTool",
+			"tool_input": map[string]string{
+				"command": "rm -rf /",
+			},
+		})
+		if err != nil {
+			t.Fatalf("marshal event: %v", err)
+		}
+
+		code, stdout, _ := runHook(t, dir, string(eventBytes))
 
 		if code != 0 {
 			t.Fatalf("exit = %d, want 0", code)

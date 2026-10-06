@@ -1,7 +1,5 @@
 # Boundary Enforcement Report
 
-Your agent is about to touch a real system. Boundary decides whether that action is allowed before the privileged tool executes, provided the agent's route is governed by Boundary.
-
 This report details the explicit coverage of the Claude Code `PreToolUse` hook path, what it enforces before execution, what it denies fail-closed, what it records, and what remains operator responsibility.
 
 ## Governed Routes
@@ -10,19 +8,23 @@ Boundary decides the proposed action only when the agent's route to the tool pas
 
 **Routed Tool Classes:**
 These tool classes match the hook configuration and are routed to Boundary for a pre-execution verdict:
-- `Bash`, `bash`, `Shell`, `shell`
-- `Edit`, `Write`, `MultiEdit`, `NotebookEdit`
+- `Bash`
+- `Edit`
+- `Write`
+- `MultiEdit`
+- `NotebookEdit`
 
-**Not Routed:**
+**Partially Routed / Not Routed:**
 Tools not routed to Boundary are bypass paths. They execute un-governed and leave no decision record:
+- Unmatched aliases like `bash`, `Shell`, `shell` are not routed by the plugin but would be supported if matched.
 - `Read`, `WebFetch`, `Grep`, `Glob`, `Task`
-- MCP tools (e.g., `mcp__postgres__query`) and any other unmatched tool.
+- MCP tools (e.g., `mcp__postgres__query`, `mcp__Bash__run`) and any other unmatched tool.
 
 ## What Is Enforced Pre-Execution
 
 For the **routed** tool classes, Boundary makes a verdict before execution:
 
-- **Command Decomposing:** Command Boundary decomposes the proposed action into segments (e.g., `&&`, `||`, pipes) and nested shells (`sh -c`, `bash -c`, command substitutions, backticks), applying the most restrictive verdict among all discovered segments.
+- **Command Decomposing:** Command Boundary decomposes the proposed action into segments (e.g., `&&`, `||`, pipes) and nested shells (`sh -c`, `bash -c`, command substitutions, backticks). It takes the most restrictive verdict among all discovered segments.
 - **Escape Classes Enforced:** The hook explicitly classifies and denies indirection patterns like `env`, `xargs`, `find -exec`, absolute paths (e.g., `/bin/rm`), and tested nested evaluation forms.
 - **Undecomposable Lines:** Commands that the tokenizer cannot safely model (e.g., here-docs, `alias` definitions, `eval`) are flagged as undecomposable. They escalate to require approval (`ask`) and are never allowed silently.
 
@@ -32,7 +34,8 @@ The request is denied fail-closed under specific conditions:
 
 - **Self-Protection:** Writes to Boundary's own binaries, configurations, or policy records (e.g., `.claude/settings.json`, `.claude/hooks/pretooluse.sh`) are strictly denied before the files are touched.
 - **Indeterminate Checks:** When a synchronous policy, budget, or trust check cannot produce a valid result (e.g., timeout, cancellation, missing identity), the outcome is `CHECK_INDETERMINATE`. It blocks execution rather than allowing it.
-- **Missing Binaries:** If the Boundary binary is missing or cannot execute the classification, the fail-closed transport ensures the action is blocked.
+
+*Note: Missing binaries or other hook faults default to `ask` per the `BOUNDARY_HOOK_FAILMODE` mechanism, enabling the user to approve rather than fail-closed.*
 
 ## What Is Recorded
 
