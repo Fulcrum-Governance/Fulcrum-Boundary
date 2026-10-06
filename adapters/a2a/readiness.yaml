@@ -30,11 +30,13 @@ evidence:
     - adapters/a2a/adapter_test.go
     - tests/adapters/a2a_lifecycle_test.go
     - tests/adapter_conformance/a2a_conformance_test.go
+    - tests/adapter_conformance/a2a_live_conformance_test.go
   docs:
     - docs/adapters/A2A.md
     - docs/adapters/A2A_PROTOCOL_SNAPSHOT.md
+    - docs/adapters/A2A_CONFORMANCE.md
     - docs/ADAPTER_READINESS_MATRIX.md
 gaps:
   - id: BND-A2A-002
-    description: "Preview remains below production until live A2A protocol conformance and deployment bypass evidence are recorded."
+    description: "Preview remains below production until deployment bypass evidence is recorded."
     spec: "SPEC 4"

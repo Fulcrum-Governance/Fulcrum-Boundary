@@ -100,7 +100,7 @@ func envelopeFromLegacy(msg *TaskMessage) *TaskEnvelope {
 }
 
 func envelopeFromJSONRPC(rpc jsonRPCRequest) (*TaskEnvelope, error) {
-	if rpc.Method != "message/send" && rpc.Method != "tasks/send" {
+	if rpc.Method != "message/send" && rpc.Method != "tasks/send" && rpc.Method != "message/stream" {
 		return nil, governance.NewParseError(governance.TransportA2A, fmt.Sprintf("unsupported A2A method %q", rpc.Method), nil)
 	}
 	var params messageSendParams
