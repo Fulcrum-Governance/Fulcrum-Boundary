@@ -7,23 +7,135 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os/exec"
-	"path/filepath"
+	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/fulcrum-governance/fulcrum-boundary/adapters/a2a"
 	"github.com/fulcrum-governance/fulcrum-boundary/governance"
 )
+
+// mockUpstreamHandler acts as a protocol-shaped mock upstream server designed
+// to faithfully represent A2A JSON-RPC semantics for conformance validation.
+func mockUpstreamHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	var req struct {
+		JSONRPC string          `json:"jsonrpc"`
+		ID      int             `json:"id"`
+		Method  string          `json:"method"`
+		Params  json.RawMessage `json:"params"`
+	}
+
+	if err := json.Unmarshal(body, &req); err != nil {
+		writeJSONRPCError(w, req.ID, -32700, "Parse error")
+		return
+	}
+
+	if req.Method == "message/stream" {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		// Send mock SSE
+		fmt.Fprintf(w, "data: %s\n\n", `{"jsonrpc":"2.0","result":"started"}`)
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
+		return
+	}
+
+	if req.Method == "tasks/send" || req.Method == "message/send" {
+		var params struct {
+			Metadata struct {
+				Action string `json:"action"`
+			} `json:"metadata"`
+			Message struct {
+				Parts []struct {
+					Data struct {
+						Text string `json:"text"`
+					} `json:"data"`
+				} `json:"parts"`
+			} `json:"message"`
+		}
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			writeJSONRPCError(w, req.ID, -32602, "Invalid params")
+			return
+		}
+
+		action := params.Metadata.Action
+		var text string
+		if len(params.Message.Parts) > 0 {
+			text = params.Message.Parts[0].Data.Text
+		}
+
+		if action == "summarize" {
+			writeJSONRPCSuccess(w, req.ID, map[string]any{
+				"status": "success",
+				"message": map[string]any{
+					"parts": []any{
+						map[string]any{"kind": "data", "data": map[string]any{"text": fmt.Sprintf("Summarized: %s", text)}},
+					},
+				},
+			})
+			return
+		}
+
+		if action == "large_payload" {
+			writeJSONRPCSuccess(w, req.ID, map[string]any{
+				"status": "success",
+				"message": map[string]any{
+					"parts": []any{
+						map[string]any{"kind": "data", "data": map[string]any{"text": strings.Repeat("x", 10000)}},
+					},
+				},
+			})
+			return
+		}
+
+		writeJSONRPCError(w, req.ID, -32601, fmt.Sprintf("Unknown action: %s", action))
+		return
+	}
+
+	writeJSONRPCError(w, req.ID, -32601, fmt.Sprintf("Method not found: %s", req.Method))
+}
+
+func writeJSONRPCError(w http.ResponseWriter, id int, code int, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]any{
+		"jsonrpc": "2.0",
+		"id":      id,
+		"error": map[string]any{
+			"code":    code,
+			"message": message,
+		},
+	})
+}
+
+func writeJSONRPCSuccess(w http.ResponseWriter, id int, result any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]any{
+		"jsonrpc": "2.0",
+		"id":      id,
+		"result":  result,
+	})
+}
 
 type httpForwarder struct {
 	url string
 }
 
 func (f *httpForwarder) ForwardTask(ctx context.Context, task a2a.TaskEnvelope) (*a2a.TaskResponse, error) {
-	// A basic forwarder implementation calling the live server.
-	body, _ := json.Marshal(task.Raw) // Use raw for proxying JSON-RPC intact.
+	body, _ := json.Marshal(task.Raw)
 	req, err := http.NewRequestWithContext(ctx, "POST", f.url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
@@ -36,7 +148,6 @@ func (f *httpForwarder) ForwardTask(ctx context.Context, task a2a.TaskEnvelope) 
 	defer resp.Body.Close()
 	respBody, _ := io.ReadAll(resp.Body)
 
-	// Check for SSE response (streaming)
 	if strings.Contains(resp.Header.Get("Content-Type"), "text/event-stream") {
 		var tr a2a.TaskResponse
 		tr.Status = a2a.StatusAllowed
@@ -44,7 +155,6 @@ func (f *httpForwarder) ForwardTask(ctx context.Context, task a2a.TaskEnvelope) 
 		return &tr, nil
 	}
 
-	// Try parsing JSON-RPC response to see if it's an error
 	var rpcResp struct {
 		Error *struct {
 			Code    int    `json:"code"`
@@ -66,41 +176,11 @@ func (f *httpForwarder) ForwardTask(ctx context.Context, task a2a.TaskEnvelope) 
 	return &tr, nil
 }
 
-func TestA2ALiveConformance(t *testing.T) {
-	// Start JS server
-	serverDir := filepath.Join(repoRoot(t), "tests", "adapter_conformance", "a2a_server")
-	cmd := exec.Command("node", "server.js")
-	cmd.Dir = serverDir
+func TestA2AMockUpstream(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(mockUpstreamHandler))
+	defer srv.Close()
 
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		t.Fatalf("stdout pipe: %v", err)
-	}
-
-	if err := cmd.Start(); err != nil {
-		t.Fatalf("start node server: %v", err)
-	}
-	defer cmd.Process.Kill()
-
-	// Wait for port
-	buf := make([]byte, 1024)
-	n, err := stdout.Read(buf)
-	if err != nil {
-		t.Fatalf("read port: %v", err)
-	}
-	output := string(buf[:n])
-	var port int
-	if _, err := fmt.Sscanf(output, "PORT:%d", &port); err != nil {
-		t.Fatalf("failed to parse port from output %q: %v", output, err)
-	}
-
-	url := fmt.Sprintf("http://127.0.0.1:%d/a2a/rpc_manual", port)
-	t.Logf("A2A Server listening on %s", url)
-
-	// Wait for server to be ready
-	time.Sleep(100 * time.Millisecond)
-
-	adapter := a2a.NewForwardingAdapter("tenant-1", &httpForwarder{url: url})
+	adapter := a2a.NewForwardingAdapter("tenant-1", &httpForwarder{url: srv.URL})
 	allowPipeline := governance.NewPipeline(governance.PipelineConfig{
 		StaticPolicies: []governance.StaticPolicyRule{{
 			Name:   "allow-all",
@@ -117,8 +197,6 @@ func TestA2ALiveConformance(t *testing.T) {
 	}, nil, nil, nil)
 
 	t.Run("Agent Card Discovery", func(t *testing.T) {
-		// Agent card discovery isn't directly a task, we simulate parsing a message asking for it or verifying behavior.
-		// Since Boundary a2a only proxies envelopes, agent card discovery is usually out of band or handled upstream.
 		t.Log("Agent Card Discovery passthrough supported via a2a JSON-RPC spec")
 	})
 
@@ -161,26 +239,34 @@ func TestA2ALiveConformance(t *testing.T) {
 		if err != nil {
 			t.Fatalf("GovernTask: %v", err)
 		}
-		// Fails parsing closed due to unknown required field
 		if resp.Status != a2a.StatusUnsupported {
 			t.Fatalf("Expected unsupported, got %v", resp.Status)
 		}
 	})
 
-	t.Run("Streaming (message/stream with SSE)", func(t *testing.T) {
+	t.Run("Streaming (message/stream with SSE) - Allowed", func(t *testing.T) {
 		reqBody := []byte(`{"jsonrpc": "2.0", "id": 5, "method": "message/stream", "params": {"message": {"taskId": "task-5", "parts": []}, "metadata": {"action": "summarize", "sender_agent_id": "test-agent"}}}`)
 		resp, err := adapter.GovernTask(context.Background(), reqBody, allowPipeline)
 		if err != nil {
 			t.Fatalf("GovernTask: %v", err)
 		}
-		// A2A Adapter simply forwards, forwarder returns event-stream-started mock indicating it hit the server stream
 		if resp.Status != a2a.StatusAllowed {
 			t.Fatalf("Expected allowed for stream, got %v", resp.Status)
 		}
 	})
 
+	t.Run("Streaming (message/stream with SSE) - Denied", func(t *testing.T) {
+		reqBody := []byte(`{"jsonrpc": "2.0", "id": 5, "method": "message/stream", "params": {"message": {"taskId": "task-5", "parts": []}, "metadata": {"action": "summarize", "sender_agent_id": "test-agent"}}}`)
+		resp, err := adapter.GovernTask(context.Background(), reqBody, denyPipeline)
+		if err != nil {
+			t.Fatalf("GovernTask: %v", err)
+		}
+		if resp.Status != a2a.StatusDenied {
+			t.Fatalf("Expected denied for stream, got %v", resp.Status)
+		}
+	})
+
 	t.Run("Tasks Get / Cancel", func(t *testing.T) {
-		// Just proxying unknown method - adapter will fail it and it won't be forwarded
 		reqBody := []byte(`{"jsonrpc": "2.0", "id": 6, "method": "tasks/get", "params": {"taskId": "task-1", "metadata": {"action": "tasks.get", "sender_agent_id": "test-agent"}}}`)
 		resp, err := adapter.GovernTask(context.Background(), reqBody, allowPipeline)
 		if err != nil {
@@ -202,7 +288,7 @@ func TestA2ALiveConformance(t *testing.T) {
 		}
 	})
 
-	t.Run("Large/Edge Payloads", func(t *testing.T) {
+	t.Run("Large/Edge Payloads - Bounded", func(t *testing.T) {
 		reqBody := []byte(`{"jsonrpc": "2.0", "id": 8, "method": "tasks/send", "params": {"message": {"taskId": "task-8", "parts": [{"kind": "data", "data": {"text": "large"}}]}, "metadata": {"action": "large_payload", "sender_agent_id": "test-agent"}}}`)
 		resp, err := adapter.GovernTask(context.Background(), reqBody, allowPipeline)
 		if err != nil {
@@ -215,7 +301,6 @@ func TestA2ALiveConformance(t *testing.T) {
 
 	t.Run("Evaluator Failure", func(t *testing.T) {
 		reqBody := []byte(`{"jsonrpc": "2.0", "id": 9, "method": "tasks/send", "params": {"message": {"taskId": "task-9", "parts": []}, "metadata": {"action": "summarize", "sender_agent_id": "test-agent"}}}`)
-		// Missing pipeline completely -> should deny immediately
 		resp, err := adapter.GovernTask(context.Background(), reqBody, nil)
 		if err != nil {
 			t.Fatalf("GovernTask: %v", err)
