@@ -54,6 +54,8 @@ const (
 	vectorExpectVerify       = "verify"
 	vectorRejectDuplicateKey = "reject:" + governance.RecordRejectDuplicateKey
 	vectorRejectTrailingData = "reject:" + governance.RecordRejectTrailingData
+	vectorRejectUnknownField = "reject:" + governance.RecordRejectUnknownField
+	vectorRejectParse        = "reject:" + governance.RecordRejectParse
 	vectorRejectHashMismatch = "reject:" + governance.RecordRejectHashMismatch
 )
 
@@ -576,6 +578,257 @@ func buildVectors(t *testing.T) []vector {
 `,
 		},
 		{
+			// A member the record schema does not define, smuggled beside
+			// the covered fields. The stored hash matches the record without
+			// the member, so a verifier that drops unknown members would
+			// accept forged content; the member set is closed, so every
+			// verifier must reject at ingest with unknown-field.
+			name:   "v1_unknown_field_toplevel",
+			why:    "member name outside the schema's closed set at top level: must be rejected as unknown-field, not dropped",
+			expect: vectorRejectUnknownField,
+			record: governance.DecisionRecordV1{
+				SchemaVersion: governance.DecisionRecordSchemaVersion,
+				EventType:     "governance_decision",
+				Timestamp:     ts,
+				Adapter:       governance.TransportMCP,
+				AgentID:       "agent-unknown-top",
+				Tool:          "query",
+				Action:        "allow",
+				Reason:        "extra top-level member must be rejected, not dropped before hashing",
+				DecisionMode:  governance.DecisionModeDeterministic,
+				RequestHash:   "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:    1,
+				TrustState:    "TRUSTED",
+			},
+			raw: `{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "@RECORD_ID@",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-unknown-top",
+  "tool": "query",
+  "action": "allow",
+  "reason": "extra top-level member must be rejected, not dropped before hashing",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "@DECISION_HASH@",
+  "trust_score": 1,
+  "trust_state": "TRUSTED",
+  "extra_field": "smuggled"
+}
+`,
+		},
+		{
+			// Same closed-set rule where the unknown member's value is a
+			// nested object rather than a scalar.
+			name:   "v1_unknown_field_nested_object",
+			why:    "member name outside the schema's closed set carrying a nested object: must be rejected as unknown-field",
+			expect: vectorRejectUnknownField,
+			record: governance.DecisionRecordV1{
+				SchemaVersion: governance.DecisionRecordSchemaVersion,
+				EventType:     "governance_decision",
+				Timestamp:     ts,
+				Adapter:       governance.TransportMCP,
+				AgentID:       "agent-unknown-obj",
+				Tool:          "query",
+				Action:        "allow",
+				Reason:        "extra member holding an object must be rejected, not dropped before hashing",
+				DecisionMode:  governance.DecisionModeDeterministic,
+				RequestHash:   "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:    1,
+				TrustState:    "TRUSTED",
+			},
+			raw: `{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "@RECORD_ID@",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-unknown-obj",
+  "tool": "query",
+  "action": "allow",
+  "reason": "extra member holding an object must be rejected, not dropped before hashing",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "@DECISION_HASH@",
+  "trust_score": 1,
+  "trust_state": "TRUSTED",
+  "extra_obj": {"injected": true, "nested": {"deep": 1}}
+}
+`,
+		},
+		{
+			// The closed-set rule applies inside execution_claim too: the
+			// claim's member names are fixed (upstream_called, executed,
+			// source), so a forged member must be rejected at any schema
+			// object position.
+			name:   "v2_unknown_field_execution_claim",
+			why:    "member name outside the closed set inside execution_claim: must be rejected as unknown-field at every schema object position",
+			expect: vectorRejectUnknownField,
+			record: governance.DecisionRecordV1{
+				SchemaVersion:   governance.DecisionRecordSchemaV2,
+				EventType:       "governance_decision",
+				Timestamp:       ts,
+				Adapter:         governance.TransportMCP,
+				AgentID:         "agent-unknown-claim",
+				Tool:            "github.create_or_update_file",
+				Action:          "deny",
+				Reason:          "extra member inside execution_claim must be rejected, not dropped before hashing",
+				DecisionMode:    governance.DecisionModeDeterministic,
+				MatchedRule:     "deny-github-write-after-taint-fixture",
+				RequestHash:     "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:      1,
+				TrustState:      "TRUSTED",
+				AdapterID:       "mcp-primary",
+				RouteID:         "route-github-write",
+				TopologyProfile: "single-route-forced",
+				ExecutionClaim: &governance.ExecutionClaim{
+					UpstreamCalled: false,
+					Executed:       true,
+					Source:         "mcp-adapter",
+				},
+			},
+			raw: `{
+  "schema_version": "2",
+  "event_type": "governance_decision",
+  "record_id": "@RECORD_ID@",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-unknown-claim",
+  "tool": "github.create_or_update_file",
+  "action": "deny",
+  "reason": "extra member inside execution_claim must be rejected, not dropped before hashing",
+  "decision_mode": "deterministic",
+  "matched_rule": "deny-github-write-after-taint-fixture",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "@DECISION_HASH@",
+  "trust_score": 1,
+  "trust_state": "TRUSTED",
+  "adapter_id": "mcp-primary",
+  "route_id": "route-github-write",
+  "topology_profile": "single-route-forced",
+  "execution_claim": {
+    "upstream_called": false,
+    "extra_claim_field": "forged",
+    "executed": true,
+    "source": "mcp-adapter"
+  }
+}
+`,
+		},
+		{
+			// NaN is not JSON (Python's stock decoder would otherwise accept
+			// it); every verifier must reject it as a parse error — the
+			// stored hash names the pre-corruption record.
+			name:   "v1_number_nan",
+			why:    "non-finite literal NaN is not JSON: must be rejected as parse-error, not decoded",
+			expect: vectorRejectParse,
+			record: governance.DecisionRecordV1{
+				SchemaVersion: governance.DecisionRecordSchemaVersion,
+				EventType:     "governance_decision",
+				Timestamp:     ts,
+				Adapter:       governance.TransportMCP,
+				AgentID:       "agent-nan",
+				Tool:          "query",
+				Action:        "warn",
+				Reason:        "NaN trust_score is unrepresentable in JCS",
+				DecisionMode:  governance.DecisionModeDeterministic,
+				RequestHash:   "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:    1,
+				TrustState:    "TRUSTED",
+			},
+			raw: `{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "@RECORD_ID@",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-nan",
+  "tool": "query",
+  "action": "warn",
+  "reason": "NaN trust_score is unrepresentable in JCS",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "@DECISION_HASH@",
+  "trust_score": NaN,
+  "trust_state": "TRUSTED"
+}
+`,
+		},
+		{
+			name:   "v1_number_infinity",
+			why:    "non-finite literal Infinity is not JSON: must be rejected as parse-error, not decoded",
+			expect: vectorRejectParse,
+			record: governance.DecisionRecordV1{
+				SchemaVersion: governance.DecisionRecordSchemaVersion,
+				EventType:     "governance_decision",
+				Timestamp:     ts,
+				Adapter:       governance.TransportMCP,
+				AgentID:       "agent-inf",
+				Tool:          "query",
+				Action:        "warn",
+				Reason:        "Infinity trust_score is unrepresentable in JCS",
+				DecisionMode:  governance.DecisionModeDeterministic,
+				RequestHash:   "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:    1,
+				TrustState:    "TRUSTED",
+			},
+			raw: `{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "@RECORD_ID@",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-inf",
+  "tool": "query",
+  "action": "warn",
+  "reason": "Infinity trust_score is unrepresentable in JCS",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "@DECISION_HASH@",
+  "trust_score": Infinity,
+  "trust_state": "TRUSTED"
+}
+`,
+		},
+		{
+			name:   "v1_number_neg_infinity",
+			why:    "non-finite literal -Infinity is not JSON: must be rejected as parse-error, not decoded",
+			expect: vectorRejectParse,
+			record: governance.DecisionRecordV1{
+				SchemaVersion: governance.DecisionRecordSchemaVersion,
+				EventType:     "governance_decision",
+				Timestamp:     ts,
+				Adapter:       governance.TransportMCP,
+				AgentID:       "agent-neginf",
+				Tool:          "query",
+				Action:        "warn",
+				Reason:        "-Infinity trust_score is unrepresentable in JCS",
+				DecisionMode:  governance.DecisionModeDeterministic,
+				RequestHash:   "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:    1,
+				TrustState:    "TRUSTED",
+			},
+			raw: `{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "@RECORD_ID@",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-neginf",
+  "tool": "query",
+  "action": "warn",
+  "reason": "-Infinity trust_score is unrepresentable in JCS",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "@DECISION_HASH@",
+  "trust_score": -Infinity,
+  "trust_state": "TRUSTED"
+}
+`,
+		},
+		{
 			name: "v2_route_context",
 			why:  "schema_version 2: route-context fields populated and covered by decision_hash; includes execution_claim self-report",
 			record: governance.DecisionRecordV1{
@@ -652,9 +905,11 @@ func TestVerifierVectors(t *testing.T) {
 			stored := storedDecisionHash(t, raw, vec.name)
 
 			switch expect {
-			case vectorRejectDuplicateKey, vectorRejectTrailingData:
-				// The Go verifier's ingest path must reject these bytes for
-				// the reason the manifest advertises.
+			case vectorRejectDuplicateKey, vectorRejectTrailingData,
+				vectorRejectUnknownField, vectorRejectParse:
+				// Ingest-stage rejections: the Go verifier's strict decode
+				// must refuse these bytes with the reason the manifest
+				// advertises — before any hash comparison runs.
 				if _, err := governance.DecodeDecisionRecord(raw); err == nil {
 					t.Fatalf("%s (%s): strict decode unexpectedly accepted the record; want %s", vec.name, vec.why, expect)
 				} else {

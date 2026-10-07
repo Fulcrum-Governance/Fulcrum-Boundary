@@ -34,6 +34,13 @@ schema_version "2" route-context fields `adapter_id`, `route_id`,
 `topology_profile`, `execution_claim` when present. `omitempty` fields appear
 in the preimage only when populated.
 
+The member set is closed: at every object position the schema defines — the
+top-level record (`DecisionRecordV1`) and the `execution_claim` object — a
+member name the schema does not declare is rejected at ingest with
+`unknown-field`, never dropped before hashing. A verifier that silently
+dropped unknown members would accept attacker-added content under a valid
+stored hash, which is exactly the bypass strict ingest exists to prevent.
+
 ## Outcome vocabulary
 
 The manifest's `expect` field is the machine-readable contract:
@@ -47,13 +54,25 @@ constants shared by all four verifiers.
 | `duplicate-key` | an object member name repeats at some depth |
 | `trailing-data` | non-whitespace bytes follow the top-level JSON value |
 | `not-object` | top-level value is not a JSON object |
-| `parse-error` | other malformed JSON |
+| `unknown-field` | member name outside the schema's closed set, at any schema-defined object position |
+| `parse-error` | other malformed JSON (including non-finite numbers and nesting beyond the decoder's depth limit) |
 | `read-error` | the record file could not be read |
 | `missing-hash` | `decision_hash` absent or empty |
 | `hash-mismatch` | recomputed hash differs from the stored value |
 | `schema-version` | unsupported `schema_version` |
 | `signature` | `--verify-signature` check failed (Go verifier only) |
 | `verify-fail` | any other verification failure |
+
+Reason precedence is part of the contract: when `decision_hash` is absent or
+empty, all four verifiers report `missing-hash` even if another
+verification-stage check (such as an unsupported `schema_version`) failed
+first — the class reports that there is nothing to recompute against, while
+the human-readable message names the first failing check. Nesting depth is
+bounded for fail-closed ingest: Go's decoder caps at 10,000 levels and the
+Python and TypeScript verifiers enforce the same published ceiling; inputs
+deeper than a verifier's own parser recursion limit (Python's interpreter
+ceiling, Rust's serde_json default of 128, the TypeScript scanner's call
+stack) are likewise classified `parse-error` rather than crashing.
 
 ## Parity results
 
@@ -66,6 +85,9 @@ constants shared by all four verifiers.
 | v1_escalate.json | ok | ok | ok | ok | ok |
 | v1_field_reordering.json | ok | ok | ok | ok | ok |
 | v1_float_trust_score.json | ok | ok | ok | ok | ok |
+| v1_number_infinity.json | parse-error | parse-error | parse-error | parse-error | parse-error |
+| v1_number_nan.json | parse-error | parse-error | parse-error | parse-error | parse-error |
+| v1_number_neg_infinity.json | parse-error | parse-error | parse-error | parse-error | parse-error |
 | v1_number_noncanonical.json | ok | ok | ok | ok | ok |
 | v1_reason_html_chars.json | ok | ok | ok | ok | ok |
 | v1_require_approval.json | ok | ok | ok | ok | ok |
@@ -73,9 +95,12 @@ constants shared by all four verifiers.
 | v1_trailing_data.json | trailing-data | trailing-data | trailing-data | trailing-data | trailing-data |
 | v1_unicode_escape_differs.json | hash-mismatch | hash-mismatch | hash-mismatch | hash-mismatch | hash-mismatch |
 | v1_unicode_escapes.json | ok | ok | ok | ok | ok |
+| v1_unknown_field_nested_object.json | unknown-field | unknown-field | unknown-field | unknown-field | unknown-field |
+| v1_unknown_field_toplevel.json | unknown-field | unknown-field | unknown-field | unknown-field | unknown-field |
 | v1_warn.json | ok | ok | ok | ok | ok |
 | v2_duplicate_keys_nested.json | duplicate-key | duplicate-key | duplicate-key | duplicate-key | duplicate-key |
 | v2_route_context.json | ok | ok | ok | ok | ok |
+| v2_unknown_field_execution_claim.json | unknown-field | unknown-field | unknown-field | unknown-field | unknown-field |
 
 ## Reproduce
 

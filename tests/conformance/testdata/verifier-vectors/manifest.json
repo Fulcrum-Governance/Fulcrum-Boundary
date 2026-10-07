@@ -44,6 +44,24 @@
       "why": "ECMAScript number formatting: non-trivial float64 trust_score (1.0/3.0) must serialize as 0.3333333333333333"
     },
     {
+      "file": "v1_number_infinity.json",
+      "decision_hash": "sha256:bd4c384273bd70c8807a70aa97749bff2909e107637494118836a8acf690b0de",
+      "expect": "reject:parse-error",
+      "why": "non-finite literal Infinity is not JSON: must be rejected as parse-error, not decoded"
+    },
+    {
+      "file": "v1_number_nan.json",
+      "decision_hash": "sha256:7695ccfa8ff94484c6bf68e70497ff0fd20f0959d65b4672be5e8f14244e1fe7",
+      "expect": "reject:parse-error",
+      "why": "non-finite literal NaN is not JSON: must be rejected as parse-error, not decoded"
+    },
+    {
+      "file": "v1_number_neg_infinity.json",
+      "decision_hash": "sha256:f1f6c7b18a3fdd06b6c468004f346768b9f55f27398c1d2230d00fca36ed5176",
+      "expect": "reject:parse-error",
+      "why": "non-finite literal -Infinity is not JSON: must be rejected as parse-error, not decoded"
+    },
+    {
       "file": "v1_number_noncanonical.json",
       "decision_hash": "sha256:22013199be078eaac39bd9f4db31af55fa3a7be506b5e4db6be115ae5f38d290",
       "expect": "verify",
@@ -86,6 +104,18 @@
       "why": "reason stored with every code point escaped (\\u00e9, surrogate pair, \\u003c): decodes to the same string, must verify"
     },
     {
+      "file": "v1_unknown_field_nested_object.json",
+      "decision_hash": "sha256:741367bd849c0b6ffad4e05480ab4eff556e6f031938ec9b7376eb2828fd373d",
+      "expect": "reject:unknown-field",
+      "why": "member name outside the schema's closed set carrying a nested object: must be rejected as unknown-field"
+    },
+    {
+      "file": "v1_unknown_field_toplevel.json",
+      "decision_hash": "sha256:5f20bb1890ee3848f30b9272a12af66cd2ca40f74710db3f1dd90148979ece8a",
+      "expect": "reject:unknown-field",
+      "why": "member name outside the schema's closed set at top level: must be rejected as unknown-field, not dropped"
+    },
+    {
       "file": "v1_warn.json",
       "decision_hash": "sha256:da32782017ae39dd2813b21f3be1072a42cd3b3b6af39bcae289dd50de12e46b",
       "expect": "verify",
@@ -102,6 +132,12 @@
       "decision_hash": "sha256:fc31166d1a013cf3cc1f65ad3db28a352f3706815e4080fac5997e14a5b7371a",
       "expect": "verify",
       "why": "schema_version 2: route-context fields populated and covered by decision_hash; includes execution_claim self-report"
+    },
+    {
+      "file": "v2_unknown_field_execution_claim.json",
+      "decision_hash": "sha256:4490acac51ad02d0e7f6ab3c3571e11b6acf9c33880f8b3d2311ee61ce28e31e",
+      "expect": "reject:unknown-field",
+      "why": "member name outside the closed set inside execution_claim: must be rejected as unknown-field at every schema object position"
     }
   ]
 }

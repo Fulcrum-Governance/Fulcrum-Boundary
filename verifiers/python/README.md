@@ -20,11 +20,14 @@ decision_hash mismatch: got sha256:… want sha256:…   # exit 1
 ```
 
 Input is parsed strictly: the file must hold exactly one JSON object, member
-names must be unique at every depth (no silent last-wins), and no bytes may
-follow the top-level value. On any failure the verifier also prints
-`reason=<code>` on stderr — the shared rejection vocabulary across the Go,
-Python, TypeScript, and Rust verifiers (`duplicate-key`, `trailing-data`,
-`hash-mismatch`, …; see [docs/VERIFIER_PARITY.md](../../docs/VERIFIER_PARITY.md)).
+names must be unique at every depth (no silent last-wins), member names must
+belong to the schema's closed set (unknown members are rejected, not dropped),
+non-finite numbers (`NaN`, `Infinity`, `-Infinity`) are rejected, nesting is
+depth-limited, and no bytes may follow the top-level value. On any failure the
+verifier also prints `reason=<code>` on stderr — the shared rejection
+vocabulary across the Go, Python, TypeScript, and Rust verifiers
+(`duplicate-key`, `trailing-data`, `unknown-field`, `hash-mismatch`, …; see
+[docs/VERIFIER_PARITY.md](../../docs/VERIFIER_PARITY.md)).
 
 ## What it checks
 

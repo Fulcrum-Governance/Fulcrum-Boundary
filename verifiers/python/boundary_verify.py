@@ -131,10 +131,34 @@ def verify_record(record: dict[str, Any]) -> tuple[bool, str]:
 _REASON_DUPLICATE_KEY = "duplicate-key"
 _REASON_TRAILING_DATA = "trailing-data"
 _REASON_NOT_OBJECT = "not-object"
+_REASON_UNKNOWN_FIELD = "unknown-field"
 _REASON_PARSE = "parse-error"
 _REASON_READ = "read-error"
 _REASON_MISSING_HASH = "missing-hash"
 _REASON_HASH_MISMATCH = "hash-mismatch"
+
+# The decision record's member set is closed: every object position the schema
+# defines accepts only the member names the Go type declares (mirrors
+# DecisionRecordV1 at the top level and ExecutionClaim inside
+# execution_claim). A verifier that dropped unknown members before hashing
+# would accept attacker-added content under a valid stored hash; the record is
+# rejected at ingest instead, matching Go's strict decode.
+_KNOWN_FIELDS = frozenset({
+    "schema_version", "event_type", "record_id", "timestamp",
+    "boundary_version", "boundary_build_digest", "adapter", "agent_id",
+    "tenant_id", "trace_id", "tool", "action", "reason", "decision_mode",
+    "matched_rule", "policy_file", "policy_bundle_hash", "request_hash",
+    "raw_shape_hash", "decision_hash", "trust_score", "trust_state",
+    "signature", "signature_key_id",
+    "adapter_id", "route_id", "topology_profile", "execution_claim",
+})
+
+_KNOWN_CLAIM_FIELDS = frozenset({"upstream_called", "executed", "source"})
+
+# Nesting ceiling mirroring Go's encoding/json decoder (which fails beyond
+# 10,000 levels). Inputs deeper than this are rejected with parse-error
+# without consuming the interpreter's recursion budget.
+_MAX_JSON_DEPTH = 10_000
 
 
 def _reject_duplicates(ordered_pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -153,28 +177,97 @@ def _reject_duplicates(ordered_pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return out
 
 
+def _reject_nonfinite(value: str) -> Any:
+    """JSON ``parse_constant`` hook rejecting non-finite numbers.
+
+    Python's stock decoder accepts ``NaN`` / ``Infinity`` / ``-Infinity`` —
+    nonstandard literals that RFC 8785 cannot represent, so canonicalization
+    raises ``rfc8785.FloatDomainError`` outside any error handler. Rejecting
+    them here keeps the failure on the parse path (reason=parse-error), as
+    the Go, TypeScript, and Rust verifiers already do.
+    """
+    raise ValueError(f"non-finite number: {value}")
+
+
+def _enforce_depth_limit(content: str) -> None:
+    """Reject input nested deeper than ``_MAX_JSON_DEPTH`` before decoding.
+
+    Iterative scan with no recursion, so input millions of levels deep is
+    rejected without exhausting the stack. Container openers inside string
+    literals are skipped (a ``"{"`` in a string is not structure). Inputs
+    below this cap may still exceed the interpreter's recursion ceiling;
+    ``_load_record`` maps that ``RecursionError`` to parse-error too.
+    """
+    depth = 0
+    in_string = False
+    escaped = False
+    for ch in content:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+        elif ch == "{" or ch == "[":
+            depth += 1
+            if depth > _MAX_JSON_DEPTH:
+                raise ValueError(
+                    f"JSON nesting exceeds the {_MAX_JSON_DEPTH}-level limit"
+                )
+        elif ch == "}" or ch == "]":
+            depth -= 1
+
+
 def _load_record(path: str) -> dict[str, Any]:
     """Load and minimally validate a decision-record JSON file at ``path``.
 
     Strict ingest: the file must hold exactly one JSON object with unique
-    member names at every depth, and no bytes may follow the top-level value.
+    member names at every depth, every member name must belong to the
+    schema's closed member set, no bytes may follow the top-level value,
+    non-finite numbers are rejected, and nesting is depth-limited.
     """
     with open(path, "r", encoding="utf-8") as handle:
         content = handle.read()
 
+    _enforce_depth_limit(content)
+
     # JSONDecoder.decode parses exactly one value (skipping surrounding
     # whitespace) and raises on trailing non-whitespace itself;
-    # object_pairs_hook rejects duplicate member names at every depth.
-    decoder = json.JSONDecoder(object_pairs_hook=_reject_duplicates)
+    # object_pairs_hook rejects duplicate member names at every depth, and
+    # parse_constant rejects the non-finite literals the stock decoder would
+    # otherwise accept.
+    decoder = json.JSONDecoder(
+        object_pairs_hook=_reject_duplicates,
+        parse_constant=_reject_nonfinite,
+    )
     try:
         data = decoder.decode(content)
     except json.JSONDecodeError as err:
         if err.msg == "Extra data":
             raise ValueError("trailing data after JSON value") from err
         raise
+    except RecursionError as err:
+        # Nesting inside the cap can still exceed the interpreter's
+        # recursion ceiling; classify it the same as crossing the cap.
+        raise ValueError("JSON nesting exceeds the decoder's recursion limit") from err
 
     if not isinstance(data, dict):
         raise ValueError("decision record must be a JSON object")
+
+    unknown = sorted(set(data) - _KNOWN_FIELDS)
+    if unknown:
+        raise ValueError(f"unknown field: {unknown[0]}")
+    claim = data.get("execution_claim")
+    if isinstance(claim, dict):
+        unknown_claim = sorted(set(claim) - _KNOWN_CLAIM_FIELDS)
+        if unknown_claim:
+            raise ValueError(
+                f"unknown field: execution_claim.{unknown_claim[0]}"
+            )
     return data
 
 
@@ -187,6 +280,8 @@ def _load_error_reason(err: BaseException) -> str:
         return _REASON_DUPLICATE_KEY
     if message.startswith("trailing data"):
         return _REASON_TRAILING_DATA
+    if message.startswith("unknown field:"):
+        return _REASON_UNKNOWN_FIELD
     if "must be a JSON object" in message:
         return _REASON_NOT_OBJECT
     return _REASON_PARSE
@@ -219,7 +314,14 @@ def main(argv: list[str]) -> int:
         sys.stderr.write(f"reason={_load_error_reason(err)}\n")
         return 1
 
-    ok, message = verify_record(record)
+    try:
+        ok, message = verify_record(record)
+    except RecursionError as err:
+        # Canonicalization recurses; a record that survived load but exceeds
+        # the stack during hashing fails closed with a classified reason.
+        sys.stderr.write(f"error: could not verify {path}: {err}\n")
+        sys.stderr.write(f"reason={_REASON_PARSE}\n")
+        return 1
     print(message)
     if not ok:
         sys.stderr.write(f"reason={_verify_error_reason(message)}\n")

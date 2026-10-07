@@ -24,10 +24,12 @@ decision_hash mismatch: got sha256:… want sha256:…              # exit 1
 Multiple files can be passed; the process exits 1 if any record fails.
 
 Input is parsed strictly: the file must hold exactly one JSON object, member
-names must be unique at every depth (no silent last-wins), and no bytes may
-follow the top-level value. On any failure the verifier also prints
-`reason=<code>` on stderr — the shared rejection vocabulary across the Go,
-Python, TypeScript, and Rust verifiers (see
+names must be unique at every depth (no silent last-wins), member names must
+belong to the schema's closed set (unknown members are rejected, not dropped),
+and nesting is bounded by serde_json's recursion limit; no bytes may follow
+the top-level value. On any failure the verifier also prints `reason=<code>`
+on stderr — the shared rejection vocabulary across the Go, Python, TypeScript,
+and Rust verifiers (see
 [docs/VERIFIER_PARITY.md](../../docs/VERIFIER_PARITY.md)).
 
 ## What it checks

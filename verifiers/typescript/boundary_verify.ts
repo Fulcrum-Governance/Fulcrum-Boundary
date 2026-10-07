@@ -66,13 +66,43 @@ type DecisionRecord = Record<string, unknown>;
 const REASON_DUPLICATE_KEY = 'duplicate-key';
 const REASON_TRAILING_DATA = 'trailing-data';
 const REASON_NOT_OBJECT = 'not-object';
+const REASON_UNKNOWN_FIELD = 'unknown-field';
 const REASON_PARSE = 'parse-error';
 const REASON_READ = 'read-error';
 const REASON_MISSING_HASH = 'missing-hash';
 const REASON_HASH_MISMATCH = 'hash-mismatch';
 
+/**
+ * The decision record's member set is closed: every object position the
+ * schema defines accepts only the member names the Go type declares
+ * (DecisionRecordV1 at the top level, ExecutionClaim inside
+ * execution_claim). A verifier that dropped unknown members before hashing
+ * would accept attacker-added content under a valid stored hash; the record
+ * is rejected at ingest instead, matching Go's strict decode.
+ */
+const KNOWN_FIELDS = new Set([
+  'schema_version', 'event_type', 'record_id', 'timestamp',
+  'boundary_version', 'boundary_build_digest', 'adapter', 'agent_id',
+  'tenant_id', 'trace_id', 'tool', 'action', 'reason', 'decision_mode',
+  'matched_rule', 'policy_file', 'policy_bundle_hash', 'request_hash',
+  'raw_shape_hash', 'decision_hash', 'trust_score', 'trust_state',
+  'signature', 'signature_key_id',
+  'adapter_id', 'route_id', 'topology_profile', 'execution_claim',
+]);
+
+const KNOWN_CLAIM_FIELDS = new Set(['upstream_called', 'executed', 'source']);
+
+/**
+ * Nesting ceiling mirroring Go's encoding/json decoder (which fails beyond
+ * 10,000 levels). Inputs deeper than this are rejected with parse-error
+ * before JSON.parse or canonicalization can exhaust the call stack.
+ */
+const MAX_JSON_DEPTH = 10_000;
+
 class DuplicateKeyError extends Error {}
 class TrailingDataError extends Error {}
+class UnknownFieldError extends Error {}
+class DepthLimitError extends Error {}
 
 const JSON_ESCAPES: Record<string, string> = {
   '"': '"',
@@ -142,8 +172,11 @@ function assertStrictJson(raw: string): void {
     throw new Error('unterminated string');
   };
 
-  const readValue = (): void => {
+  const readValue = (depth: number): void => {
     skipWs();
+    if (depth > MAX_JSON_DEPTH) {
+      throw new DepthLimitError(`JSON nesting exceeds the ${MAX_JSON_DEPTH}-level limit`);
+    }
     const c = raw[i];
     if (c === '{') {
       i++;
@@ -166,7 +199,7 @@ function assertStrictJson(raw: string): void {
           return;
         }
         i++;
-        readValue();
+        readValue(depth + 1);
         if (bailed) return;
         skipWs();
         if (raw[i] === ',') {
@@ -189,7 +222,7 @@ function assertStrictJson(raw: string): void {
         return;
       }
       for (;;) {
-        readValue();
+        readValue(depth + 1);
         if (bailed) return;
         skipWs();
         if (raw[i] === ',') {
@@ -212,15 +245,22 @@ function assertStrictJson(raw: string): void {
   };
 
   try {
-    readValue();
+    readValue(0);
     skipWs();
     if (!bailed && i < n) {
       throw new TrailingDataError('trailing data after JSON value');
     }
   } catch (err) {
-    // Only the two affirmative rejections propagate; on anything else the
-    // input is malformed in a way JSON.parse will describe precisely.
-    if (err instanceof DuplicateKeyError || err instanceof TrailingDataError) {
+    // The affirmative rejections propagate, and so does a RangeError — the
+    // scanner itself can exhaust the call stack on hostile input below the
+    // MAX_JSON_DEPTH cap, and swallowing it would misreport the failure.
+    // Anything else stays with JSON.parse, which reports it precisely.
+    if (
+      err instanceof DuplicateKeyError ||
+      err instanceof TrailingDataError ||
+      err instanceof DepthLimitError ||
+      err instanceof RangeError
+    ) {
       throw err;
     }
   }
@@ -230,6 +270,8 @@ function assertStrictJson(raw: string): void {
 function loadErrorReason(err: unknown): string {
   if (err instanceof DuplicateKeyError) return REASON_DUPLICATE_KEY;
   if (err instanceof TrailingDataError) return REASON_TRAILING_DATA;
+  if (err instanceof UnknownFieldError) return REASON_UNKNOWN_FIELD;
+  if (err instanceof DepthLimitError) return REASON_PARSE;
   const message = err instanceof Error ? err.message : String(err);
   if (message.includes('must be a JSON object')) return REASON_NOT_OBJECT;
   if (
@@ -297,6 +339,10 @@ export function verifyRecord(record: DecisionRecord): [boolean, string] {
 
 /**
  * Load and minimally validate a decision-record JSON file at `path`.
+ *
+ * Strict ingest: exactly one JSON object, unique member names at every
+ * depth, member names confined to the schema's closed member set, no
+ * trailing bytes, and nesting capped at MAX_JSON_DEPTH.
  */
 function loadRecord(path: string): DecisionRecord {
   const raw = readFileSync(path, 'utf8');
@@ -304,6 +350,19 @@ function loadRecord(path: string): DecisionRecord {
   const data: unknown = JSON.parse(raw);
   if (typeof data !== 'object' || data === null || Array.isArray(data)) {
     throw new Error('decision record must be a JSON object');
+  }
+  for (const key of Object.keys(data)) {
+    if (!KNOWN_FIELDS.has(key)) {
+      throw new UnknownFieldError(`unknown field: ${key}`);
+    }
+  }
+  const claim = (data as DecisionRecord)['execution_claim'];
+  if (typeof claim === 'object' && claim !== null && !Array.isArray(claim)) {
+    for (const key of Object.keys(claim)) {
+      if (!KNOWN_CLAIM_FIELDS.has(key)) {
+        throw new UnknownFieldError(`unknown field: execution_claim.${key}`);
+      }
+    }
   }
   return data as DecisionRecord;
 }
@@ -332,7 +391,20 @@ function main(): number {
       continue;
     }
 
-    const [ok, message] = verifyRecord(record);
+    let ok: boolean;
+    let message: string;
+    try {
+      [ok, message] = verifyRecord(record);
+    } catch (err) {
+      // Canonicalization can still exhaust the stack on inputs that passed
+      // the depth cap (the JCS library recurses); fail closed with a
+      // classified reason rather than an uncaught exception.
+      const msg = err instanceof Error ? err.message : String(err);
+      stderr.write(`error: could not verify ${path}: ${msg}\n`);
+      stderr.write(`reason=${err instanceof RangeError ? REASON_PARSE : 'verify-fail'}\n`);
+      allOk = false;
+      continue;
+    }
     stdout.write(message + '\n');
     if (!ok) {
       stderr.write(`reason=${verifyErrorReason(message)}\n`);

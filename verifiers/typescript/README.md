@@ -22,10 +22,11 @@ decision_hash mismatch: got sha256:… want sha256:…   # exit 1
 Multiple records can be passed; the exit code is 0 only if all pass.
 
 Input is parsed strictly: the file must hold exactly one JSON object, member
-names must be unique at every depth (no silent last-wins), and no bytes may
-follow the top-level value. On any failure the verifier also prints
-`reason=<code>` on stderr — the shared rejection vocabulary across the Go,
-Python, TypeScript, and Rust verifiers (see
+names must be unique at every depth (no silent last-wins), member names must
+belong to the schema's closed set (unknown members are rejected, not dropped),
+and nesting is depth-limited; no bytes may follow the top-level value. On any
+failure the verifier also prints `reason=<code>` on stderr — the shared
+rejection vocabulary across the Go, Python, TypeScript, and Rust verifiers (see
 [docs/VERIFIER_PARITY.md](../../docs/VERIFIER_PARITY.md)).
 
 ## Node version notes

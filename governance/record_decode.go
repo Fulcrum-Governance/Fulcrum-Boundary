@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 )
 
 // Machine-readable decision-record rejection classes. These strings are the
@@ -25,6 +26,13 @@ const (
 	// RecordRejectNotJSONObject marks input whose top-level value is not a
 	// JSON object.
 	RecordRejectNotJSONObject = "not-object"
+	// RecordRejectUnknownField marks a member name that the decision-record
+	// schema does not define, in any object: the record's member set is
+	// closed (DecisionRecordV1 at the top level, ExecutionClaim inside
+	// execution_claim). A verifier that dropped unknown members before
+	// hashing would accept attacker-added content under a valid stored hash,
+	// so the record is rejected at ingest instead.
+	RecordRejectUnknownField = "unknown-field"
 	// RecordRejectParse marks any other malformed JSON input.
 	RecordRejectParse = "parse-error"
 	// RecordRejectRead marks a record file that could not be read at all.
@@ -53,6 +61,9 @@ var (
 	ErrTrailingJSONData = errors.New("trailing data after JSON value")
 	// ErrRecordNotJSONObject marks a top-level value that is not a JSON object.
 	ErrRecordNotJSONObject = errors.New("decision record must be a JSON object")
+	// ErrUnknownObjectMember marks a member name outside the record schema's
+	// closed member set, at any object position the schema defines.
+	ErrUnknownObjectMember = errors.New("unknown object member")
 )
 
 // RecordRejectReason maps a DecodeDecisionRecord error to its machine-readable
@@ -66,6 +77,8 @@ func RecordRejectReason(err error) string {
 		return RecordRejectTrailingData
 	case errors.Is(err, ErrRecordNotJSONObject):
 		return RecordRejectNotJSONObject
+	case errors.Is(err, ErrUnknownObjectMember):
+		return RecordRejectUnknownField
 	default:
 		return RecordRejectParse
 	}
@@ -73,10 +86,13 @@ func RecordRejectReason(err error) string {
 
 // DecodeDecisionRecord parses decision-record JSON bytes into a
 // DecisionRecordV1 with strict ingest semantics: the input must be a single
-// JSON object, every object at any depth must have unique member names, and no
-// bytes may follow the top-level value. Go's encoding/json silently keeps the
-// last duplicate member, which would let one byte stream carry two different
-// verdicts; this decode rejects that ambiguity before the record is verified.
+// JSON object, every object at any depth must have unique member names, no
+// bytes may follow the top-level value, and every member name must belong to
+// the schema's closed member set (DecisionRecordV1 at the top level,
+// ExecutionClaim inside execution_claim). Go's encoding/json silently keeps
+// the last duplicate member and silently drops members that have no struct
+// field — either would let one byte stream carry content the verifier's hash
+// never covered; this decode rejects both before the record is verified.
 // Classification of a failure is available via RecordRejectReason.
 func DecodeDecisionRecord(body []byte) (DecisionRecordV1, error) {
 	var record DecisionRecordV1
@@ -87,7 +103,15 @@ func DecodeDecisionRecord(body []byte) (DecisionRecordV1, error) {
 	if len(trimmed) == 0 || trimmed[0] != '{' {
 		return record, ErrRecordNotJSONObject
 	}
-	if err := json.Unmarshal(body, &record); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&record); err != nil {
+		// encoding/json reports a member outside the struct's field set as
+		// `json: unknown field "name"`; classify it as the shared
+		// unknown-field rejection instead of the generic parse-error class.
+		if strings.HasPrefix(err.Error(), "json: unknown field") {
+			return record, fmt.Errorf("%w: %v", ErrUnknownObjectMember, err)
+		}
 		return record, err
 	}
 	return record, nil

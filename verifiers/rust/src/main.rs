@@ -130,10 +130,29 @@ pub fn verify_record(record: &serde_json::Value) -> (bool, String) {
 const REASON_DUPLICATE_KEY: &str = "duplicate-key";
 const REASON_TRAILING_DATA: &str = "trailing-data";
 const REASON_NOT_OBJECT: &str = "not-object";
+const REASON_UNKNOWN_FIELD: &str = "unknown-field";
 const REASON_PARSE: &str = "parse-error";
 const REASON_READ: &str = "read-error";
 const REASON_MISSING_HASH: &str = "missing-hash";
 const REASON_HASH_MISMATCH: &str = "hash-mismatch";
+
+/// The decision record's member set is closed: every object position the
+/// schema defines accepts only the member names the Go type declares
+/// (DecisionRecordV1 at the top level, ExecutionClaim inside
+/// execution_claim). A verifier that dropped unknown members before hashing
+/// would accept attacker-added content under a valid stored hash; the record
+/// is rejected at ingest instead, matching Go's strict decode.
+const KNOWN_FIELDS: &[&str] = &[
+    "schema_version", "event_type", "record_id", "timestamp",
+    "boundary_version", "boundary_build_digest", "adapter", "agent_id",
+    "tenant_id", "trace_id", "tool", "action", "reason", "decision_mode",
+    "matched_rule", "policy_file", "policy_bundle_hash", "request_hash",
+    "raw_shape_hash", "decision_hash", "trust_score", "trust_state",
+    "signature", "signature_key_id",
+    "adapter_id", "route_id", "topology_profile", "execution_claim",
+];
+
+const KNOWN_CLAIM_FIELDS: &[&str] = &["upstream_called", "executed", "source"];
 
 /// A load failure carrying its shared machine-readable rejection class.
 struct LoadError {
@@ -276,6 +295,27 @@ fn load_record(path: &str) -> Result<serde_json::Value, LoadError> {
             reason: REASON_NOT_OBJECT,
             message: format!("{path}: decision record must be a JSON object"),
         });
+    }
+    let object = value.as_object().expect("checked is_object above");
+    if let Some(key) = object
+        .keys()
+        .find(|key| !KNOWN_FIELDS.contains(&key.as_str()))
+    {
+        return Err(LoadError {
+            reason: REASON_UNKNOWN_FIELD,
+            message: format!("{path}: unknown field: {key}"),
+        });
+    }
+    if let Some(claim) = object.get("execution_claim").and_then(|v| v.as_object()) {
+        if let Some(key) = claim
+            .keys()
+            .find(|key| !KNOWN_CLAIM_FIELDS.contains(&key.as_str()))
+        {
+            return Err(LoadError {
+                reason: REASON_UNKNOWN_FIELD,
+                message: format!("{path}: unknown field: execution_claim.{key}"),
+            });
+        }
     }
     Ok(value)
 }

@@ -29,6 +29,18 @@ func TestDecodeDecisionRecord_StrictIngest(t *testing.T) {
 		// so "not a JSON object" never gets reached.
 		{"empty input", ``, RecordRejectParse},
 		{"malformed json", `{"a":`, RecordRejectParse},
+		// The record's member set is closed: member names the schema does
+		// not define are rejected at every object position, not dropped.
+		{"unknown top-level member", `{"action": "deny", "smuggled": 1}`, RecordRejectUnknownField},
+		{"unknown member holding an object", `{"action": "deny", "extra": {"nested": 1}}`, RecordRejectUnknownField},
+		{"unknown execution_claim member", `{"action": "deny", "execution_claim": {"upstream_called": true, "extra": 1}}`, RecordRejectUnknownField},
+		// A duplicate member name is still classified duplicate-key even
+		// when the member itself is unknown: the ambiguity check runs
+		// before the schema check.
+		{"duplicate unknown member", `{"zz": 1, "zz": 2}`, RecordRejectDuplicateKey},
+		// NaN/Infinity are not JSON; encoding/json rejects them outright.
+		{"NaN literal", `{"trust_score": NaN}`, RecordRejectParse},
+		{"Infinity literal", `{"trust_score": Infinity}`, RecordRejectParse},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -54,7 +66,7 @@ func TestDecodeDecisionRecord_AcceptsWellFormed(t *testing.T) {
 		t.Fatalf("action = %q, want deny", record.Action)
 	}
 
-	if _, err := DecodeDecisionRecord([]byte("{\"a\": 1}\n\t ")); err != nil {
+	if _, err := DecodeDecisionRecord([]byte("{\"action\": \"deny\"}\n\t ")); err != nil {
 		t.Fatalf("trailing whitespace must be tolerated: %v", err)
 	}
 }

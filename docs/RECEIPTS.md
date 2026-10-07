@@ -95,8 +95,15 @@ A committed V2 example is at
 
 The record file itself is ingested strictly: the input must be a single JSON
 object, member names must be unique at every depth (a repeated key is rejected,
-never last-wins), and no bytes may follow the top-level value. The same strict
-ingest and hash check are reproduced by the Python, TypeScript, and Rust
+never last-wins), no bytes may follow the top-level value, and member names are
+a closed set — at the top level only `DecisionRecordV1` fields, and inside
+`execution_claim` only `upstream_called`, `executed`, and `source`. A member
+name the schema does not declare is rejected (`reason=unknown-field`), never
+dropped before hashing; otherwise attacker-added content could hide inside a
+record whose stored `decision_hash` still verifies. Non-finite numbers
+(`NaN`, `Infinity`, `-Infinity` — not legal JSON) and nesting beyond the
+decoder's depth limit are rejected as `parse-error`. The same strict ingest
+and hash check are reproduced by the Python, TypeScript, and Rust
 standalone verifiers; [`docs/VERIFIER_PARITY.md`](VERIFIER_PARITY.md) is the
 generated report showing all four agreeing on the shared conformance corpus,
 including the rejection vectors.

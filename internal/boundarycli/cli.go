@@ -730,6 +730,14 @@ func runVerifyRecord(args []string, stdout, stderr io.Writer) int {
 // verifyRecordFailReason maps a VerifyDecisionRecord error to the shared
 // machine-readable rejection vocabulary (the governance.RecordReject* codes)
 // used by the cross-language verifier parity harness.
+//
+// Reason precedence is a cross-verifier contract, not incidental ordering:
+// when decision_hash is absent or empty all four verifiers report
+// missing-hash even if another verification-stage check (for example an
+// unsupported schema_version) failed first — the class says "there is
+// nothing to recompute against", while the human-readable message names the
+// first failing check. Keep this switch's order aligned with the other
+// verifiers; changing precedence on one side breaks parity.
 func verifyRecordFailReason(record governance.DecisionRecordV1, err error) string {
 	switch {
 	case record.DecisionHash == "":
