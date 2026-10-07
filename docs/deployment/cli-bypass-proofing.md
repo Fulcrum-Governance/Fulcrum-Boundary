@@ -75,7 +75,7 @@ fails for an incidental reason does not count as a block.
 | env-absolute-path | `env <absolute path>` | permission denied, no marker |
 | copy-or-symlink | `cp` the binary to `/tmp`, then symlink and run it | copy denied (unreadable), run denied, no marker |
 | su-or-sudo-escalation | `sudo` / `su root` to reach the tool | unavailable or denied, no marker |
-| shell-via-shim | `boundary shell` subshell handed the tool path on stdin (with and without `--no-install`) | non-zero exit, permission denied, no marker, no decision record |
+| shell-via-shim | `boundary shell` subshell handed the tool path on stdin (with and without `--no-install`) | non-zero exit, permission denied, no marker, no new decision record |
 | governed-allow | `boundary command run -- find <tools dir> -name <tool> -exec <tool> ;` | exit 0, marker on stdout, decision record `action=allow executed=true` |
 | governed-deny | `boundary command run -- <tool> --token=...` | non-zero exit, no marker, decision record `action=deny executed=false` |
 | find-exec-as-agent | the governed-allow shape attempted directly | permission denied, no marker |
@@ -85,7 +85,10 @@ The governed-allow shape uses `find -exec` because the preview command
 policy executes only allowlisted argv[0] names and `find` is the `C0`
 (observe) entry that hands a path to execve. The marker line records the
 executing group, so the evidence shows the tool ran with `boundary_exec` —
-i.e. as a child of the wrapper route.
+i.e. as a child of the wrapper route. The governed route is not shell-free:
+a governed `find -exec` can forward to a shell (for example `-exec /bin/sh`),
+and the forwarded shell runs holding `boundary_exec`; closing that is
+tracked as FUL-653.
 
 Each run writes `tests/bypass/evidence/cli-reference-v1.json` and
 `cli-reference-v1.md`: topology id, image ids, the boundary version/commit

@@ -6,10 +6,10 @@
 # agent's PATH is a setgid boundary_exec shim that folds the group into
 # real/effective/saved gid and execs the real boundary CLI — but only when
 # argv is `command run`; every other argv runs with the caller's real gid —
-# so a process can execve the tool only as a child of a governed
-# `boundary command run` invocation (or as root). The unprivileged "agent"
-# user is not a member of boundary_exec, and the agent container drops all
-# capabilities.
+# so inside this topology the only probed route that can execve the tool is
+# a governed `boundary command run` through the shim (or root); every other
+# tested route is denied. The unprivileged "agent" user is not a member of
+# boundary_exec, and the agent container drops all capabilities.
 
 FROM golang:1.26-alpine AS build
 WORKDIR /src

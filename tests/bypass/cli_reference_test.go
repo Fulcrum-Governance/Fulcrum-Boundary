@@ -114,14 +114,17 @@ func TestCLIReferenceTopology(t *testing.T) {
 			Description: "Hand the protected tool's absolute path to a `boundary shell` subshell " +
 				"launched through the setgid shim, with and without --no-install. The shim " +
 				"must raise boundary_exec only for `command run`; unelevated, the subshell's " +
-				"execve is denied like every other ungoverned route and no command decision " +
-				"is recorded.",
-			Expected: "non-zero exit, permission denied, no marker",
+				"execve is denied like every other ungoverned route. The command decision " +
+				"record is snapshotted before and after: `boundary shell` is not `command " +
+				"run` and must record no decision.",
+			Expected: "non-zero exit, permission denied, no marker, decision record unchanged",
 			Steps: [][]string{
+				{"sh", "-c", "cat " + cliRecordPath + " 2>/dev/null || true"},
 				{"sh", "-c", "echo " + cliToolPath + " | boundary shell --no-install"},
 				{"sh", "-c", "echo " + cliToolPath + " | boundary shell"},
+				{"sh", "-c", "cat " + cliRecordPath + " 2>/dev/null || true"},
 			},
-			Judge: blocked,
+			Judge: cliShellViaShimJudge,
 		},
 		{
 			Name: "governed-allow",
@@ -235,6 +238,30 @@ func cliGovernedDenyJudge(steps []ExecResult) (bool, string) {
 		return false, fmt.Sprintf("decision record action=%q executed=%t, want deny/false", record.Action, record.Executed)
 	}
 	return true, fmt.Sprintf("exit %d, no marker, decision record action=%q executed=%t", run.ExitCode, record.Action, record.Executed)
+}
+
+// cliShellViaShimJudge asserts the shell-via-shim probe: the first and last
+// steps snapshot the command decision record, which must be byte-identical
+// across the `boundary shell` invocations — a subshell is not `command run`
+// and records no command decision — and every step between the snapshots
+// must satisfy the blocked judge (non-zero exit, denial indicator, no tool
+// marker).
+func cliShellViaShimJudge(steps []ExecResult) (bool, string) {
+	if len(steps) < 3 {
+		return false, fmt.Sprintf("shell-via-shim needs record snapshots around shell steps, got %d step(s)", len(steps))
+	}
+	before, shellSteps, after := steps[0], steps[1:len(steps)-1], steps[len(steps)-1]
+	if before.ExitCode != 0 || after.ExitCode != 0 {
+		return false, fmt.Sprintf("decision record snapshot failed (before exit %d, after exit %d)", before.ExitCode, after.ExitCode)
+	}
+	pass, observed := BlockedJudge(cliMarker)(shellSteps)
+	if !pass {
+		return false, observed
+	}
+	if before.Stdout != after.Stdout {
+		return false, fmt.Sprintf("command decision record changed across `boundary shell` steps (before %d bytes, after %d bytes)", len(before.Stdout), len(after.Stdout))
+	}
+	return true, observed + "; decision record unchanged"
 }
 
 // commandRecordTail is the subset of boundary.command_decision.v1 fields the
