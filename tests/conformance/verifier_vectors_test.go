@@ -25,6 +25,7 @@
 package conformance
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -44,6 +45,18 @@ const vectorsDir = "testdata/verifier-vectors"
 // values are stable across regenerations.
 const fixedTimestamp = "2026-06-01T04:36:39.787222Z"
 
+// vectorExpect names the machine-readable outcome every verifier must produce
+// for a corpus vector. "verify" exits 0; "reject:<reason>" exits non-zero with
+// reason=<reason> (the governance.RecordReject* vocabulary shared with the
+// Python, TypeScript, and Rust verifiers and documented in
+// docs/VERIFIER_PARITY.md).
+const (
+	vectorExpectVerify       = "verify"
+	vectorRejectDuplicateKey = "reject:" + governance.RecordRejectDuplicateKey
+	vectorRejectTrailingData = "reject:" + governance.RecordRejectTrailingData
+	vectorRejectHashMismatch = "reject:" + governance.RecordRejectHashMismatch
+)
+
 // vector is one named corpus entry plus a short note on what canonical-form risk
 // it exercises. The record's decision_hash and record_id are filled in by
 // buildVectors using the real governance functions before the corpus is written.
@@ -52,8 +65,22 @@ type vector struct {
 	name string
 	// why documents the canonical-form property this vector pins.
 	why string
-	// record is the decision record, with decision_hash/record_id populated.
+	// expect is the machine-readable outcome every verifier must produce for
+	// this file; empty means vectorExpectVerify.
+	expect string
+	// record is the decision record whose canonical decision_hash the committed
+	// file stores. For reject vectors it is the interpretation a lenient
+	// verifier would settle on (last-wins for duplicate keys, the pre-tamper
+	// value for a mismatched hash): the committed file's stored decision_hash
+	// is exactly its hash, so acceptance would be silent, not an error.
 	record governance.DecisionRecordV1
+	// raw, when non-empty, is the literal file body committed instead of the
+	// marshaled record. The placeholders @DECISION_HASH@ and @RECORD_ID@ are
+	// replaced with record.DecisionHash / record.RecordID at write time. Raw
+	// exists because several vectors are deliberately non-canonical or
+	// malformed bytes (duplicate keys, escapes, reordering, trailing data)
+	// that cannot be produced by marshaling a struct.
+	raw string
 }
 
 // buildVectors constructs the frozen corpus in memory: one record per
@@ -211,6 +238,344 @@ func buildVectors(t *testing.T) []vector {
 			},
 		},
 		{
+			// The committed bytes carry "action" twice ("deny" then "allow").
+			// A lenient last-wins parse settles on allow and the stored hash
+			// matches that view, so a lax verifier would silently accept a
+			// record whose verdict is ambiguous. All verifiers must reject.
+			name:   "v1_duplicate_keys",
+			why:    "duplicate object member at top level (action twice, deny then allow): must be rejected, not last-wins",
+			expect: vectorRejectDuplicateKey,
+			record: governance.DecisionRecordV1{
+				SchemaVersion: governance.DecisionRecordSchemaVersion,
+				EventType:     "governance_decision",
+				Timestamp:     ts,
+				Adapter:       governance.TransportMCP,
+				AgentID:       "agent-dup-top",
+				Tool:          "query",
+				Action:        "allow",
+				Reason:        "duplicate key ambiguity: last-wins would flip the recorded verdict",
+				DecisionMode:  governance.DecisionModeDeterministic,
+				RequestHash:   "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:    1,
+				TrustState:    "TRUSTED",
+			},
+			raw: `{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "@RECORD_ID@",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-dup-top",
+  "tool": "query",
+  "action": "deny",
+  "action": "allow",
+  "reason": "duplicate key ambiguity: last-wins would flip the recorded verdict",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "@DECISION_HASH@",
+  "trust_score": 1,
+  "trust_state": "TRUSTED"
+}
+`,
+		},
+		{
+			// Same ambiguity nested inside execution_claim: the member
+			// upstream_called appears twice (true then false). A lenient
+			// parse settles on false and the stored hash matches, so a lax
+			// verifier would accept a record asserting upstream was never
+			// called while the bytes also say it was. Must reject.
+			name:   "v2_duplicate_keys_nested",
+			why:    "duplicate object member nested in execution_claim (upstream_called twice): must be rejected at any depth",
+			expect: vectorRejectDuplicateKey,
+			record: governance.DecisionRecordV1{
+				SchemaVersion:   governance.DecisionRecordSchemaV2,
+				EventType:       "governance_decision",
+				Timestamp:       ts,
+				Adapter:         governance.TransportMCP,
+				AgentID:         "agent-dup-nested",
+				Tool:            "github.create_or_update_file",
+				Action:          "deny",
+				Reason:          "nested duplicate key ambiguity in execution_claim",
+				DecisionMode:    governance.DecisionModeDeterministic,
+				MatchedRule:     "deny-github-write-after-taint-fixture",
+				RequestHash:     "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:      1,
+				TrustState:      "TRUSTED",
+				AdapterID:       "mcp-primary",
+				RouteID:         "route-github-write",
+				TopologyProfile: "single-route-forced",
+				ExecutionClaim: &governance.ExecutionClaim{
+					UpstreamCalled: false,
+					Executed:       true,
+					Source:         "mcp-adapter",
+				},
+			},
+			raw: `{
+  "schema_version": "2",
+  "event_type": "governance_decision",
+  "record_id": "@RECORD_ID@",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-dup-nested",
+  "tool": "github.create_or_update_file",
+  "action": "deny",
+  "reason": "nested duplicate key ambiguity in execution_claim",
+  "decision_mode": "deterministic",
+  "matched_rule": "deny-github-write-after-taint-fixture",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "@DECISION_HASH@",
+  "trust_score": 1,
+  "trust_state": "TRUSTED",
+  "adapter_id": "mcp-primary",
+  "route_id": "route-github-write",
+  "topology_profile": "single-route-forced",
+  "execution_claim": {
+    "upstream_called": true,
+    "upstream_called": false,
+    "executed": true,
+    "source": "mcp-adapter"
+  }
+}
+`,
+		},
+		{
+			// trust_score is written 1e2 — legal JSON, not the JCS canonical
+			// spelling (which is 100). Parsing normalizes it, so the record
+			// verifies. Go's struct decode lands on float64(100); the
+			// standalone verifiers land on the same ECMAScript value.
+			name: "v1_number_noncanonical",
+			why:  "non-canonical number form (trust_score written 1e2): parses to 100 and must verify",
+			record: governance.DecisionRecordV1{
+				SchemaVersion: governance.DecisionRecordSchemaVersion,
+				EventType:     "governance_decision",
+				Timestamp:     ts,
+				Adapter:       governance.TransportMCP,
+				AgentID:       "agent-num",
+				Tool:          "query",
+				Action:        "allow",
+				Reason:        "non-canonical number form 1e2 canonicalizes to 100",
+				DecisionMode:  governance.DecisionModeDeterministic,
+				RequestHash:   "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:    100,
+				TrustState:    "TRUSTED",
+			},
+			raw: `{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "@RECORD_ID@",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-num",
+  "tool": "query",
+  "action": "allow",
+  "reason": "non-canonical number form 1e2 canonicalizes to 100",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "@DECISION_HASH@",
+  "trust_score": 1e2,
+  "trust_state": "TRUSTED"
+}
+`,
+		},
+		{
+			// The committed bytes spell every code point of reason as a JSON
+			// escape (é as é, 😀 as the surrogate pair 😀, even
+			// ASCII and the angle brackets). Every spelling decodes to the
+			// code points JCS emits literally, so the record verifies.
+			name: "v1_unicode_escapes",
+			why:  "reason stored with every code point escaped (\\u00e9, surrogate pair, \\u003c): decodes to the same string, must verify",
+			record: governance.DecisionRecordV1{
+				SchemaVersion: governance.DecisionRecordSchemaVersion,
+				EventType:     "governance_decision",
+				Timestamp:     ts,
+				Adapter:       governance.TransportMCP,
+				AgentID:       "agent-unicode",
+				Tool:          "query",
+				Action:        "deny",
+				Reason:        "café 😀 <ok>",
+				DecisionMode:  governance.DecisionModeDeterministic,
+				RequestHash:   "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:    1,
+				TrustState:    "TRUSTED",
+			},
+			raw: strings.Replace(`{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "@RECORD_ID@",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-unicode",
+  "tool": "query",
+  "action": "deny",
+  "reason": "@REASON@",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "@DECISION_HASH@",
+  "trust_score": 1,
+  "trust_state": "TRUSTED"
+}
+`, "@REASON@", escapeAllForJSON("café 😀 <ok>"), 1),
+		},
+		{
+			// Same shape as v1_unicode_escapes but the reason bytes spell
+			// "café" decomposed (cafe + ◌́) while the stored hash was
+			// computed over the precomposed form. Escapes are not
+			// interchangeable: different code points canonicalize
+			// differently, so the recomputed hash must not match.
+			name:   "v1_unicode_escape_differs",
+			why:    "escape variant decoding to different code points (decomposed e+\\u0301 vs precomposed é): canonicalizes differently, must fail decision_hash",
+			expect: vectorRejectHashMismatch,
+			record: governance.DecisionRecordV1{
+				SchemaVersion: governance.DecisionRecordSchemaVersion,
+				EventType:     "governance_decision",
+				Timestamp:     ts,
+				Adapter:       governance.TransportMCP,
+				AgentID:       "agent-unicode",
+				Tool:          "query",
+				Action:        "deny",
+				Reason:        "café",
+				DecisionMode:  governance.DecisionModeDeterministic,
+				RequestHash:   "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:    1,
+				TrustState:    "TRUSTED",
+			},
+			raw: strings.Replace(`{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "@RECORD_ID@",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-unicode",
+  "tool": "query",
+  "action": "deny",
+  "reason": "@REASON@",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "@DECISION_HASH@",
+  "trust_score": 1,
+  "trust_state": "TRUSTED"
+}
+`, "@REASON@", escapeAllForJSON("cafe"+string(rune(0x0301))), 1),
+			// reason bytes spell cafe + combining ◌́ (decomposed); the stored
+			// hash covers precomposed é, so the recomputed hash must differ.
+		},
+		{
+			// The committed bytes list the same members in a scrambled order.
+			// JCS sorts keys before hashing, so the record verifies.
+			name: "v1_field_reordering",
+			why:  "object members in non-sorted order: JCS sorts before hashing, must verify",
+			record: governance.DecisionRecordV1{
+				SchemaVersion: governance.DecisionRecordSchemaVersion,
+				EventType:     "governance_decision",
+				Timestamp:     ts,
+				Adapter:       governance.TransportMCP,
+				AgentID:       "agent-reorder",
+				Tool:          "query",
+				Action:        "warn",
+				Reason:        "field order is not canonical input",
+				DecisionMode:  governance.DecisionModeDeterministic,
+				RequestHash:   "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:    0.75,
+				TrustState:    "TRUSTED",
+			},
+			raw: `{
+  "trust_state": "TRUSTED",
+  "trust_score": 0.75,
+  "decision_hash": "@DECISION_HASH@",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_mode": "deterministic",
+  "reason": "field order is not canonical input",
+  "action": "warn",
+  "tool": "query",
+  "agent_id": "agent-reorder",
+  "adapter": "mcp",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "record_id": "@RECORD_ID@",
+  "event_type": "governance_decision",
+  "schema_version": "1"
+}
+`,
+		},
+		{
+			// A well-formed record followed by bytes that are not whitespace.
+			// A reader that stops at the first complete value would accept the
+			// prefix and ignore the smuggled tail; all verifiers must reject.
+			name:   "v1_trailing_data",
+			why:    "non-whitespace bytes after the top-level JSON value: must be rejected",
+			expect: vectorRejectTrailingData,
+			record: governance.DecisionRecordV1{
+				SchemaVersion: governance.DecisionRecordSchemaVersion,
+				EventType:     "governance_decision",
+				Timestamp:     ts,
+				Adapter:       governance.TransportMCP,
+				AgentID:       "agent-trailing",
+				Tool:          "query",
+				Action:        "allow",
+				Reason:        "trailing bytes after the record must not be ignored",
+				DecisionMode:  governance.DecisionModeDeterministic,
+				RequestHash:   "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:    1,
+				TrustState:    "TRUSTED",
+			},
+			raw: `{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "@RECORD_ID@",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-trailing",
+  "tool": "query",
+  "action": "allow",
+  "reason": "trailing bytes after the record must not be ignored",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "@DECISION_HASH@",
+  "trust_score": 1,
+  "trust_state": "TRUSTED"
+}
+{"smuggled": true}
+`,
+		},
+		{
+			// The decision field was flipped allow->deny after the hash was
+			// stored; decision_hash still names the pre-tamper record. The
+			// recomputed hash must not match, on every verifier.
+			name:   "v1_tampered_decision_unchanged_hash",
+			why:    "action tampered (allow->deny) while decision_hash kept the pre-tamper value: must fail decision_hash",
+			expect: vectorRejectHashMismatch,
+			record: governance.DecisionRecordV1{
+				SchemaVersion: governance.DecisionRecordSchemaVersion,
+				EventType:     "governance_decision",
+				Timestamp:     ts,
+				Adapter:       governance.TransportMCP,
+				AgentID:       "agent-tampered",
+				Tool:          "payments.transfer",
+				Action:        "allow",
+				Reason:        "transfer permitted by policy",
+				DecisionMode:  governance.DecisionModeDeterministic,
+				RequestHash:   "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:    1,
+				TrustState:    "TRUSTED",
+			},
+			raw: `{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "@RECORD_ID@",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-tampered",
+  "tool": "payments.transfer",
+  "action": "deny",
+  "reason": "transfer permitted by policy",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "@DECISION_HASH@",
+  "trust_score": 1,
+  "trust_state": "TRUSTED"
+}
+`,
+		},
+		{
 			name: "v2_route_context",
 			why:  "schema_version 2: route-context fields populated and covered by decision_hash; includes execution_claim self-report",
 			record: governance.DecisionRecordV1{
@@ -275,8 +640,54 @@ func TestVerifierVectors(t *testing.T) {
 			if !ok {
 				t.Fatalf("committed corpus missing %s.json; regenerate with BOUNDARY_WRITE_VECTORS=1", vec.name)
 			}
-			var rec governance.DecisionRecordV1
-			if err := json.Unmarshal(raw, &rec); err != nil {
+
+			expect := vec.expect
+			if expect == "" {
+				expect = vectorExpectVerify
+			}
+
+			// Every committed file stores the decision_hash the in-memory
+			// record produced — for reject vectors that is deliberately the
+			// lenient interpretation's hash, so a lax verifier would accept.
+			stored := storedDecisionHash(t, raw, vec.name)
+
+			switch expect {
+			case vectorRejectDuplicateKey, vectorRejectTrailingData:
+				// The Go verifier's ingest path must reject these bytes for
+				// the reason the manifest advertises.
+				if _, err := governance.DecodeDecisionRecord(raw); err == nil {
+					t.Fatalf("%s (%s): strict decode unexpectedly accepted the record; want %s", vec.name, vec.why, expect)
+				} else {
+					reason := governance.RecordRejectReason(err)
+					if expect != "reject:"+reason {
+						t.Fatalf("%s: strict decode rejected with reason=%s, manifest expects %s", vec.name, reason, expect)
+					}
+				}
+				return
+			case vectorRejectHashMismatch:
+				// Well-formed record whose stored hash no longer matches the
+				// covered fields: must decode, then fail verification.
+				rec, err := governance.DecodeDecisionRecord(raw)
+				if err != nil {
+					t.Fatalf("%s (%s): strict decode rejected a well-formed record: %v", vec.name, vec.why, err)
+				}
+				if rec.DecisionHash != stored {
+					t.Fatalf("%s: decoded decision_hash %s != stored %s", vec.name, rec.DecisionHash, stored)
+				}
+				if recomputed := governance.ComputeDecisionHash(rec); recomputed == rec.DecisionHash {
+					t.Fatalf("%s (%s): recomputed decision_hash still matches a tampered record", vec.name, vec.why)
+				}
+				if err := governance.VerifyDecisionRecord(rec, nil, "", ""); err == nil {
+					t.Fatalf("%s (%s): VerifyDecisionRecord accepted a tampered record", vec.name, vec.why)
+				}
+				if vec.record.DecisionHash != stored {
+					t.Fatalf("%s: in-memory pre-tamper hash %s != stored %s", vec.name, vec.record.DecisionHash, stored)
+				}
+				return
+			}
+
+			rec, err := governance.DecodeDecisionRecord(raw)
+			if err != nil {
 				t.Fatalf("decode committed %s.json: %v", vec.name, err)
 			}
 			if rec.DecisionHash == "" {
@@ -343,12 +754,14 @@ func TestManifestMatchesCorpus(t *testing.T) {
 		if !ok {
 			t.Fatalf("manifest references missing file %s", entry.File)
 		}
-		var rec governance.DecisionRecordV1
-		if err := json.Unmarshal(raw, &rec); err != nil {
-			t.Fatalf("decode %s: %v", entry.File, err)
+		if entry.Expect == "" {
+			t.Fatalf("manifest entry for %s has empty expect", entry.File)
 		}
-		if entry.DecisionHash != rec.DecisionHash {
-			t.Fatalf("manifest decision_hash for %s disagrees with file\n manifest: %s\n     file: %s", entry.File, entry.DecisionHash, rec.DecisionHash)
+		// The manifest's decision_hash is the hash the file stores, even for
+		// reject vectors (where it is the lenient interpretation's hash). Read
+		// it from the bytes without decoding so malformed files still check.
+		if stored := storedDecisionHash(t, raw, entry.File); entry.DecisionHash != stored {
+			t.Fatalf("manifest decision_hash for %s disagrees with file\n manifest: %s\n     file: %s", entry.File, entry.DecisionHash, stored)
 		}
 	}
 }
@@ -366,8 +779,15 @@ type corpusManifest struct {
 type manifestEntry struct {
 	// File is the corpus file name (relative to the corpus directory).
 	File string `json:"file"`
-	// DecisionHash is the expected stored decision_hash of that record.
+	// DecisionHash is the decision_hash the file stores. For reject vectors
+	// this is deliberately the hash a lenient interpretation would compute
+	// (last-wins duplicate keys, pre-tamper content), so acceptance is silent
+	// unless the verifier rejects for the advertised reason.
 	DecisionHash string `json:"decision_hash"`
+	// Expect is the machine-readable outcome every verifier must produce:
+	// "verify" or "reject:<reason>" using the shared reason vocabulary
+	// (docs/VERIFIER_PARITY.md).
+	Expect string `json:"expect"`
 	// Why documents the canonical-form risk the vector exercises.
 	Why string `json:"why"`
 }
@@ -385,18 +805,34 @@ func writeCorpus(t *testing.T, vs []vector) {
 			"verifier (see verifiers/python). Regenerate with BOUNDARY_WRITE_VECTORS=1.",
 	}
 	for _, vec := range vs {
-		body, err := json.MarshalIndent(vec.record, "", "  ")
-		if err != nil {
-			t.Fatalf("marshal vector %s: %v", vec.name, err)
+		var body []byte
+		if vec.raw != "" {
+			// Literal bytes: substitute the placeholders with the hash/id the
+			// in-memory record produced so the stored decision_hash is exactly
+			// what a lenient verifier would compute.
+			body = []byte(vec.raw)
+			body = bytes.ReplaceAll(body, []byte("@DECISION_HASH@"), []byte(vec.record.DecisionHash))
+			body = bytes.ReplaceAll(body, []byte("@RECORD_ID@"), []byte(vec.record.RecordID))
+		} else {
+			var err error
+			body, err = json.MarshalIndent(vec.record, "", "  ")
+			if err != nil {
+				t.Fatalf("marshal vector %s: %v", vec.name, err)
+			}
+			body = append(body, '\n')
 		}
-		body = append(body, '\n')
 		path := filepath.Join(vectorsDir, vec.name+".json")
 		if err := os.WriteFile(path, body, 0o600); err != nil {
 			t.Fatalf("write vector %s: %v", vec.name, err)
 		}
+		expect := vec.expect
+		if expect == "" {
+			expect = vectorExpectVerify
+		}
 		manifest.Vectors = append(manifest.Vectors, manifestEntry{
 			File:         vec.name + ".json",
 			DecisionHash: vec.record.DecisionHash,
+			Expect:       expect,
 			Why:          vec.why,
 		})
 	}

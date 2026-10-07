@@ -4,46 +4,103 @@
     {
       "file": "parse_rejection.json",
       "decision_hash": "sha256:d596b226bb89d87e11faf4e9de0112cdc69d6331f2919f95d55fff6389d61352",
+      "expect": "verify",
       "why": "parse_rejected shape: event_type=parse_rejected, raw_shape_hash set, request_hash absent; still hashes through ComputeDecisionHash"
     },
     {
       "file": "v1_allow.json",
       "decision_hash": "sha256:04f26fb888aad12b244ed3350a0e6e5cd0d139e438a401f42d6c88ca230ddfc7",
+      "expect": "verify",
       "why": "schema_version 1 (no route-context); action=allow"
     },
     {
       "file": "v1_deny.json",
       "decision_hash": "sha256:9494aaf9a7e64f14232bd9e2e1886eddad4a3506104df005cab673a51c7bb32d",
+      "expect": "verify",
       "why": "schema_version 1; action=deny"
+    },
+    {
+      "file": "v1_duplicate_keys.json",
+      "decision_hash": "sha256:19a4fe95da425125e35bc1d4047e8e4e767bd5bd114512cb9cb000c0d44a25c3",
+      "expect": "reject:duplicate-key",
+      "why": "duplicate object member at top level (action twice, deny then allow): must be rejected, not last-wins"
     },
     {
       "file": "v1_escalate.json",
       "decision_hash": "sha256:2ce5fc610bc11143fb2d7ef9ffd793faff4ad908fbbe31e8818ab01eb4f923af",
+      "expect": "verify",
       "why": "schema_version 1; action=escalate"
+    },
+    {
+      "file": "v1_field_reordering.json",
+      "decision_hash": "sha256:7904b94a258b9be6b9d2cfbf6c2d655e951f8e1c3eeb6865f2f75f5786b36693",
+      "expect": "verify",
+      "why": "object members in non-sorted order: JCS sorts before hashing, must verify"
     },
     {
       "file": "v1_float_trust_score.json",
       "decision_hash": "sha256:749a05ec9252e584e01e78f7ef2219511725b5d5664f9d01300e0edee860722f",
+      "expect": "verify",
       "why": "ECMAScript number formatting: non-trivial float64 trust_score (1.0/3.0) must serialize as 0.3333333333333333"
+    },
+    {
+      "file": "v1_number_noncanonical.json",
+      "decision_hash": "sha256:22013199be078eaac39bd9f4db31af55fa3a7be506b5e4db6be115ae5f38d290",
+      "expect": "verify",
+      "why": "non-canonical number form (trust_score written 1e2): parses to 100 and must verify"
     },
     {
       "file": "v1_reason_html_chars.json",
       "decision_hash": "sha256:81bd0fe976ea3bfe3d19f521b69c8ce00dd4b65ceadb1453c8645b2388f1aa0f",
+      "expect": "verify",
       "why": "HTML-escape coverage: reason contains \u0026 \u003c \u003e which JCS keeps literal (Go's encoder would escape them)"
     },
     {
       "file": "v1_require_approval.json",
       "decision_hash": "sha256:1c8fe9a532d0ae2da09526c997b676614a69b7f91690aacc37a2c554cd666364",
+      "expect": "verify",
       "why": "schema_version 1; action=require_approval"
+    },
+    {
+      "file": "v1_tampered_decision_unchanged_hash.json",
+      "decision_hash": "sha256:56ad9c402a3271beeb04ea39abfa273234ea4c7dd7f4b2859d745e63c7b327e8",
+      "expect": "reject:hash-mismatch",
+      "why": "action tampered (allow-\u003edeny) while decision_hash kept the pre-tamper value: must fail decision_hash"
+    },
+    {
+      "file": "v1_trailing_data.json",
+      "decision_hash": "sha256:a7daff3bb1f37f2812e214b3ef08f46e4566422f5cbc07f1d025cf80f68b85b3",
+      "expect": "reject:trailing-data",
+      "why": "non-whitespace bytes after the top-level JSON value: must be rejected"
+    },
+    {
+      "file": "v1_unicode_escape_differs.json",
+      "decision_hash": "sha256:417821115e87a096aa24c837923d93485b1780ed4007bf5d6a77093d787d5f37",
+      "expect": "reject:hash-mismatch",
+      "why": "escape variant decoding to different code points (decomposed e+\\u0301 vs precomposed é): canonicalizes differently, must fail decision_hash"
+    },
+    {
+      "file": "v1_unicode_escapes.json",
+      "decision_hash": "sha256:dfc804133b12daea7edad19a3b5383a011de5674542a7cb6333ee4dfd0717eff",
+      "expect": "verify",
+      "why": "reason stored with every code point escaped (\\u00e9, surrogate pair, \\u003c): decodes to the same string, must verify"
     },
     {
       "file": "v1_warn.json",
       "decision_hash": "sha256:da32782017ae39dd2813b21f3be1072a42cd3b3b6af39bcae289dd50de12e46b",
+      "expect": "verify",
       "why": "schema_version 1; action=warn"
+    },
+    {
+      "file": "v2_duplicate_keys_nested.json",
+      "decision_hash": "sha256:333f11d5b7f8e3ccaa6888925c5e203ac412c67a8d7c8e0442fba405d4e9d23d",
+      "expect": "reject:duplicate-key",
+      "why": "duplicate object member nested in execution_claim (upstream_called twice): must be rejected at any depth"
     },
     {
       "file": "v2_route_context.json",
       "decision_hash": "sha256:fc31166d1a013cf3cc1f65ad3db28a352f3706815e4080fac5997e14a5b7371a",
+      "expect": "verify",
       "why": "schema_version 2: route-context fields populated and covered by decision_hash; includes execution_claim self-report"
     }
   ]
