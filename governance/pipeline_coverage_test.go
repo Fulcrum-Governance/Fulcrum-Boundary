@@ -2,6 +2,7 @@ package governance
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 
@@ -161,26 +162,32 @@ func TestPipeline_InterceptorEmptyAction_DefaultsDeny(t *testing.T) {
 	}
 }
 
-func TestPipeline_FailClosedTransports_BuildsMap(t *testing.T) {
-	// Configure a pipeline with FailClosedTransports populated to exercise
-	// the map-building loop in NewPipeline. An explicit non-nil list must
-	// suppress DefaultFailClosedTransports so only listed transports are
-	// marked fail-closed.
+func TestPipeline_NonEnforcingTransports_BuildsMap(t *testing.T) {
+	// Configure a pipeline with NonEnforcingTransports populated to exercise
+	// the map-building loop in NewPipeline. The set must contain exactly the
+	// declared transports — everything else, including transports never
+	// listed anywhere, stays enforcing.
 	cfg := PipelineConfig{
-		FailClosedTransports: []TransportType{TransportMCP, TransportCodeExec},
+		NonEnforcingTransports: []NonEnforcingTransport{
+			{Transport: TransportMCP, Reason: "observer-only deployment"},
+			{Transport: TransportCodeExec, Reason: "ephemeral sandbox; cannot block"},
+		},
 	}
 	p := NewPipeline(cfg, nil, nil, nil)
-	if !p.failClosed[TransportMCP] {
-		t.Error("expected TransportMCP to be marked fail-closed")
+	if p.nonEnforcing[TransportMCP] != "observer-only deployment" {
+		t.Error("expected TransportMCP declared non-enforcing with its reason")
 	}
-	if !p.failClosed[TransportCodeExec] {
-		t.Error("expected TransportCodeExec to be marked fail-closed")
+	if p.nonEnforcing[TransportCodeExec] == "" {
+		t.Error("expected TransportCodeExec declared non-enforcing with its reason")
 	}
-	if p.failClosed[TransportCLI] {
-		t.Error("expected TransportCLI to NOT be marked fail-closed")
+	if _, ok := p.nonEnforcing[TransportCLI]; ok {
+		t.Error("expected TransportCLI to remain enforcing (not declared)")
 	}
-	if p.failClosed[TransportGRPC] {
-		t.Error("explicit list must suppress default: TransportGRPC should not be fail-closed")
+	if _, ok := p.nonEnforcing[TransportGRPC]; ok {
+		t.Error("expected TransportGRPC to remain enforcing (not declared)")
+	}
+	if _, ok := p.nonEnforcing[""]; ok {
+		t.Error("the empty transport name must never appear in the non-enforcing set")
 	}
 
 	req := &GovernanceRequest{ToolName: "read_file", Transport: TransportMCP, TenantID: "t1"}
@@ -189,70 +196,77 @@ func TestPipeline_FailClosedTransports_BuildsMap(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if d.Action != "allow" {
-		t.Errorf("expected allow-by-default even with fail-closed config, got %s", d.Action)
+		t.Errorf("expected allow-by-default even with non-enforcing declarations, got %s", d.Action)
 	}
 }
 
-// TestPipeline_FailClosedTransports_NilAppliesDefault verifies that a nil
-// FailClosedTransports slice triggers DefaultFailClosedTransports — the
-// kernel's security-critical transports (MCP, Managed Agents, CodeExec, gRPC,
-// A2A) are fail-closed out of the box, and the informational transports
-// (Webhook) are
-// not. Operators who want different defaults must set the field explicitly.
-func TestPipeline_FailClosedTransports_NilAppliesDefault(t *testing.T) {
-	p := NewPipeline(PipelineConfig{}, nil, nil, nil) // nil FailClosedTransports
-
-	// Security-critical transports must be fail-closed by default.
-	for _, tr := range []TransportType{TransportMCP, TransportManagedAgents, TransportCLI, TransportCodeExec, TransportGRPC, TransportA2A} {
-		if !p.failClosed[tr] {
-			t.Errorf("expected %s to default to fail-closed", tr)
-		}
-	}
-
-	// Informational transports must NOT be fail-closed by default.
-	for _, tr := range []TransportType{TransportWebhook} {
-		if p.failClosed[tr] {
-			t.Errorf("expected %s NOT to default to fail-closed", tr)
-		}
-	}
-}
-
-// TestPipeline_FailClosedTransports_ExplicitEmptySliceIsFailOpen preserves the
-// operator escape hatch: passing an explicit (non-nil) empty slice means
-// "I know what I'm doing — fail-open every transport". Only a nil field
-// triggers the security-conscious defaults.
-func TestPipeline_FailClosedTransports_ExplicitEmptySliceIsFailOpen(t *testing.T) {
-	cfg := PipelineConfig{FailClosedTransports: []TransportType{}} // explicit empty, NOT nil
-	p := NewPipeline(cfg, nil, nil, nil)
-
-	for _, tr := range []TransportType{
-		TransportMCP, TransportManagedAgents, TransportCodeExec, TransportGRPC,
-		TransportCLI, TransportA2A, TransportWebhook,
+// TestPipeline_NonEnforcingTransports_UnsetMeansAllEnforcing verifies the
+// inverted default: with nil or empty NonEnforcingTransports the non-enforcing
+// set is empty, so every transport — known or not — enforces required checks
+// (ADR-047). Enforcement coverage can only shrink by explicit declaration.
+func TestPipeline_NonEnforcingTransports_UnsetMeansAllEnforcing(t *testing.T) {
+	for name, cfg := range map[string]PipelineConfig{
+		"nil":   {},
+		"empty": {NonEnforcingTransports: []NonEnforcingTransport{}},
 	} {
-		if p.failClosed[tr] {
-			t.Errorf("explicit empty slice must fail-open every transport; %s was fail-closed", tr)
+		p := NewPipeline(cfg, nil, nil, nil)
+		if len(p.nonEnforcing) != 0 {
+			t.Errorf("%s config: expected zero non-enforcing transports, got %v", name, p.nonEnforcing)
+		}
+	}
+
+	// Behavioral pin: every transport the pipeline serves (plus an unknown
+	// one) blocks on an evaluator failure under the default config.
+	ev := &errorEvaluator{err: errors.New("evaluator unavailable")}
+	p := NewPipeline(PipelineConfig{}, nil, ev, nil)
+	for _, tr := range []TransportType{
+		TransportMCP, TransportManagedAgents, TransportCLI, TransportCodeExec,
+		TransportGRPC, TransportA2A, TransportWebhook, "unregistered",
+	} {
+		d, err := p.Evaluate(context.Background(), &GovernanceRequest{
+			ToolName: "read_file", Transport: tr, TenantID: "t1",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if d.Action != ActionCheckIndeterminate {
+			t.Errorf("transport %s: action = %q, want %q under the all-enforcing default", tr, d.Action, ActionCheckIndeterminate)
 		}
 	}
 }
 
-// TestPipeline_DefaultFailClosedTransports_ExportedValue pins the exported
-// default list so downstream callers can reason about what the kernel ships
-// with. If this test ever changes, update FAIL_MODE_MATRIX.md §3.
-func TestPipeline_DefaultFailClosedTransports_ExportedValue(t *testing.T) {
-	want := map[TransportType]bool{
-		TransportMCP:           true,
-		TransportManagedAgents: true,
-		TransportCLI:           true,
-		TransportCodeExec:      true,
-		TransportGRPC:          true,
-		TransportA2A:           true,
-	}
-	if len(DefaultFailClosedTransports) != len(want) {
-		t.Fatalf("expected %d defaults, got %d: %v", len(want), len(DefaultFailClosedTransports), DefaultFailClosedTransports)
-	}
-	for _, tr := range DefaultFailClosedTransports {
-		if !want[tr] {
-			t.Errorf("unexpected transport in DefaultFailClosedTransports: %s", tr)
+// TestPipeline_NonEnforcingTransports_MalformedEntryIsConfigError replaces
+// the old fail-open escape hatch: ADR-047 permits non-enforcing surfaces only
+// as an explicit, reasoned declaration, so an entry missing its transport or
+// its reason is an invalid configuration, not an opt-out. NewPipeline records
+// the error, PipelineConfig.Validate surfaces it, and Evaluate returns
+// CHECK_INDETERMINATE/missing_config for every request rather than silently
+// failing open.
+func TestPipeline_NonEnforcingTransports_MalformedEntryIsConfigError(t *testing.T) {
+	for name, cfg := range map[string]PipelineConfig{
+		"missing reason":    {NonEnforcingTransports: []NonEnforcingTransport{{Transport: TransportWebhook}}},
+		"missing transport": {NonEnforcingTransports: []NonEnforcingTransport{{Reason: "no transport named"}}},
+		"blank reason":      {NonEnforcingTransports: []NonEnforcingTransport{{Transport: TransportWebhook, Reason: "   "}}},
+	} {
+		if err := cfg.Validate(); !errors.Is(err, ErrInvalidNonEnforcingTransport) {
+			t.Fatalf("%s: Validate() = %v, want ErrInvalidNonEnforcingTransport", name, err)
+		}
+		p := NewPipeline(cfg, nil, nil, nil)
+		if !errors.Is(p.ConfigError(), ErrInvalidNonEnforcingTransport) {
+			t.Fatalf("%s: ConfigError() = %v, want ErrInvalidNonEnforcingTransport", name, p.ConfigError())
+		}
+
+		d, err := p.Evaluate(context.Background(), &GovernanceRequest{
+			ToolName: "read_file", Transport: TransportMCP, AgentID: "agent-1",
+		})
+		if err != nil {
+			t.Fatalf("%s: unexpected error: %v", name, err)
+		}
+		if d.Action != ActionCheckIndeterminate {
+			t.Fatalf("%s: invalid config must return check_indeterminate, got %s", name, d.Action)
+		}
+		if d.Check == nil || d.Check.Category != FailureMissingConfig {
+			t.Fatalf("%s: check = %+v, want missing_config", name, d.Check)
 		}
 	}
 }

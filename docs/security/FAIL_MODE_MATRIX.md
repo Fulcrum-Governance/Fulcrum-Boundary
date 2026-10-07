@@ -1,7 +1,8 @@
 # Transport Fail-Mode Matrix
 
-**Status:** v0.1 (audit of existing behavior, not a design proposal)
-**Source:** PRD-004. Pipeline at `governance/pipeline.go`.
+**Status:** v0.2 (updated for ADR-047 CHECK_INDETERMINATE; earlier v0.1
+described the pre-ADR-047 deny/fail-open behavior)
+**Source:** PRD-004, ADR-047. Pipeline at `governance/pipeline.go`.
 **Audience:** security reviewers, acquirers, on-call engineers.
 
 This document specifies the exact fail-open / fail-closed behavior of the Boundary
@@ -14,17 +15,75 @@ for production defaults are in §3; known gaps are in §6.
 (`adapters/<transport>/adapter.go`). Test citations use the full path
 (`governance/pipeline_test.go`, `governance/pipeline_coverage_test.go`).
 
+## 0. CHECK_INDETERMINATE (ADR-047)
+
+ADR-047 resolves how the pipeline classifies a required synchronous check that
+cannot produce a valid result — a trust lookup, trust update, interceptor run,
+policy evaluation, or required identity — on an execution-capable transport:
+
+> The outcome is CHECK_INDETERMINATE. It is neither ALLOW nor a substantive
+> policy denial and MUST block execution.
+
+Mechanics (`governance/request.go`, `governance/errors.go`, `pipeline.go`):
+
+- `GovernanceDecision.Action == "check_indeterminate"`
+  (`governance.ActionCheckIndeterminate`). `GovernanceDecision.Allowed()`
+  returns true only for `"allow"` and `"warn"`, so every execution gate that
+  consults `Allowed()` blocks an indeterminate verdict.
+- A machine-readable `CheckFailure` travels on the decision, the audit event
+  (`AuditEvent.Check`), and the decision record (`DecisionRecordV1.Check`):
+  `stage` (enforcement stage: `trust`, `trust_update`, `interceptor`,
+  `policy_eval`, `identity`, `config`), `class` (check class: `trust`,
+  `policy`, `identity`, `config`), `category` (one of `unavailable`,
+  `timeout`, `canceled`, `panic`, `invalid_result`, `missing_config`,
+  `missing_identity`, `stale_snapshot`), and a sanitized `cause`. The record
+  also carries `request_id`, agent/tenant ids when present, transport,
+  `request_hash` (canonical action digest), and `trust_state: "UNKNOWN"` when
+  no posture was obtained. No secrets or raw arguments are recorded.
+- **Enforcing vs non-enforcing.** Every transport enforces by default: check
+  failure → `check_indeterminate` and the action is not executed. A transport
+  is non-enforcing only when explicitly declared in
+  `PipelineConfig.NonEnforcingTransports` with a recorded reason (ADR-047's
+  can_deny=false): the action may continue and the decision and record carry
+  the would-have-blocked `CheckFailure` context rather than an ordinary
+  allow. An empty, unknown, or misspelled request transport is undeclared and
+  therefore enforces — a check failure can never fail open by omission.
+- **Evaluator, trust-lookup, interceptor, and trust-update panics** are
+  recovered at the pipeline boundary and classified `category: "panic"`.
+- **Invalid check results** — a nil evaluator decision, an out-of-vocabulary
+  evaluator action, or a blocking interceptor action outside the verdict
+  vocabulary — are `category: "invalid_result"`, not implicit allows.
+- **Audit delivery failure** never changes the decision. When the configured
+  auditor implements `CheckedAuditPublisher` (or panics in `Publish`), the
+  pipeline increments `Pipeline.AuditFailures()`, flips `Pipeline.Degraded()`,
+  and logs once per failure with structured, identifier-digested fields. A
+  publish sequenced after the failure that succeeds clears `Degraded()`; a
+  success sequenced before the failure cannot mask it. `AuditFailures()`
+  never decreases, so the outage is visible after recovery.
+- **Configuration validity.** `PipelineConfig.Validate()` rejects a
+  `NonEnforcingTransports` entry that does not name a transport or does not
+  record the operator's reason (`ErrInvalidNonEnforcingTransport`) — a
+  non-enforcing surface exists only as an explicit, reasoned declaration, and
+  emergency bypass would require a break-glass mechanism this package does
+  not offer. A pipeline built with `RequireAudit: true` and a nil auditor
+  records `ErrMissingAuditPublisher`. `NewPipeline` stores any configuration
+  error; every `Evaluate` then returns `check_indeterminate` /
+  `missing_config` (`stage: "config"`) — an invalid configuration fails
+  closed rather than silently failing open, and dry-run does not launder it
+  into an allow. `Pipeline.ConfigError()` exposes the stored error.
+
 ## 1. Pipeline Fail-Mode Architecture
 
 `Pipeline.Evaluate` runs four stages in sequence and always emits exactly one
-audit event via a deferred hook (`pipeline.go:118-130`). The staging is:
+audit event via a deferred hook (`pipeline.go`, `Evaluate`). The staging is:
 
 | # | Stage | Location | Error behavior |
 |---|-------|----------|----------------|
-| 1 | Trust Check | `pipeline.go` | **Always fail-closed for protected production adapters.** Trust error → deny. Agent in `ISOLATED`/`TERMINATED` state → deny. Production trust backends convert `EVALUATING` to `require_approval`; legacy `TrustChecker` implementations may still allow with trust score 0.5. Stage is skipped only when trust mode is disabled, and production deployments can require `agent_id`. |
-| 2 | Static Policies | `pipeline.go:152-165` | **No error path.** Glob matching via `path.Match` discards the match error (`pipeline.go:80-89`); malformed patterns are treated as non-matching rather than crashing the pipeline. |
-| 3 | Domain Interceptors | `pipeline.go:167-181` | **Always fail-closed.** Interceptor returns an error → deny with reason `interceptor error: %v` (`pipeline.go:169-173`). Interceptor returns `{Allowed: false}` uses its own action/reason; empty action defaults to `deny` (`pipeline.go:174-181`). |
-| 4 | PolicyEval | `pipeline.go:183-215` | **Per-transport configurable.** Evaluator error → deny only if `req.Transport` is in `PipelineConfig.FailClosedTransports` (`pipeline.go:189-193`). Otherwise the error is swallowed and the pre-existing `allow` default is returned (`pipeline.go:194-195`). |
+| 1 | Trust Check | `pipeline.go` | **Required-check failure → CHECK_INDETERMINATE on enforcing transports.** Trust checker error or recovered panic → `check_indeterminate` (category `unavailable`/`timeout`/`canceled`/`panic`), trust posture recorded as `UNKNOWN`. Agent in `ISOLATED`/`TERMINATED` state → substantive deny (unchanged). `RequireAgentID` with a missing AgentID → `check_indeterminate`/`missing_identity` on enforcing transports; on a declared non-enforcing transport the check is recorded and evaluation continues. |
+| 2 | Static Policies | `pipeline.go` | **No error path.** Glob matching via `path.Match` discards the match error; malformed patterns are treated as non-matching rather than crashing the pipeline. |
+| 3 | Domain Interceptors | `pipeline.go` | **Required-check failure → CHECK_INDETERMINATE on enforcing transports.** Interceptor error or recovered panic → `check_indeterminate`. A blocking result whose action is outside the verdict vocabulary (`deny`, `warn`, `escalate`, `require_approval`) is `invalid_result`. `{Allowed: false}` with a valid action keeps the interceptor's own verdict; empty action defaults to `deny`. |
+| 4 | PolicyEval | `pipeline.go` | **Required-check failure → CHECK_INDETERMINATE on enforcing transports.** Evaluator error or recovered panic, a nil decision, or an out-of-vocabulary action → `check_indeterminate`. On a declared non-enforcing transport the default allow stands and `Check` records the would-have-blocked context. |
+| 5 | Trust Update (deferred) | `pipeline.go` defer | **Required-check failure → CHECK_INDETERMINATE on enforcing transports.** A `RecordDecision` backend error or recovered panic flips an otherwise-allowed decision to `check_indeterminate` (`stage: "trust_update"`). A successfully-obtained trust posture (e.g. `TRUSTED`) is preserved — it is evidence that was genuinely obtained. |
 
 The Postgres SQL interceptor is a concrete Stage 3 guard: unknown or
 unparsable SQL returns `deny`, destructive SQL returns `deny`, administrative
@@ -37,7 +96,7 @@ four modes are mutually exclusive:
 
 | Mode | Who sets it | When |
 |---|---|---|
-| `deterministic` | Boundary pipeline | Default for every stage below; static-rule matches, trust outcomes, interceptor outcomes, `ActionDeny`/`ActionWarn`/`ActionRequireApproval`, evaluator errors (fail-closed or fail-open), and the no-match default allow. Also the kernel escalation-await seam's mechanical denies — a resolver-side record expiry, a local await timeout, and every escalation fault — because no human verdict was relayed and none is claimed. |
+| `deterministic` | Boundary pipeline | Default for every stage; static-rule matches, trust outcomes, interceptor outcomes, `ActionDeny`/`ActionWarn`/`ActionRequireApproval`, every CHECK_INDETERMINATE outcome (a local fault is a mechanical outcome, not a relayed resolution), and the no-match default allow. Also the kernel escalation-await seam's mechanical denies — a resolver-side record expiry, a local await timeout, and every escalation fault — because no human verdict was relayed and none is claimed. |
 | `classified` | Boundary pipeline | PolicyEval `ActionEscalate` (escalation implies a semantic condition the evaluator could not resolve deterministically). With no `EscalationHandler` configured this is the whole escalate outcome; it also stays as the relabel default when an await handler returns no adoptable mode. |
 | `proved` | Upstream Foundry (fulcrum-io) | Set when a Lean 4 invariant has discharged the decision. Boundary itself never emits this mode, and the escalation seam is guarded against adopting it (`isAdoptableEscalationMode`, `governance/pipeline.go`). |
 | `human_approved` | Upstream Foundry (fulcrum-io), relayed by the kernel escalation-await seam | Set when a human review resolved an escalated action. Boundary does not originate this mode from its own logic; the kernel `AwaitingEscalationHandler` relays it onto a pipeline decision only for an `approved`→allow or `denied`→deny resolution message from the upstream layer (`governance/kernel/escalation.go`). This is a kernel-mode, routed-only path that requires an injected `Subscriber` and a deployed resolver; with no handler configured (the standalone path, and the default) Boundary never emits it. |
@@ -53,23 +112,36 @@ there denies `deterministic` fail-closed. The decision-mode field is propagated
 to the audit event by `emitAudit` (`governance/pipeline.go`), so audit sinks can
 aggregate or filter by epistemic confidence level.
 
-The defer-emit hook at `pipeline.go:118-130` is the only place a decision can
-be reshaped:
+The defer-emit hook in `Evaluate` is the only place a decision can be
+reshaped:
 
 1. `decision.Duration` is recorded.
-2. `p.emitAudit(...)` publishes the **original** action to the auditor.
-3. **Then** — and only then — if `p.dryRun && decision.Action == "deny"`, the
-   action is rewritten to `allow`, `decision.DryRun = true`, and the original
-   reason is prefixed with `DRY-RUN would deny:`.
+2. The deferred trust update runs; a failure marks the decision
+   `check_indeterminate`/`trust_update` (enforcing transports).
+3. `p.publishAudit(...)` (via `emitAudit`) publishes the **original** action
+   to the auditor and accounts for delivery (see §0).
+4. **Then** — and only then — if `p.dryRun` and the action is `deny` or
+   `check_indeterminate`, the action is rewritten to `allow`,
+   `decision.DryRun = true`, and the original reason is prefixed with
+   `DRY-RUN would deny:` or `DRY-RUN would block:` respectively. The one
+   exception: a configuration-error outcome (`stage: "config"`) is never
+   rewritten — dry-run cannot launder an invalid enforcement posture into an
+   allow.
 
 This ordering guarantees that the audit log always reflects what governance
 would have blocked, even when dry-run flips the caller-visible action.
 
 ## 2. Fail-Mode Matrix
 
-Seven fault classes × seven transports. Each cell is one of:
+Fault classes × transports. Each cell is one of:
 
-- **DENY** — pipeline sets `decision.Action = "deny"`.
+- **DENY** — pipeline sets `decision.Action = "deny"` (substantive verdict).
+- **CHECK_INDETERMINATE (blocks)** — pipeline sets
+  `decision.Action = "check_indeterminate"`; `Allowed()` is false so every
+  execution gate blocks. Recorded with stage/class/category context.
+- **ALLOW + check recorded** — declared non-enforcing transport
+  (can_deny=false): the default allow stands and `Check` carries the
+  would-have-blocked context.
 - **ALLOW** — pipeline leaves the default `decision.Action = "allow"`.
 - **PASS** — pipeline is not involved; downstream error is surfaced by the
   caller's runtime unchanged.
@@ -81,14 +153,22 @@ Seven fault classes × seven transports. Each cell is one of:
 - **HTTP 400 / codes.Internal** — adapter surfaces a protocol-specific
   fail-closed error before pipeline entry.
 
+The pipeline rows below assume enforcing transports — which is the default
+posture for every transport, known or not. The non-enforcing column outcome —
+allow with recorded check context — applies only to transports explicitly
+declared in `NonEnforcingTransports`.
+
 | Fault Class | MCP | CLI | Code Exec | gRPC | Managed Agents | A2A | Webhook |
 |---|---|---|---|---|---|---|---|
-| Trust store unreachable | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` |
-| Agent ISOLATED or TERMINATED | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` |
+| Trust store unreachable | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE; informational mode records only |
+| Trust update (RecordDecision) error | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE; informational mode records only |
+| Agent ISOLATED or TERMINATED | DENY | DENY | DENY | DENY | DENY | DENY | DENY |
+| AgentID missing with `RequireAgentID` | CHECK_INDETERMINATE (`missing_identity`) | CHECK_INDETERMINATE (`missing_identity`) | CHECK_INDETERMINATE (`missing_identity`) | CHECK_INDETERMINATE (`missing_identity`) | CHECK_INDETERMINATE (`missing_identity`) | CHECK_INDETERMINATE (`missing_identity`) | CHECK_INDETERMINATE (`missing_identity`) |
 | Adapter parse failure | JSON-RPC error `adapters/mcp/gateway.go` or ERR→caller from raw adapter use | ERR→caller `adapters/cli/adapter.go` | ERR→caller `adapters/codeexec/adapter.go` | `codes.InvalidArgument` with deny trailers `adapters/grpc/adapter.go` | ERR→caller or deny confirmation from proxy resolver `adapters/managedagents` | ERR→caller `adapters/a2a/adapter.go` | HTTP 400 `adapters/webhook/adapter.go` |
-| Interceptor error | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` |
-| PolicyEval error (transport in `FailClosedTransports`) | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | DENY `pipeline.go` | Execution mode does not forward; informational mode reports error only |
-| PolicyEval error (transport NOT in `FailClosedTransports`) | ALLOW `pipeline.go` | ALLOW `pipeline.go` | ALLOW `pipeline.go` | ALLOW `pipeline.go` | ALLOW `pipeline.go` | ALLOW `pipeline.go` | Execution mode follows pipeline result; informational mode remains audit-only |
+| Interceptor error or panic | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE; informational mode records only |
+| PolicyEval error, panic, nil result, or invalid action | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE; execution mode 403/not forwarded; informational mode records only |
+| Transport declared in `NonEnforcingTransports` (non-enforcing, can_deny=false) | ALLOW + check recorded | ALLOW + check recorded | ALLOW + check recorded | ALLOW + check recorded | ALLOW + check recorded | ALLOW + check recorded | ALLOW + check recorded |
+| Audit publisher outage or panic | Decision unchanged; `Degraded()` true, `AuditFailures()` increments, one structured warn per failure | same | same | same | same | same | same |
 | Downstream tool error (5xx / non-zero exit) | PASS through governed proxy response inspection `adapters/mcp/forwarder.go` | PASS `adapters/cli/adapter.go` | PASS `adapters/codeexec/adapter.go` | PASS handler error after allow decision, with governance trailers where the server context permits `adapters/grpc/adapter.go` | PASS through proxied session stream with response inspection `adapters/managedagents/response_inspector.go` | PASS `adapters/a2a/adapter.go` | Execution mode passes downstream response after allow; informational mode never forwards |
 
 **Notes on the matrix:**
@@ -97,7 +177,7 @@ Seven fault classes × seven transports. Each cell is one of:
   is emitted by the pipeline in this case, because `Evaluate` is never
   called. The gRPC and webhook adapters embed pipeline invocation in their
   own HTTP/gRPC handlers (`adapters/mcp/gateway.go`,
-  `adapters/grpc/adapter.go:131-157`, `adapters/webhook/adapter.go:128-177`),
+  `adapters/grpc/adapter.go`, `adapters/webhook/adapter.go`),
   which is why they can map parse errors to protocol-level fail-closed responses
   (JSON-RPC error, `codes.Internal`, HTTP 400). CLI exposes `GovernCommand`
   and CodeExec exposes `GovernCode`, but parse errors still happen before the
@@ -106,10 +186,16 @@ Seven fault classes × seven transports. Each cell is one of:
   adapter also exposes `GovernTask`, which maps malformed or unsupported
   requests to A2A-shaped unsupported responses without forwarding.
 
-- **PolicyEval error (fail-open row)** is the only cell in the entire matrix
-  where the Boundary default behavior is ALLOW on error. This is why
-  `FailClosedTransports` exists — it lets operators flip this row to DENY
-  per security-critical transport.
+- **Agent ISOLATED/TERMINATED remains a substantive DENY**, not
+  check_indeterminate: the trust check produced a valid result and the result
+  is a policy state.
+
+- **The declared non-enforcing row** is the only cell where the pipeline
+  returns ALLOW after a required-check failure — and it carries the
+  would-have-blocked `CheckFailure` context on the decision, audit event, and
+  record, plus one structured warning log. It exists for ADR-047's explicit
+  can_deny=false surfaces (e.g. informational webhooks); it is never selected
+  implicitly.
 
 - **Downstream tool error (PASS row)**: the MCP proxy now forwards allowed
   JSON-RPC requests itself and inspects upstream errors. CLI and CodeExec now
@@ -119,111 +205,121 @@ Seven fault classes × seven transports. Each cell is one of:
   decision is emitted before forwarding happens, so downstream 5xx or non-zero
   exit does not retroactively change the action in the audit event.
 
-## 3. Recommended `FailClosedTransports` Defaults
+## 3. Non-enforcing declarations (`NonEnforcingTransports`)
 
-`PipelineConfig.FailClosedTransports` is `nil` by default, which means Boundary
-applies `DefaultFailClosedTransports` (`mcp`, `managed_agents`, `code_exec`,
-`cli`, `grpc`, and `a2a`). Operators can pass an explicit empty slice to opt out, or a
-populated slice to override the secure-by-default set.
+`PipelineConfig.NonEnforcingTransports` is empty by default, which means
+every transport enforces (`mcp`, `managed_agents`, `cli`, `code_exec`,
+`grpc`, `a2a`, `webhook`, and any transport added later — including the
+custom `claude-code-hook` label used by the hook boundary and any
+`HTTPMiddlewareConfig.TransportType` an operator sets). Every transport the
+pipeline serves is execution-capable, so the default posture is enforce
+everywhere.
 
-| Transport | Recommended | Rationale |
+Enforcement is not a list to be completed — it is the default. A populated
+list names the ONLY non-enforcing surfaces: `{transport, reason}` entries
+where each transport is declared ADR-047 can_deny=false and records
+would-have-blocked context on check failure. Every transport not listed —
+including an empty, unknown, or misspelled request transport — still
+enforces. This inverts the earlier `FailClosedTransports` model in which
+omission from the list silently disabled enforcement for the omitted
+transport.
+
+Each entry must name a transport and record the operator's reason;
+`PipelineConfig.Validate()` rejects an incomplete entry with
+`ErrInvalidNonEnforcingTransport`, and `NewPipeline` records the error so
+every `Evaluate` returns `check_indeterminate`/`missing_config` rather than
+silently accepting an ambiguous exemption. There is no fail-open-everywhere
+opt-out; emergency bypass would require an explicit, time-bounded,
+identity-attributed, audited break-glass mechanism, which this package does
+not provide.
+
+| Transport | Default | Rationale |
 |---|---|---|
-| `TransportMCP` | **fail-closed** | Model-facing tool surface; silently allowing on evaluator outage means the governance layer degrades to the pre-Boundary state for agent tool calls. This is the single most security-critical row in the matrix. |
-| `TransportManagedAgents` | **fail-closed** | Hosted-agent tool confirmations are execution gates. Evaluator outage must deny by withholding or denying confirmation rather than letting a tool proceed. |
-| `TransportCodeExec` | **fail-closed** | Arbitrary code execution. A PolicyEval outage that allows-by-default here sidesteps the 21 Python + 9 JavaScript obfuscation detection categories — currently 57 + 36 compiled regex patterns (`adapters/codeexec/analyzer_python.go`, `analyzer_javascript.go`). |
-| `TransportCLI` | **fail-closed** | Command execution with parsed pipe-chain risk classification (`adapters/cli/classifier.go`). Silently allowing on evaluator outage drops the high-risk classification results. |
-| `TransportGRPC` | fail-closed | Unary RPC interceptor (`adapters/grpc/adapter.go:131-157`). Internal service surface; defaulting to fail-closed matches the rest of the control plane's default posture. |
-| `TransportA2A` | fail-closed | Preview A2A governed lifecycle. Malformed requests, unknown mandatory fields, and evaluator errors deny or return unsupported fail-closed responses. |
-| `TransportWebhook` | fail-open (with logging) | Webhook is intended for low-trust informational paths — health checks, notification dispatch, etc. Operators who use webhook for governed execution should override to fail-closed. |
+| `TransportMCP` | **enforcing** | Model-facing tool surface; silently allowing on a check outage means the governance layer degrades to the pre-Boundary state for agent tool calls. |
+| `TransportManagedAgents` | **enforcing** | Hosted-agent tool confirmations are execution gates. A check outage must block by withholding confirmation rather than letting a tool proceed. |
+| `TransportCLI` | **enforcing** | Command execution with parsed pipe-chain risk classification (`adapters/cli/classifier.go`). Silently allowing on a check outage drops the high-risk classification results. |
+| `TransportCodeExec` | **enforcing** | Arbitrary code execution. A PolicyEval outage that allows-by-default here sidesteps the obfuscation detection categories (`adapters/codeexec/analyzer_python.go`, `analyzer_javascript.go`). |
+| `TransportGRPC` | **enforcing** | Unary RPC interceptor (`adapters/grpc/adapter.go`). Internal service surface; enforcing matches the rest of the control plane's default posture. |
+| `TransportA2A` | **enforcing** | Preview A2A governed lifecycle. Malformed requests, unknown mandatory fields, and check failures deny or return unsupported fail-closed responses. |
+| `TransportWebhook` | **enforcing** | Execution-mode webhooks are an approval gate: `HandlerWithConfig` blocks any decision that is not `Allowed()`, so `check_indeterminate` gets HTTP 403 and is never forwarded. Informational mode is the documented can_deny=false exception — it never forwards regardless and records the verdict for an action that already happened. |
 
-The pipeline exercises this map with `p.failClosed[req.Transport]`
-(`pipeline.go:190`), which is O(1) and never errors on unknown keys.
+The pipeline exercises this set with `p.nonEnforcing[req.Transport]`
+(`pipeline.go`, `markCheckFailure`), which is O(1); a miss — including an
+empty or unknown transport name — means enforcing.
 
 ## 4. DryRun Mode Interaction
 
-DryRun is configured via `PipelineConfig.DryRun` (`pipeline.go:23-28`). When
-set, the deferred hook at `pipeline.go:118-130` applies **after** audit:
+DryRun is configured via `PipelineConfig.DryRun`. When
+set, the deferred hook applies **after** audit:
 
 1. Pipeline runs all four stages exactly as in production mode.
 2. On `return`, the deferred function fires:
-   - Stopwatch is stopped (`pipeline.go:119`).
-   - Audit event is published with the **real** action
-     (`pipeline.go:120` → `pipeline.go:220-233`).
-   - If `dryRun == true` and `decision.Action == "deny"`:
+   - Stopwatch is stopped.
+   - The deferred trust update runs (and can mark the decision
+     `check_indeterminate`/`trust_update`).
+   - Audit event is published with the **real** action and the `Check`
+     context when present.
+   - If `dryRun == true` and `decision.Action == "deny"` or
+     `"check_indeterminate"`:
      - `decision.DryRun = true`
-     - `decision.Reason = "DRY-RUN would deny: <original>"` (preserves the
+     - `decision.Reason = "DRY-RUN would deny: <original>"` or
+       `"DRY-RUN would block: <original>"` (preserves the
        original reason under a prefix so callers can still reason about why
        the block would have fired).
      - `decision.Action = "allow"` (caller sees allow).
 
 **Implications:**
 
-- Audit logs in dry-run mode contain the ground-truth decision. They are the
+- Audit logs in dry-run mode contain the ground-truth decision, including
+  `check_indeterminate` outcomes and their check context. They are the
   source of truth for "what would governance have blocked if dry-run were
   off?".
 - Callers in dry-run mode see the rewritten action. Any SLO measurement that
-  reads `decision.Action` from the caller side will under-count denies; any
+  reads `decision.Action` from the caller side will under-count blocks; any
   measurement that reads from the audit stream will count correctly.
-- DryRun only rewrites `deny` → `allow`. Actions like `escalate`, `warn`,
-  and `require_approval` are not touched (`pipeline.go:121`). This matches
+- DryRun only rewrites `deny`/`check_indeterminate` → `allow`. Actions like
+  `escalate`, `warn`,
+  and `require_approval` are not touched. This matches
   the semantics of "what would have blocked?" — non-terminal decisions
   would not have blocked.
+- DryRun is an explicitly non-enforcing mode. A check failure never selects
+  it implicitly, and enabling it does not make an enforcing transport
+  non-enforcing in the audit record.
 - DryRun does **not** short-circuit any stage. All four stages still run, so
   dry-run has the same latency profile as production.
 
-## 5. Fault-Injection Test Plan
+## 5. Fault-Injection Test Coverage
 
-One test case per DENY cell plus the parse-failure and fail-open edge cases.
-"Status" column records whether the behavior is already covered by a test in
-the current suite ("Existing") or is a new follow-up test to write ("New"). No
-new tests are implemented by this PRD — this is a plan.
+The ADR-047 failure matrix is covered by table-driven behavioral tests in
+`governance/pipeline_indeterminate_test.go`:
 
-| Test ID | Fault Class | Transport | Setup | Expected | Status |
-|---|---|---|---|---|---|
-| FI-001 | Trust store unreachable | MCP | `mockTrustChecker` returns `err = redis down`; `req.Transport = TransportMCP`, `req.AgentID = "agent-1"` | DENY, reason contains `trust check failed`, `TrustScore == 0.0` | Existing: `TestPipeline_TrustError_FailClosed` (`governance/pipeline_test.go:109-124`) |
-| FI-002 | Trust store unreachable | CLI | same as FI-001 with `Transport = TransportCLI` | DENY | New (parameterize FI-001 over all transports) |
-| FI-003 | Trust store unreachable | CodeExec | same with `Transport = TransportCodeExec` | DENY | New |
-| FI-004 | Trust store unreachable | gRPC | same with `Transport = TransportGRPC` | DENY | New |
-| FI-005 | Trust store unreachable | A2A | same with `Transport = TransportA2A` | DENY | New |
-| FI-006 | Trust store unreachable | Webhook | same with `Transport = TransportWebhook` | DENY | New |
-| FI-007 | Agent ISOLATED | MCP | `mockTrustChecker.states["agent-1"] = TrustStateIsolated` | DENY, reason contains `is isolated`, `TrustScore == 0.0` | Existing: `TestPipeline_TrustDeny_Isolated` (`governance/pipeline_test.go:68-88`) |
-| FI-008 | Agent TERMINATED | CLI | `mockTrustChecker.states["agent-1"] = TrustStateTerminated`, `Transport = TransportCLI` | DENY | Existing: `TestPipeline_TrustDeny_Terminated` (`governance/pipeline_test.go:90-107`) |
-| FI-009 | Agent ISOLATED/TERMINATED | CodeExec | same setup as FI-007/008 with `Transport = TransportCodeExec` | DENY | New |
-| FI-010 | Agent ISOLATED/TERMINATED | gRPC | same with `Transport = TransportGRPC` | DENY | New |
-| FI-011 | Agent ISOLATED/TERMINATED | A2A | same with `Transport = TransportA2A` | DENY | New |
-| FI-012 | Agent ISOLATED/TERMINATED | Webhook | same with `Transport = TransportWebhook` | DENY | New |
-| FI-013 | MCP adapter parse failure | MCP | `adapter.ParseRequest(ctx, 42)` (unsupported raw type) | error: `unsupported raw type int for MCP adapter` | Existing: `adapters/mcp/adapter_test.go` |
-| FI-014 | CLI adapter parse failure | CLI | empty `Command` field | error: `empty command` | Existing: `adapters/cli/adapter_test.go` |
-| FI-015 | CodeExec adapter parse failure | CodeExec | missing `Code` or `Language` field | error: `code field is required` / `language field is required` | Existing: `adapters/codeexec/adapter_test.go` |
-| FI-016 | gRPC adapter parse failure | gRPC | `CallInfo.Method == ""` | error: `Method is required`; interceptor maps to `codes.InvalidArgument` with deny trailers | Existing: `adapters/grpc/adapter_test.go` |
-| FI-017 | A2A adapter parse failure | A2A | `TaskMessage.Action == ""` | error: `Action is required` | Existing: `adapters/a2a/adapter_test.go` |
-| FI-018 | Webhook adapter parse failure | Webhook | POST `{}` to `Handler` | HTTP 400 with JSON `{"error":"..."}` | Existing: `adapters/webhook/adapter_test.go` (spot check) |
-| FI-019 | Interceptor error | MCP | interceptor returns `(nil, errors.New("crashed"))` | DENY, reason contains `interceptor error` | Existing: `TestPipeline_InterceptorError` (`governance/pipeline_test.go:221-235`) |
-| FI-020 | Interceptor error | CLI | same as FI-019 with `Transport = TransportCLI` | DENY | New |
-| FI-021 | Interceptor error | CodeExec | same with `Transport = TransportCodeExec` | DENY | New |
-| FI-022 | Interceptor error | gRPC | same with `Transport = TransportGRPC` | DENY | New |
-| FI-023 | Interceptor error | A2A | same with `Transport = TransportA2A` | DENY | New |
-| FI-024 | Interceptor error | Webhook | same with `Transport = TransportWebhook` | DENY | New |
-| FI-025 | PolicyEval error (fail-closed) | MCP | stub evaluator returns error; `FailClosedTransports = [TransportMCP]` | DENY, reason contains `policy evaluation failed (fail-closed)` | Existing: resolved in PRD-004R Phase 2 — see §6. Covered by `TestPipeline_EvaluatorError_FailClosedTransport_Denies` (`governance/pipeline_evaluator_test.go`). |
-| FI-026 | PolicyEval error (fail-closed) | CLI | same as FI-025 with `FailClosedTransports = [TransportCLI]` | DENY | Existing: resolved in PRD-004R Phase 2 — see §6. Same `TestPipeline_EvaluatorError_FailClosedTransport_Denies` exercises the per-transport behavior. |
-| FI-027 | PolicyEval error (fail-closed) | CodeExec | same with `FailClosedTransports = [TransportCodeExec]` | DENY | Existing: resolved in PRD-004R Phase 2 — see §6. |
-| FI-028 | PolicyEval error (fail-closed) | gRPC | same with `FailClosedTransports = [TransportGRPC]` | DENY before handler, with governance trailers | Existing: resolved in PRD-004R Phase 2; adapter path covered by `adapters/grpc/adapter_test.go`. |
-| FI-029 | PolicyEval error (fail-closed) | A2A | same with `FailClosedTransports = [TransportA2A]` | DENY | Existing: resolved in PRD-004R Phase 2 — see §6. |
-| FI-030 | PolicyEval error (fail-closed) | Webhook | same with `FailClosedTransports = [TransportWebhook]` | DENY | Existing: resolved in PRD-004R Phase 2 — see §6. |
-| FI-031 | PolicyEval error (fail-open) | any | stub evaluator returns error; transport NOT in `FailClosedTransports` | ALLOW (pre-existing default), no reason overwrite | Existing: resolved in PRD-004R Phase 2 — see §6. Covered by `TestPipeline_EvaluatorError_FailOpenTransport_Allows` (`governance/pipeline_evaluator_test.go`). |
-| FI-032 | `FailClosedTransports` map construction | n/a | `PipelineConfig{FailClosedTransports: [MCP, CodeExec]}` | `p.failClosed[MCP] && p.failClosed[CodeExec] && !p.failClosed[CLI]` | Existing: `TestPipeline_FailClosedTransports_BuildsMap` (`governance/pipeline_coverage_test.go:164-192`) |
-| FI-033 | Downstream tool 5xx | any | allow decision, then downstream returns 500 | governance `decision.Action == "allow"` emitted; 5xx bubbles to caller unchanged | New (integration test; pipeline is not in the 5xx path) |
-| FI-034 | DryRun rewrite preserves audit | any | `DryRun = true`; force a deny (blocked trust state); capture auditor events | audit event contains `action == "deny"`; caller sees `action == "allow"`, `DryRun == true`, `Reason` starts with `DRY-RUN would deny:` | New (no dedicated test today; `TestPipeline_AuditEventEmitted` at `governance/pipeline_test.go:237-269` exercises audit emission but not the dry-run branch) |
+| Area | Coverage |
+|---|---|
+| Every failure category × every transport | `TestPipeline_CheckIndeterminate_FailureMatrix` — unavailable, timeout, canceled, panic (evaluator/trust lookup/trust update), nil evaluator result, unknown evaluator action (`invalid_result`), stale snapshot (`CheckError`), missing identity, trust lookup/update errors — each across all seven transports, asserting blocked action, `Check` fields, recorded audit context, and zero downstream execution |
+| Webhook execution mode | `TestPipeline_CheckIndeterminate_WebhookExecutionBlocksByDefault`; handler level: `TestHandlerWithConfig_Execution_CheckIndeterminateDoesNotForward`, `TestHandlerWithConfig_Informational_CheckIndeterminateStillRecords` (`adapters/webhook/adapter_test.go`) |
+| Non-enforcing transport | `TestPipeline_CheckIndeterminate_NonEnforcingTransport_RecordsWouldHaveBlocked`, `TestPipeline_EvaluatorError_NonEnforcingTransport_Allows` |
+| Empty/unknown transport enforces | `TestPipeline_EvaluatorError_UndeclaredTransport_CheckIndeterminate` (`""`, `"bogus"`, custom `claude-code-hook`) |
+| Omission is not an opt-out | `TestPipeline_EvaluatorError_OmissionIsNotNonEnforcing` — declared webhook non-enforcing while `mcp`/`cli`/`grpc`/unknown still block |
+| Malformed non-enforcing declaration | `TestPipeline_Config_InvalidNonEnforcingDeclarationRejected`, `TestPipeline_NonEnforcingTransports_MalformedEntryIsConfigError` |
+| Dry-run cannot launder a config error | `TestPipeline_DryRun_InvalidConfig_NotLaunderedToAllow` |
+| Configured transport combinations | `TestPipeline_Config_ValidateNonEnforcingListAccepted` plus the per-declaration rows in the failclosed/evaluator table tests |
+| Nil auditor + RequireAudit | `TestPipeline_RequireAudit_NilAuditorIsConfigError` |
+| Audit publisher outage/recovery | `TestPipeline_AuditDeliveryFailure_ExposesDegraded`, `TestPipeline_AuditPublisherPanic_DegradedNotFatal` |
+| `Degraded()` flip/clear | `TestPipeline_AuditDeliveryFailure_ExposesDegraded` (flips on failure, clears on the next successful publish, failure counter monotonic) |
+| Dry-run would-have-blocked | `TestPipeline_DryRun_CheckIndeterminate_RecordsWouldHaveBlocked`, `TestPipeline_DryRun_EnforcingEvaluatorError_Rewritten` |
+| Record context | `TestPipeline_CheckIndeterminate_RecordCarriesSafeContext` (request id, tenant/agent, transport, stage, class, category, request_hash; no secrets/raw arguments) |
+| Interceptor error / invalid result | `TestPipeline_CheckIndeterminate_InterceptorError`, `TestPipeline_CheckIndeterminate_InvalidInterceptorResult` |
+| Trust update failure preserving a prior verdict | `TestPipeline_CheckIndeterminate_TrustUpdateFailure_PreservesDenyVerdict` |
 
-**Blocker note (FI-025 / FI-031) — RESOLVED in PRD-004R Phase 2.** The
-fail-closed-vs-fail-open branch at `governance/pipeline.go:189-195` is now
-reachable through the `PolicyEvaluator` interface that the pipeline depends
-on, rather than the concrete `*policyeval.Evaluator` type. Tests inject an
-`errorEvaluator` stub (`governance/pipeline_evaluator_test.go`) which drives
-both the fail-closed branch (`TestPipeline_EvaluatorError_FailClosedTransport_Denies`)
-and the fail-open branch (`TestPipeline_EvaluatorError_FailOpenTransport_Allows`).
-FI-025 through FI-031 in §5 are now executable and covered. Historical
-reasoning (the two original closure options) is preserved in §6.
+Existing tests that previously asserted `deny` for infrastructure failures now
+assert `check_indeterminate` with the ADR-047 rationale inline
+(`TestPipeline_TrustError_FailClosed`, `TestPipeline_InterceptorError`,
+`TestPipeline_EvaluatorError_EnforcingTransport_CheckIndeterminate`,
+`TestPipeline_RequireAgentID_CheckIndeterminateWhenMissing`,
+`TestPipeline_TrustRecordError_EnforcingCheckIndeterminate`, the three
+decision-mode tests, the CLI/CodeExec/A2A lifecycle tests in `tests/adapters`,
+`TestKernelTrustTimeoutFailsClosed` and
+`TestManagedAgentsAdapterParsesAndFailsClosed` in `tests/integration`).
 
 ## 6. Known Gaps and Recommendations
 
@@ -240,6 +336,43 @@ bypass evidence are recorded.
   notifications, full AgentCard negotiation, or multi-hop governance beyond
   the first Boundary-controlled hop.
 
+- **[RESOLVED — ADR-047] Infrastructure failures were classified as policy
+  denies.** Trust lookup, trust update, interceptor, and evaluator failures
+  (plus panics and invalid results) now return `check_indeterminate` with a
+  machine-readable category on enforcing transports, blocking execution
+  without claiming a policy verdict. See §0.
+
+- **[RESOLVED — ADR-047] Webhook failed open by default.**
+  `TransportWebhook` was absent from the old `DefaultFailClosedTransports`
+  list, so an evaluator error allowed execution-mode webhooks to forward.
+  Under the inverted `NonEnforcingTransports` model webhook enforces like
+  every other transport; informational mode remains the documented
+  non-enforcing exception.
+
+- **[RESOLVED — ADR-047] An explicit empty `FailClosedTransports` silently
+  opted every transport out.** Superseded by the inverted model: there is no
+  enforcing list to empty. `NonEnforcingTransports` nil/empty means all
+  transports enforce; an exemption exists only as a `{transport, reason}`
+  entry, and a malformed entry is rejected
+  (`ErrInvalidNonEnforcingTransport` via `PipelineConfig.Validate()`) so a
+  pipeline built with it fails closed at the `config` stage.
+
+- **[RESOLVED — ADR-047] Omission from the enforcing list silently disabled
+  enforcement.** `markCheckFailure` read `p.failClosed[req.Transport]`, so a
+  non-empty `FailClosedTransports` that omitted a transport — or an
+  empty/unknown request transport that matched nothing — failed open with an
+  ordinary allow. `NonEnforcingTransports` inverts this: only a named,
+  reasoned declaration is non-enforcing; everything else enforces.
+
+- **[RESOLVED — ADR-047] Evaluator/trust panics propagated to the caller.**
+  All four check call sites are panic-safe; a recovered panic classifies as
+  `category: "panic"`.
+
+- **[RESOLVED — ADR-047] Audit publisher errors were silently absorbed.**
+  `CheckedAuditPublisher` reports delivery failure; the pipeline exposes
+  `Degraded()`/`AuditFailures()` and logs once per failure. A publisher panic
+  is recovered and counted the same way.
+
 - **[RESOLVED in PRD-004R Phase 4] Adapter-level parse failure is now typed.**
   Every adapter's `ParseRequest` returns `*governance.ParseError` on
   failure (`governance/errors.go`). Callers use `errors.As` or the
@@ -252,32 +385,10 @@ bypass evidence are recorded.
   handle parse failures uniformly via the typed error, instead of
   string-matching adapter-specific messages.
 
-- **[RESOLVED in PRD-004R Phase 1] `FailClosedTransports` default is no
-  longer empty.** The kernel ships with `DefaultFailClosedTransports =
-  [MCP, Managed Agents, CLI, CodeExec, gRPC, A2A]`, applied when
-  `PipelineConfig.FailClosedTransports == nil`. Operators who need
-  fail-open everywhere must pass an explicit (non-nil) empty slice.
-  See `governance/pipeline.go`.
-
-- **[RESOLVED in PRD-004R Phase 2] PolicyEval error path is now reachable.**
-  The pipeline now depends on a `PolicyEvaluator` interface rather than
-  the concrete `*policyeval.Evaluator`. Tests inject an `errorEvaluator`
-  stub that returns a synthetic error, which drives both the fail-closed
-  (`TestPipeline_EvaluatorError_FailClosedTransport_Denies`) and fail-open
-  (`TestPipeline_EvaluatorError_FailOpenTransport_Allows`) branches.
-  FI-025 through FI-031 in §5 are now executable.
-
-- **[RESOLVED in PRD-004R Phase 3] DryRun has dedicated coverage.** Four
-  new tests in `governance/pipeline_dryrun_test.go` exercise the rewrite
-  branch, including the security-critical audit-preservation invariant
-  (`TestPipeline_DryRun_AuditPreservesOriginalDeny`) and the cross-cut
-  with the Phase 2 evaluator seam
-  (`TestPipeline_DryRun_FailClosedEvaluatorError_Rewritten`). FI-034 is now
-  covered.
-
 ---
 
-*Authored April 17, 2026 per PRD-004 "Transport Fail-Mode Matrix".
-Document is an audit of existing behavior in the `main` branch of the Boundary
-repo at the time of writing. Line citations refer to the present snapshot;
-future refactors must update this document alongside the code change.*
+*Authored April 17, 2026 per PRD-004 "Transport Fail-Mode Matrix"; updated for
+ADR-047 CHECK_INDETERMINATE (FUL-465). Document is an audit of existing
+behavior in the Boundary repo at the time of writing. Line citations refer to
+the present snapshot; future refactors must update this document alongside the
+code change.*

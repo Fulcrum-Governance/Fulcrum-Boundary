@@ -32,20 +32,35 @@ type DecisionRecordV1 struct {
 	AgentID             string        `json:"agent_id,omitempty"`
 	TenantID            string        `json:"tenant_id,omitempty"`
 	TraceID             string        `json:"trace_id,omitempty"`
-	Tool                string        `json:"tool,omitempty"`
-	Action              string        `json:"action"`
-	Reason              string        `json:"reason,omitempty"`
-	DecisionMode        DecisionMode  `json:"decision_mode,omitempty"`
-	MatchedRule         string        `json:"matched_rule,omitempty"`
-	PolicyFile          string        `json:"policy_file,omitempty"`
-	PolicyBundleHash    string        `json:"policy_bundle_hash,omitempty"`
-	RequestHash         string        `json:"request_hash,omitempty"`
-	RawShapeHash        string        `json:"raw_shape_hash,omitempty"`
-	DecisionHash        string        `json:"decision_hash"`
-	TrustScore          float64       `json:"trust_score"`
-	TrustState          string        `json:"trust_state,omitempty"`
-	Signature           string        `json:"signature,omitempty"`
-	SignatureKeyID      string        `json:"signature_key_id,omitempty"`
+	// RequestID correlates the record to the governed request that produced
+	// it. Strictly additive (omitempty): CHECK_INDETERMINATE records carry it
+	// as required context; on other records it is populated when the pipeline
+	// assigned one. Unlike record_id (a digest-derived record identity), this
+	// is the caller/pipeline-assigned request correlation id.
+	RequestID        string       `json:"request_id,omitempty"`
+	Tool             string       `json:"tool,omitempty"`
+	Action           string       `json:"action"`
+	Reason           string       `json:"reason,omitempty"`
+	DecisionMode     DecisionMode `json:"decision_mode,omitempty"`
+	MatchedRule      string       `json:"matched_rule,omitempty"`
+	PolicyFile       string       `json:"policy_file,omitempty"`
+	PolicyBundleHash string       `json:"policy_bundle_hash,omitempty"`
+	RequestHash      string       `json:"request_hash,omitempty"`
+	RawShapeHash     string       `json:"raw_shape_hash,omitempty"`
+	DecisionHash     string       `json:"decision_hash"`
+	TrustScore       float64      `json:"trust_score"`
+	TrustState       string       `json:"trust_state,omitempty"`
+	Signature        string       `json:"signature,omitempty"`
+	SignatureKeyID   string       `json:"signature_key_id,omitempty"`
+
+	// Check carries the ADR-047 CHECK_INDETERMINATE context when a required
+	// synchronous check could not produce a valid result; nil otherwise.
+	// Strictly additive (omitempty): records with no check failure are
+	// byte-identical to pre-field records. When Action is
+	// "check_indeterminate" the failure blocked execution; when Action
+	// remains allow-compatible the transport is explicitly non-enforcing
+	// and Check is the recorded would-have-blocked result.
+	Check *CheckFailure `json:"check,omitempty"`
 
 	// Route-context fields (schema_version "2", strictly additive).
 	//

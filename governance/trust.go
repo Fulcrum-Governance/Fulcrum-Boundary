@@ -10,6 +10,12 @@ const (
 	TrustStateEvaluating TrustState = 1
 	TrustStateIsolated   TrustState = 2
 	TrustStateTerminated TrustState = 3
+	// TrustStateUnknown is the honest trust posture for a decision reached
+	// while the trust check itself could not produce a valid result
+	// (ADR-047 CHECK_INDETERMINATE). It is not a circuit-breaker state; it
+	// records that no trust verdict was obtained. Blocked() returns false
+	// for it — absence of evidence is not itself a substantive denial.
+	TrustStateUnknown TrustState = -1
 )
 
 // String returns the human-readable trust state name.
@@ -41,8 +47,9 @@ func (s TrustState) Blocked() bool {
 // (trust_redis.go), which reads/writes the fulcrum-trust Redis IPC state in
 // kernel mode.
 //
-// Contract for the implementer: a returned error is treated as fail-closed —
-// the pipeline denies the request. An absent trust record is NOT an error;
+// Contract for the implementer: a returned error is a required-check failure —
+// on an enforcing transport the pipeline returns CHECK_INDETERMINATE and
+// blocks execution (ADR-047). An absent trust record is NOT an error;
 // return TrustStateTrusted (score 1) for an agent the backend has never seen.
 type TrustChecker interface {
 	CheckAgentState(ctx context.Context, agentID string) (TrustState, error)

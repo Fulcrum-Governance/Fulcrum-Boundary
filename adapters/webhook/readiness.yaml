@@ -29,7 +29,7 @@ delegated_steps:
     owner: deployment topology
     contract: docs/adapters/WEBHOOK.md
 bypass_model: api-gateway
-fail_closed_transports:
+non_enforcing_transports:
   - webhook
 evidence:
   tests:
