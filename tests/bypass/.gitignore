@@ -1,0 +1,3 @@
+# Harness evidence output is generated per run and uploaded as a CI artifact;
+# it is never committed (see docs/deployment/cli-bypass-proofing.md).
+evidence/
