@@ -103,6 +103,7 @@ class DuplicateKeyError extends Error {}
 class TrailingDataError extends Error {}
 class UnknownFieldError extends Error {}
 class DepthLimitError extends Error {}
+class CanonicalizationError extends Error {}
 
 const JSON_ESCAPES: Record<string, string> = {
   '"': '"',
@@ -189,10 +190,13 @@ function assertStrictJson(raw: string): void {
       for (;;) {
         skipWs();
         const key = readString();
-        if (keys.has(key)) {
+        // Uniqueness is case-folded: "action" and "Action" in one object
+        // are a duplicate, matching the Go, Python, and Rust verifiers.
+        const folded = key.toLowerCase();
+        if (keys.has(folded)) {
           throw new DuplicateKeyError(`duplicate key: ${key}`);
         }
-        keys.add(key);
+        keys.add(folded);
         skipWs();
         if (raw[i] !== ':') {
           bail();
@@ -241,7 +245,15 @@ function assertStrictJson(raw: string): void {
       readString();
       return;
     }
-    while (i < n && !JSON_VALUE_END.has(raw[i])) i++; // number or literal
+    if (c === '-' || (c >= '0' && c <= '9') || c === 't' || c === 'f' || c === 'n') {
+      while (i < n && !JSON_VALUE_END.has(raw[i])) i++; // number or literal
+      return;
+    }
+    // A character that cannot start any JSON value — a leading BOM, stray
+    // punctuation — is not a token at all. Bail so JSON.parse reports the
+    // syntax error as parse-error instead of the scanner consuming it as a
+    // literal and mislabeling the remainder as trailing data.
+    bail();
   };
 
   try {
@@ -309,9 +321,21 @@ export function computeDecisionHash(record: DecisionRecord): string {
     delete preimage[key];
   }
 
-  const canonical = canonicalize(preimage);
+  let canonical: string | undefined;
+  try {
+    canonical = canonicalize(preimage);
+  } catch (err) {
+    // canonicalize throws on values outside the RFC 8785 domain — a number
+    // JSON.parse read as Infinity (e.g. "1e999") is the reachable case.
+    // Classify it as a parse failure, not a verification failure: the input
+    // cannot be represented in the canonical form at all, matching the
+    // parse-error the other verifiers emit for the same bytes.
+    throw new CanonicalizationError(
+      `canonicalize failed: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
   if (canonical === undefined) {
-    throw new Error('canonicalize returned undefined — record may contain undefined values');
+    throw new CanonicalizationError('canonicalize returned undefined — record may contain undefined values');
   }
   const digest = createHash('sha256').update(canonical, 'utf8').digest('hex');
   return 'sha256:' + digest;
@@ -396,12 +420,16 @@ function main(): number {
     try {
       [ok, message] = verifyRecord(record);
     } catch (err) {
-      // Canonicalization can still exhaust the stack on inputs that passed
-      // the depth cap (the JCS library recurses); fail closed with a
+      // Canonicalization can still fail on inputs that passed strict
+      // ingest: stack exhaustion (RangeError, the JCS library recurses) or
+      // an unrepresentable value (CanonicalizationError). Both classify as
+      // parse-error; anything else stays verify-fail — fail closed with a
       // classified reason rather than an uncaught exception.
       const msg = err instanceof Error ? err.message : String(err);
       stderr.write(`error: could not verify ${path}: ${msg}\n`);
-      stderr.write(`reason=${err instanceof RangeError ? REASON_PARSE : 'verify-fail'}\n`);
+      stderr.write(
+        `reason=${err instanceof RangeError || err instanceof CanonicalizationError ? REASON_PARSE : 'verify-fail'}\n`,
+      );
       allOk = false;
       continue;
     }

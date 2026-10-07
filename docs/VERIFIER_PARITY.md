@@ -31,13 +31,20 @@ Every other emitted field is covered: `schema_version`, `event_type`,
 `decision_mode`, `matched_rule`, `policy_file`, `policy_bundle_hash`,
 `request_hash`, `raw_shape_hash`, `trust_score`, `trust_state`, and the
 schema_version "2" route-context fields `adapter_id`, `route_id`,
-`topology_profile`, `execution_claim` when present. `omitempty` fields appear
-in the preimage only when populated.
+`topology_profile`, `execution_claim` when present. ("`omitempty` fields
+appear in the preimage only when populated" is the Go emitter's rule: the
+standalone verifiers hash the member set the file actually contains, so a
+present-but-empty field hashes differently for them than for a Go-marshaled
+record that dropped it — see Known divergences.)
 
-The member set is closed: at every object position the schema defines — the
-top-level record (`DecisionRecordV1`) and the `execution_claim` object — a
-member name the schema does not declare is rejected at ingest with
-`unknown-field`, never dropped before hashing. A verifier that silently
+The member set is closed and case-sensitive: at every object position the
+schema defines — the top-level record (`DecisionRecordV1`) and the
+`execution_claim` object — a member name the schema does not declare is
+rejected at ingest with `unknown-field`, never dropped before hashing and
+never bound to a declared field by case-insensitive name matching (Go's
+`encoding/json` would otherwise accept `"ACTION"` as `action`). Member names
+are also unique under case folding at every depth: `"action"` and `"Action"`
+in one object are rejected as `duplicate-key`. A verifier that silently
 dropped unknown members would accept attacker-added content under a valid
 stored hash, which is exactly the bypass strict ingest exists to prevent.
 
@@ -59,15 +66,16 @@ constants shared by all four verifiers.
 | `read-error` | the record file could not be read |
 | `missing-hash` | `decision_hash` absent or empty |
 | `hash-mismatch` | recomputed hash differs from the stored value |
-| `schema-version` | unsupported `schema_version` |
+| `schema-version` | unsupported `schema_version` (Go verifier only — the standalone verifiers do not gate on `schema_version`) |
 | `signature` | `--verify-signature` check failed (Go verifier only) |
 | `verify-fail` | any other verification failure |
 
 Reason precedence is part of the contract: when `decision_hash` is absent or
 empty, all four verifiers report `missing-hash` even if another
-verification-stage check (such as an unsupported `schema_version`) failed
-first — the class reports that there is nothing to recompute against, while
-the human-readable message names the first failing check. Nesting depth is
+verification-stage check failed first (on the Go verifier, for example an
+unsupported `schema_version` — only that verifier enforces it) — the class
+reports that there is nothing to recompute against, while the
+human-readable message names the first failing check. Nesting depth is
 bounded for fail-closed ingest: Go's decoder caps at 10,000 levels and the
 Python and TypeScript verifiers enforce the same published ceiling; inputs
 deeper than a verifier's own parser recursion limit (Python's interpreter
@@ -80,15 +88,22 @@ stack) are likewise classified `parse-error` rather than crashing.
 | --- | --- | --- | --- | --- | --- |
 | parse_rejection.json | ok | ok | ok | ok | ok |
 | v1_allow.json | ok | ok | ok | ok | ok |
+| v1_bom_prefixed.json | parse-error | parse-error | parse-error | parse-error | parse-error |
+| v1_case_variant_duplicate_key.json | duplicate-key | duplicate-key | duplicate-key | duplicate-key | duplicate-key |
+| v1_case_variant_member.json | unknown-field | unknown-field | unknown-field | unknown-field | unknown-field |
 | v1_deny.json | ok | ok | ok | ok | ok |
 | v1_duplicate_keys.json | duplicate-key | duplicate-key | duplicate-key | duplicate-key | duplicate-key |
 | v1_escalate.json | ok | ok | ok | ok | ok |
 | v1_field_reordering.json | ok | ok | ok | ok | ok |
 | v1_float_trust_score.json | ok | ok | ok | ok | ok |
 | v1_number_infinity.json | parse-error | parse-error | parse-error | parse-error | parse-error |
+| v1_number_int_overflow.json | parse-error | parse-error | parse-error | parse-error | parse-error |
 | v1_number_nan.json | parse-error | parse-error | parse-error | parse-error | parse-error |
 | v1_number_neg_infinity.json | parse-error | parse-error | parse-error | parse-error | parse-error |
+| v1_number_neg_overflow.json | parse-error | parse-error | parse-error | parse-error | parse-error |
 | v1_number_noncanonical.json | ok | ok | ok | ok | ok |
+| v1_number_overflow.json | parse-error | parse-error | parse-error | parse-error | parse-error |
+| v1_number_overflow_upper_exp.json | parse-error | parse-error | parse-error | parse-error | parse-error |
 | v1_reason_html_chars.json | ok | ok | ok | ok | ok |
 | v1_require_approval.json | ok | ok | ok | ok | ok |
 | v1_tampered_decision_unchanged_hash.json | hash-mismatch | hash-mismatch | hash-mismatch | hash-mismatch | hash-mismatch |
@@ -98,9 +113,46 @@ stack) are likewise classified `parse-error` rather than crashing.
 | v1_unknown_field_nested_object.json | unknown-field | unknown-field | unknown-field | unknown-field | unknown-field |
 | v1_unknown_field_toplevel.json | unknown-field | unknown-field | unknown-field | unknown-field | unknown-field |
 | v1_warn.json | ok | ok | ok | ok | ok |
+| v2_case_variant_execution_claim.json | unknown-field | unknown-field | unknown-field | unknown-field | unknown-field |
 | v2_duplicate_keys_nested.json | duplicate-key | duplicate-key | duplicate-key | duplicate-key | duplicate-key |
+| v2_execution_claim_number_overflow.json | parse-error | parse-error | parse-error | parse-error | parse-error |
 | v2_route_context.json | ok | ok | ok | ok | ok |
 | v2_unknown_field_execution_claim.json | unknown-field | unknown-field | unknown-field | unknown-field | unknown-field |
+
+## Known divergences
+
+Parity is asserted only on the committed corpus above — the vectors are the
+contract. Inputs outside it can still split the verifiers, and agreement
+beyond the corpus is intent, not a proven property. Known divergent inputs:
+
+- **Wrong-typed or null known members.** The Go verifier decodes into a
+  typed struct, so a declared member carrying the wrong JSON type (for
+  example `"trust_score": "high"`) is rejected at ingest there, while the
+  standalone verifiers hash whatever the file contains and typically land
+  on `hash-mismatch`. Tracked under FUL-655.
+- **Finite-but-unrepresentable integers.** An integer literal that fits a
+  float64 but not the RFC 8785 integer domain (for example
+  `9007199254740993`) parses on the Go, TypeScript, and Rust verifiers —
+  landing on `hash-mismatch` — while Python's `rfc8785` rejects it at
+  canonicalization as `parse-error`. Literals that overflow float64
+  entirely (`1e999`, 400-digit integers) are `parse-error` on all four;
+  that family is pinned by the corpus.
+- **Lone-surrogate escapes.** `"\ud800"` (an unmatched surrogate code
+  unit) decodes to the replacement character in Go, which verifies the
+  decoded interpretation; TypeScript parses and canonicalizes the escape
+  as-is; Python and Rust reject it as `parse-error`. Outside the corpus.
+- **Depth ceilings differ.** Go and the TypeScript scanner cap nesting at
+  10,000 levels and Python enforces the same published cap, but Rust's
+  serde_json default is 128 and Python can additionally hit its
+  interpreter recursion ceiling below the cap. Inputs between the
+  ceilings are parseable on some verifiers and `parse-error` on others.
+- **BOM and encoding edges.** All four verifiers reject a leading UTF-8
+  BOM as `parse-error` (pinned by `v1_bom_prefixed.json`); other encoding
+  anomalies are outside the corpus.
+- **`schema_version` and signature checks are Go-verifier only.** The
+  standalone verifiers compare `decision_hash` alone: a record with an
+  unsupported `schema_version` and a matching hash verifies there while
+  the Go verifier rejects it.
 
 ## Reproduce
 

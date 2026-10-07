@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"reflect"
 	"strings"
 )
 
@@ -117,14 +118,77 @@ func DecodeDecisionRecord(body []byte) (DecisionRecordV1, error) {
 	return record, nil
 }
 
+// recordMemberSet and executionClaimMemberSet are the closed member-name sets
+// the ingest scan enforces, built from the JSON tags of DecisionRecordV1 and
+// ExecutionClaim so the check cannot drift from the schema it mirrors.
+var (
+	recordMemberSet         = jsonMemberSet(reflect.TypeOf(DecisionRecordV1{}))
+	executionClaimMemberSet = jsonMemberSet(reflect.TypeOf(ExecutionClaim{}))
+)
+
+// jsonMemberSet returns the member names a struct's JSON tags declare: the
+// tag name, or the Go field name when the tag carries no name (encoding/json
+// falls back to the field name the same way). `json:"-"` fields are skipped.
+func jsonMemberSet(t reflect.Type) map[string]struct{} {
+	set := make(map[string]struct{}, t.NumField())
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		name, _, _ := strings.Cut(field.Tag.Get("json"), ",")
+		switch name {
+		case "-":
+			continue
+		case "":
+			name = field.Name
+		}
+		set[name] = struct{}{}
+	}
+	return set
+}
+
+// memberScope names which closed member set, if any, constrains the object
+// the scan is inside.
+type memberScope int
+
+const (
+	// scopeAny marks an object position the record schema does not constrain
+	// (a value nested under a known member that is not itself a schema
+	// object). Only member-name uniqueness is enforced there.
+	scopeAny memberScope = iota
+	// scopeRecord marks the top-level object: DecisionRecordV1's member set.
+	scopeRecord
+	// scopeExecutionClaim marks the object value of the top-level
+	// execution_claim member: ExecutionClaim's member set.
+	scopeExecutionClaim
+)
+
+// memberSetFor returns the closed member set for a scope, or nil when the
+// position is unconstrained.
+func memberSetFor(scope memberScope) map[string]struct{} {
+	switch scope {
+	case scopeRecord:
+		return recordMemberSet
+	case scopeExecutionClaim:
+		return executionClaimMemberSet
+	default:
+		return nil
+	}
+}
+
 // rejectDuplicateMembersAndTrailing consumes exactly one JSON value from body
-// and fails when any object repeats a member name or when non-whitespace data
-// follows the value. It performs no allocation of the decoded value: it is a
-// pre-flight scan ahead of the real unmarshal.
+// and fails when any object repeats a member name, when a schema-constrained
+// object carries a member name outside its closed set, or when non-whitespace
+// data follows the value. It performs no allocation of the decoded value: it
+// is a pre-flight scan ahead of the real unmarshal.
 func rejectDuplicateMembersAndTrailing(body []byte) error {
 	decoder := json.NewDecoder(bytes.NewReader(body))
 	decoder.UseNumber()
-	if err := consumeJSONValue(decoder); err != nil {
+	// firstUnknown defers the unknown-field report until the whole value has
+	// scanned clean: a duplicate member or trailing bytes anywhere in the
+	// input outrank a member-name problem seen earlier. That ordering mirrors
+	// the standalone verifiers, which check uniqueness during the parse and
+	// the member set only after it completes.
+	var firstUnknown string
+	if err := consumeJSONValue(decoder, scopeRecord, &firstUnknown); err != nil {
 		return fmt.Errorf("%w", err)
 	}
 	if _, err := decoder.Token(); !errors.Is(err, io.EOF) {
@@ -136,12 +200,28 @@ func rejectDuplicateMembersAndTrailing(body []byte) error {
 		// the same shared class: trailing data after the JSON value.
 		return fmt.Errorf("%w: %v", ErrTrailingJSONData, err)
 	}
+	if firstUnknown != "" {
+		return fmt.Errorf("%w %q", ErrUnknownObjectMember, firstUnknown)
+	}
 	return nil
 }
 
 // consumeJSONValue walks one complete JSON value from the decoder's token
 // stream, enforcing member-name uniqueness inside every object it enters.
-func consumeJSONValue(decoder *json.Decoder) error {
+// Uniqueness is case-folded: "action" and "Action" in one object are a
+// duplicate, matching the Python, TypeScript, and Rust verifiers' folded
+// uniqueness checks.
+//
+// At schema-constrained object positions (scope other than scopeAny) each
+// member name must also appear byte-for-byte in the scope's closed member
+// set. The check is exact-case because encoding/json would otherwise bind
+// "ACTION" to the Action field case-insensitively, letting one byte stream
+// carry a member the standalone verifiers reject as unknown-field. An
+// out-of-set name is recorded in firstUnknown rather than returned at once,
+// so a duplicate member or trailing data later in the input still classifies
+// with its own reason (the other verifiers reach the member-set check only
+// after their parse completes).
+func consumeJSONValue(decoder *json.Decoder, scope memberScope, firstUnknown *string) error {
 	token, err := decoder.Token()
 	if err != nil {
 		return err
@@ -154,6 +234,7 @@ func consumeJSONValue(decoder *json.Decoder) error {
 	switch delim {
 	case '{':
 		seen := make(map[string]struct{})
+		members := memberSetFor(scope)
 		for decoder.More() {
 			keyToken, err := decoder.Token()
 			if err != nil {
@@ -163,11 +244,21 @@ func consumeJSONValue(decoder *json.Decoder) error {
 			if !ok {
 				return fmt.Errorf("object member name is not a string")
 			}
-			if _, exists := seen[key]; exists {
+			folded := strings.ToLower(key)
+			if _, exists := seen[folded]; exists {
 				return fmt.Errorf("%w %q", ErrDuplicateObjectMember, key)
 			}
-			seen[key] = struct{}{}
-			if err := consumeJSONValue(decoder); err != nil {
+			seen[folded] = struct{}{}
+			if members != nil {
+				if _, ok := members[key]; !ok && *firstUnknown == "" {
+					*firstUnknown = key
+				}
+			}
+			childScope := scopeAny
+			if scope == scopeRecord && key == "execution_claim" {
+				childScope = scopeExecutionClaim
+			}
+			if err := consumeJSONValue(decoder, childScope, firstUnknown); err != nil {
 				return err
 			}
 		}
@@ -177,7 +268,7 @@ func consumeJSONValue(decoder *json.Decoder) error {
 		return nil
 	case '[':
 		for decoder.More() {
-			if err := consumeJSONValue(decoder); err != nil {
+			if err := consumeJSONValue(decoder, scopeAny, firstUnknown); err != nil {
 				return err
 			}
 		}

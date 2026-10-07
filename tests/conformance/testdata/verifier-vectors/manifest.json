@@ -14,6 +14,24 @@
       "why": "schema_version 1 (no route-context); action=allow"
     },
     {
+      "file": "v1_bom_prefixed.json",
+      "decision_hash": "sha256:74f46992a16cbb8098dfd65849faa0eaa9fc62afe469fd48e980ed3d9239a915",
+      "expect": "reject:parse-error",
+      "why": "leading UTF-8 BOM: must be rejected as parse-error, not skipped or misclassified"
+    },
+    {
+      "file": "v1_case_variant_duplicate_key.json",
+      "decision_hash": "sha256:b49ddfb9479e4fea68eebb062fc773901ad3c940af39ba58805b372484ec379f",
+      "expect": "reject:duplicate-key",
+      "why": "member names differing only in case (action then Action) in one object: must be rejected as duplicate-key, not last-wins"
+    },
+    {
+      "file": "v1_case_variant_member.json",
+      "decision_hash": "sha256:d90487cdee373fe7810e1e6e3a8f081b6b90081f07ab21cb898188612d2bb38d",
+      "expect": "reject:unknown-field",
+      "why": "member name differing only in case (ACTION for action) at top level: must be rejected as unknown-field, not bound case-insensitively"
+    },
+    {
       "file": "v1_deny.json",
       "decision_hash": "sha256:9494aaf9a7e64f14232bd9e2e1886eddad4a3506104df005cab673a51c7bb32d",
       "expect": "verify",
@@ -50,6 +68,12 @@
       "why": "non-finite literal Infinity is not JSON: must be rejected as parse-error, not decoded"
     },
     {
+      "file": "v1_number_int_overflow.json",
+      "decision_hash": "sha256:f6a1986b8e00e033eac4112208eaf0a3398239459d1d72233c59799219da5524",
+      "expect": "reject:parse-error",
+      "why": "integer literal with ~400 digits overflowing float64: must be rejected as parse-error"
+    },
+    {
       "file": "v1_number_nan.json",
       "decision_hash": "sha256:7695ccfa8ff94484c6bf68e70497ff0fd20f0959d65b4672be5e8f14244e1fe7",
       "expect": "reject:parse-error",
@@ -62,10 +86,28 @@
       "why": "non-finite literal -Infinity is not JSON: must be rejected as parse-error, not decoded"
     },
     {
+      "file": "v1_number_neg_overflow.json",
+      "decision_hash": "sha256:936292b4eca4943da44883eebd48a36a2ab23a161726a7985a2791c332eaf95c",
+      "expect": "reject:parse-error",
+      "why": "negative number literal overflowing float64 (-1e999): must be rejected as parse-error"
+    },
+    {
       "file": "v1_number_noncanonical.json",
       "decision_hash": "sha256:22013199be078eaac39bd9f4db31af55fa3a7be506b5e4db6be115ae5f38d290",
       "expect": "verify",
       "why": "non-canonical number form (trust_score written 1e2): parses to 100 and must verify"
+    },
+    {
+      "file": "v1_number_overflow.json",
+      "decision_hash": "sha256:033bea5fa74c4381940c3c93c6ce4d854c4fa5870a4fe5260e151cf451c3e13d",
+      "expect": "reject:parse-error",
+      "why": "number literal overflowing float64 (1e999): parses as non-finite, must be rejected as parse-error"
+    },
+    {
+      "file": "v1_number_overflow_upper_exp.json",
+      "decision_hash": "sha256:0f4422dc36cfebd729598752dcc322302372edd53aa2ac8e2e11b8c9a86b8694",
+      "expect": "reject:parse-error",
+      "why": "number literal overflowing float64 with uppercase exponent (1E400): must be rejected as parse-error"
     },
     {
       "file": "v1_reason_html_chars.json",
@@ -122,10 +164,22 @@
       "why": "schema_version 1; action=warn"
     },
     {
+      "file": "v2_case_variant_execution_claim.json",
+      "decision_hash": "sha256:d90d76a5eef438fe8e22d776722452917139d5b6070a5b07db76a8d3a9d3547f",
+      "expect": "reject:unknown-field",
+      "why": "member name differing only in case (EXECUTED for executed) inside execution_claim: must be rejected as unknown-field at every schema object position"
+    },
+    {
       "file": "v2_duplicate_keys_nested.json",
       "decision_hash": "sha256:333f11d5b7f8e3ccaa6888925c5e203ac412c67a8d7c8e0442fba405d4e9d23d",
       "expect": "reject:duplicate-key",
       "why": "duplicate object member nested in execution_claim (upstream_called twice): must be rejected at any depth"
+    },
+    {
+      "file": "v2_execution_claim_number_overflow.json",
+      "decision_hash": "sha256:a612f9c7a11b26f3a1b16fc6b31940d71ca29a21303ac89aa109474499a93ead",
+      "expect": "reject:parse-error",
+      "why": "number literal overflowing float64 inside execution_claim.source (1e999): must be rejected as parse-error"
     },
     {
       "file": "v2_route_context.json",

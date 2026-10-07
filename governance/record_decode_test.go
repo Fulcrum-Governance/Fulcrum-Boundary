@@ -36,8 +36,30 @@ func TestDecodeDecisionRecord_StrictIngest(t *testing.T) {
 		{"unknown execution_claim member", `{"action": "deny", "execution_claim": {"upstream_called": true, "extra": 1}}`, RecordRejectUnknownField},
 		// A duplicate member name is still classified duplicate-key even
 		// when the member itself is unknown: the ambiguity check runs
-		// before the schema check.
+		// before the schema check. Uniqueness is case-folded (mirroring the
+		// Python, TypeScript, and Rust verifiers), so "zz" and "ZZ" collide.
 		{"duplicate unknown member", `{"zz": 1, "zz": 2}`, RecordRejectDuplicateKey},
+		{"case-folded duplicate unknown member", `{"zz": 1, "ZZ": 2}`, RecordRejectDuplicateKey},
+		// encoding/json binds member names case-insensitively, so without
+		// the exact-case scan "ACTION" would alias action and "Action" would
+		// silently overwrite "action". The closed member set is exact-case:
+		// a lone case variant is unknown-field; a variant colliding with a
+		// declared name already present is duplicate-key. Both match the
+		// other three verifiers.
+		{"case-variant declared member", `{"ACTION": "deny"}`, RecordRejectUnknownField},
+		{"case-variant member colliding with declared", `{"action": "deny", "Action": "allow"}`, RecordRejectDuplicateKey},
+		{"case-variant member inside execution_claim", `{"action": "deny", "execution_claim": {"upstream_called": true, "EXECUTED": false}}`, RecordRejectUnknownField},
+		// The folded duplicate check also runs at object positions the
+		// schema does not constrain, matching the other verifiers (whose
+		// uniqueness hooks run at every depth).
+		{"case-folded duplicate at unconstrained depth", `{"action": "deny", "reason": {"X": 1, "x": 2}}`, RecordRejectDuplicateKey},
+		// A member-name problem never outranks a structural failure: with a
+		// duplicate later in the stream the class stays duplicate-key, and
+		// with garbage after the value it stays trailing-data — the same
+		// ordering the standalone verifiers produce (uniqueness is checked
+		// during the parse, the member set after it).
+		{"unknown member then duplicate", `{"ZZ": 1, "action": "deny", "action": "allow"}`, RecordRejectDuplicateKey},
+		{"unknown member then trailing data", `{"ZZ": 1} tail`, RecordRejectTrailingData},
 		// NaN/Infinity are not JSON; encoding/json rejects them outright.
 		{"NaN literal", `{"trust_score": NaN}`, RecordRejectParse},
 		{"Infinity literal", `{"trust_score": Infinity}`, RecordRejectParse},

@@ -167,12 +167,17 @@ def _reject_duplicates(ordered_pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     ``json.loads`` silently keeps the last value for a repeated key, which
     would let one byte stream carry two different verdicts. A decision record
     must be rejected instead. The hook runs at every nesting depth, so nested
-    objects are checked too.
+    objects are checked too. Uniqueness is case-folded: ``"action"`` and
+    ``"Action"`` in one object are a duplicate, matching the Go, TypeScript,
+    and Rust verifiers.
     """
     out: dict[str, Any] = {}
+    seen_folded: set[str] = set()
     for key, value in ordered_pairs:
-        if key in out:
+        folded = key.lower()
+        if folded in seen_folded:
             raise ValueError(f"duplicate key: {key}")
+        seen_folded.add(folded)
         out[key] = value
     return out
 
@@ -316,9 +321,14 @@ def main(argv: list[str]) -> int:
 
     try:
         ok, message = verify_record(record)
-    except RecursionError as err:
-        # Canonicalization recurses; a record that survived load but exceeds
-        # the stack during hashing fails closed with a classified reason.
+    except (RecursionError, rfc8785.CanonicalizationError, UnicodeError) as err:
+        # Canonicalization recurses, and rfc8785 raises domain errors on input
+        # that passed strict ingest: numbers outside the RFC 8785 range
+        # (FloatDomainError for 1e999 -> inf, IntegerDomainError for integer
+        # literals too large for exact IEEE-754 representation) and
+        # non-UTF-8 code points such as a lone surrogate
+        # (CanonicalizationError). All classify as parse-error, matching the
+        # other verifiers; none may escape as an unclassified traceback.
         sys.stderr.write(f"error: could not verify {path}: {err}\n")
         sys.stderr.write(f"reason={_REASON_PARSE}\n")
         return 1

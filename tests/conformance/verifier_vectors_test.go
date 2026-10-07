@@ -855,6 +855,399 @@ func buildVectors(t *testing.T) []vector {
 				},
 			},
 		},
+		{
+			// "ACTION" is a case variant of the declared member "action".
+			// encoding/json would bind it to the Action field
+			// case-insensitively and the record would verify, while the
+			// standalone verifiers' exact-case member sets reject it: one
+			// byte stream carrying two verdicts. The closed member set is
+			// exact-case, so all four must report unknown-field.
+			name:   "v1_case_variant_member",
+			why:    "member name differing only in case (ACTION for action) at top level: must be rejected as unknown-field, not bound case-insensitively",
+			expect: vectorRejectUnknownField,
+			record: governance.DecisionRecordV1{
+				SchemaVersion: governance.DecisionRecordSchemaVersion,
+				EventType:     "governance_decision",
+				Timestamp:     ts,
+				Adapter:       governance.TransportMCP,
+				AgentID:       "agent-case-top",
+				Tool:          "query",
+				Action:        "allow",
+				Reason:        "case-variant member name must not alias the declared field",
+				DecisionMode:  governance.DecisionModeDeterministic,
+				RequestHash:   "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:    1,
+				TrustState:    "TRUSTED",
+			},
+			raw: `{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "@RECORD_ID@",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-case-top",
+  "tool": "query",
+  "ACTION": "allow",
+  "reason": "case-variant member name must not alias the declared field",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "@DECISION_HASH@",
+  "trust_score": 1,
+  "trust_state": "TRUSTED"
+}
+`,
+		},
+		{
+			// "action" and "Action" in one object are one member under case
+			// folding: a case-insensitive decoder (encoding/json) would bind
+			// both to Action last-wins and verify, while exact-pair parsers
+			// report unknown-field. Uniqueness is enforced case-folded on
+			// all four verifiers, so the class is duplicate-key.
+			name:   "v1_case_variant_duplicate_key",
+			why:    "member names differing only in case (action then Action) in one object: must be rejected as duplicate-key, not last-wins",
+			expect: vectorRejectDuplicateKey,
+			record: governance.DecisionRecordV1{
+				SchemaVersion: governance.DecisionRecordSchemaVersion,
+				EventType:     "governance_decision",
+				Timestamp:     ts,
+				Adapter:       governance.TransportMCP,
+				AgentID:       "agent-case-dup",
+				Tool:          "query",
+				Action:        "allow",
+				Reason:        "case-folded duplicate member must be rejected, not last-wins",
+				DecisionMode:  governance.DecisionModeDeterministic,
+				RequestHash:   "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:    1,
+				TrustState:    "TRUSTED",
+			},
+			raw: `{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "@RECORD_ID@",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-case-dup",
+  "tool": "query",
+  "action": "deny",
+  "Action": "allow",
+  "reason": "case-folded duplicate member must be rejected, not last-wins",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "@DECISION_HASH@",
+  "trust_score": 1,
+  "trust_state": "TRUSTED"
+}
+`,
+		},
+		{
+			// Same case-variant rule inside execution_claim: EXECUTED is not
+			// the declared member executed, and no lowercase executed member
+			// is present to collide with, so the class is unknown-field.
+			name:   "v2_case_variant_execution_claim",
+			why:    "member name differing only in case (EXECUTED for executed) inside execution_claim: must be rejected as unknown-field at every schema object position",
+			expect: vectorRejectUnknownField,
+			record: governance.DecisionRecordV1{
+				SchemaVersion:   governance.DecisionRecordSchemaV2,
+				EventType:       "governance_decision",
+				Timestamp:       ts,
+				Adapter:         governance.TransportMCP,
+				AgentID:         "agent-case-claim",
+				Tool:            "github.create_or_update_file",
+				Action:          "deny",
+				Reason:          "case-variant member inside execution_claim must be rejected",
+				DecisionMode:    governance.DecisionModeDeterministic,
+				MatchedRule:     "deny-github-write-after-taint-fixture",
+				RequestHash:     "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:      1,
+				TrustState:      "TRUSTED",
+				AdapterID:       "mcp-primary",
+				RouteID:         "route-github-write",
+				TopologyProfile: "single-route-forced",
+				ExecutionClaim: &governance.ExecutionClaim{
+					UpstreamCalled: false,
+					Executed:       false,
+					Source:         "mcp-adapter",
+				},
+			},
+			raw: `{
+  "schema_version": "2",
+  "event_type": "governance_decision",
+  "record_id": "@RECORD_ID@",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-case-claim",
+  "tool": "github.create_or_update_file",
+  "action": "deny",
+  "reason": "case-variant member inside execution_claim must be rejected",
+  "decision_mode": "deterministic",
+  "matched_rule": "deny-github-write-after-taint-fixture",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "@DECISION_HASH@",
+  "trust_score": 1,
+  "trust_state": "TRUSTED",
+  "adapter_id": "mcp-primary",
+  "route_id": "route-github-write",
+  "topology_profile": "single-route-forced",
+  "execution_claim": {
+    "upstream_called": false,
+    "EXECUTED": false,
+    "source": "mcp-adapter"
+  }
+}
+`,
+		},
+		{
+			// A UTF-8 BOM before the record is not JSON whitespace: the
+			// document must be rejected as parse-error, not treated as a
+			// clean record with trailing bytes.
+			name:   "v1_bom_prefixed",
+			why:    "leading UTF-8 BOM: must be rejected as parse-error, not skipped or misclassified",
+			expect: vectorRejectParse,
+			record: governance.DecisionRecordV1{
+				SchemaVersion: governance.DecisionRecordSchemaVersion,
+				EventType:     "governance_decision",
+				Timestamp:     ts,
+				Adapter:       governance.TransportMCP,
+				AgentID:       "agent-bom",
+				Tool:          "query",
+				Action:        "allow",
+				Reason:        "a byte-order mark is not JSON whitespace",
+				DecisionMode:  governance.DecisionModeDeterministic,
+				RequestHash:   "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:    1,
+				TrustState:    "TRUSTED",
+			},
+			raw: "\uFEFF" + `{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "@RECORD_ID@",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-bom",
+  "tool": "query",
+  "action": "allow",
+  "reason": "a byte-order mark is not JSON whitespace",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "@DECISION_HASH@",
+  "trust_score": 1,
+  "trust_state": "TRUSTED"
+}
+`,
+		},
+		{
+			// 1e999 is legal JSON syntax but overflows float64: Go's decode
+			// and Rust's parser reject it at ingest, Python's rfc8785 raises
+			// FloatDomainError at canonicalization, and TypeScript's
+			// canonicalize refuses the Infinity JSON.parse produced. All
+			// four classify it parse-error.
+			name:   "v1_number_overflow",
+			why:    "number literal overflowing float64 (1e999): parses as non-finite, must be rejected as parse-error",
+			expect: vectorRejectParse,
+			record: governance.DecisionRecordV1{
+				SchemaVersion: governance.DecisionRecordSchemaVersion,
+				EventType:     "governance_decision",
+				Timestamp:     ts,
+				Adapter:       governance.TransportMCP,
+				AgentID:       "agent-numof",
+				Tool:          "query",
+				Action:        "warn",
+				Reason:        "out-of-range number is unrepresentable in JCS",
+				DecisionMode:  governance.DecisionModeDeterministic,
+				RequestHash:   "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:    1,
+				TrustState:    "TRUSTED",
+			},
+			raw: `{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "@RECORD_ID@",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-numof",
+  "tool": "query",
+  "action": "warn",
+  "reason": "out-of-range number is unrepresentable in JCS",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "@DECISION_HASH@",
+  "trust_score": 1e999,
+  "trust_state": "TRUSTED"
+}
+`,
+		},
+		{
+			name:   "v1_number_neg_overflow",
+			why:    "negative number literal overflowing float64 (-1e999): must be rejected as parse-error",
+			expect: vectorRejectParse,
+			record: governance.DecisionRecordV1{
+				SchemaVersion: governance.DecisionRecordSchemaVersion,
+				EventType:     "governance_decision",
+				Timestamp:     ts,
+				Adapter:       governance.TransportMCP,
+				AgentID:       "agent-numof-neg",
+				Tool:          "query",
+				Action:        "warn",
+				Reason:        "out-of-range number is unrepresentable in JCS",
+				DecisionMode:  governance.DecisionModeDeterministic,
+				RequestHash:   "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:    1,
+				TrustState:    "TRUSTED",
+			},
+			raw: `{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "@RECORD_ID@",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-numof-neg",
+  "tool": "query",
+  "action": "warn",
+  "reason": "out-of-range number is unrepresentable in JCS",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "@DECISION_HASH@",
+  "trust_score": -1e999,
+  "trust_state": "TRUSTED"
+}
+`,
+		},
+		{
+			name:   "v1_number_overflow_upper_exp",
+			why:    "number literal overflowing float64 with uppercase exponent (1E400): must be rejected as parse-error",
+			expect: vectorRejectParse,
+			record: governance.DecisionRecordV1{
+				SchemaVersion: governance.DecisionRecordSchemaVersion,
+				EventType:     "governance_decision",
+				Timestamp:     ts,
+				Adapter:       governance.TransportMCP,
+				AgentID:       "agent-numof-exp",
+				Tool:          "query",
+				Action:        "warn",
+				Reason:        "out-of-range number is unrepresentable in JCS",
+				DecisionMode:  governance.DecisionModeDeterministic,
+				RequestHash:   "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:    1,
+				TrustState:    "TRUSTED",
+			},
+			raw: `{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "@RECORD_ID@",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-numof-exp",
+  "tool": "query",
+  "action": "warn",
+  "reason": "out-of-range number is unrepresentable in JCS",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "@DECISION_HASH@",
+  "trust_score": 1E400,
+  "trust_state": "TRUSTED"
+}
+`,
+		},
+		{
+			// A 400-digit integer is legal JSON syntax but overflows float64
+			// (10^399 > ~1.8e308): Go's decode, Rust's serde_json, and
+			// Python's rfc8785 integer domain all refuse it; TypeScript's
+			// JSON.parse yields Infinity and canonicalize refuses that. All
+			// four classify it parse-error.
+			name:   "v1_number_int_overflow",
+			why:    "integer literal with ~400 digits overflowing float64: must be rejected as parse-error",
+			expect: vectorRejectParse,
+			record: governance.DecisionRecordV1{
+				SchemaVersion: governance.DecisionRecordSchemaVersion,
+				EventType:     "governance_decision",
+				Timestamp:     ts,
+				Adapter:       governance.TransportMCP,
+				AgentID:       "agent-numof-int",
+				Tool:          "query",
+				Action:        "warn",
+				Reason:        "integer out of the RFC 8785 number domain",
+				DecisionMode:  governance.DecisionModeDeterministic,
+				RequestHash:   "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:    1,
+				TrustState:    "TRUSTED",
+			},
+			raw: `{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "@RECORD_ID@",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-numof-int",
+  "tool": "query",
+  "action": "warn",
+  "reason": "integer out of the RFC 8785 number domain",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "@DECISION_HASH@",
+  "trust_score": 1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890,
+  "trust_state": "TRUSTED"
+}
+`,
+		},
+		{
+			// An out-of-range number nested in execution_claim.source hits
+			// the same ingest/canonicalization failure on all four
+			// verifiers: Go cannot unmarshal a number into the string
+			// field, and the standalone verifiers cannot canonicalize the
+			// non-finite value.
+			name:   "v2_execution_claim_number_overflow",
+			why:    "number literal overflowing float64 inside execution_claim.source (1e999): must be rejected as parse-error",
+			expect: vectorRejectParse,
+			record: governance.DecisionRecordV1{
+				SchemaVersion:   governance.DecisionRecordSchemaV2,
+				EventType:       "governance_decision",
+				Timestamp:       ts,
+				Adapter:         governance.TransportMCP,
+				AgentID:         "agent-numof-claim",
+				Tool:            "github.create_or_update_file",
+				Action:          "deny",
+				Reason:          "out-of-range number inside execution_claim is unrepresentable in JCS",
+				DecisionMode:    governance.DecisionModeDeterministic,
+				MatchedRule:     "deny-github-write-after-taint-fixture",
+				RequestHash:     "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:      1,
+				TrustState:      "TRUSTED",
+				AdapterID:       "mcp-primary",
+				RouteID:         "route-github-write",
+				TopologyProfile: "single-route-forced",
+				ExecutionClaim: &governance.ExecutionClaim{
+					UpstreamCalled: false,
+					Executed:       false,
+					Source:         "mcp-adapter",
+				},
+			},
+			raw: `{
+  "schema_version": "2",
+  "event_type": "governance_decision",
+  "record_id": "@RECORD_ID@",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-numof-claim",
+  "tool": "github.create_or_update_file",
+  "action": "deny",
+  "reason": "out-of-range number inside execution_claim is unrepresentable in JCS",
+  "decision_mode": "deterministic",
+  "matched_rule": "deny-github-write-after-taint-fixture",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "@DECISION_HASH@",
+  "trust_score": 1,
+  "trust_state": "TRUSTED",
+  "adapter_id": "mcp-primary",
+  "route_id": "route-github-write",
+  "topology_profile": "single-route-forced",
+  "execution_claim": {
+    "upstream_called": false,
+    "executed": false,
+    "source": 1e999
+  }
+}
+`,
+		},
 	}
 
 	// Finish each record with the real hashing function so the committed

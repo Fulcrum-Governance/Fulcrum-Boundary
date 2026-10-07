@@ -51,6 +51,7 @@
 
 use serde::de::{self, DeserializeSeed, Deserializer, MapAccess, SeqAccess, Visitor};
 use sha2::{Digest, Sha256};
+use std::collections::HashSet;
 use std::{env, fmt, fs, process};
 
 // Fields blanked to "" before hashing. Boundary always emits these keys, and
@@ -236,8 +237,11 @@ impl<'de> Visitor<'de> for StrictValueVisitor {
         A: MapAccess<'de>,
     {
         let mut object = serde_json::Map::new();
+        // Uniqueness is case-folded: "action" and "Action" in one object are
+        // a duplicate, matching the Go, Python, and TypeScript verifiers.
+        let mut seen_folded = HashSet::new();
         while let Some(key) = map.next_key::<String>()? {
-            if object.contains_key(&key) {
+            if !seen_folded.insert(key.to_lowercase()) {
                 return Err(de::Error::custom(format!("duplicate key: {key}")));
             }
             let value = map.next_value_seed(StrictValueSeed)?;
