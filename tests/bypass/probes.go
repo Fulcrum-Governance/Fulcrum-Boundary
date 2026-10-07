@@ -43,22 +43,55 @@ func RunProbe(t *testing.T, h Harness, p Probe) ProbeReport {
 	}
 }
 
+// denyIndicators are output fragments that prove a step was refused by the
+// platform — execve EACCES/ENOENT, an unprivileged su, an unreadable file —
+// rather than failing for some unrelated reason. Each entry was observed in
+// cli-reference-v1 output: busybox "Permission denied" / "can't stat", the OCI
+// runtime's "permission denied" / "executable file not found", and busybox
+// su's "must be suid to work properly". Matching is case-insensitive over
+// stdout+stderr.
+var denyIndicators = []string{
+	"denied",
+	"not found",
+	"no such file",
+	"not permitted",
+	"must be suid",
+	"refused",
+	"authentication failure",
+	"incorrect password",
+}
+
 // BlockedJudge returns a Judge for an adversarial probe: every step must exit
-// non-zero and no step may print the marker, which is the only output that can
-// come from executing the protected tool.
+// non-zero, no step may print the marker (the only output that can come from
+// executing the protected tool, checked across stdout and stderr), and every
+// step must show a platform denial indicator — a step that fails for an
+// incidental reason is not evidence the attack was blocked.
 func BlockedJudge(marker string) func([]ExecResult) (bool, string) {
 	return func(steps []ExecResult) (bool, string) {
 		var codes []string
-		for _, step := range steps {
+		for i, step := range steps {
 			codes = append(codes, fmt.Sprint(step.ExitCode))
-			if strings.Contains(step.Stdout, marker) {
-				return false, fmt.Sprintf("bypass succeeded: marker appeared on stdout (exit codes %s)", strings.Join(codes, ","))
+			output := step.Stdout + step.Stderr
+			if strings.Contains(output, marker) {
+				return false, fmt.Sprintf("bypass succeeded: marker appeared in step %d output (exit codes %s)", i+1, strings.Join(codes, ","))
 			}
 			if step.ExitCode == 0 {
-				return false, fmt.Sprintf("step exited 0 without blocking (exit codes %s)", strings.Join(codes, ","))
+				return false, fmt.Sprintf("step %d exited 0 without blocking (exit codes %s)", i+1, strings.Join(codes, ","))
+			}
+			lowered := strings.ToLower(output)
+			denied := false
+			for _, indicator := range denyIndicators {
+				if strings.Contains(lowered, indicator) {
+					denied = true
+					break
+				}
+			}
+			if !denied {
+				return false, fmt.Sprintf("step %d exited %d without a denial marker (exit codes %s; stdout %q; stderr %q)",
+					i+1, step.ExitCode, strings.Join(codes, ","), step.Stdout, step.Stderr)
 			}
 		}
-		return true, fmt.Sprintf("all %d step(s) blocked, no marker (exit codes %s)", len(steps), strings.Join(codes, ","))
+		return true, fmt.Sprintf("all %d step(s) exited non-zero with a denial marker, no tool marker (exit codes %s)", len(steps), strings.Join(codes, ","))
 	}
 }
 

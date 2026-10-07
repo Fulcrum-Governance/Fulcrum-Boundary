@@ -4,10 +4,12 @@
 # Protection model: the governed tool is executable only by group
 # boundary_exec and readable by no one but root. The sole `boundary` on the
 # agent's PATH is a setgid boundary_exec shim that folds the group into
-# real/effective/saved gid and execs the real boundary CLI, so a process can
-# execve the tool only as a child of the wrapper (or as root). The
-# unprivileged "agent" user is not a member of boundary_exec, and the agent
-# container drops all capabilities.
+# real/effective/saved gid and execs the real boundary CLI — but only when
+# argv is `command run`; every other argv runs with the caller's real gid —
+# so a process can execve the tool only as a child of a governed
+# `boundary command run` invocation (or as root). The unprivileged "agent"
+# user is not a member of boundary_exec, and the agent container drops all
+# capabilities.
 
 FROM golang:1.26-alpine AS build
 WORKDIR /src
@@ -38,14 +40,15 @@ COPY --from=build --chown=root:boundary_exec --chmod=0710 \
   /out/fulcrum-demo-tool /opt/fulcrum/tools/fulcrum-demo-tool
 
 # Real boundary CLI: world-executable but not setgid (a Go binary cannot
-# carry a raised egid anyway). Running it directly confers no group, so only
-# the shim route reaches the governed tool.
+# carry a raised egid anyway). Running it directly confers no group, so the
+# libexec binary alone cannot reach the governed tool.
 COPY --from=build --chown=root:root --chmod=0755 \
   /out/boundary /usr/local/boundary/libexec/boundary
 
-# The wrapper entry point on PATH: setgid boundary_exec. Every governed
-# command the CLI spawns runs with boundary_exec as its real group, which is
-# exactly what makes the wrapper the sole execution path to the tool.
+# The wrapper entry point on PATH: setgid boundary_exec. The shim raises the
+# group only for `command run` argv — `boundary shell`, `version`, and every
+# other subcommand exec with the caller's real gid — so inside this topology
+# only governed `command run` children hold boundary_exec.
 COPY --from=build --chown=root:boundary_exec --chmod=2755 \
   /out/boundary-shim /usr/local/bin/boundary
 

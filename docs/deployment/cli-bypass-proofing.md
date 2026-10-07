@@ -24,16 +24,24 @@ shells:
   applet that also exists elsewhere in the image cannot serve as the
   protected tool.
 - The only `boundary` on `PATH` is a setgid shim at
-  `/usr/local/bin/boundary` (`2755 root:boundary_exec`). It folds the file's
-  group into real, effective, and saved gid and then execs the real CLI at
-  `/usr/local/boundary/libexec/boundary` (`0755 root:root`, not setgid).
-  Every governed command the CLI spawns therefore runs with `boundary_exec`
-  as its real group and can execve the tool.
+  `/usr/local/bin/boundary` (`2755 root:boundary_exec`). When argv is
+  exactly `boundary command run ...` it folds the file's group into real,
+  effective, and saved gid and then execs the real CLI at
+  `/usr/local/boundary/libexec/boundary` (`0755 root:root`, not setgid), so
+  commands a governed `command run` spawns run with `boundary_exec` as
+  their real group and can execve the tool.
 - The shim exists because the CLI is a Go binary: the Go runtime drops a
   raised egid at startup, so a setgid Go binary cannot carry a group into
   its children. The shim is the entry point; the CLI it execs is not
-  setgid. Invoking the libexec binary directly confers no group, so the
-  shim remains the sole route to the tool.
+  setgid. For any argv other than `command run` — `boundary shell`,
+  `version`, `command classify`, and anything else — the shim folds all
+  three gids onto the caller's real gid instead, so those invocations run
+  with no `boundary_exec` membership; a `boundary shell` subshell is
+  therefore as unable to execve the tool as the agent's own `/bin/sh`
+  (probe `shell-via-shim` asserts this). Invoking the libexec binary
+  directly confers no group either. Within this topology, the only probed
+  route that can execve the tool is `boundary command run` through the
+  shim; every other tested route is denied.
 - The agent user (`agent`, uid 100) is not a member of `boundary_exec`.
 - The container drops all capabilities (`cap_drop: ALL`). This is required:
   `docker exec -u` performs the entry execve with the container's bounding
@@ -52,7 +60,11 @@ go test -tags=bypass -v ./tests/bypass/
 It brings the topology up with `docker compose`, runs each probe through
 `docker compose exec` with explicit argv as the `agent` user, and asserts on
 real outcomes — exit codes, stdout/stderr, and the decision record file —
-never strings the test echoed itself.
+never strings the test echoed itself. Adversarial probes are blocked only
+when every step exits non-zero, the tool's marker appears nowhere in the
+captured output, and every step shows a platform denial indicator
+(permission denied, not found, or an equivalent refusal): a step that
+fails for an incidental reason does not count as a block.
 
 | Probe | Attack | Expected outcome |
 |---|---|---|
@@ -63,6 +75,7 @@ never strings the test echoed itself.
 | env-absolute-path | `env <absolute path>` | permission denied, no marker |
 | copy-or-symlink | `cp` the binary to `/tmp`, then symlink and run it | copy denied (unreadable), run denied, no marker |
 | su-or-sudo-escalation | `sudo` / `su root` to reach the tool | unavailable or denied, no marker |
+| shell-via-shim | `boundary shell` subshell handed the tool path on stdin (with and without `--no-install`) | non-zero exit, permission denied, no marker, no decision record |
 | governed-allow | `boundary command run -- find <tools dir> -name <tool> -exec <tool> ;` | exit 0, marker on stdout, decision record `action=allow executed=true` |
 | governed-deny | `boundary command run -- <tool> --token=...` | non-zero exit, no marker, decision record `action=deny executed=false` |
 | find-exec-as-agent | the governed-allow shape attempted directly | permission denied, no marker |

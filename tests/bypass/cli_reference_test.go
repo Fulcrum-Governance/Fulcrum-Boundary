@@ -14,9 +14,10 @@ import (
 // cli-reference-v1 topology constants. The governed tool lives at an absolute
 // path that is not on PATH, executable only by group boundary_exec; the sole
 // `boundary` on the agent's PATH is a setgid boundary_exec shim that execs the
-// real CLI, and is the agent's only route to run the tool. The agent
-// container drops all capabilities so docker exec entry-point checks cannot
-// be bypassed by a bounding-set DAC_OVERRIDE. See
+// real CLI, raising the group only when argv is `command run` — every other
+// subcommand, including `boundary shell`, is exec'd with the caller's real
+// gid. The agent container drops all capabilities so docker exec entry-point
+// checks cannot be bypassed by a bounding-set DAC_OVERRIDE. See
 // docs/deployment/cli-bypass-proofing.md.
 const (
 	cliTopologyID = "cli-reference-v1"
@@ -31,10 +32,12 @@ const (
 )
 
 // TestCLIReferenceTopology attacks the cli-reference-v1 reference topology:
-// seven adversarial probes that must all fail to execute the protected tool,
-// two governed-route probes that assert the Boundary wrapper works and records
-// its decision, and two extra applet probes. Every expectation is asserted on
-// real exit codes, real output, and the decision record file.
+// eight adversarial probes that must all fail to execute the protected tool —
+// including `boundary shell` launched through the setgid shim, which must not
+// carry boundary_exec — two governed-route probes that assert the Boundary
+// wrapper works and records its decision, and two extra probes. Every
+// expectation is asserted on real exit codes, real output, and the decision
+// record file.
 func TestCLIReferenceTopology(t *testing.T) {
 	RequireDocker(t)
 
@@ -103,6 +106,20 @@ func TestCLIReferenceTopology(t *testing.T) {
 			Steps: [][]string{
 				{"sudo", "-n", cliToolPath},
 				{"/bin/sh", "-c", "su root -c " + cliToolPath + " </dev/null"},
+			},
+			Judge: blocked,
+		},
+		{
+			Name: "shell-via-shim",
+			Description: "Hand the protected tool's absolute path to a `boundary shell` subshell " +
+				"launched through the setgid shim, with and without --no-install. The shim " +
+				"must raise boundary_exec only for `command run`; unelevated, the subshell's " +
+				"execve is denied like every other ungoverned route and no command decision " +
+				"is recorded.",
+			Expected: "non-zero exit, permission denied, no marker",
+			Steps: [][]string{
+				{"sh", "-c", "echo " + cliToolPath + " | boundary shell --no-install"},
+				{"sh", "-c", "echo " + cliToolPath + " | boundary shell"},
 			},
 			Judge: blocked,
 		},
