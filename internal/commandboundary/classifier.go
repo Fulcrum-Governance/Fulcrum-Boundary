@@ -2,7 +2,6 @@ package commandboundary
 
 import (
 	"errors"
-	"path/filepath"
 	"strings"
 )
 
@@ -49,16 +48,6 @@ const effectiveBoundaryArgv0 = "${BOUNDARY_BIN:-boundary}"
 
 func classifyCommand(command string, args []string) (class Class, reason string) {
 	name := strings.ToLower(command)
-	if filepath.IsAbs(name) || strings.Contains(name, "/") {
-		cleaned := filepath.Clean(name)
-		dir := filepath.Dir(cleaned)
-		if dir == "/bin" || dir == "/usr/bin" || dir == "/usr/local/bin" || dir == "/sbin" || dir == "/usr/sbin" {
-			name = filepath.Base(cleaned)
-		} else {
-			name = "" // Force unclassified catch-all
-		}
-	}
-
 	if hasSecretArgument(args) {
 		return ClassCredentialAccess, "credential or secret access"
 	}
