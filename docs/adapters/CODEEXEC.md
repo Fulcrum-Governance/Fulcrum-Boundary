@@ -49,6 +49,7 @@ Only a named isolation boundary — container, WASM runtime, microVM, or OS-leve
 
 The container implementation fixes a hardening profile for every run:
 
+- `--pull never` — the configured image must already exist in the runtime's local image store; a governed execution never pulls
 - `--network none` — no inbound or outbound network for the container
 - `--read-only` root filesystem, plus a size-limited `noexec,nosuid,nodev` tmpfs at `/tmp` — writes outside `/tmp` fail
 - non-root `--user 1000:1000`
@@ -61,11 +62,11 @@ The container implementation fixes a hardening profile for every run:
 
 Every container is named `fulcrum-codeexec-<request id>` and force-removed after the run, including when the wall-clock timeout kills the runtime client — a timed-out container is never left running.
 
-**Fail-closed semantics.** When the sandbox cannot produce a valid execution result — container runtime missing, image unresolvable, container start failure, or the deadline expiring before the container starts — the executor returns a deny envelope (exit code 126, `codeexec_denied=true`) classified `CHECK_INDETERMINATE` with a machine-readable `failure_category` (`sandbox_runtime_unavailable`, `sandbox_start_failure`, `sandbox_config`) and safe request context (request/tenant/agent IDs, transport, enforcement stage, check class). This is the ADR-047 indeterminate outcome expressed on the existing deny path; the pipeline-level `CHECK_INDETERMINATE` decision type is tracked under FUL-464. A container that started and then exceeded the timeout is an ordinary execution timeout (`timeout=true`, exit 124), not an indeterminate result.
+**Fail-closed semantics.** When the sandbox cannot produce a valid execution result — container runtime missing, image unresolvable, container start failure, caller cancellation, or the deadline expiring before the container starts — the executor returns a deny envelope (exit code 126, `codeexec_denied=true`) classified `CHECK_INDETERMINATE` with a machine-readable `failure_category` (`sandbox_runtime_unavailable`, `sandbox_start_failure`, `sandbox_config`, `sandbox_canceled`) and safe request context (request/tenant/agent IDs, transport, enforcement stage, check class). This is the ADR-047 indeterminate outcome expressed on the existing deny path; the pipeline-level `CHECK_INDETERMINATE` decision type is tracked under FUL-464. A container that started and then exceeded the timeout is an ordinary execution timeout (`timeout=true`, exit 124), not an indeterminate result; the `timeout` flag is set only on `context.DeadlineExceeded`, so a caller cancellation is never reported as a timeout. A governed-code exit of 125 is reported as an ordinary result: run-level 125s (image or create failures) are told apart by the run `--cidfile` and the runtime CLI's own error output, not by the exit code alone.
 
 **What the sandbox does not protect against.** The container boundary contains accidental breakage and routine host interference. It does not protect against kernel exploits, container-runtime escapes, hardware or side-channel attacks, or vulnerabilities in the runtime itself — the host kernel is shared. Image provenance is an operator responsibility. The sandbox also does not make the governed route unreachable from the outside: see Bypass Model and `docs/deployment/codeexec-bypass-proofing.md`.
 
-**Operator requirements.** The Boundary process needs permission to run containers on the local runtime; the governed agent must not have that access. Pre-pull or pin the configured image so image resolution cannot fail or hang at request time (the timeout bounds it, and pull failure fails closed). Keep host mounts limited to the explicit read-only input directory.
+**Operator requirements.** The Boundary process needs permission to run containers on the local runtime; the governed agent must not have that access. The sandbox runs `docker run`/`podman run` with `--pull never`, so the configured image must already be present in the runtime's local image store — pre-pull or pin it during deployment or every request fails closed as a start failure. Keep host mounts limited to the explicit read-only input directory.
 
 ## Bypass Model
 

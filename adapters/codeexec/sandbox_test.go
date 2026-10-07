@@ -124,6 +124,68 @@ func TestContainerSandbox_NilRequestFailsClosed(t *testing.T) {
 	assertIndeterminateDeny(t, resp, "sandbox_config")
 }
 
+func TestContainerSandbox_CallerCancelFailsClosedNotTimeout(t *testing.T) {
+	s, err := NewSandbox(SandboxConfig{
+		Type:       SandboxTypeContainer,
+		Production: true,
+		Image:      "python:3.11-slim",
+		// "echo" resolves via LookPath on every host; the canceled context
+		// means the run CLI never executes, so the binary itself is
+		// irrelevant — the point under test is the cancel classification.
+		Runtime: "echo",
+	})
+	if err != nil {
+		t.Fatalf("NewSandbox container: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	resp, err := s.Execute(ctx, &governance.GovernanceRequest{
+		RequestID: "req-cancel",
+		Language:  "python",
+		Code:      "print('never runs')",
+	})
+	if err != nil {
+		t.Fatalf("Execute returned error instead of fail-closed deny envelope: %v", err)
+	}
+	assertIndeterminateDeny(t, resp, "sandbox_canceled")
+	if resp.Metadata["timeout"] == "true" {
+		t.Fatalf("caller cancel must not be reported as a timeout: %+v", resp.Metadata)
+	}
+}
+
+func TestContainerRunArgs_NeverPullsAndWritesCidfile(t *testing.T) {
+	s, err := NewSandbox(SandboxConfig{
+		Type:       SandboxTypeContainer,
+		Production: true,
+		Image:      "python:3.11-slim",
+	})
+	if err != nil {
+		t.Fatalf("NewSandbox container: %v", err)
+	}
+	cs, ok := s.(*containerSandbox)
+	if !ok {
+		t.Fatalf("expected *containerSandbox, got %T", s)
+	}
+	args := cs.containerRunArgs("fulcrum-codeexec-test", "/tmp/fulcrum-codeexec-test.cid", []string{"python3", "-c", "print(1)"})
+	if got := flagValue(args, "--pull"); got != "never" {
+		t.Fatalf("--pull = %q, want never (execution must not pull images)", got)
+	}
+	if got := flagValue(args, "--cidfile"); got != "/tmp/fulcrum-codeexec-test.cid" {
+		t.Fatalf("--cidfile = %q, want the per-execution cidfile path", got)
+	}
+}
+
+// flagValue returns the value following the first occurrence of flag.
+func flagValue(args []string, flag string) string {
+	for i, a := range args {
+		if a == flag && i+1 < len(args) {
+			return args[i+1]
+		}
+	}
+	return ""
+}
+
 func TestContainerSandbox_UnsupportedLanguageFailsClosed(t *testing.T) {
 	s, err := NewSandbox(SandboxConfig{
 		Type:       SandboxTypeContainer,
@@ -228,6 +290,29 @@ func TestLocalSandbox_TimeoutKillsProcess(t *testing.T) {
 	}
 	if resp.ExitCode == 0 {
 		t.Fatalf("expected non-zero exit code on timeout, got %+v", resp)
+	}
+}
+
+func TestLocalSandbox_CallerCancelFailsClosedNotTimeout(t *testing.T) {
+	if _, err := exec.LookPath("python3"); err != nil {
+		t.Skip("python3 not available on this host")
+	}
+	s, err := NewSandbox(SandboxConfig{Type: SandboxTypeLocal, Timeout: 10 * time.Second})
+	if err != nil {
+		t.Fatalf("NewSandbox local: %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	resp, err := s.Execute(ctx, &governance.GovernanceRequest{
+		Language: "python",
+		Code:     "print('never runs')",
+	})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	assertIndeterminateDeny(t, resp, "sandbox_canceled")
+	if resp.Metadata["timeout"] == "true" {
+		t.Fatalf("caller cancel must not be reported as a timeout: %+v", resp.Metadata)
 	}
 }
 

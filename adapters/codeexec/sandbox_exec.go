@@ -5,7 +5,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -166,11 +168,18 @@ func (s *containerSandbox) Boundary() ExecutionBoundary {
 
 // containerRunArgs builds the hardened `run` argument set. The flags are the
 // security contract — do not relax them without a documented reason and test
-// coverage for the relaxed property.
-func (s *containerSandbox) containerRunArgs(name string, entrypoint []string) []string {
+// coverage for the relaxed property. --pull never makes the image contract
+// explicit: the configured reference must already exist in the runtime's
+// local image store, so a governed execution can never block on (or be
+// swapped by) a registry pull. --cidfile records the container ID at create
+// time so a run-level exit 125 (container never created) can be told apart
+// from governed code exiting 125 (container created and ran).
+func (s *containerSandbox) containerRunArgs(name, cidPath string, entrypoint []string) []string {
 	args := []string{
 		"run",
 		"--rm",
+		"--pull", "never",
+		"--cidfile", cidPath,
 		"--name", name,
 		"--network", "none",
 		"--read-only",
@@ -220,17 +229,33 @@ func (s *containerSandbox) Execute(ctx context.Context, req *governance.Governan
 	// daemon-side container keeps running.
 	defer removeContainer(runtime, name)
 
+	// The runtime CLI writes the container ID to cidPath at create time and
+	// only then; its presence is evidence the container started. On exit 125
+	// an absent cidfile plus runtime error output marks a run-level failure
+	// (image resolution, create errors, daemon faults), not a governed-code
+	// exit — see the classification below.
+	cidPath := filepath.Join(os.TempDir(), "fulcrum-codeexec-"+uuid.NewString()+".cid")
+	defer func() { _ = os.Remove(cidPath) }()
+
 	var stdout, stderr cappedBuffer
 	stdout.limit = s.cfg.MaxOutputBytes
 	stderr.limit = s.cfg.MaxOutputBytes
 
 	start := time.Now()
-	cmd := exec.CommandContext(ctx, runtime, s.containerRunArgs(name, entrypoint)...)
+	// #nosec G204 -- the runtime binary is resolved via exec.LookPath, the
+	// container name is constrained by validNamePart, and argv is the fixed
+	// hardening flag list plus the configured image and interpreter argv; no
+	// shell is invoked.
+	cmd := exec.CommandContext(ctx, runtime, s.containerRunArgs(name, cidPath, entrypoint)...)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	runErr := cmd.Run()
 
-	timedOut := ctx.Err() != nil
+	// DeadlineExceeded means the sandbox wall-clock timeout fired;
+	// context.Canceled means the caller aborted. Both set ctx.Err(), but only
+	// the former is an execution timeout — a caller cancel produces no valid
+	// execution result and must fail closed, not report a run.
+	timedOut := errors.Is(ctx.Err(), context.DeadlineExceeded)
 	resp := &governance.ToolResponse{
 		Content:     stdout.buf.Bytes(),
 		ContentType: "text/plain",
@@ -256,17 +281,29 @@ func (s *containerSandbox) Execute(ctx context.Context, req *governance.Governan
 		}
 		resp.ExitCode = 124
 		return resp, nil
+	case ctx.Err() != nil:
+		// The caller canceled without a deadline having fired. No valid
+		// execution result exists — fail closed rather than report a killed
+		// run as a completed execution.
+		return sandboxDeniedResponse(req, "sandbox_canceled",
+			"execution aborted: caller canceled the request context"), nil
 	case runErr == nil:
 		resp.ExitCode = 0
 		return resp, nil
 	default:
 		var exitErr *exec.ExitError
 		if errors.As(runErr, &exitErr) {
-			// Docker and podman exit 125 when `run` itself fails: image pull
-			// or create errors, daemon failures, invalid flags. That is a
-			// sandbox start failure — fail closed rather than report it as a
-			// user-code result.
-			if exitErr.ExitCode() == 125 {
+			// Docker and podman exit 125 when `run` itself fails (image
+			// resolution or create errors, daemon failures, invalid flags) —
+			// but governed code can also exit 125, so the exit code alone
+			// cannot classify the failure. Two runtime-owned signals decide:
+			// a written --cidfile (the CLI records it only after a
+			// successful create) and runtime-CLI error text on stderr. A 125
+			// with no cidfile and a runtime error signature is a sandbox
+			// start failure — fail closed rather than report it as a
+			// user-code result. A 125 after the container was created, or
+			// with only governed-code stderr, is an ordinary exit.
+			if exitErr.ExitCode() == 125 && !containerCreated(cidPath) && runtimeRunError(stderr.buf.String()) {
 				return sandboxDeniedResponse(req, "sandbox_start_failure",
 					"container failed to start: "+tailLine(stderr.buf.String())), nil
 			}
@@ -284,7 +321,41 @@ func (s *containerSandbox) Execute(ctx context.Context, req *governance.Governan
 func containerExists(runtime, name string) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+	// #nosec G204 -- runtime is resolved via exec.LookPath, argv is a fixed
+	// inspect command, and name is constrained by validNamePart; no shell is
+	// invoked.
 	return exec.CommandContext(ctx, runtime, "inspect", "--type", "container", name).Run() == nil
+}
+
+// containerCreated reports whether the runtime CLI recorded a container ID in
+// the --cidfile at cidPath. Docker and podman write the file only after a
+// successful container create, so an absent or empty file proves the run
+// failed before user code could start. Note podman removes the cidfile along
+// with an --rm container, so an absent file is necessary but not sufficient
+// evidence — runtimeRunError supplies the second signal.
+func containerCreated(cidPath string) bool {
+	info, err := os.Stat(cidPath)
+	return err == nil && info.Size() > 0
+}
+
+// runtimeRunError reports whether captured stderr carries a container-runtime
+// CLI failure signature rather than governed-code output. Docker prefixes its
+// own errors with "docker:" and daemon errors with "Error response from
+// daemon"; podman reports "Error: ...". Only stderr written by the CLI itself
+// matches — the governed interpreter's output is forwarded verbatim and could
+// mimic a signature, which would misclassify toward deny (fail closed).
+func runtimeRunError(stderr string) bool {
+	for _, line := range strings.Split(stderr, "\n") {
+		line = strings.TrimSpace(strings.ToLower(line))
+		if strings.HasPrefix(line, "docker:") ||
+			strings.HasPrefix(line, "error:") ||
+			strings.Contains(line, "error response from daemon") ||
+			strings.Contains(line, "unable to find image") ||
+			strings.Contains(line, "no such image") {
+			return true
+		}
+	}
+	return false
 }
 
 // removeContainer force-removes the named container, tolerating "no such
@@ -292,6 +363,9 @@ func containerExists(runtime, name string) bool {
 func removeContainer(runtime, name string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
+	// #nosec G204 -- runtime is resolved via exec.LookPath, argv is a fixed rm
+	// -f command, and name is constrained by validNamePart; no shell is
+	// invoked.
 	_ = exec.CommandContext(ctx, runtime, "rm", "-f", name).Run()
 }
 
@@ -358,11 +432,17 @@ func (s *localSandbox) Execute(ctx context.Context, req *governance.GovernanceRe
 	stderr.limit = s.cfg.MaxOutputBytes
 
 	start := time.Now()
+	// #nosec G204 -- the interpreter is resolved via exec.LookPath from the
+	// fixed interpreterArgs map and argv is that map's fixed flag plus the
+	// governed code string; no shell is invoked.
 	cmd := exec.CommandContext(ctx, interpreter, entrypoint[1:]...)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	runErr := cmd.Run()
 
+	// As in the container executor, only DeadlineExceeded is an execution
+	// timeout; a caller cancel aborts the run and must fail closed.
+	timedOut := errors.Is(ctx.Err(), context.DeadlineExceeded)
 	resp := &governance.ToolResponse{
 		Content:     stdout.buf.Bytes(),
 		ContentType: "text/plain",
@@ -370,15 +450,18 @@ func (s *localSandbox) Execute(ctx context.Context, req *governance.GovernanceRe
 		Truncated:   stdout.truncated,
 		Metadata: map[string]string{
 			"stderr":  stderr.buf.String(),
-			"timeout": strconv.FormatBool(ctx.Err() != nil),
+			"timeout": strconv.FormatBool(timedOut),
 		},
 	}
 	if stderr.truncated {
 		resp.Metadata["stderr_truncated"] = "true"
 	}
 	switch {
-	case ctx.Err() != nil:
+	case timedOut:
 		resp.ExitCode = 124
+	case ctx.Err() != nil:
+		return sandboxDeniedResponse(req, "sandbox_canceled",
+			"execution aborted: caller canceled the request context"), nil
 	case runErr == nil:
 		resp.ExitCode = 0
 	default:

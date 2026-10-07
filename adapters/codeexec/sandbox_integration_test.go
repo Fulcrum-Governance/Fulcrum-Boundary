@@ -344,6 +344,31 @@ func TestSandboxIntegration_MissingImageFailsClosed(t *testing.T) {
 	}
 }
 
+// Governed code may itself exit 125 — the same code the runtime CLI reports
+// for a failed `run`. The classification must come from runtime-owned
+// evidence (the --cidfile plus the CLI's own error output), not the exit
+// code: a user-code 125 is an ordinary execution result, never a deny
+// envelope.
+func TestSandboxIntegration_UserCodeExit125IsNotStartFailure(t *testing.T) {
+	runtime := requireSandboxRuntime(t)
+	ensureSandboxImage(t, runtime)
+
+	sandbox := newContainerSandbox(t, 20*time.Second)
+	resp, err := sandbox.Execute(context.Background(), pythonRequest("import sys\nsys.exit(125)"))
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if resp.Metadata["codeexec_denied"] == "true" {
+		t.Fatalf("user-code exit 125 must not be denied as a start failure: %+v", resp)
+	}
+	if resp.ExitCode != 125 {
+		t.Fatalf("expected user-code exit 125, got %+v", resp)
+	}
+	if resp.Metadata["timeout"] != "false" {
+		t.Fatalf("unexpected timeout flag: %+v", resp.Metadata)
+	}
+}
+
 // A wall-clock deadline hit before the container exists is a start failure:
 // nothing ran, so the outcome must be fail-closed indeterminate rather than a
 // normal execution timeout.
