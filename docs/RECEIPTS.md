@@ -93,6 +93,14 @@ the `execution_claim` self-report is independently corroborated — see
 A committed V2 example is at
 [`docs/examples/decision-record-v2.example.json`](examples/decision-record-v2.example.json).
 
+The record file itself is ingested strictly: the input must be a single JSON
+object, member names must be unique at every depth (a repeated key is rejected,
+never last-wins), and no bytes may follow the top-level value. The same strict
+ingest and hash check are reproduced by the Python, TypeScript, and Rust
+standalone verifiers; [`docs/VERIFIER_PARITY.md`](VERIFIER_PARITY.md) is the
+generated report showing all four agreeing on the shared conformance corpus,
+including the rejection vectors.
+
 ## Tamper detection
 
 Each check is what trips when the corresponding input is altered:
