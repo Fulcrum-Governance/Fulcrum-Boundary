@@ -165,6 +165,12 @@ func (a *Adapter) ForwardGoverned(ctx context.Context, req *governance.Governanc
 	resp.Metadata["codeexec_boundary"] = a.boundary.Name
 	resp.Metadata["codeexec_boundary_kind"] = a.boundary.Kind
 	resp.Metadata["codeexec_secure_sandbox"] = strconv.FormatBool(a.boundary.SecureSandbox)
+	if resp.Metadata["codeexec_denied"] == "true" {
+		// The executor failed closed (for example the sandbox runtime was
+		// unavailable): return the deny envelope as-is rather than stamping
+		// the allow decision's metadata onto a blocked execution.
+		return resp, nil
+	}
 	if err := a.EmitGovernanceMetadata(ctx, resp, decision); err != nil {
 		return nil, err
 	}

@@ -1,6 +1,266 @@
 package codeexec
 
-import "testing"
+import (
+	"context"
+	"errors"
+	"os/exec"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/fulcrum-governance/fulcrum-boundary/governance"
+)
+
+func TestNewSandbox_RejectsLocalTypeInProduction(t *testing.T) {
+	_, err := NewSandbox(SandboxConfig{
+		Type:       SandboxTypeLocal,
+		Production: true,
+	})
+	if !errors.Is(err, ErrLocalSandboxNonProduction) {
+		t.Fatalf("expected ErrLocalSandboxNonProduction, got %v", err)
+	}
+}
+
+func TestNewSandbox_AllowsLocalTypeOutsideProduction(t *testing.T) {
+	s, err := NewSandbox(SandboxConfig{Type: SandboxTypeLocal})
+	if err != nil {
+		t.Fatalf("NewSandbox local: %v", err)
+	}
+	b := s.Boundary()
+	if b.SecureSandbox {
+		t.Fatal("local sandbox boundary must not claim a secure sandbox")
+	}
+	if b.Kind != "local_process" {
+		t.Fatalf("boundary kind = %q, want local_process", b.Kind)
+	}
+}
+
+func TestNewSandbox_RejectsUnknownType(t *testing.T) {
+	_, err := NewSandbox(SandboxConfig{Type: SandboxType("wasm")})
+	if err == nil || !strings.Contains(err.Error(), "unknown sandbox type") {
+		t.Fatalf("expected unknown sandbox type error, got %v", err)
+	}
+}
+
+func TestNewSandbox_ContainerRequiresImage(t *testing.T) {
+	_, err := NewSandbox(SandboxConfig{Type: SandboxTypeContainer, Production: true})
+	if !errors.Is(err, ErrSandboxImageRequired) {
+		t.Fatalf("expected ErrSandboxImageRequired, got %v", err)
+	}
+}
+
+func TestContainerSandbox_BoundaryMetadata(t *testing.T) {
+	s, err := NewSandbox(SandboxConfig{
+		Type:       SandboxTypeContainer,
+		Production: true,
+		Image:      "python:3.11-slim",
+	})
+	if err != nil {
+		t.Fatalf("NewSandbox container: %v", err)
+	}
+	b := s.Boundary()
+	if b.Kind != "container" {
+		t.Fatalf("boundary kind = %q, want container", b.Kind)
+	}
+	if !b.SecureSandbox {
+		t.Fatal("container boundary must report a named, tested sandbox boundary")
+	}
+	if b.Name == "" || b.Description == "" {
+		t.Fatalf("container boundary must be named and described, got %+v", b)
+	}
+}
+
+func TestContainerSandbox_MissingRuntimeFailsClosedIndeterminate(t *testing.T) {
+	s, err := NewSandbox(SandboxConfig{
+		Type:       SandboxTypeContainer,
+		Production: true,
+		Image:      "python:3.11-slim",
+		Runtime:    "fulcrum-definitely-missing-runtime",
+	})
+	if err != nil {
+		t.Fatalf("NewSandbox container: %v", err)
+	}
+
+	resp, err := s.Execute(context.Background(), &governance.GovernanceRequest{
+		RequestID: "req-runtime-missing",
+		Language:  "python",
+		Code:      "print('never runs')",
+		TenantID:  "tenant-1",
+		AgentID:   "agent-1",
+		Transport: governance.TransportCodeExec,
+	})
+	if err != nil {
+		t.Fatalf("Execute returned error instead of fail-closed deny envelope: %v", err)
+	}
+	assertIndeterminateDeny(t, resp, "sandbox_runtime_unavailable")
+	if resp.Metadata["x-fulcrum-request-id"] != "req-runtime-missing" {
+		t.Fatalf("request id missing from deny envelope: %+v", resp.Metadata)
+	}
+	if resp.Metadata["x-fulcrum-tenant-id"] != "tenant-1" {
+		t.Fatalf("tenant id missing from deny envelope: %+v", resp.Metadata)
+	}
+	if resp.Metadata["x-fulcrum-agent-id"] != "agent-1" {
+		t.Fatalf("agent id missing from deny envelope: %+v", resp.Metadata)
+	}
+	if resp.Metadata["x-fulcrum-transport"] != string(governance.TransportCodeExec) {
+		t.Fatalf("transport missing from deny envelope: %+v", resp.Metadata)
+	}
+}
+
+func TestContainerSandbox_NilRequestFailsClosed(t *testing.T) {
+	s, err := NewSandbox(SandboxConfig{
+		Type:       SandboxTypeContainer,
+		Production: true,
+		Image:      "python:3.11-slim",
+		Runtime:    "fulcrum-definitely-missing-runtime",
+	})
+	if err != nil {
+		t.Fatalf("NewSandbox container: %v", err)
+	}
+	resp, err := s.Execute(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("Execute returned error instead of fail-closed deny envelope: %v", err)
+	}
+	assertIndeterminateDeny(t, resp, "sandbox_config")
+}
+
+func TestContainerSandbox_UnsupportedLanguageFailsClosed(t *testing.T) {
+	s, err := NewSandbox(SandboxConfig{
+		Type:       SandboxTypeContainer,
+		Production: true,
+		Image:      "python:3.11-slim",
+		Runtime:    "fulcrum-definitely-missing-runtime",
+	})
+	if err != nil {
+		t.Fatalf("NewSandbox container: %v", err)
+	}
+	resp, err := s.Execute(context.Background(), &governance.GovernanceRequest{
+		RequestID: "req-lang",
+		Language:  "ruby",
+		Code:      "puts 1",
+	})
+	if err != nil {
+		t.Fatalf("Execute returned error instead of fail-closed deny envelope: %v", err)
+	}
+	assertIndeterminateDeny(t, resp, "sandbox_config")
+}
+
+func TestForwardGoverned_ExecutorFailClosedEnvelopeStaysDeny(t *testing.T) {
+	s, err := NewSandbox(SandboxConfig{
+		Type:       SandboxTypeContainer,
+		Production: true,
+		Image:      "python:3.11-slim",
+		Runtime:    "fulcrum-definitely-missing-runtime",
+	})
+	if err != nil {
+		t.Fatalf("NewSandbox container: %v", err)
+	}
+	a := NewAdapterWithExecutor("tenant-1", s, s.Boundary())
+	req, err := a.ParseRequest(context.Background(), &CodeExecInput{
+		Code:     "print('never runs')",
+		Language: "python",
+	})
+	if err != nil {
+		t.Fatalf("ParseRequest: %v", err)
+	}
+	resp, err := a.ForwardGoverned(context.Background(), req, &governance.GovernanceDecision{
+		Action:    "allow",
+		RequestID: req.RequestID,
+	})
+	if err != nil {
+		t.Fatalf("ForwardGoverned: %v", err)
+	}
+	if resp.ExitCode != 126 || resp.Metadata["codeexec_denied"] != "true" {
+		t.Fatalf("expected fail-closed deny envelope, got %+v", resp)
+	}
+	if resp.Metadata["x-fulcrum-action"] != "deny" {
+		t.Fatalf("fail-closed executor response must not be relabelled with the allow decision, got %q", resp.Metadata["x-fulcrum-action"])
+	}
+	if resp.Metadata["check_result"] != "CHECK_INDETERMINATE" {
+		t.Fatalf("expected CHECK_INDETERMINATE classification, got %+v", resp.Metadata)
+	}
+	if resp.Metadata["codeexec_boundary_kind"] != "container" {
+		t.Fatalf("boundary metadata missing on deny envelope: %+v", resp.Metadata)
+	}
+}
+
+func TestLocalSandbox_ExecutesAndCapturesOutput(t *testing.T) {
+	if _, err := exec.LookPath("python3"); err != nil {
+		t.Skip("python3 not available on this host")
+	}
+	s, err := NewSandbox(SandboxConfig{Type: SandboxTypeLocal, Timeout: 10 * time.Second})
+	if err != nil {
+		t.Fatalf("NewSandbox local: %v", err)
+	}
+	resp, err := s.Execute(context.Background(), &governance.GovernanceRequest{
+		RequestID: "req-local",
+		Language:  "python",
+		Code:      "print('local-sandbox-ok')",
+	})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if resp.ExitCode != 0 || !strings.Contains(string(resp.Content), "local-sandbox-ok") {
+		t.Fatalf("expected executed output, got %+v", resp)
+	}
+	if resp.Metadata["timeout"] != "false" {
+		t.Fatalf("unexpected timeout flag: %+v", resp.Metadata)
+	}
+}
+
+func TestLocalSandbox_TimeoutKillsProcess(t *testing.T) {
+	if _, err := exec.LookPath("python3"); err != nil {
+		t.Skip("python3 not available on this host")
+	}
+	s, err := NewSandbox(SandboxConfig{Type: SandboxTypeLocal, Timeout: 500 * time.Millisecond})
+	if err != nil {
+		t.Fatalf("NewSandbox local: %v", err)
+	}
+	resp, err := s.Execute(context.Background(), &governance.GovernanceRequest{
+		Language: "python",
+		Code:     "import time\ntime.sleep(30)",
+	})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if resp.Metadata["timeout"] != "true" {
+		t.Fatalf("expected timeout=true, got %+v", resp.Metadata)
+	}
+	if resp.ExitCode == 0 {
+		t.Fatalf("expected non-zero exit code on timeout, got %+v", resp)
+	}
+}
+
+func assertIndeterminateDeny(t *testing.T, resp *governance.ToolResponse, wantCategory string) {
+	t.Helper()
+	if resp == nil {
+		t.Fatal("expected a deny envelope, got nil response")
+	}
+	if resp.ExitCode != 126 {
+		t.Fatalf("exit code = %d, want 126 (execution blocked)", resp.ExitCode)
+	}
+	if resp.Metadata["x-fulcrum-action"] != "deny" {
+		t.Fatalf("x-fulcrum-action = %q, want deny", resp.Metadata["x-fulcrum-action"])
+	}
+	if resp.Metadata["codeexec_denied"] != "true" {
+		t.Fatalf("codeexec_denied marker missing: %+v", resp.Metadata)
+	}
+	if resp.Metadata["check_result"] != "CHECK_INDETERMINATE" {
+		t.Fatalf("check_result = %q, want CHECK_INDETERMINATE", resp.Metadata["check_result"])
+	}
+	if resp.Metadata["check_class"] != "sandbox_executor" {
+		t.Fatalf("check_class = %q, want sandbox_executor", resp.Metadata["check_class"])
+	}
+	if resp.Metadata["failure_category"] != wantCategory {
+		t.Fatalf("failure_category = %q, want %q", resp.Metadata["failure_category"], wantCategory)
+	}
+	if resp.Metadata["enforcement_stage"] != "execution" {
+		t.Fatalf("enforcement_stage = %q, want execution", resp.Metadata["enforcement_stage"])
+	}
+	if !strings.Contains(string(resp.Content), "code execution blocked") {
+		t.Fatalf("deny content missing, got %q", string(resp.Content))
+	}
+}
 
 func TestDefaultSandboxPolicy(t *testing.T) {
 	p := DefaultSandboxPolicy()
