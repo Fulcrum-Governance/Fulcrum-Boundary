@@ -20,6 +20,12 @@
       "why": "leading UTF-8 BOM: must be rejected as parse-error, not skipped or misclassified"
     },
     {
+      "file": "v1_case_variant_check.json",
+      "decision_hash": "sha256:7dc6f123dd7acb7c39d5eba27cd6ed6e4daaa171ec5dab1936ec6b2e3beb17d6",
+      "expect": "reject:unknown-field",
+      "why": "member name differing only in case (Stage for stage) inside check: must be rejected as unknown-field, not bound case-insensitively"
+    },
+    {
       "file": "v1_case_variant_duplicate_key.json",
       "decision_hash": "sha256:b49ddfb9479e4fea68eebb062fc773901ad3c940af39ba58805b372484ec379f",
       "expect": "reject:duplicate-key",
@@ -30,6 +36,12 @@
       "decision_hash": "sha256:d90487cdee373fe7810e1e6e3a8f081b6b90081f07ab21cb898188612d2bb38d",
       "expect": "reject:unknown-field",
       "why": "member name differing only in case (ACTION for action) at top level: must be rejected as unknown-field, not bound case-insensitively"
+    },
+    {
+      "file": "v1_check_indeterminate.json",
+      "decision_hash": "sha256:7dc6f123dd7acb7c39d5eba27cd6ed6e4daaa171ec5dab1936ec6b2e3beb17d6",
+      "expect": "verify",
+      "why": "schema_version 1; action=check_indeterminate carrying the ADR-047 check object (stage, class, category, cause) and request_id"
     },
     {
       "file": "v1_deny.json",
@@ -114,6 +126,12 @@
       "decision_hash": "sha256:81bd0fe976ea3bfe3d19f521b69c8ce00dd4b65ceadb1453c8645b2388f1aa0f",
       "expect": "verify",
       "why": "HTML-escape coverage: reason contains \u0026 \u003c \u003e which JCS keeps literal (Go's encoder would escape them)"
+    },
+    {
+      "file": "v1_request_id.json",
+      "decision_hash": "sha256:c0575e046a05e3b652a2036e9aeeb7523387ab89ab41d84446911deff214119c",
+      "expect": "verify",
+      "why": "schema_version 1; request_id populated (pipeline correlation id) and covered by decision_hash"
     },
     {
       "file": "v1_require_approval.json",

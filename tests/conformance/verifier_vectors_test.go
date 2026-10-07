@@ -1248,6 +1248,112 @@ func buildVectors(t *testing.T) []vector {
 }
 `,
 		},
+		{
+			// request_id is a declared DecisionRecordV1 member (omitempty)
+			// that the Go emitter populates on pipeline records and covers
+			// with decision_hash. A verifier whose known-field set omitted
+			// it rejected every real pipeline record as unknown-field while
+			// Go verified them; this vector pins it as covered.
+			name: "v1_request_id",
+			why:  "schema_version 1; request_id populated (pipeline correlation id) and covered by decision_hash",
+			record: governance.DecisionRecordV1{
+				SchemaVersion: governance.DecisionRecordSchemaVersion,
+				EventType:     "governance_decision",
+				Timestamp:     ts,
+				Adapter:       governance.TransportMCP,
+				AgentID:       "agent-request-id",
+				RequestID:     "req-9f31a2",
+				Tool:          "query",
+				Action:        "allow",
+				Reason:        "pipeline-assigned request correlation id is covered by the hash",
+				DecisionMode:  governance.DecisionModeDeterministic,
+				RequestHash:   "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:    1,
+				TrustState:    "TRUSTED",
+			},
+		},
+		{
+			// ADR-047: a required check that cannot produce a valid result is
+			// recorded as action=check_indeterminate carrying the CheckFailure
+			// context object; stage, class, category, and cause are emitted
+			// and covered by decision_hash alongside request_id.
+			name: "v1_check_indeterminate",
+			why:  "schema_version 1; action=check_indeterminate carrying the ADR-047 check object (stage, class, category, cause) and request_id",
+			record: governance.DecisionRecordV1{
+				SchemaVersion: governance.DecisionRecordSchemaVersion,
+				EventType:     "governance_decision",
+				Timestamp:     ts,
+				Adapter:       governance.TransportMCP,
+				AgentID:       "agent-check",
+				RequestID:     "req-77c1e0",
+				Tool:          "github.create_or_update_file",
+				Action:        governance.ActionCheckIndeterminate,
+				Reason:        "required policy evaluation could not produce a valid result",
+				DecisionMode:  governance.DecisionModeDeterministic,
+				RequestHash:   "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:    0,
+				Check: &governance.CheckFailure{
+					Stage:    governance.CheckStagePolicyEval,
+					Class:    governance.CheckClassPolicy,
+					Category: governance.FailureUnavailable,
+					Cause:    "policy evaluation failed",
+				},
+			},
+		},
+		{
+			// "Stage" is a case variant of the declared check member
+			// "stage". encoding/json binds it to CheckFailure.Stage
+			// case-insensitively, so the hash over the lowercase-bound
+			// record would match while the standalone verifiers' exact-case
+			// member sets reject it. check is a closed schema object like
+			// execution_claim: all four verifiers must report unknown-field.
+			name:   "v1_case_variant_check",
+			why:    "member name differing only in case (Stage for stage) inside check: must be rejected as unknown-field, not bound case-insensitively",
+			expect: vectorRejectUnknownField,
+			record: governance.DecisionRecordV1{
+				SchemaVersion: governance.DecisionRecordSchemaVersion,
+				EventType:     "governance_decision",
+				Timestamp:     ts,
+				Adapter:       governance.TransportMCP,
+				AgentID:       "agent-check",
+				RequestID:     "req-77c1e0",
+				Tool:          "github.create_or_update_file",
+				Action:        governance.ActionCheckIndeterminate,
+				Reason:        "required policy evaluation could not produce a valid result",
+				DecisionMode:  governance.DecisionModeDeterministic,
+				RequestHash:   "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:    0,
+				Check: &governance.CheckFailure{
+					Stage:    governance.CheckStagePolicyEval,
+					Class:    governance.CheckClassPolicy,
+					Category: governance.FailureUnavailable,
+					Cause:    "policy evaluation failed",
+				},
+			},
+			raw: `{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "@RECORD_ID@",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-check",
+  "request_id": "req-77c1e0",
+  "tool": "github.create_or_update_file",
+  "action": "check_indeterminate",
+  "reason": "required policy evaluation could not produce a valid result",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "@DECISION_HASH@",
+  "trust_score": 0,
+  "check": {
+    "Stage": "policy_eval",
+    "class": "policy",
+    "category": "unavailable",
+    "cause": "policy evaluation failed"
+  }
+}
+`,
+		},
 	}
 
 	// Finish each record with the real hashing function so the committed

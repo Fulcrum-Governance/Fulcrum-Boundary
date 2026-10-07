@@ -139,21 +139,27 @@ const REASON_HASH_MISMATCH: &str = "hash-mismatch";
 
 /// The decision record's member set is closed: every object position the
 /// schema defines accepts only the member names the Go type declares
-/// (DecisionRecordV1 at the top level, ExecutionClaim inside
-/// execution_claim). A verifier that dropped unknown members before hashing
-/// would accept attacker-added content under a valid stored hash; the record
-/// is rejected at ingest instead, matching Go's strict decode.
+/// (DecisionRecordV1 at the top level, CheckFailure inside check, and
+/// ExecutionClaim inside execution_claim). A verifier that dropped unknown
+/// members before hashing would accept attacker-added content under a valid
+/// stored hash; the record is rejected at ingest instead, matching Go's
+/// strict decode.
 const KNOWN_FIELDS: &[&str] = &[
     "schema_version", "event_type", "record_id", "timestamp",
     "boundary_version", "boundary_build_digest", "adapter", "agent_id",
-    "tenant_id", "trace_id", "tool", "action", "reason", "decision_mode",
+    "tenant_id", "trace_id", "request_id", "tool", "action", "reason",
+    "decision_mode",
     "matched_rule", "policy_file", "policy_bundle_hash", "request_hash",
     "raw_shape_hash", "decision_hash", "trust_score", "trust_state",
-    "signature", "signature_key_id",
+    "signature", "signature_key_id", "check",
     "adapter_id", "route_id", "topology_profile", "execution_claim",
 ];
 
 const KNOWN_CLAIM_FIELDS: &[&str] = &["upstream_called", "executed", "source"];
+
+/// CheckFailure's serialized member set (governance/request.go): Detail is
+/// `json:"-"` and never serialized, so it is not a member.
+const KNOWN_CHECK_FIELDS: &[&str] = &["stage", "class", "category", "cause"];
 
 /// A load failure carrying its shared machine-readable rejection class.
 struct LoadError {
@@ -318,6 +324,17 @@ fn load_record(path: &str) -> Result<serde_json::Value, LoadError> {
             return Err(LoadError {
                 reason: REASON_UNKNOWN_FIELD,
                 message: format!("{path}: unknown field: execution_claim.{key}"),
+            });
+        }
+    }
+    if let Some(check) = object.get("check").and_then(|v| v.as_object()) {
+        if let Some(key) = check
+            .keys()
+            .find(|key| !KNOWN_CHECK_FIELDS.contains(&key.as_str()))
+        {
+            return Err(LoadError {
+                reason: REASON_UNKNOWN_FIELD,
+                message: format!("{path}: unknown field: check.{key}"),
             });
         }
     }

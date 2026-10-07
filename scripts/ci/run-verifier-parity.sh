@@ -109,6 +109,7 @@ expected_of() {
 }
 
 FAILURES=0
+VECTOR_COUNT=0
 TABLE="$TMP_DIR/table.md"
 {
   printf '| vector | expected | go | python | typescript | rust |\n'
@@ -118,6 +119,7 @@ TABLE="$TMP_DIR/table.md"
 while IFS=$'\t' read -r file expect _hash why; do
   vector_path="$REPO_ROOT/$VECTORS_DIR/$file"
   expected="$(expected_of "$expect")"
+  VECTOR_COUNT=$((VECTOR_COUNT + 1))
 
   go_result="$(run_one "$GO_BIN" verify-record "$vector_path")"
   py_result="$(run_one "$PYTHON" verifiers/python/boundary_verify.py "$vector_path")"
@@ -171,9 +173,10 @@ the hash, so it is not covered (FUL-512 tracks this caveat).
 
 Every other emitted field is covered: `schema_version`, `event_type`,
 `timestamp`, `boundary_version`, `boundary_build_digest`, `adapter`,
-`agent_id`, `tenant_id`, `trace_id`, `tool`, `action`, `reason`,
-`decision_mode`, `matched_rule`, `policy_file`, `policy_bundle_hash`,
-`request_hash`, `raw_shape_hash`, `trust_score`, `trust_state`, and the
+`agent_id`, `tenant_id`, `trace_id`, `request_id`, `tool`, `action`,
+`reason`, `decision_mode`, `matched_rule`, `policy_file`,
+`policy_bundle_hash`, `request_hash`, `raw_shape_hash`, `trust_score`,
+`trust_state`, `check`, and the
 schema_version "2" route-context fields `adapter_id`, `route_id`,
 `topology_profile`, `execution_claim` when present. ("`omitempty` fields
 appear in the preimage only when populated" is the Go emitter's rule: the
@@ -182,8 +185,10 @@ present-but-empty field hashes differently for them than for a Go-marshaled
 record that dropped it — see Known divergences.)
 
 The member set is closed and case-sensitive: at every object position the
-schema defines — the top-level record (`DecisionRecordV1`) and the
-`execution_claim` object — a member name the schema does not declare is
+schema defines — the top-level record (`DecisionRecordV1`), the `check`
+object (`CheckFailure`: `stage`, `class`, `category`, `cause`), and the
+`execution_claim` object (`ExecutionClaim`: `upstream_called`, `executed`,
+`source`) — a member name the schema does not declare is
 rejected at ingest with `unknown-field`, never dropped before hashing and
 never bound to a declared field by case-insensitive name matching (Go's
 `encoding/json` would otherwise accept `"ACTION"` as `action`). Member names
@@ -296,4 +301,4 @@ if [ "$FAILURES" -gt 0 ]; then
   echo "verifier-parity: FAIL ($FAILURES disagreement(s))" >&2
   exit 1
 fi
-echo "verifier-parity: PASS (all four verifiers agree on every vector)"
+echo "verifier-parity: PASS (parity corpus: $VECTOR_COUNT vectors, four verifiers)"

@@ -75,22 +75,28 @@ const REASON_HASH_MISMATCH = 'hash-mismatch';
 /**
  * The decision record's member set is closed: every object position the
  * schema defines accepts only the member names the Go type declares
- * (DecisionRecordV1 at the top level, ExecutionClaim inside
- * execution_claim). A verifier that dropped unknown members before hashing
- * would accept attacker-added content under a valid stored hash; the record
- * is rejected at ingest instead, matching Go's strict decode.
+ * (DecisionRecordV1 at the top level, CheckFailure inside check, and
+ * ExecutionClaim inside execution_claim). A verifier that dropped unknown
+ * members before hashing would accept attacker-added content under a valid
+ * stored hash; the record is rejected at ingest instead, matching Go's
+ * strict decode.
  */
 const KNOWN_FIELDS = new Set([
   'schema_version', 'event_type', 'record_id', 'timestamp',
   'boundary_version', 'boundary_build_digest', 'adapter', 'agent_id',
-  'tenant_id', 'trace_id', 'tool', 'action', 'reason', 'decision_mode',
+  'tenant_id', 'trace_id', 'request_id', 'tool', 'action', 'reason',
+  'decision_mode',
   'matched_rule', 'policy_file', 'policy_bundle_hash', 'request_hash',
   'raw_shape_hash', 'decision_hash', 'trust_score', 'trust_state',
-  'signature', 'signature_key_id',
+  'signature', 'signature_key_id', 'check',
   'adapter_id', 'route_id', 'topology_profile', 'execution_claim',
 ]);
 
 const KNOWN_CLAIM_FIELDS = new Set(['upstream_called', 'executed', 'source']);
+
+// CheckFailure's serialized member set (governance/request.go): Detail is
+// json:"-" and never serialized, so it is not a member.
+const KNOWN_CHECK_FIELDS = new Set(['stage', 'class', 'category', 'cause']);
 
 /**
  * Nesting ceiling mirroring Go's encoding/json decoder (which fails beyond
@@ -385,6 +391,14 @@ function loadRecord(path: string): DecisionRecord {
     for (const key of Object.keys(claim)) {
       if (!KNOWN_CLAIM_FIELDS.has(key)) {
         throw new UnknownFieldError(`unknown field: execution_claim.${key}`);
+      }
+    }
+  }
+  const check = (data as DecisionRecord)['check'];
+  if (typeof check === 'object' && check !== null && !Array.isArray(check)) {
+    for (const key of Object.keys(check)) {
+      if (!KNOWN_CHECK_FIELDS.has(key)) {
+        throw new UnknownFieldError(`unknown field: check.${key}`);
       }
     }
   }

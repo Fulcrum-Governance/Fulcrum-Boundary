@@ -97,8 +97,9 @@ The record file itself is ingested strictly: the input must be a single JSON
 object, member names must be unique under case folding at every depth (a
 repeated or case-variant key is rejected, never last-wins), no bytes may
 follow the top-level value, and member names are a closed, case-sensitive
-set — at the top level only `DecisionRecordV1` fields, and inside
-`execution_claim` only `upstream_called`, `executed`, and `source`. A member
+set — at the top level only `DecisionRecordV1` fields, inside `check` only
+`stage`, `class`, `category`, and `cause`, and inside `execution_claim`
+only `upstream_called`, `executed`, and `source`. A member
 name the schema does not declare is rejected (`reason=unknown-field`), never
 dropped before hashing; otherwise attacker-added content could hide inside a
 record whose stored `decision_hash` still verifies. Non-finite numbers

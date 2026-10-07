@@ -139,21 +139,27 @@ _REASON_HASH_MISMATCH = "hash-mismatch"
 
 # The decision record's member set is closed: every object position the schema
 # defines accepts only the member names the Go type declares (mirrors
-# DecisionRecordV1 at the top level and ExecutionClaim inside
-# execution_claim). A verifier that dropped unknown members before hashing
-# would accept attacker-added content under a valid stored hash; the record is
-# rejected at ingest instead, matching Go's strict decode.
+# DecisionRecordV1 at the top level, CheckFailure inside check, and
+# ExecutionClaim inside execution_claim). A verifier that dropped unknown
+# members before hashing would accept attacker-added content under a valid
+# stored hash; the record is rejected at ingest instead, matching Go's strict
+# decode.
 _KNOWN_FIELDS = frozenset({
     "schema_version", "event_type", "record_id", "timestamp",
     "boundary_version", "boundary_build_digest", "adapter", "agent_id",
-    "tenant_id", "trace_id", "tool", "action", "reason", "decision_mode",
+    "tenant_id", "trace_id", "request_id", "tool", "action", "reason",
+    "decision_mode",
     "matched_rule", "policy_file", "policy_bundle_hash", "request_hash",
     "raw_shape_hash", "decision_hash", "trust_score", "trust_state",
-    "signature", "signature_key_id",
+    "signature", "signature_key_id", "check",
     "adapter_id", "route_id", "topology_profile", "execution_claim",
 })
 
 _KNOWN_CLAIM_FIELDS = frozenset({"upstream_called", "executed", "source"})
+
+# CheckFailure's serialized member set (governance/request.go): Detail is
+# json:"-" and never serialized, so it is not a member.
+_KNOWN_CHECK_FIELDS = frozenset({"stage", "class", "category", "cause"})
 
 # Nesting ceiling mirroring Go's encoding/json decoder (which fails beyond
 # 10,000 levels). Inputs deeper than this are rejected with parse-error
@@ -273,6 +279,11 @@ def _load_record(path: str) -> dict[str, Any]:
             raise ValueError(
                 f"unknown field: execution_claim.{unknown_claim[0]}"
             )
+    check = data.get("check")
+    if isinstance(check, dict):
+        unknown_check = sorted(set(check) - _KNOWN_CHECK_FIELDS)
+        if unknown_check:
+            raise ValueError(f"unknown field: check.{unknown_check[0]}")
     return data
 
 

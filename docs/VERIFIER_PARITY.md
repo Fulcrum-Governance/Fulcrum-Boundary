@@ -27,9 +27,10 @@ the hash, so it is not covered (FUL-512 tracks this caveat).
 
 Every other emitted field is covered: `schema_version`, `event_type`,
 `timestamp`, `boundary_version`, `boundary_build_digest`, `adapter`,
-`agent_id`, `tenant_id`, `trace_id`, `tool`, `action`, `reason`,
-`decision_mode`, `matched_rule`, `policy_file`, `policy_bundle_hash`,
-`request_hash`, `raw_shape_hash`, `trust_score`, `trust_state`, and the
+`agent_id`, `tenant_id`, `trace_id`, `request_id`, `tool`, `action`,
+`reason`, `decision_mode`, `matched_rule`, `policy_file`,
+`policy_bundle_hash`, `request_hash`, `raw_shape_hash`, `trust_score`,
+`trust_state`, `check`, and the
 schema_version "2" route-context fields `adapter_id`, `route_id`,
 `topology_profile`, `execution_claim` when present. ("`omitempty` fields
 appear in the preimage only when populated" is the Go emitter's rule: the
@@ -38,8 +39,10 @@ present-but-empty field hashes differently for them than for a Go-marshaled
 record that dropped it — see Known divergences.)
 
 The member set is closed and case-sensitive: at every object position the
-schema defines — the top-level record (`DecisionRecordV1`) and the
-`execution_claim` object — a member name the schema does not declare is
+schema defines — the top-level record (`DecisionRecordV1`), the `check`
+object (`CheckFailure`: `stage`, `class`, `category`, `cause`), and the
+`execution_claim` object (`ExecutionClaim`: `upstream_called`, `executed`,
+`source`) — a member name the schema does not declare is
 rejected at ingest with `unknown-field`, never dropped before hashing and
 never bound to a declared field by case-insensitive name matching (Go's
 `encoding/json` would otherwise accept `"ACTION"` as `action`). Member names
@@ -89,8 +92,10 @@ stack) are likewise classified `parse-error` rather than crashing.
 | parse_rejection.json | ok | ok | ok | ok | ok |
 | v1_allow.json | ok | ok | ok | ok | ok |
 | v1_bom_prefixed.json | parse-error | parse-error | parse-error | parse-error | parse-error |
+| v1_case_variant_check.json | unknown-field | unknown-field | unknown-field | unknown-field | unknown-field |
 | v1_case_variant_duplicate_key.json | duplicate-key | duplicate-key | duplicate-key | duplicate-key | duplicate-key |
 | v1_case_variant_member.json | unknown-field | unknown-field | unknown-field | unknown-field | unknown-field |
+| v1_check_indeterminate.json | ok | ok | ok | ok | ok |
 | v1_deny.json | ok | ok | ok | ok | ok |
 | v1_duplicate_keys.json | duplicate-key | duplicate-key | duplicate-key | duplicate-key | duplicate-key |
 | v1_escalate.json | ok | ok | ok | ok | ok |
@@ -105,6 +110,7 @@ stack) are likewise classified `parse-error` rather than crashing.
 | v1_number_overflow.json | parse-error | parse-error | parse-error | parse-error | parse-error |
 | v1_number_overflow_upper_exp.json | parse-error | parse-error | parse-error | parse-error | parse-error |
 | v1_reason_html_chars.json | ok | ok | ok | ok | ok |
+| v1_request_id.json | ok | ok | ok | ok | ok |
 | v1_require_approval.json | ok | ok | ok | ok | ok |
 | v1_tampered_decision_unchanged_hash.json | hash-mismatch | hash-mismatch | hash-mismatch | hash-mismatch | hash-mismatch |
 | v1_trailing_data.json | trailing-data | trailing-data | trailing-data | trailing-data | trailing-data |

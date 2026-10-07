@@ -29,8 +29,9 @@ const (
 	RecordRejectNotJSONObject = "not-object"
 	// RecordRejectUnknownField marks a member name that the decision-record
 	// schema does not define, in any object: the record's member set is
-	// closed (DecisionRecordV1 at the top level, ExecutionClaim inside
-	// execution_claim). A verifier that dropped unknown members before
+	// closed (DecisionRecordV1 at the top level, CheckFailure inside check,
+	// ExecutionClaim inside execution_claim). A verifier that dropped
+	// unknown members before
 	// hashing would accept attacker-added content under a valid stored hash,
 	// so the record is rejected at ingest instead.
 	RecordRejectUnknownField = "unknown-field"
@@ -63,7 +64,8 @@ var (
 	// ErrRecordNotJSONObject marks a top-level value that is not a JSON object.
 	ErrRecordNotJSONObject = errors.New("decision record must be a JSON object")
 	// ErrUnknownObjectMember marks a member name outside the record schema's
-	// closed member set, at any object position the schema defines.
+	// closed member set, at any object position the schema defines (the
+	// top-level record, the check object, the execution_claim object).
 	ErrUnknownObjectMember = errors.New("unknown object member")
 )
 
@@ -90,7 +92,8 @@ func RecordRejectReason(err error) string {
 // JSON object, every object at any depth must have unique member names, no
 // bytes may follow the top-level value, and every member name must belong to
 // the schema's closed member set (DecisionRecordV1 at the top level,
-// ExecutionClaim inside execution_claim). Go's encoding/json silently keeps
+// CheckFailure inside check, ExecutionClaim inside execution_claim). Go's
+// encoding/json silently keeps
 // the last duplicate member and silently drops members that have no struct
 // field — either would let one byte stream carry content the verifier's hash
 // never covered; this decode rejects both before the record is verified.
@@ -118,11 +121,13 @@ func DecodeDecisionRecord(body []byte) (DecisionRecordV1, error) {
 	return record, nil
 }
 
-// recordMemberSet and executionClaimMemberSet are the closed member-name sets
-// the ingest scan enforces, built from the JSON tags of DecisionRecordV1 and
-// ExecutionClaim so the check cannot drift from the schema it mirrors.
+// recordMemberSet, checkMemberSet, and executionClaimMemberSet are the closed
+// member-name sets the ingest scan enforces, built from the JSON tags of
+// DecisionRecordV1, CheckFailure, and ExecutionClaim so the check cannot
+// drift from the schema it mirrors.
 var (
 	recordMemberSet         = jsonMemberSet(reflect.TypeOf(DecisionRecordV1{}))
+	checkMemberSet          = jsonMemberSet(reflect.TypeOf(CheckFailure{}))
 	executionClaimMemberSet = jsonMemberSet(reflect.TypeOf(ExecutionClaim{}))
 )
 
@@ -159,6 +164,11 @@ const (
 	// scopeExecutionClaim marks the object value of the top-level
 	// execution_claim member: ExecutionClaim's member set.
 	scopeExecutionClaim
+	// scopeCheck marks the object value of the top-level check member:
+	// CheckFailure's member set. Without it, encoding/json would bind a
+	// case-variant member like "Stage" to the Stage field while the
+	// standalone verifiers reject it as unknown-field.
+	scopeCheck
 )
 
 // memberSetFor returns the closed member set for a scope, or nil when the
@@ -169,6 +179,8 @@ func memberSetFor(scope memberScope) map[string]struct{} {
 		return recordMemberSet
 	case scopeExecutionClaim:
 		return executionClaimMemberSet
+	case scopeCheck:
+		return checkMemberSet
 	default:
 		return nil
 	}
@@ -255,8 +267,13 @@ func consumeJSONValue(decoder *json.Decoder, scope memberScope, firstUnknown *st
 				}
 			}
 			childScope := scopeAny
-			if scope == scopeRecord && key == "execution_claim" {
-				childScope = scopeExecutionClaim
+			if scope == scopeRecord {
+				switch key {
+				case "execution_claim":
+					childScope = scopeExecutionClaim
+				case "check":
+					childScope = scopeCheck
+				}
 			}
 			if err := consumeJSONValue(decoder, childScope, firstUnknown); err != nil {
 				return err
