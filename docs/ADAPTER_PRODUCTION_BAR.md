@@ -16,8 +16,9 @@ The machine-readable source of truth for each adapter's current state is its
 
 **What it means.** A `production` adapter has a complete, formally declared
 lifecycle: every one of the ten lifecycle steps is either directly implemented
-or formally delegated to a named owner with a documented contract, at least one
-fail-closed transport is declared, and integration test evidence is on disk. The
+or formally delegated to a named owner with a documented contract, its
+non-enforcing transport posture is explicitly declared, and integration test
+evidence is on disk. The
 label reflects what has been verified in the repository today.
 
 **What it does not mean.** The label is not a bypass-resistance guarantee.
@@ -109,27 +110,34 @@ if state != string(governance.AdapterStepImplemented) &&
 The `requireDeclaration` helper additionally checks that every file named in
 `delegated_steps[*].contract` exists on disk.
 
-### At least one `fail_closed_transports` entry
+### `non_enforcing_transports` is declared (declarative only)
 
 ```yaml
-fail_closed_transports:
-  - mcp
+non_enforcing_transports: []   # explicit empty list: no non-enforcing surfaces
 ```
 
-This is not just documentation — the conformance gate enforces it:
+This is not just documentation — the conformance gate enforces its presence:
 
 ```go
-if len(decl.FailClosedTransports) == 0 {
-    t.Fatalf("%s is production but declares no fail-closed transports", ...)
+if decl.NonEnforcingTransports == nil {
+    t.Fatalf("%s is production but does not declare non_enforcing_transports ...", ...)
 }
 ```
 
-The `fail_closed` lifecycle step describes whether the adapter returns a denial
-on governance errors. `fail_closed_transports` names which transport names
-trigger that behavior at the pipeline level. At least one is required for a
-`production` declaration. The choice of which transports to include is
-adapter-specific; consult `docs/BOUNDARY_CONDITIONS.md` and
-`docs/security/FAIL_MODE_MATRIX.md` when deciding.
+The key is **declarative-only posture documentation**, not a mechanical
+switch. Under ADR-047 the pipeline enforces every transport by default; a
+transport may continue past a required-check failure only when explicitly
+declared in `PipelineConfig.NonEnforcingTransports` with a recorded reason.
+The readiness key asks each adapter to answer the same question on paper:
+which transports does this adapter expose as `can_deny=false` surfaces? An
+explicit `[]` asserts that every served transport enforces — the pipeline
+default, so nothing needs to be listed to be enforcing. Entries name the
+non-enforcing surfaces instead (for example, webhook's informational mode,
+which is `post_execution_audit_only` by design). This replaces the retired
+`fail_closed_transports` key: the pipeline's enforcement list was inverted,
+so there is no fail-closed list left to populate — the only declaration that
+carries meaning is the non-enforcing set. See
+`docs/security/FAIL_MODE_MATRIX.md` for the posture model.
 
 ### Test evidence paths exist on disk
 
@@ -186,7 +194,8 @@ Both files must be updated in the same change that advances the status.
 3. **Fill `readiness.yaml` truthfully.** Change `status:` to `production` and
    `target_status:` to `production`. Advance every lifecycle step from `stub`
    to `implemented` or `delegated`. Add `delegated_steps` entries for every
-   delegated step. Add at least one `fail_closed_transports` entry. Ensure all
+   delegated step. Declare `non_enforcing_transports` explicitly (an empty
+   list asserts no non-enforcing surfaces). Ensure all
    evidence paths exist on disk.
 
 4. **Run the conformance suite green.**
@@ -232,7 +241,7 @@ values are taken directly from their `readiness.yaml` declarations.
 | `lifecycle.record` | `delegated` (to `governance.AuditPublisher`) | `delegated` (to `governance.AuditPublisher`) |
 | `lifecycle.bypass_proof` | `delegated` (to deployment topology, contract `docs/BOUNDARY_CONDITIONS.md`) | `delegated` (to deployment topology, contract `docs/adapters/WEBHOOK.md`) |
 | `lifecycle.fail_closed` | `implemented` | `delegated` (to `webhook.Handler execution mode`) |
-| `fail_closed_transports` | `[mcp]` | `[webhook]` |
+| `non_enforcing_transports` | `[]` (no non-enforcing surfaces) | `[webhook]` (informational mode is `can_deny=false`) |
 | `gaps` | `[]` (empty) | `[BND-WEB-001]` |
 | `evidence.tests` | 3 paths, all on disk | 2 paths, both on disk |
 

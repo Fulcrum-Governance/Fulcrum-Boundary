@@ -45,14 +45,8 @@ func TestCodeExecConformanceDeclaration(t *testing.T) {
 }
 
 func TestCodeExecDefaultFailClosed(t *testing.T) {
-	found := false
-	for _, tr := range governance.DefaultFailClosedTransports {
-		if tr == governance.TransportCodeExec {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Fatal("TransportCodeExec must default to fail-closed for code execution")
-	}
+	// Under the inverted enforcement model there is no list to check:
+	// TransportCodeExec must enforce required checks by default — an
+	// evaluator error blocks code execution with check_indeterminate.
+	requireTransportFailsClosedByDefault(t, governance.TransportCodeExec)
 }

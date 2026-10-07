@@ -23,8 +23,7 @@ delegated_steps:
     owner: deployment topology
     contract: docs/adapters/A2A.md
 bypass_model: runtime
-fail_closed_transports:
-  - a2a
+non_enforcing_transports: []
 evidence:
   tests:
     - adapters/a2a/adapter_test.go
