@@ -123,17 +123,90 @@ def verify_record(record: dict[str, Any]) -> tuple[bool, str]:
     return False, f"decision_hash mismatch: got {recomputed} want {stored}"
 
 
+# Machine-readable rejection classes, emitted on stderr as ``reason=<code>``
+# when verification or parsing fails. This is the shared vocabulary the
+# cross-language verifier parity harness (scripts/ci/run-verifier-parity.sh,
+# docs/VERIFIER_PARITY.md) compares across the Go, Python, TypeScript, and Rust
+# verifiers.
+_REASON_DUPLICATE_KEY = "duplicate-key"
+_REASON_TRAILING_DATA = "trailing-data"
+_REASON_NOT_OBJECT = "not-object"
+_REASON_PARSE = "parse-error"
+_REASON_READ = "read-error"
+_REASON_MISSING_HASH = "missing-hash"
+_REASON_HASH_MISMATCH = "hash-mismatch"
+
+
+def _reject_duplicates(ordered_pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """JSON object_pairs_hook that rejects a repeated member name.
+
+    ``json.loads`` silently keeps the last value for a repeated key, which
+    would let one byte stream carry two different verdicts. A decision record
+    must be rejected instead. The hook runs at every nesting depth, so nested
+    objects are checked too.
+    """
+    out: dict[str, Any] = {}
+    for key, value in ordered_pairs:
+        if key in out:
+            raise ValueError(f"duplicate key: {key}")
+        out[key] = value
+    return out
+
+
 def _load_record(path: str) -> dict[str, Any]:
-    """Load and minimally validate a decision-record JSON file at ``path``."""
+    """Load and minimally validate a decision-record JSON file at ``path``.
+
+    Strict ingest: the file must hold exactly one JSON object with unique
+    member names at every depth, and no bytes may follow the top-level value.
+    """
     with open(path, "r", encoding="utf-8") as handle:
-        data = json.load(handle)
+        content = handle.read()
+
+    # JSONDecoder.decode parses exactly one value (skipping surrounding
+    # whitespace) and raises on trailing non-whitespace itself;
+    # object_pairs_hook rejects duplicate member names at every depth.
+    decoder = json.JSONDecoder(object_pairs_hook=_reject_duplicates)
+    try:
+        data = decoder.decode(content)
+    except json.JSONDecodeError as err:
+        if err.msg == "Extra data":
+            raise ValueError("trailing data after JSON value") from err
+        raise
+
     if not isinstance(data, dict):
         raise ValueError("decision record must be a JSON object")
     return data
 
 
+def _load_error_reason(err: BaseException) -> str:
+    """Map a ``_load_record`` failure to its shared rejection class."""
+    if isinstance(err, OSError):
+        return _REASON_READ
+    message = str(err)
+    if message.startswith("duplicate key:"):
+        return _REASON_DUPLICATE_KEY
+    if message.startswith("trailing data"):
+        return _REASON_TRAILING_DATA
+    if "must be a JSON object" in message:
+        return _REASON_NOT_OBJECT
+    return _REASON_PARSE
+
+
+def _verify_error_reason(message: str) -> str:
+    """Map a ``verify_record`` failure message to its shared rejection class."""
+    if message.startswith("decision_hash missing or empty"):
+        return _REASON_MISSING_HASH
+    if message.startswith("decision_hash mismatch:"):
+        return _REASON_HASH_MISMATCH
+    return "verify-fail"
+
+
 def main(argv: list[str]) -> int:
-    """CLI entry point. Returns the process exit status (0 ok, 1 otherwise)."""
+    """CLI entry point. Returns the process exit status (0 ok, 1 otherwise).
+
+    On failure a ``reason=<code>`` line is written to stderr naming the shared
+    machine-readable rejection class; success prints only the ok line.
+    """
     if len(argv) != 2:
         sys.stderr.write("usage: python3 boundary_verify.py <record.json>\n")
         return 1
@@ -143,10 +216,13 @@ def main(argv: list[str]) -> int:
         record = _load_record(path)
     except (OSError, ValueError, json.JSONDecodeError) as err:
         sys.stderr.write(f"error: could not load {path}: {err}\n")
+        sys.stderr.write(f"reason={_load_error_reason(err)}\n")
         return 1
 
     ok, message = verify_record(record)
     print(message)
+    if not ok:
+        sys.stderr.write(f"reason={_verify_error_reason(message)}\n")
     return 0 if ok else 1
 
 

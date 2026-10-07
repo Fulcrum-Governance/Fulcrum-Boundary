@@ -49,8 +49,9 @@
 //! stored `decision_hash`; 1 on any mismatch, missing/empty `decision_hash`,
 //! or load error.
 
+use serde::de::{self, DeserializeSeed, Deserializer, MapAccess, SeqAccess, Visitor};
 use sha2::{Digest, Sha256};
-use std::{env, fs, process};
+use std::{env, fmt, fs, process};
 
 // Fields blanked to "" before hashing. Boundary always emits these keys, and
 // its ComputeDecisionHash sets them to the empty string, so the canonical
@@ -121,16 +122,173 @@ pub fn verify_record(record: &serde_json::Value) -> (bool, String) {
     }
 }
 
+/// Machine-readable rejection classes, printed on stderr as `reason=<code>`
+/// when verification or parsing fails. This is the shared vocabulary the
+/// cross-language verifier parity harness (scripts/ci/run-verifier-parity.sh,
+/// docs/VERIFIER_PARITY.md) compares across the Go, Python, TypeScript, and
+/// Rust verifiers.
+const REASON_DUPLICATE_KEY: &str = "duplicate-key";
+const REASON_TRAILING_DATA: &str = "trailing-data";
+const REASON_NOT_OBJECT: &str = "not-object";
+const REASON_PARSE: &str = "parse-error";
+const REASON_READ: &str = "read-error";
+const REASON_MISSING_HASH: &str = "missing-hash";
+const REASON_HASH_MISMATCH: &str = "hash-mismatch";
+
+/// A load failure carrying its shared machine-readable rejection class.
+struct LoadError {
+    reason: &'static str,
+    message: String,
+}
+
+impl fmt::Display for LoadError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+
+/// Strict JSON value decoding: identical to `serde_json::Value` semantics
+/// except that a repeated member name in any object is an error instead of a
+/// silent last-wins overwrite. serde_json's own deserializer keeps the last
+/// value for a repeated key — fine for config files, unacceptable for a
+/// decision record whose bytes must mean exactly one thing.
+struct StrictValueVisitor;
+
+impl<'de> Visitor<'de> for StrictValueVisitor {
+    type Value = serde_json::Value;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("any JSON value with unique object member names")
+    }
+
+    fn visit_bool<E>(self, value: bool) -> Result<serde_json::Value, E> {
+        Ok(serde_json::Value::Bool(value))
+    }
+
+    fn visit_i64<E>(self, value: i64) -> Result<serde_json::Value, E> {
+        Ok(serde_json::Value::Number(value.into()))
+    }
+
+    fn visit_u64<E>(self, value: u64) -> Result<serde_json::Value, E> {
+        Ok(serde_json::Value::Number(value.into()))
+    }
+
+    fn visit_f64<E>(self, value: f64) -> Result<serde_json::Value, E>
+    where
+        E: de::Error,
+    {
+        // Mirror serde_json: a non-finite float is unrepresentable and is
+        // replaced with null. serde_json's own parser cannot produce one.
+        Ok(serde_json::Number::from_f64(value).map_or(serde_json::Value::Null, serde_json::Value::Number))
+    }
+
+    fn visit_str<E>(self, value: &str) -> Result<serde_json::Value, E>
+    where
+        E: de::Error,
+    {
+        Ok(serde_json::Value::String(value.to_owned()))
+    }
+
+    fn visit_string<E>(self, value: String) -> Result<serde_json::Value, E> {
+        Ok(serde_json::Value::String(value))
+    }
+
+    fn visit_none<E>(self) -> Result<serde_json::Value, E> {
+        Ok(serde_json::Value::Null)
+    }
+
+    fn visit_unit<E>(self) -> Result<serde_json::Value, E> {
+        Ok(serde_json::Value::Null)
+    }
+
+    fn visit_seq<A>(self, mut seq: A) -> Result<serde_json::Value, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        let mut items = Vec::new();
+        while let Some(item) = seq.next_element_seed(StrictValueSeed)? {
+            items.push(item);
+        }
+        Ok(serde_json::Value::Array(items))
+    }
+
+    fn visit_map<A>(self, mut map: A) -> Result<serde_json::Value, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        let mut object = serde_json::Map::new();
+        while let Some(key) = map.next_key::<String>()? {
+            if object.contains_key(&key) {
+                return Err(de::Error::custom(format!("duplicate key: {key}")));
+            }
+            let value = map.next_value_seed(StrictValueSeed)?;
+            object.insert(key, value);
+        }
+        Ok(serde_json::Value::Object(object))
+    }
+}
+
+struct StrictValueSeed;
+
+impl<'de> DeserializeSeed<'de> for StrictValueSeed {
+    type Value = serde_json::Value;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(StrictValueVisitor)
+    }
+}
+
+/// Parse one complete JSON value from `contents` with strict member-name
+/// uniqueness, rejecting trailing data after the top-level value.
+fn parse_strict(contents: &str, path: &str) -> Result<serde_json::Value, LoadError> {
+    let mut deserializer = serde_json::Deserializer::from_str(contents);
+    let value = StrictValueSeed.deserialize(&mut deserializer).map_err(|e| {
+        let message = e.to_string();
+        let reason = if message.contains("duplicate key:") {
+            REASON_DUPLICATE_KEY
+        } else {
+            REASON_PARSE
+        };
+        LoadError {
+            reason,
+            message: format!("JSON parse error in {path}: {e}"),
+        }
+    })?;
+    deserializer.end().map_err(|e| LoadError {
+        reason: REASON_TRAILING_DATA,
+        message: format!("trailing data after JSON value in {path}: {e}"),
+    })?;
+    Ok(value)
+}
+
 /// Load and minimally validate a decision-record JSON file.
-fn load_record(path: &str) -> Result<serde_json::Value, String> {
-    let contents =
-        fs::read_to_string(path).map_err(|e| format!("could not read {path}: {e}"))?;
-    let value: serde_json::Value =
-        serde_json::from_str(&contents).map_err(|e| format!("JSON parse error in {path}: {e}"))?;
+fn load_record(path: &str) -> Result<serde_json::Value, LoadError> {
+    let contents = fs::read_to_string(path).map_err(|e| LoadError {
+        reason: REASON_READ,
+        message: format!("could not read {path}: {e}"),
+    })?;
+    let value = parse_strict(&contents, path)?;
     if !value.is_object() {
-        return Err(format!("{path}: decision record must be a JSON object"));
+        return Err(LoadError {
+            reason: REASON_NOT_OBJECT,
+            message: format!("{path}: decision record must be a JSON object"),
+        });
     }
     Ok(value)
+}
+
+/// Map a `verify_record` failure message to its shared rejection class.
+fn verify_error_reason(message: &str) -> &'static str {
+    if message.starts_with("decision_hash missing or empty") {
+        REASON_MISSING_HASH
+    } else if message.starts_with("decision_hash mismatch:") {
+        REASON_HASH_MISMATCH
+    } else {
+        "verify-fail"
+    }
 }
 
 fn main() {
@@ -146,7 +304,8 @@ fn main() {
         let record = match load_record(path) {
             Ok(r) => r,
             Err(e) => {
-                eprintln!("error: {e}");
+                eprintln!("error: {}", e.message);
+                eprintln!("reason={}", e.reason);
                 all_ok = false;
                 continue;
             }
@@ -155,6 +314,7 @@ fn main() {
         let (ok, message) = verify_record(&record);
         println!("{message}");
         if !ok {
+            eprintln!("reason={}", verify_error_reason(&message));
             all_ok = false;
         }
     }
@@ -376,6 +536,10 @@ mod tests {
                 .get("decision_hash")
                 .and_then(|v| v.as_str())
                 .expect("vector entry missing 'decision_hash'");
+            let expect = entry
+                .get("expect")
+                .and_then(|v| v.as_str())
+                .unwrap_or("verify");
             let why = entry
                 .get("why")
                 .and_then(|v| v.as_str())
@@ -388,7 +552,35 @@ mod tests {
                 record_path.display()
             );
 
-            let record = load_json(&record_path);
+            if let Some(want_reason) = expect.strip_prefix("reject:") {
+                // Reject vectors: strict load must fail with the manifest's
+                // reason class, or (for hash-mismatch) verification must fail
+                // with it.
+                match load_record(record_path.to_str().unwrap()) {
+                    Err(e) => assert_eq!(
+                        e.reason, want_reason,
+                        "{file_name} ({why}): rejected with reason={}, want {want_reason}",
+                        e.reason
+                    ),
+                    Ok(record) => {
+                        let (ok, message) = verify_record(&record);
+                        assert!(
+                            !ok,
+                            "{file_name} ({why}): unexpectedly verified ok, want reject:{want_reason}"
+                        );
+                        let reason = verify_error_reason(&message);
+                        assert_eq!(
+                            reason, want_reason,
+                            "{file_name} ({why}): verify failed with reason={reason}, want {want_reason}"
+                        );
+                    }
+                }
+                checked += 1;
+                continue;
+            }
+
+            let record = load_record(record_path.to_str().unwrap())
+                .unwrap_or_else(|e| panic!("{file_name}: strict load failed: {}", e.message));
 
             // The file's own stored decision_hash must match the manifest.
             let stored = record

@@ -124,8 +124,25 @@ def test_conformance_corpus_recomputes_to_committed_hashes() -> None:
     for entry in vectors:
         file_name = entry["file"]
         expected_hash = entry["decision_hash"]
+        expect = entry.get("expect", "verify")
         record_path = CORPUS_DIR / file_name
         assert record_path.exists(), f"corpus file missing: {record_path}"
+
+        if expect.startswith("reject:"):
+            # Reject vectors are exercised through the CLI: the process must
+            # exit 1 and emit the manifest's machine-readable reason on stderr.
+            result = _run_cli(record_path)
+            assert result.returncode == 1, (
+                f"{file_name}: CLI exit {result.returncode}, expected 1 "
+                f"(expect={expect})\nstdout: {result.stdout}\nstderr: {result.stderr}"
+            )
+            want_reason = expect.removeprefix("reject:")
+            assert f"reason={want_reason}" in result.stderr, (
+                f"{file_name}: expected reason={want_reason} on stderr, "
+                f"got:\n{result.stderr}"
+            )
+            checked += 1
+            continue
 
         with open(record_path, "r", encoding="utf-8") as handle:
             record = json.load(handle)
@@ -149,7 +166,7 @@ def test_conformance_corpus_recomputes_to_committed_hashes() -> None:
         checked += 1
 
     assert checked == len(vectors)
-    print(f"ok: all {checked} conformance corpus vectors recompute to committed hashes")
+    print(f"ok: all {checked} conformance corpus vectors match the manifest expectation")
 
 
 def main() -> int:

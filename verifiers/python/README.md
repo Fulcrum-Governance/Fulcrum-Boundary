@@ -19,6 +19,13 @@ record verification: ok                       # exit 0
 decision_hash mismatch: got sha256:… want sha256:…   # exit 1
 ```
 
+Input is parsed strictly: the file must hold exactly one JSON object, member
+names must be unique at every depth (no silent last-wins), and no bytes may
+follow the top-level value. On any failure the verifier also prints
+`reason=<code>` on stderr — the shared rejection vocabulary across the Go,
+Python, TypeScript, and Rust verifiers (`duplicate-key`, `trailing-data`,
+`hash-mismatch`, …; see [docs/VERIFIER_PARITY.md](../../docs/VERIFIER_PARITY.md)).
+
 ## What it checks
 
 The decision record is **RFC 8785 / JCS conformant**: its bytes are hashed in
@@ -87,5 +94,6 @@ python3 test_boundary_verify.py
 
 The test asserts: the committed example record verifies (exit 0); a one-field
 forgery (`"action": "deny"` → `"action": "allow"`) is caught (mismatch, exit 1);
-and every record in the shared conformance corpus recomputes to its committed
-`decision_hash`.
+and every record in the shared conformance corpus produces the outcome the
+manifest declares — verify vectors recompute to their committed
+`decision_hash`, reject vectors exit 1 with the declared `reason=`.
