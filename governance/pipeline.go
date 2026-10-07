@@ -173,7 +173,16 @@ type Pipeline struct {
 	escalation       EscalationHandler
 	configErr        error
 	auditFailures    atomic.Int64
-	auditDegraded    atomic.Bool
+	// Audit-degradation accounting (ADR-047): every publish draws a
+	// monotonic ticket from auditSeq; auditFailSeq and auditOKSeq are the
+	// high-water marks of tickets whose deliveries failed and succeeded.
+	// Degraded() compares the two marks instead of reading a flag, so a
+	// success whose publish began BEFORE the latest failure cannot mask it
+	// — only a publish sequenced after the last failure clears the
+	// degraded state.
+	auditSeq     atomic.Int64
+	auditFailSeq atomic.Int64
+	auditOKSeq   atomic.Int64
 }
 
 // NewPipeline creates a governance pipeline.
@@ -233,11 +242,13 @@ func NewPipeline(cfg PipelineConfig, trust TrustChecker, evaluator PolicyEvaluat
 func (p *Pipeline) ConfigError() error { return p.configErr }
 
 // Degraded reports the pipeline's evidence-delivery health: true when the
-// most recent audit emission failed to reach the configured auditor
-// (reported error or recovered panic), false after a successful emission.
-// Audit delivery failure never changes a decision; it is the surface's
-// degraded-state signal (ADR-047).
-func (p *Pipeline) Degraded() bool { return p.auditDegraded.Load() }
+// most recently sequenced audit emission failed to reach the configured
+// auditor (reported error or recovered panic). A delivery sequenced after
+// that failure that succeeds clears it; a success sequenced before the
+// failure does not, so concurrent emission cannot report a live outage as
+// healthy. Audit delivery failure never changes a decision; it is the
+// surface's degraded-state signal (ADR-047).
+func (p *Pipeline) Degraded() bool { return p.auditFailSeq.Load() > p.auditOKSeq.Load() }
 
 // AuditFailures returns the cumulative count of failed audit emissions since
 // construction. Unlike Degraded it never decreases, so an operator can see
@@ -341,7 +352,8 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 				Stage:    CheckStageTrustUpdate,
 				Class:    CheckClassTrust,
 				Category: classifyFailure(err),
-				Cause:    fmt.Sprintf("trust update failed: %v", err),
+				Cause:    "trust update failed",
+				Detail:   fmt.Sprintf("trust update failed: %v", err),
 			})
 		}
 		p.emitAudit(ctx, req, decision)
@@ -391,6 +403,11 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 		if !decision.Allowed() {
 			return decision, nil
 		}
+		// Declared non-enforcing transport: evaluation continues with no
+		// established trust posture, so the Stage-4 projection must carry
+		// UNKNOWN rather than the TRUSTED default the pipeline started from
+		// (mirroring the failed-lookup branch below).
+		trustState = TrustStateUnknown
 	}
 	if p.trustChecker != nil && req.AgentID != "" {
 		state, err := p.checkAgentState(ctx, req.AgentID)
@@ -399,7 +416,8 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 				Stage:    CheckStageTrust,
 				Class:    CheckClassTrust,
 				Category: classifyFailure(err),
-				Cause:    fmt.Sprintf("trust check failed: %v", err),
+				Cause:    "trust check failed",
+				Detail:   fmt.Sprintf("trust check failed: %v", err),
 			})
 			if !decision.Allowed() {
 				return decision, nil
@@ -472,7 +490,8 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 			Stage:    CheckStageInterceptor,
 			Class:    CheckClassPolicy,
 			Category: classifyFailure(err),
-			Cause:    fmt.Sprintf("interceptor error: %v", err),
+			Cause:    "interceptor error",
+			Detail:   fmt.Sprintf("interceptor error: %v", err),
 		})
 		if !decision.Allowed() {
 			return decision, nil
@@ -489,7 +508,8 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 				Stage:    CheckStageInterceptor,
 				Class:    CheckClassPolicy,
 				Category: FailureInvalidResult,
-				Cause:    fmt.Sprintf("interceptor returned invalid blocking action %q", interceptResult.Action),
+				Cause:    "interceptor returned invalid blocking action",
+				Detail:   fmt.Sprintf("interceptor returned invalid blocking action %q", interceptResult.Action),
 			})
 			if !decision.Allowed() {
 				return decision, nil
@@ -509,7 +529,8 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 			Stage:    CheckStagePolicyEval,
 			Class:    CheckClassPolicy,
 			Category: classifyFailure(err),
-			Cause:    fmt.Sprintf("policy evaluation failed: %v", err),
+			Cause:    "policy evaluation failed",
+			Detail:   fmt.Sprintf("policy evaluation failed: %v", err),
 		})
 		return decision, nil
 	}
@@ -562,7 +583,8 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 				Stage:    CheckStagePolicyEval,
 				Class:    CheckClassPolicy,
 				Category: FailureInvalidResult,
-				Cause:    fmt.Sprintf("policy evaluation returned unknown action %q", evalDecision.Action.String()),
+				Cause:    "policy evaluation returned unknown action",
+				Detail:   fmt.Sprintf("policy evaluation returned unknown action %q", evalDecision.Action.String()),
 			})
 		}
 		if evalDecision.MatchedPolicy != nil {
@@ -624,6 +646,7 @@ func (p *Pipeline) markCheckFailureEnforced(decision *GovernanceDecision, req *G
 		slog.String("check_stage", cf.Stage),
 		slog.String("check_class", cf.Class),
 		slog.String("failure_category", string(cf.Category)),
+		slog.String("check_detail", cf.Detail),
 		slog.String("request_id_hash", auditLogDigest(req.RequestID)),
 		slog.String("agent_id_hash", auditLogDigest(req.AgentID)),
 		slog.String("tenant_id_hash", auditLogDigest(req.TenantID)),
@@ -888,9 +911,13 @@ func (p *Pipeline) emitTrustTransition(ctx context.Context, req *GovernanceReque
 // CheckedAuditPublisher its returned error is the delivery signal; otherwise
 // Publish is assumed delivered. A recovered panic counts as a delivery
 // failure for either method. A delivery failure never changes the decision:
-// it increments AuditFailures, flips Degraded, and logs once with structured
-// fields. A successful delivery clears the degraded flag.
+// it increments AuditFailures, raises the failed-delivery high-water mark,
+// and logs once with structured fields. A successful delivery raises the
+// succeeded mark; Degraded() clears only when the success was sequenced
+// after the latest failure, so a stale success resolving after a later
+// failure cannot mask the outage.
 func (p *Pipeline) publishAudit(ctx context.Context, event AuditEvent) {
+	seq := p.auditSeq.Add(1)
 	err := func() (err error) {
 		defer func() {
 			if r := recover(); r != nil {
@@ -904,11 +931,11 @@ func (p *Pipeline) publishAudit(ctx context.Context, event AuditEvent) {
 		return nil
 	}()
 	if err == nil {
-		p.auditDegraded.Store(false)
+		storeMaxInt64(&p.auditOKSeq, seq)
 		return
 	}
 	p.auditFailures.Add(1)
-	p.auditDegraded.Store(true)
+	storeMaxInt64(&p.auditFailSeq, seq)
 	// One structured log per failure; caller-controlled identifiers are
 	// emitted as digests, matching the SlogAuditPublisher redaction posture.
 	attrs := []any{
@@ -926,4 +953,15 @@ func (p *Pipeline) publishAudit(ctx context.Context, event AuditEvent) {
 		)
 	}
 	slog.WarnContext(ctx, "governance: audit delivery failed; record may be lost", attrs...)
+}
+
+// storeMaxInt64 raises *v to n when n exceeds the current value; a stale
+// update never lowers the high-water mark.
+func storeMaxInt64(v *atomic.Int64, n int64) {
+	for {
+		cur := v.Load()
+		if n <= cur || v.CompareAndSwap(cur, n) {
+			return
+		}
+	}
 }

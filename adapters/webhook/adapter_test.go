@@ -366,6 +366,52 @@ func TestHandlerWithConfig_Execution_CheckIndeterminateDoesNotForward(t *testing
 	}
 }
 
+// credentialErrorEvaluator returns an infrastructure error carrying a
+// credential-shaped connection URL — the class of text that must never reach
+// the webhook caller.
+type credentialErrorEvaluator struct{}
+
+func (credentialErrorEvaluator) Evaluate(_ context.Context, _ *policyeval.EvaluationRequest) (*policyeval.Decision, error) {
+	return nil, fmt.Errorf("dial postgres://svc:hunter2@10.0.0.5:5432/db: connection refused")
+}
+
+// TestHandlerWithConfig_Execution_CheckFailureDoesNotLeakCause pins the
+// caller-disclosure boundary end to end: a check failure whose underlying
+// error names credentials returns 403 carrying only the fixed-vocabulary
+// classification — the raw error may appear nowhere in the response body or
+// governance headers. (The raw text survives operator-side on
+// CheckFailure.Detail, which is never serialized.)
+func TestHandlerWithConfig_Execution_CheckFailureDoesNotLeakCause(t *testing.T) {
+	pipe := governance.NewPipeline(governance.PipelineConfig{}, nil, credentialErrorEvaluator{}, nil)
+	h := HandlerWithConfig(pipe, HandlerConfig{Mode: ModeExecution})
+
+	body, _ := json.Marshal(WebhookPayload{Tool: "deploy", AgentID: "a", TenantID: "t"})
+	r := httptest.NewRequest(http.MethodPost, "/hook", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	h(w, r)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("check_indeterminate must block; got %d body=%s", w.Code, w.Body.String())
+	}
+	for name, surface := range map[string]string{
+		"response body":       w.Body.String(),
+		"X-Governance-Reason": w.Header().Get("X-Governance-Reason"),
+	} {
+		for _, fragment := range []string{"hunter2", "postgres://", "10.0.0.5"} {
+			if strings.Contains(surface, fragment) {
+				t.Errorf("%s leaks the raw check error (%q present): %q", name, fragment, surface)
+			}
+		}
+	}
+	var d governance.GovernanceDecision
+	if err := json.Unmarshal(w.Body.Bytes(), &d); err != nil {
+		t.Fatalf("decode body: %v", err)
+	}
+	if d.Check == nil || d.Check.Cause != "policy evaluation failed" {
+		t.Fatalf("check context = %+v, want the fixed-vocabulary cause", d.Check)
+	}
+}
+
 // TestHandlerWithConfig_Informational_CheckIndeterminateStillRecords pins the
 // documented can_deny=false exception: informational mode is explicitly
 // non-enforcing, so even a check_indeterminate verdict is recorded and

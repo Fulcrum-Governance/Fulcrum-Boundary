@@ -57,8 +57,9 @@ Mechanics (`governance/request.go`, `governance/errors.go`, `pipeline.go`):
   auditor implements `CheckedAuditPublisher` (or panics in `Publish`), the
   pipeline increments `Pipeline.AuditFailures()`, flips `Pipeline.Degraded()`,
   and logs once per failure with structured, identifier-digested fields. A
-  successful publish clears `Degraded()`. `AuditFailures()` never decreases,
-  so the outage is visible after recovery.
+  publish sequenced after the failure that succeeds clears `Degraded()`; a
+  success sequenced before the failure cannot mask it. `AuditFailures()`
+  never decreases, so the outage is visible after recovery.
 - **Configuration validity.** `PipelineConfig.Validate()` rejects a
   `NonEnforcingTransports` entry that does not name a transport or does not
   record the operator's reason (`ErrInvalidNonEnforcingTransport`) — a

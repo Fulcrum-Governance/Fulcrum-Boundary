@@ -274,8 +274,16 @@ func TestPipeline_TrustRecordError_EnforcingCheckIndeterminate(t *testing.T) {
 					t.Errorf("reason = %q, want substring %q", d.Reason, tc.wantReason)
 				}
 			}
-			if tc.wantStage == CheckStageTrustUpdate && !strings.Contains(d.Reason, "trust store unreachable") && d.Action == ActionCheckIndeterminate {
-				t.Errorf("reason = %q, want it to wrap the backend error", d.Reason)
+			if tc.wantStage == CheckStageTrustUpdate {
+				// The caller-facing reason/cause carry the fixed-vocabulary
+				// description only; the raw backend error is operator-side
+				// diagnostics on Check.Detail.
+				if strings.Contains(d.Reason, "trust store unreachable") || strings.Contains(d.Check.Cause, "trust store unreachable") {
+					t.Errorf("raw backend error must not reach caller-facing fields; reason=%q cause=%q", d.Reason, d.Check.Cause)
+				}
+				if !strings.Contains(d.Check.Detail, "trust store unreachable") {
+					t.Errorf("check detail = %q, want the raw backend error preserved operator-side", d.Check.Detail)
+				}
 			}
 			if tc.assertState {
 				if d.TrustScore != tc.wantScore {
@@ -291,10 +299,11 @@ func TestPipeline_TrustRecordError_EnforcingCheckIndeterminate(t *testing.T) {
 
 // TestPipeline_TrustLookupError_NonEnforcing_RecordsUnknownPosture pins the
 // posture-honesty rule on the declared non-enforcing branch: when the trust
-// lookup fails and the transport continues by declaration, the decision and
-// its projected evaluation context must report trust UNKNOWN / 0.0 — the
-// lookup produced no posture, so neither the record nor Stage-4 policy
-// evaluation may see the TRUSTED/1.0 defaults the lookup failed to supply.
+// lookup fails and the transport continues by declaration, the decision must
+// report trust UNKNOWN / 0.0 — the lookup produced no posture, so the record
+// must not claim the TRUSTED/1.0 defaults the lookup failed to supply. The
+// projected Stage-4 evaluator input is pinned separately by
+// TestPipeline_NonEnforcingCheckFailure_EvaluatorSeesUnknownPosture.
 func TestPipeline_TrustLookupError_NonEnforcing_RecordsUnknownPosture(t *testing.T) {
 	backend := &programmableTrustBackend{checkErr: fmt.Errorf("redis down")}
 	cfg := PipelineConfig{NonEnforcingTransports: []NonEnforcingTransport{

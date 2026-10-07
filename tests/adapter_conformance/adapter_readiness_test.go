@@ -15,15 +15,15 @@ import (
 )
 
 type readinessDeclaration struct {
-	Adapter              string            `yaml:"adapter"`
-	Status               string            `yaml:"status"`
-	TargetStatus         string            `yaml:"target_status"`
-	Lifecycle            map[string]string `yaml:"lifecycle"`
-	DelegatedSteps       []delegatedStep   `yaml:"delegated_steps"`
-	BypassModel          string            `yaml:"bypass_model"`
-	FailClosedTransports []string          `yaml:"fail_closed_transports"`
-	Evidence             readinessEvidence `yaml:"evidence"`
-	Gaps                 []readinessGap    `yaml:"gaps"`
+	Adapter                string            `yaml:"adapter"`
+	Status                 string            `yaml:"status"`
+	TargetStatus           string            `yaml:"target_status"`
+	Lifecycle              map[string]string `yaml:"lifecycle"`
+	DelegatedSteps         []delegatedStep   `yaml:"delegated_steps"`
+	BypassModel            string            `yaml:"bypass_model"`
+	NonEnforcingTransports []string          `yaml:"non_enforcing_transports"`
+	Evidence               readinessEvidence `yaml:"evidence"`
+	Gaps                   []readinessGap    `yaml:"gaps"`
 }
 
 type delegatedStep struct {
@@ -78,8 +78,19 @@ func TestProductionAdaptersPassConformanceRules(t *testing.T) {
 		if state != string(governance.AdapterStepImplemented) && state != string(governance.AdapterStepDelegated) {
 			t.Fatalf("%s is production but bypass_proof is %q", decl.Adapter, state)
 		}
-		if len(decl.FailClosedTransports) == 0 {
-			t.Fatalf("%s is production but declares no fail-closed transports", decl.Adapter)
+		// non_enforcing_transports is declarative posture documentation
+		// (ADR-047), not a mechanical switch: a production adapter must
+		// declare which transports it exposes as can_deny=false surfaces.
+		// An explicit empty list asserts every served transport enforces —
+		// enforcement is the pipeline default. An absent key (nil after
+		// unmarshal) means the posture was never declared and fails the gate.
+		if decl.NonEnforcingTransports == nil {
+			t.Fatalf("%s is production but does not declare non_enforcing_transports (an empty list asserts no non-enforcing surfaces)", decl.Adapter)
+		}
+		for _, transport := range decl.NonEnforcingTransports {
+			if strings.TrimSpace(transport) == "" {
+				t.Fatalf("%s declares a blank non_enforcing_transports entry", decl.Adapter)
+			}
 		}
 	}
 }

@@ -22,8 +22,8 @@ func (e *errorEvaluator) Evaluate(_ context.Context, _ *policyeval.EvaluationReq
 // the enforcing branch: enforcement is the default, so an empty config must
 // return CHECK_INDETERMINATE on evaluator error — ADR-047 requires a
 // required-check failure to block without being labeled allow or a
-// substantive policy deny. The reason surfaces the stage, category, and
-// underlying cause.
+// substantive policy deny. The reason surfaces the stage, category, and a
+// fixed-vocabulary cause; the raw error stays operator-side in Check.Detail.
 func TestPipeline_EvaluatorError_EnforcingTransport_CheckIndeterminate(t *testing.T) {
 	ev := &errorEvaluator{err: fmt.Errorf("evaluator unavailable")}
 	p := NewPipeline(PipelineConfig{}, nil, ev, nil)
@@ -46,11 +46,21 @@ func TestPipeline_EvaluatorError_EnforcingTransport_CheckIndeterminate(t *testin
 	if !strings.Contains(d.Reason, "policy evaluation failed") {
 		t.Errorf("expected reason to surface the failed check, got %q", d.Reason)
 	}
-	if !strings.Contains(d.Reason, "evaluator unavailable") {
-		t.Errorf("expected reason to wrap the underlying error, got %q", d.Reason)
+	// The caller-facing reason/cause carry the fixed-vocabulary description
+	// only; the raw evaluator error is operator-side diagnostics.
+	if strings.Contains(d.Reason, "evaluator unavailable") {
+		t.Errorf("raw evaluator error must not reach the caller-facing reason, got %q", d.Reason)
 	}
 	if d.Check == nil || d.Check.Category != FailureUnavailable || d.Check.Stage != CheckStagePolicyEval {
 		t.Errorf("check context = %+v, want policy_eval/unavailable", d.Check)
+	}
+	if d.Check != nil {
+		if strings.Contains(d.Check.Cause, "evaluator unavailable") {
+			t.Errorf("raw evaluator error must not reach the serialized cause, got %q", d.Check.Cause)
+		}
+		if !strings.Contains(d.Check.Detail, "evaluator unavailable") {
+			t.Errorf("check detail = %q, want the raw evaluator error preserved operator-side", d.Check.Detail)
+		}
 	}
 }
 

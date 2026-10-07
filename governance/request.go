@@ -139,8 +139,11 @@ const (
 
 // CheckFailure carries the ADR-047 safe context for a required check that
 // could not produce a valid result. It is attached to the decision and copied
-// into the audit event and decision record. It never contains secrets,
-// credentials, or raw tool arguments; Cause is a short sanitized description.
+// into the audit event and decision record. Its serialized fields never
+// contain secrets, credentials, or raw tool arguments: Stage, Class, and
+// Category are machine enums and Cause is a short fixed-vocabulary
+// description. Detail holds the raw underlying error for operator-side
+// diagnostics and is never serialized.
 //
 // On an enforcing transport the decision Action is ActionCheckIndeterminate
 // and the indeterminacy blocked execution. On an explicitly non-enforcing
@@ -153,8 +156,18 @@ type CheckFailure struct {
 	Class string `json:"class"`
 	// Category is the machine-readable failure category.
 	Category FailureCategory `json:"category"`
-	// Cause is a short, sanitized description of the failure.
+	// Cause is a short, fixed-vocabulary description of the failure (for
+	// example "policy evaluation failed"). It never interpolates the
+	// underlying error text, so it is safe to return to the governed caller.
 	Cause string `json:"cause,omitempty"`
+	// Detail is the raw underlying error text for operator-side diagnostics.
+	// Check errors routinely embed infrastructure internals — dial strings,
+	// endpoints, credentials in connection URLs — that must not be disclosed
+	// to the governed caller, so Detail is excluded from JSON serialization:
+	// it cannot appear in a serialized decision, a webhook response body, or
+	// a hashed decision record. In-process audit consumers (for example
+	// SlogAuditPublisher) read it directly from the struct.
+	Detail string `json:"-"`
 }
 
 // GovernanceDecision is the canonical output of the governance pipeline.

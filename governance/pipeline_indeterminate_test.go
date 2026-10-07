@@ -2,9 +2,12 @@ package governance
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/fulcrum-governance/fulcrum-boundary/policyeval"
@@ -687,4 +690,260 @@ type panickingPublisher struct{}
 
 func (panickingPublisher) Publish(context.Context, AuditEvent) {
 	panic("publisher exploded")
+}
+
+// captureEvaluator records the EvaluationRequest the pipeline projects to
+// Stage 4, so tests can assert the trust posture the evaluator actually
+// received rather than only the posture recorded on the decision.
+type captureEvaluator struct{ got *policyeval.EvaluationRequest }
+
+func (c *captureEvaluator) Evaluate(_ context.Context, req *policyeval.EvaluationRequest) (*policyeval.Decision, error) {
+	c.got = req
+	return &policyeval.Decision{Action: policyeval.ActionAllow}, nil
+}
+
+// gatedPublisher is a CheckedAuditPublisher whose first publish blocks until
+// released, so a test can interleave a later failure underneath an in-flight
+// success and pin the degraded-latch ordering.
+type gatedPublisher struct {
+	calls   atomic.Int64
+	started chan struct{}
+	release chan struct{}
+}
+
+func (p *gatedPublisher) Publish(context.Context, AuditEvent) {}
+
+func (p *gatedPublisher) PublishChecked(_ context.Context, _ AuditEvent) error {
+	if p.calls.Add(1) == 1 {
+		close(p.started)
+		<-p.release
+		return nil
+	}
+	return errors.New("audit sink down")
+}
+
+// flakyPublisher fails every third publish (or all publishes once failAll is
+// set), counting its own failures so tests can reconcile AuditFailures
+// against ground truth under concurrency.
+type flakyPublisher struct {
+	calls    atomic.Int64
+	failures atomic.Int64
+	failAll  atomic.Bool
+}
+
+func (p *flakyPublisher) Publish(context.Context, AuditEvent) {}
+
+func (p *flakyPublisher) PublishChecked(_ context.Context, _ AuditEvent) error {
+	if p.failAll.Load() || p.calls.Add(1)%3 == 0 {
+		p.failures.Add(1)
+		return errors.New("audit sink down")
+	}
+	return nil
+}
+
+// TestPipeline_CheckFailure_CauseIsSanitizedForCaller pins the
+// caller-disclosure boundary on a check failure: a check error carrying a
+// credential-shaped connection URL must appear nowhere in the surfaces a
+// governed caller can read — the decision's reason and serialized cause, the
+// JSON decision, or the emitted decision record. The raw text survives only
+// on CheckFailure.Detail, the operator-side field that is never serialized.
+func TestPipeline_CheckFailure_CauseIsSanitizedForCaller(t *testing.T) {
+	const rawErr = "dial postgres://svc:hunter2@10.0.0.5:5432/db: connection refused"
+	auditor := &collectingAuditor{}
+	ev := &errorEvaluator{err: errors.New(rawErr)}
+	p := NewPipeline(PipelineConfig{}, nil, ev, auditor)
+
+	d, err := p.Evaluate(context.Background(), &GovernanceRequest{
+		ToolName:  "read_file",
+		Transport: TransportMCP,
+		TenantID:  "t1",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if d.Action != ActionCheckIndeterminate {
+		t.Fatalf("action = %q, want %q", d.Action, ActionCheckIndeterminate)
+	}
+	if d.Check == nil {
+		t.Fatal("check context must be recorded")
+	}
+	if d.Check.Cause != "policy evaluation failed" {
+		t.Errorf("cause = %q, want the fixed-vocabulary description", d.Check.Cause)
+	}
+	if !strings.Contains(d.Check.Detail, "hunter2") {
+		t.Errorf("check detail = %q, want the raw error preserved operator-side", d.Check.Detail)
+	}
+
+	events := auditor.Events()
+	if len(events) != 1 {
+		t.Fatalf("expected 1 audit event, got %d", len(events))
+	}
+	record := BuildDecisionRecord(events[0])
+	recordJSON, err := json.Marshal(record)
+	if err != nil {
+		t.Fatalf("marshal record: %v", err)
+	}
+	decisionJSON, err := json.Marshal(d)
+	if err != nil {
+		t.Fatalf("marshal decision: %v", err)
+	}
+	for name, surface := range map[string]string{
+		"decision reason":      d.Reason,
+		"decision check cause": d.Check.Cause,
+		"decision JSON":        string(decisionJSON),
+		"decision record JSON": string(recordJSON),
+	} {
+		for _, fragment := range []string{"hunter2", "postgres://", "10.0.0.5"} {
+			if strings.Contains(surface, fragment) {
+				t.Errorf("%s leaks the raw check error (%q present): %q", name, fragment, surface)
+			}
+		}
+	}
+}
+
+// TestPipeline_NonEnforcingCheckFailure_EvaluatorSeesUnknownPosture pins the
+// Stage-4 projection on the declared non-enforcing continue path: when a
+// required check produces no trust posture — a missing required identity, or
+// a failed trust lookup — the evaluator must receive trust_state UNKNOWN
+// with score 0.0, never the TRUSTED/1.0 defaults the pipeline starts from.
+func TestPipeline_NonEnforcingCheckFailure_EvaluatorSeesUnknownPosture(t *testing.T) {
+	nonEnforcing := PipelineConfig{NonEnforcingTransports: []NonEnforcingTransport{
+		{Transport: TransportWebhook, Reason: "informational webhook sink"},
+	}}
+	assertUnknownProjection := func(t *testing.T, ev *captureEvaluator) {
+		t.Helper()
+		if ev.got == nil {
+			t.Fatal("evaluator was never called; the projection is unobservable")
+		}
+		if ev.got.TrustState != TrustStateUnknown.String() {
+			t.Errorf("evaluator trust_state = %q, want %q — no posture was established", ev.got.TrustState, TrustStateUnknown.String())
+		}
+		if ev.got.TrustScore == nil || *ev.got.TrustScore != 0.0 {
+			t.Errorf("evaluator trust_score = %v, want 0.0 — no posture was established", ev.got.TrustScore)
+		}
+	}
+
+	t.Run("missing required identity", func(t *testing.T) {
+		ev := &captureEvaluator{}
+		cfg := nonEnforcing
+		cfg.RequireAgentID = true
+		p := NewPipeline(cfg, nil, ev, nil)
+		d, err := p.Evaluate(context.Background(), &GovernanceRequest{
+			ToolName:  "notify",
+			Transport: TransportWebhook,
+			TenantID:  "t1",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if d.Action != "allow" || d.Check == nil || d.Check.Stage != CheckStageIdentity {
+			t.Fatalf("expected allow with the identity check recorded; action=%q check=%+v", d.Action, d.Check)
+		}
+		assertUnknownProjection(t, ev)
+	})
+
+	t.Run("trust lookup error", func(t *testing.T) {
+		ev := &captureEvaluator{}
+		backend := &programmableTrustBackend{checkErr: errors.New("redis down")}
+		p := NewPipeline(nonEnforcing, backend, ev, nil)
+		d, err := p.Evaluate(context.Background(), &GovernanceRequest{
+			ToolName:  "notify",
+			Transport: TransportWebhook,
+			AgentID:   "agent-1",
+			TenantID:  "t1",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if d.Action != "allow" || d.Check == nil || d.Check.Stage != CheckStageTrust {
+			t.Fatalf("expected allow with the trust check recorded; action=%q check=%+v", d.Action, d.Check)
+		}
+		assertUnknownProjection(t, ev)
+	})
+}
+
+// TestPipeline_AuditDegraded_StaleSuccessDoesNotClear reproduces the
+// degraded-flag ordering defect deterministically: a delivery that began
+// before a failure but resolves successfully after it must NOT clear the
+// degraded state — only a publish sequenced after the failure may. With an
+// unordered flag the in-flight success overwrites the failure's mark and the
+// surface reports healthy mid-outage.
+func TestPipeline_AuditDegraded_StaleSuccessDoesNotClear(t *testing.T) {
+	pub := &gatedPublisher{started: make(chan struct{}), release: make(chan struct{})}
+	p := NewPipeline(PipelineConfig{}, nil, nil, pub)
+	req := &GovernanceRequest{ToolName: "read_file", Transport: TransportMCP}
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		if _, err := p.Evaluate(context.Background(), req); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	}()
+	<-pub.started // first publish in flight; it will succeed once released
+
+	// A second publish fails while the first is still in flight.
+	if _, err := p.Evaluate(context.Background(), req); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !p.Degraded() {
+		t.Fatal("Degraded() must be true after the failed publish")
+	}
+
+	// The earlier-sequenced publish now resolves successfully; it must not
+	// clear the failure sequenced after it.
+	close(pub.release)
+	<-done
+	if !p.Degraded() {
+		t.Fatal("a stale success must not clear a later failure's degraded state")
+	}
+}
+
+// TestPipeline_AuditDegraded_ConcurrentPublishers exercises the degraded
+// latch under -race with many goroutines mixing failing and succeeding
+// publishes, then pins the post-outage semantics: AuditFailures reconciles
+// exactly with the publisher's own count, a later failed publish marks the
+// surface degraded, and a still-later success clears it.
+func TestPipeline_AuditDegraded_ConcurrentPublishers(t *testing.T) {
+	pub := &flakyPublisher{}
+	p := NewPipeline(PipelineConfig{}, nil, nil, pub)
+	newReq := func() *GovernanceRequest {
+		// Evaluate stamps RequestID/EnvelopeID onto the request in place, so
+		// every call needs its own instance.
+		return &GovernanceRequest{ToolName: "read_file", Transport: TransportMCP}
+	}
+
+	var wg sync.WaitGroup
+	for i := 0; i < 16; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 25; j++ {
+				if _, err := p.Evaluate(context.Background(), newReq()); err != nil {
+					t.Errorf("unexpected error: %v", err)
+					return
+				}
+			}
+		}()
+	}
+	wg.Wait()
+
+	if got, want := p.AuditFailures(), pub.failures.Load(); got != want {
+		t.Fatalf("AuditFailures = %d, want %d (the publisher's own failure count)", got, want)
+	}
+
+	pub.failAll.Store(true)
+	if _, err := p.Evaluate(context.Background(), newReq()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !p.Degraded() {
+		t.Fatal("Degraded() must be true after a failed publish")
+	}
+	pub.failAll.Store(false)
+	if _, err := p.Evaluate(context.Background(), newReq()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if p.Degraded() {
+		t.Fatal("Degraded() must clear after a publish sequenced after the failure succeeds")
+	}
 }
