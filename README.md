@@ -316,7 +316,6 @@ against the [Adapter Readiness Matrix](./docs/ADAPTER_READINESS_MATRIX.md).
 | Understand the model | [Architecture](./ARCHITECTURE.md) and [Boundary Spec](./docs/BOUNDARY_SPEC.md) |
 | Compare Boundary with adjacent tools | [Where Boundary Fits](./docs/COMPARISON.md) |
 | Read current capability limits | [Release Truth](./docs/RELEASE_TRUTH_PUBLIC.md) and [Limitations](./LIMITATIONS.md) |
-| Read explicit enforcement coverage | [Enforcement Report](./docs/ENFORCEMENT_REPORT.md) |
 | Verify decision records | [Decision Records](./docs/DECISION_RECORDS.md), [Receipts](./docs/RECEIPTS.md), and [Signing](./docs/SIGNING.md) |
 | Test policies | [Policy Testing](./docs/POLICY_TESTING.md) |
 | Check route deployment | [Route Conformance](./docs/ROUTE_CONFORMANCE_CHECKLIST.md) |

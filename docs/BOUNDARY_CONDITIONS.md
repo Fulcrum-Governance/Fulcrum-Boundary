@@ -48,8 +48,6 @@ The Docker demo proves the sole-route constraint with Docker network isolation. 
 
 Boundary makes the verdict. Infrastructure must make the bypass path unavailable.
 
-See the [Enforcement Report](ENFORCEMENT_REPORT.md) for a detailed breakdown of routed enforcement coverage, fail-closed handling, and explicit deployment responsibilities.
-
 ## Policy Scope
 
 The launch policy is demo-grade destructive-action blocking via string matching. It is not a general SQL firewall.

@@ -146,6 +146,26 @@ func TestAdapter_ParseRequest_FromJSONRPCMessageSend(t *testing.T) {
 	}
 }
 
+func TestAdapter_ParseRequest_FromJSONRPCMessageStream(t *testing.T) {
+	a := NewAdapter("tenant-stream")
+	body := []byte(`{
+		"jsonrpc":"2.0",
+		"id":"2",
+		"method":"message/stream",
+		"params":{
+			"message":{"taskId":"task-stream","parts":[]},
+			"metadata":{"sender_agent_id":"agent-stream","action":"stream.start"}
+		}
+	}`)
+	req, err := a.ParseRequest(context.Background(), body)
+	if err != nil {
+		t.Fatalf("ParseRequest: %v", err)
+	}
+	if req.ToolName != "stream.start" || req.AgentID != "agent-stream" {
+		t.Fatalf("JSON-RPC message/stream path produced wrong fields: %+v", req)
+	}
+}
+
 func TestAdapter_ParseRequest_UnknownRequiredFieldFailsClosed(t *testing.T) {
 	a := NewAdapter("tenant-Z")
 	body := []byte(`{
