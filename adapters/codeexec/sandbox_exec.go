@@ -419,6 +419,9 @@ func sandboxDeniedResponse(req *governance.GovernanceRequest, category, detail s
 		if req.RequestID != "" {
 			resp.Metadata["x-fulcrum-request-id"] = req.RequestID
 		}
+		if req.EnvelopeID != "" {
+			resp.Metadata["x-fulcrum-envelope-id"] = req.EnvelopeID
+		}
 		if req.TenantID != "" {
 			resp.Metadata["x-fulcrum-tenant-id"] = req.TenantID
 		}

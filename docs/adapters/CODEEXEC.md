@@ -36,28 +36,43 @@ The default sandbox policy allows Python, JavaScript, and TypeScript, allows fil
 
 ## Execution Boundary
 
-`NewAdapterWithExecutor` wires CodeExec to an operator-provided `Executor` and `ExecutionBoundary`. The boundary metadata must name what actually isolates execution:
+`NewAdapterWithExecutor` wires CodeExec to an operator-provided `Executor` and `ExecutionBoundary`. The boundary metadata must name what actually isolates execution.
 
-- container
-- WASM runtime
-- Firecracker or another microVM
-- OS-level sandbox with documented restrictions
-- local process
+Boundary ships a `Sandbox` interface (`adapters/codeexec/sandbox_exec.go`) that implements `Executor` and reports its boundary via `Boundary()`. `NewSandbox` constructs it from a `SandboxConfig`:
 
-Only the first four may be described as secure sandboxing when implemented, tested, and documented. A local-process boundary must remain preview and must be described as policy-gated execution, not secure sandboxing.
+- `Type: "container"` — the production boundary. Runs each allowed request in a fresh, hardened OCI container on the local container runtime (`docker` or `podman`; `Runtime` may pin one).
+- `Type: "local"` — a local subprocess boundary kept for development and tests. `NewSandbox` refuses it when `Production: true`; its `ExecutionBoundary` reports `SecureSandbox: false`.
+
+Only a named isolation boundary — container, WASM runtime, microVM, or OS-level sandbox — may be described as sandboxing when implemented, tested, and documented. A local-process boundary is policy-gated execution, not sandboxing.
+
+## Container Sandbox Contract
+
+The container implementation fixes a hardening profile for every run:
+
+- `--network none` — no inbound or outbound network for the container
+- `--read-only` root filesystem, plus a size-limited `noexec,nosuid,nodev` tmpfs at `/tmp` — writes outside `/tmp` fail
+- non-root `--user 1000:1000`
+- `--cap-drop ALL` and `--security-opt no-new-privileges`
+- the runtime's default seccomp profile (not disabled)
+- `--ipc none`
+- `--pids-limit 64`, `--memory 128m`/`--memory-swap 128m`, `--cpus 1`
+- a wall-clock timeout (`SandboxConfig.Timeout`, default 30s) that kills and removes the container
+- no host mounts except an optional explicit read-only input directory (`HostInputDir` + `MountDestDir`)
+
+Every container is named `fulcrum-codeexec-<request id>` and force-removed after the run, including when the wall-clock timeout kills the runtime client — a timed-out container is never left running.
+
+**Fail-closed semantics.** When the sandbox cannot produce a valid execution result — container runtime missing, image unresolvable, container start failure, or the deadline expiring before the container starts — the executor returns a deny envelope (exit code 126, `codeexec_denied=true`) classified `CHECK_INDETERMINATE` with a machine-readable `failure_category` (`sandbox_runtime_unavailable`, `sandbox_start_failure`, `sandbox_config`) and safe request context (request/tenant/agent IDs, transport, enforcement stage, check class). This is the ADR-047 indeterminate outcome expressed on the existing deny path; the pipeline-level `CHECK_INDETERMINATE` decision type is tracked under FUL-464. A container that started and then exceeded the timeout is an ordinary execution timeout (`timeout=true`, exit 124), not an indeterminate result.
+
+**What the sandbox does not protect against.** The container boundary contains accidental breakage and routine host interference. It does not protect against kernel exploits, container-runtime escapes, hardware or side-channel attacks, or vulnerabilities in the runtime itself — the host kernel is shared. Image provenance is an operator responsibility. The sandbox also does not make the governed route unreachable from the outside: see Bypass Model and `docs/deployment/codeexec-bypass-proofing.md`.
+
+**Operator requirements.** The Boundary process needs permission to run containers on the local runtime; the governed agent must not have that access. Pre-pull or pin the configured image so image resolution cannot fail or hang at request time (the timeout bounds it, and pull failure fails closed). Keep host mounts limited to the explicit read-only input directory.
 
 ## Bypass Model
 
-Boundary governs code execution only when code enters through the CodeExec adapter. Direct host execution, notebook kernels, CI scripts, shell access, or any path into the execution runtime that does not pass through Boundary is outside this adapter.
+Boundary governs code execution only when code enters through the CodeExec adapter. Direct host execution, notebook kernels, CI scripts, shell access, direct container-runtime access, or any path into the execution runtime that does not pass through Boundary is outside this adapter.
 
-The direct-execution bypass test documents this limitation by performing a host write without invoking Boundary. That is an honest deployment boundary: production use requires topology evidence that the governed executor is the sole code-execution path available to the agent.
+The direct-execution bypass test documents this limitation by performing a host write without invoking Boundary. That is an honest deployment boundary: production use requires topology evidence that the governed executor is the sole code-execution path available to the agent. See `docs/deployment/codeexec-bypass-proofing.md` for the reference-configuration controls.
 
 ## Production Gate
 
-CodeExec stays preview until a real named sandbox boundary is implemented, tested, and documented with:
-
-- deny-before-execute lifecycle evidence
-- allowed-code execution evidence inside the named boundary
-- timeout, stdout, stderr, exit-code, and output-inspection evidence
-- bypass proof showing direct runtime access is unavailable to the governed agent
-- transcript or integration evidence suitable for the readiness matrix and claims ledger
+CodeExec stays preview until the remaining readiness gap is closed: the named sandbox boundary is implemented and covered by runtime-gated integration tests (`adapters/codeexec/sandbox_integration_test.go`), and deployment bypass evidence must still show that direct runtime access is unavailable to the governed agent — see the bypass-proofing note. Gap BND-CODE-001 remains recorded in `readiness.yaml`; status changes are consolidated separately.

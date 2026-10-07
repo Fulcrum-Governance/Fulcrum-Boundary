@@ -30,12 +30,14 @@ evidence:
     - adapters/codeexec/adapter_test.go
     - adapters/codeexec/adversarial_test.go
     - adapters/codeexec/sandbox_test.go
+    - adapters/codeexec/sandbox_integration_test.go
     - tests/adapters/codeexec_lifecycle_test.go
     - tests/adapter_conformance/codeexec_conformance_test.go
   docs:
     - docs/adapters/CODEEXEC.md
     - docs/ADAPTER_CONTRACT.md
     - docs/ADAPTER_READINESS_MATRIX.md
+    - docs/deployment/codeexec-bypass-proofing.md
 gaps:
   - id: BND-CODE-001
     description: "Production status requires a real named sandbox boundary such as container, WASM, microVM, or OS sandbox, with integration tests and bypass proof."
