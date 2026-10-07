@@ -1,0 +1,304 @@
+#!/usr/bin/env bash
+# Cross-language decision-record verifier parity gate.
+#
+# Runs every conformance vector in
+# tests/conformance/testdata/verifier-vectors/manifest.json through all four
+# shipped decision-record verifiers — Go (`boundary verify-record`), Python
+# (verifiers/python/boundary_verify.py), TypeScript
+# (verifiers/typescript/boundary_verify.ts), and Rust
+# (verifiers/rust/src/main.rs) — and fails when any verifier's outcome
+# disagrees with the manifest's `expect` field.
+#
+# Outcome vocabulary (manifest `expect` -> verifier result):
+#   verify            -> exit 0
+#   reject:<reason>   -> exit non-zero with `reason=<reason>` on stderr
+#
+# The reason codes are the governance.RecordReject* constants; every verifier
+# prints `reason=<code>` on stderr when it rejects a record.
+#
+# Usage:
+#   scripts/ci/run-verifier-parity.sh              run the parity check
+#   scripts/ci/run-verifier-parity.sh --write-doc  additionally regenerate
+#                                                  docs/VERIFIER_PARITY.md
+#   scripts/ci/run-verifier-parity.sh --check-doc  fail if docs/VERIFIER_PARITY.md
+#                                                  is not what this run generates
+#
+# Environment overrides: PYTHON (default python3), NODE (default node),
+# CARGO (default cargo), GO (default go).
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$REPO_ROOT"
+
+MANIFEST="tests/conformance/testdata/verifier-vectors/manifest.json"
+VECTORS_DIR="tests/conformance/testdata/verifier-vectors"
+DOC_PATH="docs/VERIFIER_PARITY.md"
+
+PYTHON="${PYTHON:-python3}"
+NODE="${NODE:-node}"
+CARGO="${CARGO:-cargo}"
+GO="${GO:-go}"
+
+WRITE_DOC=0
+CHECK_DOC=0
+for arg in "$@"; do
+  case "$arg" in
+    --write-doc) WRITE_DOC=1 ;;
+    --check-doc) CHECK_DOC=1 ;;
+    *) echo "usage: $0 [--write-doc|--check-doc]" >&2; exit 2 ;;
+  esac
+done
+
+for tool in "$PYTHON" "$NODE" "$CARGO" "$GO"; do
+  if ! command -v "$tool" >/dev/null 2>&1; then
+    echo "verifier-parity: required tool missing: $tool" >&2
+    exit 2
+  fi
+done
+
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "$TMP_DIR"' EXIT
+
+echo "verifier-parity: building Go verifier (boundary verify-record)"
+"$GO" build -o "$TMP_DIR/boundary" ./cmd/boundary
+GO_BIN="$TMP_DIR/boundary"
+
+if [ ! -d verifiers/typescript/node_modules ]; then
+  echo "verifier-parity: installing TypeScript verifier dependencies (npm ci)"
+  (cd verifiers/typescript && npm ci --silent)
+fi
+
+echo "verifier-parity: building Rust verifier (boundary-verify)"
+"$CARGO" build --quiet --manifest-path verifiers/rust/Cargo.toml
+RUST_BIN="verifiers/rust/target/debug/boundary-verify"
+
+# Manifest -> TSV: file<TAB>expect<TAB>decision_hash<TAB>why
+"$PYTHON" - "$MANIFEST" >"$TMP_DIR/vectors.tsv" <<'PYEOF'
+import json
+import sys
+
+manifest = json.load(open(sys.argv[1], encoding="utf-8"))
+for v in manifest["vectors"]:
+    row = [v["file"], v.get("expect", "verify"), v["decision_hash"], v.get("why", "")]
+    print("\t".join(field.replace("\t", " ") for field in row))
+PYEOF
+
+# run_one <label> <cmd...> -> echoes the verifier's outcome class:
+# "ok" on exit 0, otherwise the reason=<code> it emitted (or "no-reason").
+run_one() {
+  local out rc reason
+  set +e
+  out="$("$@" 2>&1)"
+  rc=$?
+  set -e
+  if [ "$rc" -eq 0 ]; then
+    echo "ok"
+    return
+  fi
+  reason="$(printf '%s\n' "$out" | grep -oE 'reason=[a-z-]+' | head -n1 | cut -d= -f2-)"
+  echo "${reason:-no-reason}"
+}
+
+expected_of() {
+  local expect="$1"
+  if [ "$expect" = "verify" ]; then
+    echo "ok"
+  else
+    echo "${expect#reject:}"
+  fi
+}
+
+FAILURES=0
+VECTOR_COUNT=0
+TABLE="$TMP_DIR/table.md"
+{
+  printf '| vector | expected | go | python | typescript | rust |\n'
+  printf '| --- | --- | --- | --- | --- | --- |\n'
+} >"$TABLE"
+
+while IFS=$'\t' read -r file expect _hash why; do
+  vector_path="$REPO_ROOT/$VECTORS_DIR/$file"
+  expected="$(expected_of "$expect")"
+  VECTOR_COUNT=$((VECTOR_COUNT + 1))
+
+  go_result="$(run_one "$GO_BIN" verify-record "$vector_path")"
+  py_result="$(run_one "$PYTHON" verifiers/python/boundary_verify.py "$vector_path")"
+  ts_result="$(run_one "$NODE" --experimental-strip-types verifiers/typescript/boundary_verify.ts "$vector_path")"
+  rust_result="$(run_one "$RUST_BIN" "$vector_path")"
+
+  printf '| %s | %s | %s | %s | %s | %s |\n' \
+    "$file" "$expected" "$go_result" "$py_result" "$ts_result" "$rust_result" >>"$TABLE"
+
+  for result in "$go_result" "$py_result" "$ts_result" "$rust_result"; do
+    if [ "$result" != "$expected" ]; then
+      echo "verifier-parity: DISAGREE $file: expected=$expected go=$go_result python=$py_result typescript=$ts_result rust=$rust_result ($why)" >&2
+      FAILURES=$((FAILURES + 1))
+      break
+    fi
+  done
+done <"$TMP_DIR/vectors.tsv"
+
+echo
+echo "verifier-parity: vector x verifier outcome table"
+cat "$TABLE"
+
+emit_doc() {
+  cat <<'HEADER'
+# Verifier Parity — Decision-Record Conformance
+
+This report is generated by `scripts/ci/run-verifier-parity.sh` (run it with
+`--write-doc`). Do not hand-edit the outcome table: it is produced by running
+every committed conformance vector in
+`tests/conformance/testdata/verifier-vectors/` through all four shipped
+decision-record verifiers — Go (`boundary verify-record`), Python
+(`verifiers/python/boundary_verify.py`), TypeScript
+(`verifiers/typescript/boundary_verify.ts`), and Rust
+(`verifiers/rust/src/main.rs`). CI fails when any verifier's outcome disagrees
+with the manifest's `expect` field.
+
+Each verifier is a stock-language reimplementation of one check: recompute a
+record's `decision_hash` over its RFC 8785 / JCS canonical form and compare it
+to the stored value, after strict JSON ingest. This is an **integrity** check —
+it detects tampering with the covered fields — not an authenticity check and
+not proof the governed action executed or was prevented (see
+[RECEIPTS.md](RECEIPTS.md)).
+
+## What `decision_hash` covers
+
+The hash is `"sha256:" + hex(sha256(canonical_json))` over the
+`DecisionRecordV1` record with exactly four fields neutralized first:
+`record_id` and `decision_hash` are blanked to `""`, and `signature` /
+`signature_key_id` are dropped. `record_id` is display-only and derived from
+the hash, so it is not covered (FUL-512 tracks this caveat).
+
+Every other emitted field is covered: `schema_version`, `event_type`,
+`timestamp`, `boundary_version`, `boundary_build_digest`, `adapter`,
+`agent_id`, `tenant_id`, `trace_id`, `request_id`, `tool`, `action`,
+`reason`, `decision_mode`, `matched_rule`, `policy_file`,
+`policy_bundle_hash`, `request_hash`, `raw_shape_hash`, `trust_score`,
+`trust_state`, `check`, and the
+schema_version "2" route-context fields `adapter_id`, `route_id`,
+`topology_profile`, `execution_claim` when present. ("`omitempty` fields
+appear in the preimage only when populated" is the Go emitter's rule: the
+standalone verifiers hash the member set the file actually contains, so a
+present-but-empty field hashes differently for them than for a Go-marshaled
+record that dropped it — see Known divergences.)
+
+The member set is closed and case-sensitive: at every object position the
+schema defines — the top-level record (`DecisionRecordV1`), the `check`
+object (`CheckFailure`: `stage`, `class`, `category`, `cause`), and the
+`execution_claim` object (`ExecutionClaim`: `upstream_called`, `executed`,
+`source`) — a member name the schema does not declare is
+rejected at ingest with `unknown-field`, never dropped before hashing and
+never bound to a declared field by case-insensitive name matching (Go's
+`encoding/json` would otherwise accept `"ACTION"` as `action`). Member names
+are also unique under case folding at every depth: `"action"` and `"Action"`
+in one object are rejected as `duplicate-key`. A verifier that silently
+dropped unknown members would accept attacker-added content under a valid
+stored hash, which is exactly the bypass strict ingest exists to prevent.
+
+## Outcome vocabulary
+
+The manifest's `expect` field is the machine-readable contract:
+`verify` means exit 0; `reject:<reason>` means exit non-zero while printing
+`reason=<reason>` on stderr. Reason codes are the `governance.RecordReject*`
+constants shared by all four verifiers.
+
+| code | meaning |
+| --- | --- |
+| `ok` | recomputed `decision_hash` equals the stored value |
+| `duplicate-key` | an object member name repeats at some depth |
+| `trailing-data` | non-whitespace bytes follow the top-level JSON value |
+| `not-object` | top-level value is not a JSON object |
+| `unknown-field` | member name outside the schema's closed set, at any schema-defined object position |
+| `parse-error` | other malformed JSON (including non-finite numbers and nesting beyond the decoder's depth limit) |
+| `read-error` | the record file could not be read |
+| `missing-hash` | `decision_hash` absent or empty |
+| `hash-mismatch` | recomputed hash differs from the stored value |
+| `schema-version` | unsupported `schema_version` (Go verifier only — the standalone verifiers do not gate on `schema_version`) |
+| `signature` | `--verify-signature` check failed (Go verifier only) |
+| `verify-fail` | any other verification failure |
+
+Reason precedence is part of the contract: when `decision_hash` is absent or
+empty, all four verifiers report `missing-hash` even if another
+verification-stage check failed first (on the Go verifier, for example an
+unsupported `schema_version` — only that verifier enforces it) — the class
+reports that there is nothing to recompute against, while the
+human-readable message names the first failing check. Nesting depth is
+bounded for fail-closed ingest: Go's decoder caps at 10,000 levels and the
+Python and TypeScript verifiers enforce the same published ceiling; inputs
+deeper than a verifier's own parser recursion limit (Python's interpreter
+ceiling, Rust's serde_json default of 128, the TypeScript scanner's call
+stack) are likewise classified `parse-error` rather than crashing.
+
+## Parity results
+
+HEADER
+  cat "$TABLE"
+  cat <<'FOOTER'
+
+## Known divergences
+
+Parity is asserted only on the committed corpus above — the vectors are the
+contract. Inputs outside it can still split the verifiers, and agreement
+beyond the corpus is intent, not a proven property. Known divergent inputs:
+
+- **Wrong-typed or null known members.** The Go verifier decodes into a
+  typed struct, so a declared member carrying the wrong JSON type (for
+  example `"trust_score": "high"`) is rejected at ingest there, while the
+  standalone verifiers hash whatever the file contains and typically land
+  on `hash-mismatch`. Tracked under FUL-655.
+- **Finite-but-unrepresentable integers.** An integer literal that fits a
+  float64 but not the RFC 8785 integer domain (for example
+  `9007199254740993`) parses on the Go, TypeScript, and Rust verifiers —
+  landing on `hash-mismatch` — while Python's `rfc8785` rejects it at
+  canonicalization as `parse-error`. Literals that overflow float64
+  entirely (`1e999`, 400-digit integers) are `parse-error` on all four;
+  that family is pinned by the corpus.
+- **Lone-surrogate escapes.** `"\ud800"` (an unmatched surrogate code
+  unit) decodes to the replacement character in Go, which verifies the
+  decoded interpretation; TypeScript parses and canonicalizes the escape
+  as-is; Python and Rust reject it as `parse-error`. Outside the corpus.
+- **Depth ceilings differ.** Go and the TypeScript scanner cap nesting at
+  10,000 levels and Python enforces the same published cap, but Rust's
+  serde_json default is 128 and Python can additionally hit its
+  interpreter recursion ceiling below the cap. Inputs between the
+  ceilings are parseable on some verifiers and `parse-error` on others.
+- **BOM and encoding edges.** All four verifiers reject a leading UTF-8
+  BOM as `parse-error` (pinned by `v1_bom_prefixed.json`); other encoding
+  anomalies are outside the corpus.
+- **`schema_version` and signature checks are Go-verifier only.** The
+  standalone verifiers compare `decision_hash` alone: a record with an
+  unsupported `schema_version` and a matching hash verifies there while
+  the Go verifier rejects it.
+
+## Reproduce
+
+```bash
+pip install rfc8785
+(cd verifiers/typescript && npm ci)
+scripts/ci/run-verifier-parity.sh
+```
+
+FOOTER
+}
+
+if [ "$WRITE_DOC" -eq 1 ]; then
+  emit_doc >"$DOC_PATH"
+  echo "verifier-parity: wrote $DOC_PATH"
+fi
+
+if [ "$CHECK_DOC" -eq 1 ]; then
+  emit_doc >"$TMP_DIR/VERIFIER_PARITY.generated.md"
+  if ! diff -u "$DOC_PATH" "$TMP_DIR/VERIFIER_PARITY.generated.md" >"$TMP_DIR/doc.diff"; then
+    echo "verifier-parity: $DOC_PATH is stale; regenerate with --write-doc" >&2
+    cat "$TMP_DIR/doc.diff" >&2
+    FAILURES=$((FAILURES + 1))
+  fi
+fi
+
+if [ "$FAILURES" -gt 0 ]; then
+  echo "verifier-parity: FAIL ($FAILURES disagreement(s))" >&2
+  exit 1
+fi
+echo "verifier-parity: PASS (parity corpus: $VECTOR_COUNT vectors, four verifiers)"

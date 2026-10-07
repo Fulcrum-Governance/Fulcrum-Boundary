@@ -1,0 +1,17 @@
+{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "rec_19a4fe95da42",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-dup-top",
+  "tool": "query",
+  "action": "deny",
+  "action": "allow",
+  "reason": "duplicate key ambiguity: last-wins would flip the recorded verdict",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "sha256:19a4fe95da425125e35bc1d4047e8e4e767bd5bd114512cb9cb000c0d44a25c3",
+  "trust_score": 1,
+  "trust_state": "TRUSTED"
+}

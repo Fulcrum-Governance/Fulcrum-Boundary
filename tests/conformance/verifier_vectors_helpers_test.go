@@ -1,6 +1,8 @@
 package conformance
 
 import (
+	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -28,4 +30,38 @@ func recordIDFromHash(hash string) string {
 		return "rec_" + trimmed
 	}
 	return "rec_" + trimmed[:12]
+}
+
+// escapeAllForJSON returns s with every code point spelled as a JSON \uXXXX
+// escape (or a surrogate pair for astral code points) — the maximally
+// non-literal spelling of the same string, used to build corpus bytes that
+// exercise escape decoding in every verifier.
+func escapeAllForJSON(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		if r > 0xFFFF {
+			r -= 0x10000
+			fmt.Fprintf(&b, `\u%04x\u%04x`, 0xD800+(r>>10), 0xDC00+(r&0x3FF))
+			continue
+		}
+		fmt.Fprintf(&b, `\u%04x`, r)
+	}
+	return b.String()
+}
+
+// storedHashPattern matches the record's stored "decision_hash" member in raw
+// file bytes, so a value can be read even from files a strict decoder rejects
+// (duplicate members, trailing data).
+var storedHashPattern = regexp.MustCompile(`"decision_hash"\s*:\s*"(sha256:[0-9a-f]{64})"`)
+
+// storedDecisionHash extracts the decision_hash a vector file stores, without
+// decoding the file. It fails the test when the file stores no well-formed
+// sha256-prefixed hash.
+func storedDecisionHash(t *testing.T, raw []byte, name string) string {
+	t.Helper()
+	match := storedHashPattern.FindSubmatch(raw)
+	if match == nil {
+		t.Fatalf("%s has no stored decision_hash of the form sha256:<64 hex>", name)
+	}
+	return string(match[1])
 }

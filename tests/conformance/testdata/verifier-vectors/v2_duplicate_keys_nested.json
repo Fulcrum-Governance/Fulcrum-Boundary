@@ -1,0 +1,26 @@
+{
+  "schema_version": "2",
+  "event_type": "governance_decision",
+  "record_id": "rec_333f11d5b7f8",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-dup-nested",
+  "tool": "github.create_or_update_file",
+  "action": "deny",
+  "reason": "nested duplicate key ambiguity in execution_claim",
+  "decision_mode": "deterministic",
+  "matched_rule": "deny-github-write-after-taint-fixture",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "sha256:333f11d5b7f8e3ccaa6888925c5e203ac412c67a8d7c8e0442fba405d4e9d23d",
+  "trust_score": 1,
+  "trust_state": "TRUSTED",
+  "adapter_id": "mcp-primary",
+  "route_id": "route-github-write",
+  "topology_profile": "single-route-forced",
+  "execution_claim": {
+    "upstream_called": true,
+    "upstream_called": false,
+    "executed": true,
+    "source": "mcp-adapter"
+  }
+}

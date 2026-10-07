@@ -124,8 +124,25 @@ def test_conformance_corpus_recomputes_to_committed_hashes() -> None:
     for entry in vectors:
         file_name = entry["file"]
         expected_hash = entry["decision_hash"]
+        expect = entry.get("expect", "verify")
         record_path = CORPUS_DIR / file_name
         assert record_path.exists(), f"corpus file missing: {record_path}"
+
+        if expect.startswith("reject:"):
+            # Reject vectors are exercised through the CLI: the process must
+            # exit 1 and emit the manifest's machine-readable reason on stderr.
+            result = _run_cli(record_path)
+            assert result.returncode == 1, (
+                f"{file_name}: CLI exit {result.returncode}, expected 1 "
+                f"(expect={expect})\nstdout: {result.stdout}\nstderr: {result.stderr}"
+            )
+            want_reason = expect.removeprefix("reject:")
+            assert f"reason={want_reason}" in result.stderr, (
+                f"{file_name}: expected reason={want_reason} on stderr, "
+                f"got:\n{result.stderr}"
+            )
+            checked += 1
+            continue
 
         with open(record_path, "r", encoding="utf-8") as handle:
             record = json.load(handle)
@@ -149,7 +166,58 @@ def test_conformance_corpus_recomputes_to_committed_hashes() -> None:
         checked += 1
 
     assert checked == len(vectors)
-    print(f"ok: all {checked} conformance corpus vectors recompute to committed hashes")
+    print(f"ok: all {checked} conformance corpus vectors match the manifest expectation")
+
+
+def test_canonicalization_failures_reject_cleanly() -> None:
+    """Inputs that fail inside rfc8785 must still exit 1 with reason=parse-error.
+
+    A lone surrogate escape decodes into a non-UTF-8 code point that
+    ``rfc8785.dumps`` rejects with ``CanonicalizationError``, and an integer
+    literal beyond the RFC 8785 domain raises ``IntegerDomainError``. These
+    sit outside the shared corpus because the verifiers' interpretations
+    diverge on them (see "Known divergences" in docs/VERIFIER_PARITY.md);
+    what matters here is that the Python verifier classifies the failure as
+    ``parse-error`` instead of crashing with a traceback and no reason line.
+    """
+    cases = {
+        # \ud800 is an unmatched high surrogate: legal JSON escape syntax,
+        # uncanonicalizable code point.
+        "lone_surrogate.json": (
+            '{"schema_version": "1", "action": "allow", '
+            '"reason": "lone surrogate \\ud800 end", '
+            '"decision_hash": "sha256:'
+            + "0" * 64
+            + '", "trust_score": 1}'
+        ),
+        # ~400 digits overflows float64 entirely: json.loads yields the int
+        # and rfc8785 raises IntegerDomainError at canonicalization.
+        "huge_integer.json": (
+            '{"schema_version": "1", "action": "allow", "trust_score": '
+            + "9" * 400
+            + ', "decision_hash": "sha256:'
+            + "0" * 64
+            + '"}'
+        ),
+    }
+    with tempfile.TemporaryDirectory() as tmp:
+        for file_name, content in cases.items():
+            record_path = Path(tmp) / file_name
+            record_path.write_text(content, encoding="utf-8")
+            result = _run_cli(record_path)
+            assert result.returncode == 1, (
+                f"{file_name}: CLI exit {result.returncode}, expected 1\n"
+                f"stdout: {result.stdout}\nstderr: {result.stderr}"
+            )
+            assert "reason=parse-error" in result.stderr, (
+                f"{file_name}: expected reason=parse-error on stderr, "
+                f"got:\n{result.stderr}"
+            )
+            assert "Traceback" not in result.stderr, (
+                f"{file_name}: uncaught exception escaped to stderr:\n"
+                f"{result.stderr}"
+            )
+            print(f"ok: {file_name} rejected cleanly (exit 1, reason=parse-error)")
 
 
 def main() -> int:
@@ -157,6 +225,7 @@ def main() -> int:
     tests = [
         test_example_record_verifies_ok,
         test_one_field_forgery_is_caught,
+        test_canonicalization_failures_reject_cleanly,
         test_conformance_corpus_recomputes_to_committed_hashes,
     ]
     for test in tests:

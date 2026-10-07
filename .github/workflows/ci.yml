@@ -133,6 +133,8 @@ jobs:
         run: |
           cargo test --manifest-path verifiers/rust/Cargo.toml
           cargo run --manifest-path verifiers/rust/Cargo.toml -- docs/examples/decision-record.example.json
+      - name: all four verifiers must agree on every conformance vector
+        run: ./scripts/ci/run-verifier-parity.sh --check-doc
 
   lint:
     name: golangci-lint

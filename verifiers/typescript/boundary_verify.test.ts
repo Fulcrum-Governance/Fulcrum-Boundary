@@ -181,8 +181,8 @@ test('signature fields are excluded from the hash', () => {
 
 // ── Test 7: all 9 conformance corpus vectors ──────────────────────────────────
 
-test('conformance corpus: all vectors recompute to committed hashes', () => {
-  type ManifestEntry = { file: string; decision_hash: string; why?: string };
+test('conformance corpus: all vectors produce the manifest outcome', () => {
+  type ManifestEntry = { file: string; decision_hash: string; expect?: string; why?: string };
   type Manifest = { vectors: ManifestEntry[] };
 
   assert.ok(
@@ -196,8 +196,26 @@ test('conformance corpus: all vectors recompute to committed hashes', () => {
 
   let checked = 0;
   for (const entry of vectors) {
-    const { file: fileName, decision_hash: expectedHash, why } = entry;
+    const { file: fileName, decision_hash: expectedHash, expect = 'verify', why } = entry;
     const recordPath = join(CORPUS_DIR, fileName);
+
+    if (expect.startsWith('reject:')) {
+      // Reject vectors are exercised through the CLI: exit 1 plus the
+      // manifest's machine-readable reason on stderr.
+      const result = runCli(recordPath);
+      assert.equal(
+        result.status,
+        1,
+        `${fileName}: CLI exit ${result.status}, expected 1 (expect=${expect})\nstdout: ${result.stdout}\nstderr: ${result.stderr}`,
+      );
+      const wantReason = expect.slice('reject:'.length);
+      assert.ok(
+        result.stderr.includes(`reason=${wantReason}`),
+        `${fileName}: expected reason=${wantReason} on stderr, got:\n${result.stderr}`,
+      );
+      checked++;
+      continue;
+    }
 
     const record: DecisionRecord = JSON.parse(readFileSync(recordPath, 'utf8'));
 

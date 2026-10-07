@@ -1,0 +1,16 @@
+{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "rec_56ad9c402a32",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-tampered",
+  "tool": "payments.transfer",
+  "action": "deny",
+  "reason": "transfer permitted by policy",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "sha256:56ad9c402a3271beeb04ea39abfa273234ea4c7dd7f4b2859d745e63c7b327e8",
+  "trust_score": 1,
+  "trust_state": "TRUSTED"
+}
