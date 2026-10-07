@@ -104,15 +104,17 @@ func TestPipeline_DryRun_AllowDecision_Untouched(t *testing.T) {
 	}
 }
 
-// TestPipeline_DryRun_FailClosedEvaluatorError_Rewritten combines the Phase 2
-// evaluator seam with DryRun. A fail-closed transport that would have denied
-// on evaluator error must still be rewritten to allow under DryRun, and the
-// audit event must record the original deny with the fail-closed reason.
+// TestPipeline_DryRun_EnforcingEvaluatorError_Rewritten combines the
+// evaluator seam with DryRun. An enforcing transport that would have blocked
+// as CHECK_INDETERMINATE on evaluator error must still be rewritten to allow
+// under DryRun, and the audit event must record the original indeterminate
+// outcome with the check context — the audit row must say what would have
+// happened, which ADR-047 makes check_indeterminate, not deny.
 //
 // This is the most security-relevant DryRun path: operators enable DryRun
-// specifically to quantify what a fail-closed posture would block before
+// specifically to quantify what an enforcing posture would block before
 // flipping it on in production.
-func TestPipeline_DryRun_FailClosedEvaluatorError_Rewritten(t *testing.T) {
+func TestPipeline_DryRun_EnforcingEvaluatorError_Rewritten(t *testing.T) {
 	auditor := &collectingAuditor{}
 	ev := &errorEvaluator{err: fmt.Errorf("evaluator unavailable")}
 	cfg := PipelineConfig{
@@ -127,29 +129,32 @@ func TestPipeline_DryRun_FailClosedEvaluatorError_Rewritten(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Caller sees allow.
+	// Caller sees allow: dry-run is an explicitly non-enforcing mode.
 	if d.Action != "allow" {
 		t.Errorf("expected allow for caller under DryRun, got %s", d.Action)
 	}
 	if !d.DryRun {
 		t.Error("expected decision.DryRun=true")
 	}
-	if !strings.HasPrefix(d.Reason, "DRY-RUN would deny: ") {
-		t.Errorf("expected DRY-RUN prefix, got %q", d.Reason)
+	if !strings.HasPrefix(d.Reason, "DRY-RUN would block: ") {
+		t.Errorf("expected DRY-RUN would-block prefix, got %q", d.Reason)
 	}
-	if !strings.Contains(d.Reason, "policy evaluation failed (fail-closed)") {
-		t.Errorf("expected original fail-closed reason to be preserved; got %q", d.Reason)
+	if !strings.Contains(d.Reason, "policy evaluation failed") {
+		t.Errorf("expected original check-indeterminate reason to be preserved; got %q", d.Reason)
 	}
 
-	// Audit records the real deny with the real reason.
+	// Audit records the real would-have-blocked outcome, not a rewritten one.
 	events := auditor.Events()
 	if len(events) != 1 {
 		t.Fatalf("expected 1 audit event, got %d", len(events))
 	}
-	if events[0].Action != "deny" {
-		t.Errorf("audit must record deny; got %s", events[0].Action)
+	if events[0].Action != ActionCheckIndeterminate {
+		t.Errorf("audit must record check_indeterminate; got %s", events[0].Action)
 	}
-	if !strings.Contains(events[0].Reason, "policy evaluation failed (fail-closed)") {
-		t.Errorf("audit must record fail-closed reason; got %q", events[0].Reason)
+	if events[0].Check == nil || events[0].Check.Category != FailureUnavailable {
+		t.Errorf("audit must record the failed check; got %+v", events[0].Check)
+	}
+	if !strings.Contains(events[0].Reason, "policy evaluation failed") {
+		t.Errorf("audit must record the check failure reason; got %q", events[0].Reason)
 	}
 }

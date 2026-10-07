@@ -63,14 +63,17 @@ func (b *programmableTrustBackend) TerminateAgent(_ context.Context, agentID str
 	return TrustSnapshot{AgentID: agentID, State: TrustStateTerminated, Known: true}, nil
 }
 
-// TestPipeline_RequireAgentID_DeniesWhenMissing covers the Stage-1
-// RequireAgentID enforcement body (pipeline.go ~241-247). When RequireAgentID
-// is set, the transport is fail-closed, and the request carries no AgentID, the
-// pipeline must deny *before* any other stage, with the protected-adapter
-// reason and a zeroed/isolated trust posture. The table also pins the negative
-// cases that must NOT trip the guard, so a future refactor cannot quietly widen
-// or narrow the condition.
-func TestPipeline_RequireAgentID_DeniesWhenMissing(t *testing.T) {
+// TestPipeline_RequireAgentID_CheckIndeterminateWhenMissing covers the
+// Stage-1 RequireAgentID enforcement body. When RequireAgentID is set and the
+// request carries no AgentID, the missing required identity is a check
+// failure (ADR-047 missing_identity): on an enforcing transport the pipeline
+// returns CHECK_INDETERMINATE before any other stage; on an explicitly
+// non-enforcing transport it records the would-have-blocked check and
+// continues. An explicit empty FailClosedTransports list is a configuration
+// error that blocks everything rather than disarming the guard. The table
+// also pins the negative cases that must NOT trip the guard, so a future
+// refactor cannot quietly widen or narrow the condition.
+func TestPipeline_RequireAgentID_CheckIndeterminateWhenMissing(t *testing.T) {
 	tests := []struct {
 		name           string
 		requireAgentID bool
@@ -79,14 +82,20 @@ func TestPipeline_RequireAgentID_DeniesWhenMissing(t *testing.T) {
 		failClosed     []TransportType
 		wantAction     string
 		wantReason     string // substring; "" means do not assert reason
+		wantStage      string
+		wantCategory   FailureCategory
+		wantCheck      bool
 	}{
 		{
-			name:           "missing id on fail-closed transport denies",
+			name:           "missing id on enforcing transport blocks check_indeterminate",
 			requireAgentID: true,
 			transport:      TransportMCP, // in DefaultFailClosedTransports
 			agentID:        "",
-			wantAction:     "deny",
+			wantAction:     ActionCheckIndeterminate,
 			wantReason:     "agent identity is required for protected adapter",
+			wantStage:      CheckStageIdentity,
+			wantCategory:   FailureMissingIdentity,
+			wantCheck:      true,
 		},
 		{
 			name:           "present id satisfies the guard",
@@ -103,19 +112,27 @@ func TestPipeline_RequireAgentID_DeniesWhenMissing(t *testing.T) {
 			wantAction:     "allow",
 		},
 		{
-			name:           "missing id on fail-open transport allows",
+			name:           "missing id on non-enforcing transport allows but records the check",
 			requireAgentID: true,
-			transport:      TransportWebhook, // not fail-closed by default
+			transport:      TransportWebhook,
+			failClosed:     []TransportType{TransportMCP}, // webhook declared non-enforcing
 			agentID:        "",
 			wantAction:     "allow",
+			wantStage:      CheckStageIdentity,
+			wantCategory:   FailureMissingIdentity,
+			wantCheck:      true,
 		},
 		{
-			name:           "explicit empty fail-closed list disarms the guard",
+			name:           "explicit empty fail-closed list is a config error and blocks",
 			requireAgentID: true,
 			transport:      TransportMCP,
 			agentID:        "",
-			failClosed:     []TransportType{}, // operator opt-out: nothing fail-closed
-			wantAction:     "allow",
+			failClosed:     []TransportType{}, // invalid: rejected by Validate
+			wantAction:     ActionCheckIndeterminate,
+			wantReason:     "FailClosedTransports must not be an explicit empty list",
+			wantStage:      CheckStageConfig,
+			wantCategory:   FailureMissingConfig,
+			wantCheck:      true,
 		},
 	}
 
@@ -141,58 +158,78 @@ func TestPipeline_RequireAgentID_DeniesWhenMissing(t *testing.T) {
 			if tc.wantReason != "" && !strings.Contains(d.Reason, tc.wantReason) {
 				t.Errorf("reason = %q, want substring %q", d.Reason, tc.wantReason)
 			}
-			// On the protected-deny path the pipeline also drops trust to the
-			// floor and marks the agent ISOLATED; assert that posture so the
-			// branch body is verified, not just the verdict.
-			if tc.wantAction == "deny" && tc.wantReason == "agent identity is required for protected adapter" {
-				if d.TrustScore != 0.0 {
-					t.Errorf("trust score = %v, want 0.0 on protected deny", d.TrustScore)
+			if tc.wantCheck {
+				if d.Check == nil || d.Check.Stage != tc.wantStage || d.Check.Category != tc.wantCategory {
+					t.Errorf("check = %+v, want %s/%s", d.Check, tc.wantStage, tc.wantCategory)
 				}
-				if d.TrustState != TrustStateIsolated.String() {
-					t.Errorf("trust state = %q, want %q on protected deny", d.TrustState, TrustStateIsolated.String())
+			}
+			// When the identity/config check blocks, no trust posture was
+			// obtained — the record must say unknown rather than claim one.
+			if tc.wantStage == CheckStageIdentity && tc.wantAction == ActionCheckIndeterminate {
+				if d.TrustScore != 0.0 {
+					t.Errorf("trust score = %v, want 0.0 on indeterminate block", d.TrustScore)
+				}
+				if d.TrustState != TrustStateUnknown.String() {
+					t.Errorf("trust state = %q, want %q on indeterminate block", d.TrustState, TrustStateUnknown.String())
 				}
 			}
 		})
 	}
 }
 
-// TestPipeline_TrustRecordError_FailClosedDeny covers the post-decision
-// fail-closed branch (pipeline.go ~219-224, reached via recordTrustDecision's
-// error return at ~422). An otherwise-allowed decision whose trust backend
-// RecordDecision FAILS must be flipped to deny on a fail-closed transport, with
-// the "trust update failed" reason and an isolated/zeroed posture — a backend
-// fault is treated as fail-closed, not silently allowed. The fail-open
-// transport case proves the flip is gated on FailClosedTransports.
-func TestPipeline_TrustRecordError_FailClosedDeny(t *testing.T) {
+// TestPipeline_TrustRecordError_EnforcingCheckIndeterminate covers the
+// post-decision check-failure branch reached via recordTrustDecision's error
+// return. An otherwise-allowed decision whose trust backend RecordDecision
+// FAILS must be flipped to CHECK_INDETERMINATE on an enforcing transport
+// (ADR-047: a trust update that cannot produce a valid result blocks; it is
+// neither allow nor a policy deny). The non-enforcing case proves the flip is
+// gated on FailClosedTransports and the recorded check travels with the
+// allow; the empty-list case proves an invalid configuration fails closed at
+// the config stage before RecordDecision is ever reached.
+func TestPipeline_TrustRecordError_EnforcingCheckIndeterminate(t *testing.T) {
 	tests := []struct {
-		name        string
-		transport   TransportType
-		failClosed  []TransportType
-		wantAction  string
-		wantReason  string
-		wantScore   float64
-		wantState   string
-		assertState bool
+		name          string
+		transport     TransportType
+		failClosed    []TransportType
+		wantAction    string
+		wantReason    string
+		wantStage     string
+		wantCategory  FailureCategory
+		wantScore     float64
+		wantState     string
+		assertState   bool
+		expectReached bool // RecordDecision invoked (false on config error)
 	}{
 		{
-			name:        "record error on fail-closed transport denies",
-			transport:   TransportMCP,
-			wantAction:  "deny",
-			wantReason:  "trust update failed",
-			wantScore:   0.0,
-			wantState:   TrustStateIsolated.String(),
-			assertState: true,
+			name:          "record error on enforcing transport blocks check_indeterminate",
+			transport:     TransportMCP,
+			wantAction:    ActionCheckIndeterminate,
+			wantReason:    "trust update failed",
+			wantStage:     CheckStageTrustUpdate,
+			wantCategory:  FailureUnavailable,
+			wantScore:     1.0, // lookup succeeded and posture stands; the update failed
+			wantState:     TrustStateTrusted.String(),
+			assertState:   true,
+			expectReached: true,
 		},
 		{
-			name:       "record error on fail-open transport still allows",
-			transport:  TransportWebhook, // not in DefaultFailClosedTransports
-			wantAction: "allow",
+			name:          "record error on non-enforcing transport still allows but records the check",
+			transport:     TransportWebhook,
+			failClosed:    []TransportType{TransportMCP}, // webhook declared non-enforcing
+			wantAction:    "allow",
+			wantStage:     CheckStageTrustUpdate,
+			wantCategory:  FailureUnavailable,
+			expectReached: true,
 		},
 		{
-			name:       "record error, explicit empty list -> fail-open allows",
-			transport:  TransportMCP,
-			failClosed: []TransportType{}, // operator opt-out
-			wantAction: "allow",
+			name:          "record error, explicit empty list -> config error blocks before update",
+			transport:     TransportMCP,
+			failClosed:    []TransportType{}, // invalid config
+			wantAction:    ActionCheckIndeterminate,
+			wantReason:    "FailClosedTransports must not be an explicit empty list",
+			wantStage:     CheckStageConfig,
+			wantCategory:  FailureMissingConfig,
+			expectReached: false,
 		},
 	}
 
@@ -214,20 +251,25 @@ func TestPipeline_TrustRecordError_FailClosedDeny(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if backend.recordCalls == 0 {
+			if tc.expectReached && backend.recordCalls == 0 {
 				t.Fatal("RecordDecision was never called; the error branch is unreached")
+			}
+			if !tc.expectReached && backend.recordCalls != 0 {
+				t.Fatal("RecordDecision ran despite the configuration error")
 			}
 			if d.Action != tc.wantAction {
 				t.Fatalf("action = %q, want %q (reason=%q)", d.Action, tc.wantAction, d.Reason)
+			}
+			if d.Check == nil || d.Check.Stage != tc.wantStage || d.Check.Category != tc.wantCategory {
+				t.Fatalf("check = %+v, want %s/%s", d.Check, tc.wantStage, tc.wantCategory)
 			}
 			if tc.wantReason != "" {
 				if !strings.Contains(d.Reason, tc.wantReason) {
 					t.Errorf("reason = %q, want substring %q", d.Reason, tc.wantReason)
 				}
-				// The underlying cause must be surfaced, not swallowed.
-				if !strings.Contains(d.Reason, "trust store unreachable") {
-					t.Errorf("reason = %q, want it to wrap the backend error", d.Reason)
-				}
+			}
+			if tc.wantStage == CheckStageTrustUpdate && !strings.Contains(d.Reason, "trust store unreachable") && d.Action == ActionCheckIndeterminate {
+				t.Errorf("reason = %q, want it to wrap the backend error", d.Reason)
 			}
 			if tc.assertState {
 				if d.TrustScore != tc.wantScore {
@@ -284,8 +326,8 @@ func TestPipeline_TrustUpdate_FlipsAllowToTerminalState(t *testing.T) {
 				checkState:       TrustStateTrusted, // Stage 1 sees a healthy agent
 				recordAfterState: tc.afterState,     // the update transitions it
 			}
-			// Use a fail-OPEN transport so this exercises the transition
-			// branches specifically, not the record-error fail-closed branch.
+			// The in-flight transition branches apply to every transport;
+			// recordErr is nil so the check-failure path is unreached.
 			p := NewPipeline(PipelineConfig{}, backend, nil, nil)
 			req := &GovernanceRequest{
 				ToolName:  "read_file",

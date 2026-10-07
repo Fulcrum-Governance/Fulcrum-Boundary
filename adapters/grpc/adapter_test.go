@@ -271,11 +271,16 @@ func TestUnaryInterceptor_PolicyEvaluatorErrorFailsClosed(t *testing.T) {
 	if !ok || st.Code() != codes.PermissionDenied {
 		t.Fatalf("expected PermissionDenied status, got %v", err)
 	}
-	if !strings.Contains(st.Message(), "fail-closed") {
-		t.Fatalf("expected fail-closed reason, got %q", st.Message())
+	// ADR-047: the evaluator failure is CHECK_INDETERMINATE — it blocks the
+	// RPC like a denial but is labeled as a check failure, not "deny".
+	if !strings.Contains(st.Message(), "check indeterminate") {
+		t.Fatalf("expected check-indeterminate reason, got %q", st.Message())
 	}
-	if got := firstMetadataValue(stream.trailer, TrailerAction); got != "deny" {
-		t.Fatalf("trailer %s = %q, want deny", TrailerAction, got)
+	if !strings.Contains(st.Message(), "policy evaluation failed") {
+		t.Fatalf("expected the check failure cause, got %q", st.Message())
+	}
+	if got := firstMetadataValue(stream.trailer, TrailerAction); got != governance.ActionCheckIndeterminate {
+		t.Fatalf("trailer %s = %q, want check_indeterminate", TrailerAction, got)
 	}
 }
 

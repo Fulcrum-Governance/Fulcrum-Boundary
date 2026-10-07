@@ -2,7 +2,8 @@
 
 Every governed verdict produces a structured decision record. Fulcrum Boundary
 emits one structured JSON decision record for every governed request, regardless
-of outcome (`allow`, `deny`, `warn`, `escalate`, or `require_approval`), plus a
+of outcome (`allow`, `deny`, `warn`, `escalate`, `require_approval`, or
+`check_indeterminate`), plus a
 variant for inputs that are rejected before a governed request can be built.
 
 This page is the versioned field reference for the **structured decision record**
@@ -100,10 +101,12 @@ Field names and Go types are taken from `DecisionRecordV1`
 | `agent_id` | string | Optional | Agent identity, when supplied. |
 | `tenant_id` | string | Optional | Tenant identity, when supplied. |
 | `trace_id` | string | Optional | Caller-supplied trace correlation ID. |
+| `request_id` | string | Optional | Request correlation id assigned by the caller or pipeline. Unlike `record_id` (a digest-derived record identity), this correlates the record to the governed request that produced it. Populated whenever the request carried one — which is always for pipeline-emitted records — so `check_indeterminate` records carry it as required context. |
 | `tool` | string | Optional | Name of the tool being governed. |
-| `action` | string | Required | The verdict: `allow`, `deny`, `warn`, `escalate`, or `require_approval`. |
+| `action` | string | Required | The verdict: `allow`, `deny`, `warn`, `escalate`, `require_approval`, or `check_indeterminate` (ADR-047 — see the check-failure note below). |
 | `reason` | string | Optional | Human-readable rationale for the verdict. |
 | `decision_mode` | string | Optional | Epistemic label for how the verdict was reached. Boundary emits `deterministic` or `classified`. See the decision-mode note below. |
+| `check` | object | Optional | ADR-047 CHECK_INDETERMINATE context for a required check that could not produce a valid result: `stage` (enforcement stage: `trust`, `trust_update`, `interceptor`, `policy_eval`, `identity`, `config`), `class` (check class: `trust`, `policy`, `identity`, `config`), `category` (one of `unavailable`, `timeout`, `canceled`, `panic`, `invalid_result`, `missing_config`, `missing_identity`, `stale_snapshot`), and `cause` (short sanitized description — never secrets or raw arguments). When `action` is `check_indeterminate` the failure blocked execution; when `action` remains allow-compatible the transport is a declared non-enforcing surface and `check` is the recorded would-have-blocked result. |
 | `matched_rule` | string | Optional | The static policy rule that drove the verdict, when one matched. |
 | `policy_file` | string | Optional | The YAML file that supplied the matched rule. |
 | `policy_bundle_hash` | string | Optional | Stable hash of the canonical policy bundle. **(Tier B — [`docs/RECEIPTS.md`](RECEIPTS.md).)** |
@@ -184,6 +187,38 @@ and with no handler configured (the default, and the standalone path) a Boundary
 record never carries it. The seam relays a vetted mode only and is guarded
 against adopting `proved`. See [`docs/PROOF_BOUNDARY.md`](PROOF_BOUNDARY.md) and
 [`INTEGRATION.md`](INTEGRATION.md).
+
+### Check-failure note (`check_indeterminate`, ADR-047)
+
+When a required synchronous check cannot produce a valid result — a trust
+lookup, trust update, interceptor run, policy evaluation, required identity, or
+pipeline configuration — ADR-047 classifies the outcome as `check_indeterminate`.
+It is neither `allow` nor a substantive policy denial, and it blocks execution:
+`GovernanceDecision.Allowed()` is false for it, so every execution-capable
+adapter blocks it exactly as it would a `deny`.
+
+The `check` object carries the machine-readable context the record must retain:
+
+| `check` field | Values | Meaning |
+| --- | --- | --- |
+| `stage` | `trust`, `trust_update`, `interceptor`, `policy_eval`, `identity`, `config` | The enforcement stage whose required check failed. |
+| `class` | `trust`, `policy`, `identity`, `config` | The class of the failed check. |
+| `category` | `unavailable`, `timeout`, `canceled`, `panic`, `invalid_result`, `missing_config`, `missing_identity`, `stale_snapshot` | The machine-readable failure category. Evaluator/trust/interceptor/trust-update panics are recovered at the pipeline boundary and classified `panic`; a nil evaluator decision or out-of-vocabulary result is `invalid_result`; a rejected pipeline configuration is `missing_config`. |
+| `cause` | short string | A sanitized description of the failure. It never contains secrets, credentials, or raw tool arguments. |
+
+A `check_indeterminate` record also carries `request_id`, `agent_id`/`tenant_id`
+when present, `adapter` (the transport), `request_hash` (the canonical action
+digest), and `trust_state: "UNKNOWN"` when no trust posture was obtained — it
+records what failed and where, not a policy verdict. A record whose `action` is
+allow-compatible but still carries `check` is the ADR-047 can_deny=false case:
+a declared non-enforcing surface (a transport explicitly left out of a non-empty
+`FailClosedTransports` list, informational-mode webhooks, dry-run) where the
+field is the recorded would-have-blocked result.
+
+Both `request_id` and `check` are strictly additive `omitempty` fields: records
+that do not populate them serialize byte-for-byte as before, and
+`boundary verify-record` covers them under `decision_hash` like every other
+content field.
 
 ## Parse-rejection records
 

@@ -2,6 +2,7 @@ package governance
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 
@@ -194,44 +195,52 @@ func TestPipeline_FailClosedTransports_BuildsMap(t *testing.T) {
 }
 
 // TestPipeline_FailClosedTransports_NilAppliesDefault verifies that a nil
-// FailClosedTransports slice triggers DefaultFailClosedTransports — the
-// kernel's security-critical transports (MCP, Managed Agents, CodeExec, gRPC,
-// A2A) are fail-closed out of the box, and the informational transports
-// (Webhook) are
-// not. Operators who want different defaults must set the field explicitly.
+// FailClosedTransports slice triggers DefaultFailClosedTransports — every
+// transport the pipeline serves is execution-capable, so all seven enforce
+// out of the box (webhook execution mode included; informational mode is the
+// documented can_deny=false exception and is enforced at the handler).
+// Operators who want different coverage must set the field explicitly to a
+// non-empty list.
 func TestPipeline_FailClosedTransports_NilAppliesDefault(t *testing.T) {
 	p := NewPipeline(PipelineConfig{}, nil, nil, nil) // nil FailClosedTransports
 
-	// Security-critical transports must be fail-closed by default.
-	for _, tr := range []TransportType{TransportMCP, TransportManagedAgents, TransportCLI, TransportCodeExec, TransportGRPC, TransportA2A} {
+	for _, tr := range []TransportType{
+		TransportMCP, TransportManagedAgents, TransportCLI, TransportCodeExec,
+		TransportGRPC, TransportA2A, TransportWebhook,
+	} {
 		if !p.failClosed[tr] {
-			t.Errorf("expected %s to default to fail-closed", tr)
-		}
-	}
-
-	// Informational transports must NOT be fail-closed by default.
-	for _, tr := range []TransportType{TransportWebhook} {
-		if p.failClosed[tr] {
-			t.Errorf("expected %s NOT to default to fail-closed", tr)
+			t.Errorf("expected %s to default to enforcing", tr)
 		}
 	}
 }
 
-// TestPipeline_FailClosedTransports_ExplicitEmptySliceIsFailOpen preserves the
-// operator escape hatch: passing an explicit (non-nil) empty slice means
-// "I know what I'm doing — fail-open every transport". Only a nil field
-// triggers the security-conscious defaults.
-func TestPipeline_FailClosedTransports_ExplicitEmptySliceIsFailOpen(t *testing.T) {
+// TestPipeline_FailClosedTransports_ExplicitEmptySliceIsConfigError replaces
+// the old fail-open escape hatch: ADR-047 makes an explicit (non-nil) empty
+// slice an invalid configuration, not an opt-out. NewPipeline records the
+// error, PipelineConfig.Validate surfaces it, and Evaluate returns
+// CHECK_INDETERMINATE/missing_config for every request rather than silently
+// failing open.
+func TestPipeline_FailClosedTransports_ExplicitEmptySliceIsConfigError(t *testing.T) {
 	cfg := PipelineConfig{FailClosedTransports: []TransportType{}} // explicit empty, NOT nil
+	if err := cfg.Validate(); !errors.Is(err, ErrEmptyFailClosedList) {
+		t.Fatalf("Validate() = %v, want ErrEmptyFailClosedList", err)
+	}
 	p := NewPipeline(cfg, nil, nil, nil)
+	if !errors.Is(p.ConfigError(), ErrEmptyFailClosedList) {
+		t.Fatalf("ConfigError() = %v, want ErrEmptyFailClosedList", p.ConfigError())
+	}
 
-	for _, tr := range []TransportType{
-		TransportMCP, TransportManagedAgents, TransportCodeExec, TransportGRPC,
-		TransportCLI, TransportA2A, TransportWebhook,
-	} {
-		if p.failClosed[tr] {
-			t.Errorf("explicit empty slice must fail-open every transport; %s was fail-closed", tr)
-		}
+	d, err := p.Evaluate(context.Background(), &GovernanceRequest{
+		ToolName: "read_file", Transport: TransportMCP, AgentID: "agent-1",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if d.Action != ActionCheckIndeterminate {
+		t.Fatalf("invalid config must return check_indeterminate, got %s", d.Action)
+	}
+	if d.Check == nil || d.Check.Category != FailureMissingConfig {
+		t.Fatalf("check = %+v, want missing_config", d.Check)
 	}
 }
 
@@ -246,6 +255,7 @@ func TestPipeline_DefaultFailClosedTransports_ExportedValue(t *testing.T) {
 		TransportCodeExec:      true,
 		TransportGRPC:          true,
 		TransportA2A:           true,
+		TransportWebhook:       true,
 	}
 	if len(DefaultFailClosedTransports) != len(want) {
 		t.Fatalf("expected %d defaults, got %d: %v", len(want), len(DefaultFailClosedTransports), DefaultFailClosedTransports)

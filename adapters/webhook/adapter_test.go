@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/fulcrum-governance/fulcrum-boundary/governance"
+	"github.com/fulcrum-governance/fulcrum-boundary/policyeval"
 )
 
 func newPipeline(t *testing.T, deny bool, denyTool string) *governance.Pipeline {
@@ -319,5 +321,79 @@ func TestAdapter_NoOpMethods(t *testing.T) {
 	}
 	if err := a.EmitGovernanceMetadata(context.Background(), nil, nil); err != nil {
 		t.Errorf("EmitGovernanceMetadata: %v", err)
+	}
+}
+
+// failingEvaluator is a PolicyEvaluator stub that always errors, driving the
+// pipeline's ADR-047 CHECK_INDETERMINATE outcome on the webhook transport.
+type failingEvaluator struct{}
+
+func (failingEvaluator) Evaluate(_ context.Context, _ *policyeval.EvaluationRequest) (*policyeval.Decision, error) {
+	return nil, fmt.Errorf("policy engine unavailable")
+}
+
+// TestHandlerWithConfig_Execution_CheckIndeterminateDoesNotForward pins the
+// ADR-047 webhook row: the webhook transport is enforcing by default, so an
+// evaluator failure returns check_indeterminate and execution mode must NOT
+// forward — the indeterminate verdict blocks like a denial (403).
+func TestHandlerWithConfig_Execution_CheckIndeterminateDoesNotForward(t *testing.T) {
+	forwarded := false
+	downstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		forwarded = true
+		w.WriteHeader(http.StatusAccepted)
+	}))
+	defer downstream.Close()
+
+	pipe := governance.NewPipeline(governance.PipelineConfig{}, nil, failingEvaluator{}, nil)
+	h := HandlerWithConfig(pipe, HandlerConfig{
+		Mode:       ModeExecution,
+		ForwardURL: downstream.URL,
+	})
+
+	body, _ := json.Marshal(WebhookPayload{Tool: "deploy", AgentID: "a", TenantID: "t"})
+	r := httptest.NewRequest(http.MethodPost, "/hook", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	h(w, r)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("execution mode must block check_indeterminate before forwarding; got %d body=%s", w.Code, w.Body.String())
+	}
+	if forwarded {
+		t.Fatal("execution mode must not forward a check_indeterminate decision")
+	}
+	if got := w.Header().Get("X-Governance-Action"); got != governance.ActionCheckIndeterminate {
+		t.Fatalf("expected check_indeterminate action header, got %q", got)
+	}
+}
+
+// TestHandlerWithConfig_Informational_CheckIndeterminateStillRecords pins the
+// documented can_deny=false exception: informational mode is explicitly
+// non-enforcing, so even a check_indeterminate verdict is recorded and
+// returned 200 rather than blocking (it gates nothing — the action already
+// happened).
+func TestHandlerWithConfig_Informational_CheckIndeterminateStillRecords(t *testing.T) {
+	pipe := governance.NewPipeline(governance.PipelineConfig{}, nil, failingEvaluator{}, nil)
+	h := HandlerWithConfig(pipe, HandlerConfig{Mode: ModeInformational})
+
+	body, _ := json.Marshal(WebhookPayload{Tool: "deploy", AgentID: "a", TenantID: "t"})
+	r := httptest.NewRequest(http.MethodPost, "/hook", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	h(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("informational mode records without blocking; got %d body=%s", w.Code, w.Body.String())
+	}
+	var result Result
+	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	if result.CanDeny {
+		t.Fatal("informational result must not claim can_deny")
+	}
+	if result.Decision == nil || result.Decision.Action != governance.ActionCheckIndeterminate {
+		t.Fatalf("expected recorded check_indeterminate verdict, got %+v", result.Decision)
+	}
+	if result.Decision.Check == nil {
+		t.Fatal("recorded verdict must carry the check context")
 	}
 }

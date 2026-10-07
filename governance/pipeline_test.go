@@ -118,8 +118,17 @@ func TestPipeline_TrustError_FailClosed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if d.Action != "deny" {
-		t.Errorf("expected deny on trust error, got %s", d.Action)
+	// ADR-047: a required trust lookup that cannot produce a valid result is
+	// CHECK_INDETERMINATE — it blocks execution but is neither allow nor a
+	// substantive policy denial.
+	if d.Action != ActionCheckIndeterminate {
+		t.Errorf("expected check_indeterminate on trust error, got %s", d.Action)
+	}
+	if d.Allowed() {
+		t.Error("trust error must not allow")
+	}
+	if d.Check == nil || d.Check.Category != FailureUnavailable || d.Check.Stage != CheckStageTrust {
+		t.Errorf("check context = %+v, want trust/unavailable", d.Check)
 	}
 }
 
@@ -229,8 +238,13 @@ func TestPipeline_InterceptorError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if d.Action != "deny" {
-		t.Errorf("expected deny on interceptor error, got %s", d.Action)
+	// ADR-047: an interceptor error is a required-check failure —
+	// CHECK_INDETERMINATE blocks, it is not a policy denial.
+	if d.Action != ActionCheckIndeterminate {
+		t.Errorf("expected check_indeterminate on interceptor error, got %s", d.Action)
+	}
+	if d.Check == nil || d.Check.Stage != CheckStageInterceptor {
+		t.Errorf("check context = %+v, want stage %q", d.Check, CheckStageInterceptor)
 	}
 }
 

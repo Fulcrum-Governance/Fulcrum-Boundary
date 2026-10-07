@@ -3,8 +3,10 @@ package governance
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"path"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,9 +14,10 @@ import (
 	"github.com/fulcrum-governance/fulcrum-boundary/policyeval"
 )
 
-// DefaultFailClosedTransports enumerates the transports that fail-closed on
-// PolicyEval errors out of the box. These are the transports where silently
-// allowing an ungoverned action has real security consequences:
+// DefaultFailClosedTransports enumerates the transports that enforce required
+// checks out of the box — the transports where a check failure returns
+// CHECK_INDETERMINATE and blocks execution (ADR-047). Every transport the
+// pipeline serves is execution-capable, so the default list is all seven:
 //
 //   - TransportMCP — model-facing tool surface; the primary governance wedge.
 //   - TransportManagedAgents — hosted agent tool confirmations.
@@ -22,10 +25,16 @@ import (
 //   - TransportCodeExec — arbitrary code execution.
 //   - TransportGRPC — internal service surface for control-plane calls.
 //   - TransportA2A — agent-to-agent tasks crossing a governed boundary.
+//   - TransportWebhook — execution-mode webhooks are an approval gate;
+//     informational mode is the documented can_deny=false exception and is
+//     handled at the handler, which never forwards regardless.
 //
 // Operators who want different defaults must set
-// PipelineConfig.FailClosedTransports explicitly. An explicit (non-nil) empty
-// slice opts out of every transport being fail-closed.
+// PipelineConfig.FailClosedTransports explicitly to a non-empty list of
+// enforcing transports; the transports they leave out are declared
+// non-enforcing (can_deny=false) and record the would-have-blocked
+// CHECK_INDETERMINATE context instead of blocking. An explicit empty slice is
+// rejected by PipelineConfig.Validate.
 var DefaultFailClosedTransports = []TransportType{
 	TransportMCP,
 	TransportManagedAgents,
@@ -33,6 +42,7 @@ var DefaultFailClosedTransports = []TransportType{
 	TransportCodeExec,
 	TransportGRPC,
 	TransportA2A,
+	TransportWebhook,
 }
 
 // PipelineConfig holds configuration for the governance pipeline.
@@ -61,21 +71,43 @@ type PipelineConfig struct {
 	// agent identity. This is intended for production trust-aware deployments.
 	RequireAgentID bool
 
-	// FailClosedTransports are transports that deny on pipeline errors.
-	// All other transports fail-open on pipeline errors.
+	// FailClosedTransports are the enforcing transports: on a required-check
+	// failure (policy evaluation, trust lookup, trust update, interceptor, or
+	// identity) they return CHECK_INDETERMINATE and block execution. A
+	// transport absent from the list is declared non-enforcing (ADR-047's
+	// can_deny=false): it may continue and the decision record carries the
+	// would-have-blocked CHECK_INDETERMINATE context rather than an ordinary
+	// allow.
 	//
 	// Semantics:
-	//   - nil (field unset) → DefaultFailClosedTransports is applied.
-	//   - non-nil empty slice → all transports fail-open (operator opt-out).
-	//   - non-nil populated slice → only the listed transports fail-closed.
+	//   - nil (field unset) → DefaultFailClosedTransports is applied (all
+	//     seven transports enforce).
+	//   - non-nil empty slice → invalid: PipelineConfig.Validate returns
+	//     ErrEmptyFailClosedList, and a pipeline built with it records the
+	//     configuration error and returns CHECK_INDETERMINATE for every
+	//     request rather than silently failing open. (ADR-047: an empty
+	//     fail-closed list is not an acceptable production policy; emergency
+	//     bypass would require an explicit, time-bounded, identity-attributed,
+	//     audited break-glass setting, which this package does not offer.)
+	//   - non-nil populated slice → only the listed transports enforce.
 	FailClosedTransports []TransportType
 
 	// DryRun enables audit-only mode. When true, any decision that would
-	// otherwise deny is converted to allow before Evaluate returns, with
-	// GovernanceDecision.DryRun set to true and the original action recorded
-	// in the decision reason. The audit event is emitted with the ORIGINAL
-	// deny action, so logs reflect what governance would have blocked.
+	// otherwise deny or block as check_indeterminate is converted to allow
+	// before Evaluate returns, with GovernanceDecision.DryRun set to true and
+	// the original action recorded in the decision reason. The audit event is
+	// emitted with the ORIGINAL action, so logs reflect what governance would
+	// have blocked. Dry-run is an explicit non-enforcing mode; it is never
+	// selected implicitly by a check failure.
 	DryRun bool
+
+	// RequireAudit declares this pipeline an enforcing surface whose decision
+	// records must be delivered: passing a nil AuditPublisher to NewPipeline
+	// is a configuration error (ErrMissingAuditPublisher), recorded on the
+	// pipeline and surfaced as CHECK_INDETERMINATE/missing_config on every
+	// decision. Hermetic tooling that intentionally runs without an audit
+	// sink (replay, demos, tests) leaves this false.
+	RequireAudit bool
 
 	// ReceiptSigner, when non-nil, signs every emitted decision record: the
 	// audit event carries signature and signature_key_id populated from this
@@ -91,6 +123,18 @@ type PipelineConfig struct {
 	// returned without any await. This is a kernel-mode seam; the standalone
 	// path leaves it nil.
 	Escalation EscalationHandler
+}
+
+// Validate reports configuration errors that would make the pipeline unable
+// to enforce required checks. Call it at startup to fail fast; NewPipeline
+// runs it too and records any error so a pipeline built from an invalid
+// configuration returns CHECK_INDETERMINATE/missing_config for every request
+// instead of silently failing open.
+func (cfg PipelineConfig) Validate() error {
+	if cfg.FailClosedTransports != nil && len(cfg.FailClosedTransports) == 0 {
+		return ErrEmptyFailClosedList
+	}
+	return nil
 }
 
 // PolicyEvaluator is the abstract dependency the pipeline has on the policy
@@ -125,20 +169,37 @@ type Pipeline struct {
 	dryRun           bool
 	signer           ReceiptSigner
 	escalation       EscalationHandler
+	configErr        error
+	auditFailures    atomic.Int64
+	auditDegraded    atomic.Bool
 }
 
 // NewPipeline creates a governance pipeline.
-// All parameters are optional — pass nil for components that are not available.
+// All parameters are optional — pass nil for components that are not
+// available, with one caveat: PipelineConfig.RequireAudit makes a nil
+// AuditPublisher a configuration error.
+//
+// An invalid configuration (see PipelineConfig.Validate and RequireAudit) is
+// recorded on the pipeline and makes every Evaluate return
+// CHECK_INDETERMINATE/missing_config: a configuration that cannot enforce
+// required checks fails closed rather than silently failing open (ADR-047).
+// ConfigError exposes the stored error.
 func NewPipeline(cfg PipelineConfig, trust TrustChecker, evaluator PolicyEvaluator, auditor AuditPublisher) *Pipeline {
+	configErr := cfg.Validate()
 	if auditor == nil {
+		if configErr == nil && cfg.RequireAudit {
+			configErr = ErrMissingAuditPublisher
+		}
 		auditor = noopAuditPublisher{}
 	}
 	if evaluator == nil {
 		evaluator = policyeval.NewEvaluator(nil)
 	}
 
-	// nil FailClosedTransports → apply the kernel's secure-by-default list.
-	// Non-nil (including explicit empty slice) is taken verbatim.
+	// nil FailClosedTransports → apply the all-transports enforcing default.
+	// A non-nil list is taken verbatim; a non-nil empty list is invalid and
+	// is reported via configErr above (the empty map enforces nothing, which
+	// is exactly why the configuration is rejected).
 	failClosedList := cfg.FailClosedTransports
 	if failClosedList == nil {
 		failClosedList = DefaultFailClosedTransports
@@ -163,8 +224,26 @@ func NewPipeline(cfg PipelineConfig, trust TrustChecker, evaluator PolicyEvaluat
 		dryRun:           cfg.DryRun,
 		signer:           cfg.ReceiptSigner,
 		escalation:       cfg.Escalation,
+		configErr:        configErr,
 	}
 }
+
+// ConfigError returns the configuration error recorded at construction, or
+// nil when the pipeline configuration is valid. While it is non-nil every
+// Evaluate returns CHECK_INDETERMINATE/missing_config.
+func (p *Pipeline) ConfigError() error { return p.configErr }
+
+// Degraded reports the pipeline's evidence-delivery health: true when the
+// most recent audit emission failed to reach the configured auditor
+// (reported error or recovered panic), false after a successful emission.
+// Audit delivery failure never changes a decision; it is the surface's
+// degraded-state signal (ADR-047).
+func (p *Pipeline) Degraded() bool { return p.auditDegraded.Load() }
+
+// AuditFailures returns the cumulative count of failed audit emissions since
+// construction. Unlike Degraded it never decreases, so an operator can see
+// that an outage happened even after delivery recovers.
+func (p *Pipeline) AuditFailures() int64 { return p.auditFailures.Load() }
 
 // RegisterInterceptor adds a domain-specific interceptor for a tool name.
 func (p *Pipeline) RegisterInterceptor(toolName string, fn Interceptor) {
@@ -187,19 +266,28 @@ func toolMatches(pattern, toolName string) bool {
 }
 
 // Evaluate runs the full governance pipeline for a request. It executes four
-// stages in order; each may return a terminal decision (typically a deny),
-// otherwise control falls through to the next stage:
+// stages in order; each may return a terminal decision, otherwise control
+// falls through to the next stage:
 //
 //  1. Trust Check — the configured TrustChecker (in-process Beta evaluator in
 //     standalone mode, or the Redis-backed backend in kernel mode). Skipped
 //     when no checker is set or AgentID is empty. Isolated/Terminated → deny;
-//     Evaluating → score 0.5; a checker error denies (fail-closed).
+//     Evaluating → score 0.5; a checker error or panic is a required-check
+//     failure (ADR-047 CHECK_INDETERMINATE, category from the error kind).
 //  2. Static Policy Rules — linear scan; the first matching deny terminates.
-//  3. Domain Interceptors — per-tool hooks; an interceptor error denies
-//     (fail-closed).
-//  4. PolicyEval Engine — the portable evaluator. An evaluator error is
-//     per-transport: transports in FailClosedTransports deny, others fall
-//     through and allow.
+//  3. Domain Interceptors — per-tool hooks; an interceptor error, panic, or
+//     invalid blocking result is a required-check failure.
+//  4. PolicyEval Engine — the portable evaluator. An evaluator error, panic,
+//     nil decision, or out-of-vocabulary action is a required-check failure.
+//
+// A required-check failure is CHECK_INDETERMINATE (ADR-047): on an enforcing
+// transport (FailClosedTransports) it blocks execution — it is neither allow
+// nor a substantive policy denial; on a transport explicitly left out of a
+// non-empty enforcing list it is the recorded would-have-blocked result. The
+// deferred trust update is a fifth required check: a backend error or panic
+// flips an otherwise-allowed decision to check_indeterminate on enforcing
+// transports. Evaluator, trust, interceptor, and trust-update panics are
+// recovered at the pipeline boundary and classified category "panic".
 //
 // Audit is emitted exactly once per call via a deferred hook (plus a
 // trust_transition event when the trust state changes). Dry-run conversion
@@ -235,7 +323,7 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 
 	defer func() {
 		decision.Duration = time.Since(start)
-		if update, err := p.recordTrustDecision(ctx, req, decision); err == nil && update != nil {
+		if update, err := p.recordTrustDecisionSafe(ctx, req, decision); err == nil && update != nil {
 			trustUpdate = update
 			decision.TrustScore = update.After.Score
 			decision.TrustState = update.After.State.String()
@@ -246,55 +334,87 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 				decision.Action = "require_approval"
 				decision.Reason = fmt.Sprintf("agent %s is degraded", req.AgentID)
 			}
-		} else if err != nil && decision.Allowed() && p.failClosed[req.Transport] {
-			decision.Action = "deny"
-			decision.Reason = fmt.Sprintf("trust update failed: %v", err)
-			decision.TrustScore = 0.0
-			decision.TrustState = TrustStateIsolated.String()
+		} else if err != nil {
+			p.markCheckFailure(decision, req, &CheckFailure{
+				Stage:    CheckStageTrustUpdate,
+				Class:    CheckClassTrust,
+				Category: classifyFailure(err),
+				Cause:    fmt.Sprintf("trust update failed: %v", err),
+			})
 		}
 		p.emitAudit(ctx, req, decision)
 		if trustUpdate != nil && trustUpdate.Transition {
 			p.emitTrustTransition(ctx, req, decision, *trustUpdate)
 		}
-		if p.dryRun && decision.Action == "deny" {
+		if p.dryRun && (decision.Action == "deny" || decision.Action == ActionCheckIndeterminate) {
 			original := decision.Reason
 			if original == "" {
 				original = "(no reason)"
 			}
 			decision.DryRun = true
-			decision.Reason = "DRY-RUN would deny: " + original
+			if decision.Action == ActionCheckIndeterminate {
+				decision.Reason = "DRY-RUN would block: " + original
+			} else {
+				decision.Reason = "DRY-RUN would deny: " + original
+			}
 			decision.Action = "allow"
 		}
 	}()
 
-	// Stage 1: Trust Check
-	if p.requireAgentID && p.failClosed[req.Transport] && req.AgentID == "" {
-		decision.Action = "deny"
-		decision.Reason = "agent identity is required for protected adapter"
-		decision.TrustScore = 0.0
-		decision.TrustState = TrustStateIsolated.String()
+	// An invalid configuration cannot distinguish allow from deny: every
+	// request is CHECK_INDETERMINATE/missing_config (ADR-047) rather than
+	// failing open. Config validation is the contract; the runtime outcome is
+	// what keeps an ignored validation error safe.
+	if p.configErr != nil {
+		p.markCheckFailureEnforced(decision, req, &CheckFailure{
+			Stage:    CheckStageConfig,
+			Class:    CheckClassConfig,
+			Category: FailureMissingConfig,
+			Cause:    p.configErr.Error(),
+		}, true)
 		return decision, nil
 	}
+
+	// Stage 1: Trust Check
+	if p.requireAgentID && req.AgentID == "" {
+		p.markCheckFailure(decision, req, &CheckFailure{
+			Stage:    CheckStageIdentity,
+			Class:    CheckClassIdentity,
+			Category: FailureMissingIdentity,
+			Cause:    "agent identity is required for protected adapter",
+		})
+		if !decision.Allowed() {
+			return decision, nil
+		}
+	}
 	if p.trustChecker != nil && req.AgentID != "" {
-		state, err := p.trustChecker.CheckAgentState(ctx, req.AgentID)
+		state, err := p.checkAgentState(ctx, req.AgentID)
 		if err != nil {
-			decision.Action = "deny"
-			decision.Reason = fmt.Sprintf("trust check failed: %v", err)
-			decision.TrustScore = 0.0
-			return decision, nil
-		}
-		trustState = state
-		decision.TrustState = state.String()
-		if state.Blocked() {
-			decision.Action = "deny"
-			decision.Reason = fmt.Sprintf("agent %s is %s", req.AgentID, state)
-			decision.TrustScore = 0.0
+			p.markCheckFailure(decision, req, &CheckFailure{
+				Stage:    CheckStageTrust,
+				Class:    CheckClassTrust,
+				Category: classifyFailure(err),
+				Cause:    fmt.Sprintf("trust check failed: %v", err),
+			})
+			if !decision.Allowed() {
+				return decision, nil
+			}
+			// Non-enforcing transport: the failed check is recorded on the
+			// decision and evaluation continues with the default posture.
+		} else {
+			trustState = state
 			decision.TrustState = state.String()
-			return decision, nil
-		}
-		if state == TrustStateEvaluating {
-			decision.TrustScore = 0.5
-			decision.TrustState = state.String()
+			if state.Blocked() {
+				decision.Action = "deny"
+				decision.Reason = fmt.Sprintf("agent %s is %s", req.AgentID, state)
+				decision.TrustScore = 0.0
+				decision.TrustState = state.String()
+				return decision, nil
+			}
+			if state == TrustStateEvaluating {
+				decision.TrustScore = 0.5
+				decision.TrustState = state.String()
+			}
 		}
 	}
 
@@ -339,33 +459,63 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 	}
 
 	// Stage 3: Domain Interceptors
-	interceptResult, err := p.interceptors.Run(ctx, req)
+	interceptResult, err := p.runInterceptor(ctx, req)
 	if err != nil {
-		decision.Action = "deny"
-		decision.Reason = fmt.Sprintf("interceptor error: %v", err)
-		return decision, nil
-	}
-	if interceptResult != nil && !interceptResult.Allowed {
-		decision.Action = interceptResult.Action
-		if decision.Action == "" {
-			decision.Action = "deny"
+		p.markCheckFailure(decision, req, &CheckFailure{
+			Stage:    CheckStageInterceptor,
+			Class:    CheckClassPolicy,
+			Category: classifyFailure(err),
+			Cause:    fmt.Sprintf("interceptor error: %v", err),
+		})
+		if !decision.Allowed() {
+			return decision, nil
 		}
-		decision.Reason = interceptResult.Reason
-		return decision, nil
+	} else if interceptResult != nil && !interceptResult.Allowed {
+		action := interceptResult.Action
+		if action == "" {
+			action = "deny"
+		}
+		if action == "allow" || !isValidEscalatedAction(action) {
+			// A blocking result outside the verdict vocabulary is an
+			// invalid required-check result, not an adoptable verdict.
+			p.markCheckFailure(decision, req, &CheckFailure{
+				Stage:    CheckStageInterceptor,
+				Class:    CheckClassPolicy,
+				Category: FailureInvalidResult,
+				Cause:    fmt.Sprintf("interceptor returned invalid blocking action %q", interceptResult.Action),
+			})
+			if !decision.Allowed() {
+				return decision, nil
+			}
+		} else {
+			decision.Action = action
+			decision.Reason = interceptResult.Reason
+			return decision, nil
+		}
 	}
 
 	// Stage 4: PolicyEval Engine
 	evalReq := ProjectPolicyEvalRequest(req, &decision.TrustScore, trustState, p.gatewayVersion)
-	evalDecision, err := p.evaluator.Evaluate(ctx, evalReq)
+	evalDecision, err := p.evaluatePolicy(ctx, evalReq)
 	if err != nil {
-		if p.failClosed[req.Transport] {
-			decision.Action = "deny"
-			decision.Reason = fmt.Sprintf("policy evaluation failed (fail-closed): %v", err)
-		}
-		// fail-open transports: allow proceeds with logged warning
+		p.markCheckFailure(decision, req, &CheckFailure{
+			Stage:    CheckStagePolicyEval,
+			Class:    CheckClassPolicy,
+			Category: classifyFailure(err),
+			Cause:    fmt.Sprintf("policy evaluation failed: %v", err),
+		})
 		return decision, nil
 	}
-	if evalDecision != nil {
+	if evalDecision == nil {
+		p.markCheckFailure(decision, req, &CheckFailure{
+			Stage:    CheckStagePolicyEval,
+			Class:    CheckClassPolicy,
+			Category: FailureInvalidResult,
+			Cause:    "policy evaluation returned no decision",
+		})
+		return decision, nil
+	}
+	{
 		switch evalDecision.Action {
 		case policyeval.ActionDeny:
 			decision.Action = "deny"
@@ -396,6 +546,17 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 		case policyeval.ActionWarn:
 			decision.Action = "warn"
 			decision.Reason = evalDecision.Reason
+		case policyeval.ActionAllow:
+			// Explicit allow: the decision keeps its allow default.
+		default:
+			// An evaluator result outside the verdict vocabulary is an
+			// invalid required-check result, not an implicit allow.
+			p.markCheckFailure(decision, req, &CheckFailure{
+				Stage:    CheckStagePolicyEval,
+				Class:    CheckClassPolicy,
+				Category: FailureInvalidResult,
+				Cause:    fmt.Sprintf("policy evaluation returned unknown action %q", evalDecision.Action.String()),
+			})
 		}
 		if evalDecision.MatchedPolicy != nil {
 			decision.PolicyID = evalDecision.MatchedPolicy.PolicyId
@@ -403,6 +564,104 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 	}
 
 	return decision, nil
+}
+
+// markCheckFailure records an ADR-047 CHECK_INDETERMINATE context on the
+// decision and, when the request's transport is enforcing (listed in
+// FailClosedTransports), blocks: the action becomes
+// ActionCheckIndeterminate — never allow, never a substantive policy deny.
+// On an explicitly non-enforcing transport the action is left untouched and
+// the failure is the recorded would-have-blocked result, with the warning log
+// the fail-open path always promised but never emitted. An already-blocked
+// decision keeps its verdict; the failed check is still recorded.
+func (p *Pipeline) markCheckFailure(decision *GovernanceDecision, req *GovernanceRequest, cf *CheckFailure) {
+	p.markCheckFailureEnforced(decision, req, cf, p.failClosed[req.Transport])
+}
+
+// markCheckFailureEnforced is markCheckFailure with the enforcement choice
+// made explicit; construction-stage callers (invalid configuration) pass
+// enforcing=true because a configuration that cannot enforce is never a
+// non-enforcing surface.
+func (p *Pipeline) markCheckFailureEnforced(decision *GovernanceDecision, req *GovernanceRequest, cf *CheckFailure, enforcing bool) {
+	if cf == nil {
+		return
+	}
+	if decision.Check == nil {
+		decision.Check = cf
+	}
+	if !decision.Allowed() {
+		// A substantive verdict (deny, etc.) already stands; the failed check
+		// is recorded on Check without rewriting it.
+		return
+	}
+	if enforcing {
+		decision.Action = ActionCheckIndeterminate
+		decision.Reason = fmt.Sprintf("check indeterminate (%s/%s): %s", cf.Stage, cf.Category, cf.Cause)
+		if cf.Stage == CheckStageTrust || cf.Stage == CheckStageIdentity || cf.Stage == CheckStageConfig {
+			// No trust posture was obtained; the record must not claim one.
+			decision.TrustScore = 0.0
+			decision.TrustState = TrustStateUnknown.String()
+		}
+		return
+	}
+	slog.WarnContext(context.Background(), "governance: required check indeterminate on non-enforcing transport; recording would-have-blocked",
+		slog.String("transport", string(req.Transport)),
+		slog.String("check_stage", cf.Stage),
+		slog.String("check_class", cf.Class),
+		slog.String("failure_category", string(cf.Category)),
+		slog.String("request_id_hash", auditLogDigest(req.RequestID)),
+		slog.String("agent_id_hash", auditLogDigest(req.AgentID)),
+		slog.String("tenant_id_hash", auditLogDigest(req.TenantID)),
+	)
+}
+
+// checkAgentState calls the configured TrustChecker, recovering a panic at
+// the pipeline boundary as a panic-category check failure.
+func (p *Pipeline) checkAgentState(ctx context.Context, agentID string) (state TrustState, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			state = TrustStateUnknown
+			err = &CheckError{Category: FailurePanic, Err: fmt.Errorf("trust check panic: %v", r)}
+		}
+	}()
+	return p.trustChecker.CheckAgentState(ctx, agentID)
+}
+
+// runInterceptor runs the registered domain interceptor, recovering a panic
+// at the pipeline boundary as a panic-category check failure.
+func (p *Pipeline) runInterceptor(ctx context.Context, req *GovernanceRequest) (result *InterceptorResult, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			result = nil
+			err = &CheckError{Category: FailurePanic, Err: fmt.Errorf("interceptor panic: %v", r)}
+		}
+	}()
+	return p.interceptors.Run(ctx, req)
+}
+
+// evaluatePolicy calls the configured PolicyEvaluator, recovering a panic at
+// the pipeline boundary as a panic-category check failure.
+func (p *Pipeline) evaluatePolicy(ctx context.Context, evalReq *policyeval.EvaluationRequest) (dec *policyeval.Decision, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			dec = nil
+			err = &CheckError{Category: FailurePanic, Err: fmt.Errorf("evaluator panic: %v", r)}
+		}
+	}()
+	return p.evaluator.Evaluate(ctx, evalReq)
+}
+
+// recordTrustDecisionSafe calls recordTrustDecision, recovering a panic from
+// the trust backend at the pipeline boundary as a panic-category check
+// failure.
+func (p *Pipeline) recordTrustDecisionSafe(ctx context.Context, req *GovernanceRequest, decision *GovernanceDecision) (update *TrustDecisionUpdate, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			update = nil
+			err = &CheckError{Category: FailurePanic, Err: fmt.Errorf("trust update panic: %v", r)}
+		}
+	}()
+	return p.recordTrustDecision(ctx, req, decision)
 }
 
 // resolveEscalation invokes the configured EscalationHandler for an escalate
@@ -512,6 +771,7 @@ func (p *Pipeline) emitAudit(ctx context.Context, req *GovernanceRequest, decisi
 		RequestHash:         ComputeRequestHash(req),
 		TrustState:          decision.TrustState,
 		DecisionMode:        decision.DecisionMode,
+		Check:               decision.Check,
 		MatchedRule:         decision.MatchedRule,
 		PolicyFile:          decision.PolicyFile,
 		GatewayVersion:      decision.GatewayVersion,
@@ -527,7 +787,7 @@ func (p *Pipeline) emitAudit(ctx context.Context, req *GovernanceRequest, decisi
 		TopologyProfile: p.topologyProfile,
 	}
 	p.signAuditEvent(&event)
-	p.auditor.Publish(ctx, event)
+	p.publishAudit(ctx, event)
 }
 
 // signAuditEvent populates event.Signature and event.SignatureKeyID when a
@@ -563,7 +823,7 @@ func (p *Pipeline) recordTrustDecision(ctx context.Context, req *GovernanceReque
 	if !ok {
 		return nil, nil
 	}
-	if decision == nil || strings.HasPrefix(decision.Reason, "trust check failed") || strings.Contains(decision.Reason, " is ISOLATED") || strings.Contains(decision.Reason, " is TERMINATED") {
+	if decision == nil || decision.Check != nil || strings.HasPrefix(decision.Reason, "trust check failed") || strings.Contains(decision.Reason, " is ISOLATED") || strings.Contains(decision.Reason, " is TERMINATED") {
 		return nil, nil
 	}
 	update, err := backend.RecordDecision(ctx, req, decision)
@@ -605,5 +865,50 @@ func (p *Pipeline) emitTrustTransition(ctx context.Context, req *GovernanceReque
 		},
 	}
 	p.signAuditEvent(&event)
-	p.auditor.Publish(ctx, event)
+	p.publishAudit(ctx, event)
+}
+
+// publishAudit delivers one audit event to the configured publisher and
+// accounts for the delivery. When the auditor implements
+// CheckedAuditPublisher its returned error is the delivery signal; otherwise
+// Publish is assumed delivered. A recovered panic counts as a delivery
+// failure for either method. A delivery failure never changes the decision:
+// it increments AuditFailures, flips Degraded, and logs once with structured
+// fields. A successful delivery clears the degraded flag.
+func (p *Pipeline) publishAudit(ctx context.Context, event AuditEvent) {
+	err := func() (err error) {
+		defer func() {
+			if r := recover(); r != nil {
+				err = fmt.Errorf("audit publisher panic: %v", r)
+			}
+		}()
+		if checked, ok := p.auditor.(CheckedAuditPublisher); ok {
+			return checked.PublishChecked(ctx, event)
+		}
+		p.auditor.Publish(ctx, event)
+		return nil
+	}()
+	if err == nil {
+		p.auditDegraded.Store(false)
+		return
+	}
+	p.auditFailures.Add(1)
+	p.auditDegraded.Store(true)
+	// One structured log per failure; caller-controlled identifiers are
+	// emitted as digests, matching the SlogAuditPublisher redaction posture.
+	attrs := []any{
+		slog.String("transport", string(event.Transport)),
+		slog.String("action", event.Action),
+		slog.String("request_id_hash", auditLogDigest(event.RequestID)),
+		slog.String("agent_id_hash", auditLogDigest(event.AgentID)),
+		slog.String("tenant_id_hash", auditLogDigest(event.TenantID)),
+		slog.String("error", err.Error()),
+	}
+	if event.Check != nil {
+		attrs = append(attrs,
+			slog.String("check_stage", event.Check.Stage),
+			slog.String("failure_category", string(event.Check.Category)),
+		)
+	}
+	slog.WarnContext(ctx, "governance: audit delivery failed; record may be lost", attrs...)
 }

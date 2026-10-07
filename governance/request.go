@@ -72,10 +72,95 @@ func HighestRisk(segments []PipeSegment) string {
 	return highest
 }
 
+// ActionCheckIndeterminate is the decision action for a required synchronous
+// policy, budget, trust, identity, or configuration check that could not
+// produce a valid result (ADR-047). It is neither "allow" nor a substantive
+// policy deny: Allowed() returns false for it, so enforcing adapters block.
+// The machine-readable FailureCategory and the enforcement-stage context are
+// carried in GovernanceDecision.Check and mirrored into the audit/decision
+// record. Transports may map the classification to a compatible
+// deny/unavailable/error response, but the record keeps "check_indeterminate".
+const ActionCheckIndeterminate = "check_indeterminate"
+
+// FailureCategory is the machine-readable ADR-047 classification of why a
+// required check could not produce a valid result.
+type FailureCategory string
+
+const (
+	// FailureUnavailable — a required dependency is unavailable or disabled.
+	FailureUnavailable FailureCategory = "unavailable"
+	// FailureTimeout — the check did not produce a result before its deadline.
+	FailureTimeout FailureCategory = "timeout"
+	// FailureCanceled — the check was canceled before producing a result.
+	FailureCanceled FailureCategory = "canceled"
+	// FailurePanic — the check panicked and was recovered at the pipeline
+	// boundary.
+	FailurePanic FailureCategory = "panic"
+	// FailureInvalidResult — the check returned a nil, malformed, or unknown
+	// result.
+	FailureInvalidResult FailureCategory = "invalid_result"
+	// FailureMissingConfig — required configuration is absent or invalid.
+	FailureMissingConfig FailureCategory = "missing_config"
+	// FailureMissingIdentity — a required agent or tenant identity is absent.
+	FailureMissingIdentity FailureCategory = "missing_identity"
+	// FailureStaleSnapshot — a cached policy/trust snapshot was used past its
+	// explicit validity window.
+	FailureStaleSnapshot FailureCategory = "stale_snapshot"
+)
+
+// Enforcement stages for CheckFailure.Stage: the pipeline stage whose required
+// check failed.
+const (
+	// CheckStageTrust — Stage 1, the trust/circuit-breaker lookup.
+	CheckStageTrust = "trust"
+	// CheckStageTrustUpdate — the deferred trust outcome recording.
+	CheckStageTrustUpdate = "trust_update"
+	// CheckStageInterceptor — Stage 3, a domain interceptor.
+	CheckStageInterceptor = "interceptor"
+	// CheckStagePolicyEval — Stage 4, the policy evaluator.
+	CheckStagePolicyEval = "policy_eval"
+	// CheckStageIdentity — the RequireAgentID identity guard.
+	CheckStageIdentity = "identity"
+	// CheckStageConfig — pipeline construction/configuration validity.
+	CheckStageConfig = "config"
+)
+
+// Check classes for CheckFailure.Class (the ADR-047 "check class").
+const (
+	// CheckClassTrust — trust/circuit-breaker checks.
+	CheckClassTrust = "trust"
+	// CheckClassPolicy — policy and domain-check evaluations.
+	CheckClassPolicy = "policy"
+	// CheckClassIdentity — required-identity checks.
+	CheckClassIdentity = "identity"
+	// CheckClassConfig — configuration-validity checks.
+	CheckClassConfig = "config"
+)
+
+// CheckFailure carries the ADR-047 safe context for a required check that
+// could not produce a valid result. It is attached to the decision and copied
+// into the audit event and decision record. It never contains secrets,
+// credentials, or raw tool arguments; Cause is a short sanitized description.
+//
+// On an enforcing transport the decision Action is ActionCheckIndeterminate
+// and the indeterminacy blocked execution. On an explicitly non-enforcing
+// transport the Action may remain allow-compatible; Check is then the recorded
+// would-have-blocked result.
+type CheckFailure struct {
+	// Stage is the enforcement stage whose check failed (CheckStage*).
+	Stage string `json:"stage"`
+	// Class is the class of the failed check (CheckClass*).
+	Class string `json:"class"`
+	// Category is the machine-readable failure category.
+	Category FailureCategory `json:"category"`
+	// Cause is a short, sanitized description of the failure.
+	Cause string `json:"cause,omitempty"`
+}
+
 // GovernanceDecision is the canonical output of the governance pipeline.
 type GovernanceDecision struct {
 	RequestID      string        `json:"request_id"`
-	Action         string        `json:"action"` // allow, deny, warn, escalate, require_approval
+	Action         string        `json:"action"` // allow, deny, warn, escalate, require_approval, check_indeterminate
 	Reason         string        `json:"reason"`
 	PolicyID       string        `json:"policy_id,omitempty"`
 	MatchedRule    string        `json:"matched_rule,omitempty"`
@@ -91,6 +176,13 @@ type GovernanceDecision struct {
 	// deterministic, classified, proved, or human_approved. Empty string
 	// means the producer did not label the mode (backwards compat).
 	DecisionMode DecisionMode `json:"decision_mode,omitempty"`
+	// Check carries the ADR-047 CHECK_INDETERMINATE context when a required
+	// synchronous check could not produce a valid result; nil when every
+	// required check produced a valid result. When Action is
+	// ActionCheckIndeterminate the failure blocked execution; when Action
+	// remains allow-compatible the transport is explicitly non-enforcing and
+	// Check is the recorded would-have-blocked result.
+	Check *CheckFailure `json:"check,omitempty"`
 }
 
 // Allowed returns true if the decision permits execution.
