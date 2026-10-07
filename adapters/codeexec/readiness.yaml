@@ -23,8 +23,7 @@ delegated_steps:
     owner: deployment topology
     contract: docs/adapters/CODEEXEC.md
 bypass_model: runtime
-fail_closed_transports:
-  - code_exec
+non_enforcing_transports: []
 evidence:
   tests:
     - adapters/codeexec/adapter_test.go

@@ -22,11 +22,11 @@ func TestPipeline_TrustError_DecisionMode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if d.Action != "deny" {
-		t.Fatalf("expected deny, got %s", d.Action)
+	if d.Action != ActionCheckIndeterminate {
+		t.Fatalf("expected check_indeterminate, got %s", d.Action)
 	}
 	if d.DecisionMode != DecisionModeDeterministic {
-		t.Errorf("trust-error deny should be deterministic, got %s", d.DecisionMode)
+		t.Errorf("trust-error check_indeterminate should be deterministic, got %s", d.DecisionMode)
 	}
 }
 
@@ -69,8 +69,8 @@ func TestPipeline_InterceptorError_DecisionMode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if d.Action != "deny" || d.DecisionMode != DecisionModeDeterministic {
-		t.Errorf("interceptor-error deny should be deterministic, got action=%s mode=%s", d.Action, d.DecisionMode)
+	if d.Action != ActionCheckIndeterminate || d.DecisionMode != DecisionModeDeterministic {
+		t.Errorf("interceptor-error check_indeterminate should be deterministic, got action=%s mode=%s", d.Action, d.DecisionMode)
 	}
 }
 
@@ -157,16 +157,15 @@ func TestPipeline_PolicyEvalEscalate_DecisionMode(t *testing.T) {
 
 func TestPipeline_FailClosedEvaluatorError_DecisionMode(t *testing.T) {
 	ev := &errorEvaluator{err: fmt.Errorf("evaluator unavailable")}
-	cfg := PipelineConfig{FailClosedTransports: []TransportType{TransportMCP}}
-	p := NewPipeline(cfg, nil, ev, nil)
+	p := NewPipeline(PipelineConfig{}, nil, ev, nil) // MCP enforces by default
 	d, err := p.Evaluate(context.Background(), &GovernanceRequest{
 		ToolName: "x", Transport: TransportMCP, TenantID: "t1",
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if d.Action != "deny" || d.DecisionMode != DecisionModeDeterministic {
-		t.Errorf("fail-closed eval error deny should be deterministic, got action=%s mode=%s", d.Action, d.DecisionMode)
+	if d.Action != ActionCheckIndeterminate || d.DecisionMode != DecisionModeDeterministic {
+		t.Errorf("enforcing eval error check_indeterminate should be deterministic, got action=%s mode=%s", d.Action, d.DecisionMode)
 	}
 }
 
