@@ -118,8 +118,7 @@ func TestPipeline_DryRun_EnforcingEvaluatorError_Rewritten(t *testing.T) {
 	auditor := &collectingAuditor{}
 	ev := &errorEvaluator{err: fmt.Errorf("evaluator unavailable")}
 	cfg := PipelineConfig{
-		DryRun:               true,
-		FailClosedTransports: []TransportType{TransportMCP},
+		DryRun: true, // MCP enforces by default
 	}
 	p := NewPipeline(cfg, nil, ev, auditor)
 
@@ -156,5 +155,51 @@ func TestPipeline_DryRun_EnforcingEvaluatorError_Rewritten(t *testing.T) {
 	}
 	if !strings.Contains(events[0].Reason, "policy evaluation failed") {
 		t.Errorf("audit must record the check failure reason; got %q", events[0].Reason)
+	}
+}
+
+// TestPipeline_DryRun_InvalidConfig_NotLaunderedToAllow pins the interaction
+// between dry-run and configuration validity: dry-run is an audit-only mode
+// for REAL decisions, but a configuration that cannot enforce required checks
+// is itself invalid — it cannot distinguish allow from deny — so its
+// CHECK_INDETERMINATE outcome must reach the caller even with DryRun set. A
+// dry-run rewrite here would silently fail open exactly the class of failure
+// the config gate exists to block.
+func TestPipeline_DryRun_InvalidConfig_NotLaunderedToAllow(t *testing.T) {
+	auditor := &collectingAuditor{}
+	cfg := PipelineConfig{
+		DryRun: true,
+		NonEnforcingTransports: []NonEnforcingTransport{
+			{Transport: TransportWebhook}, // invalid: no reason recorded
+		},
+	}
+	p := NewPipeline(cfg, nil, nil, auditor)
+
+	d, err := p.Evaluate(context.Background(), &GovernanceRequest{
+		ToolName: "read_file", Transport: TransportMCP, TenantID: "t1",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if d.Action != ActionCheckIndeterminate {
+		t.Fatalf("config error under dry-run must stay %q for the caller, got %q", ActionCheckIndeterminate, d.Action)
+	}
+	if d.Allowed() {
+		t.Fatal("invalid configuration must not allow under dry-run")
+	}
+	if d.DryRun {
+		t.Error("config-error outcome must not be marked DryRun")
+	}
+	if d.Check == nil || d.Check.Category != FailureMissingConfig {
+		t.Fatalf("check = %+v, want missing_config", d.Check)
+	}
+
+	// Audit records the real blocking outcome.
+	events := auditor.Events()
+	if len(events) != 1 {
+		t.Fatalf("expected 1 audit event, got %d", len(events))
+	}
+	if events[0].Action != ActionCheckIndeterminate {
+		t.Errorf("audit must record check_indeterminate, got %q", events[0].Action)
 	}
 }

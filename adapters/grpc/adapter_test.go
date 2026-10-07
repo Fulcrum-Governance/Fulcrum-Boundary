@@ -249,9 +249,10 @@ func TestUnaryInterceptor_ResponseInspectionTrailer(t *testing.T) {
 }
 
 func TestUnaryInterceptor_PolicyEvaluatorErrorFailsClosed(t *testing.T) {
-	pipe := governance.NewPipeline(governance.PipelineConfig{
-		FailClosedTransports: []governance.TransportType{governance.TransportGRPC},
-	}, nil, grpcErrorEvaluator{}, nil)
+	// Default config: gRPC enforces like every other transport — a transport
+	// is non-enforcing only when explicitly declared in
+	// PipelineConfig.NonEnforcingTransports.
+	pipe := governance.NewPipeline(governance.PipelineConfig{}, nil, grpcErrorEvaluator{}, nil)
 	intercept := UnaryInterceptor(pipe, NewAdapter(""))
 	stream := &captureServerTransportStream{method: "/svc.Svc/Error"}
 	ctx := grpclib.NewContextWithServerTransportStream(context.Background(), stream)

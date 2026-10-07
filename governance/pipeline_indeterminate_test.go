@@ -266,17 +266,19 @@ func TestPipeline_CheckIndeterminate_WebhookExecutionBlocksByDefault(t *testing.
 }
 
 // TestPipeline_CheckIndeterminate_NonEnforcingTransport_RecordsWouldHaveBlocked
-// pins the ADR-047 §5 exception: a transport explicitly left out of the
-// (non-empty) FailClosedTransports list is a declared non-enforcing surface —
-// it may continue after a check failure only because it cannot deny, and the
-// record MUST carry the would-have-blocked CHECK_INDETERMINATE context rather
-// than an ordinary allow.
+// pins the ADR-047 §5 exception: a transport explicitly declared in
+// NonEnforcingTransports is a declared non-enforcing surface — it may
+// continue after a check failure only because it cannot deny, and the record
+// MUST carry the would-have-blocked CHECK_INDETERMINATE context rather than an
+// ordinary allow.
 func TestPipeline_CheckIndeterminate_NonEnforcingTransport_RecordsWouldHaveBlocked(t *testing.T) {
 	auditor := &collectingAuditor{}
 	ev := &errorEvaluator{err: errors.New("evaluator unavailable")}
-	// Explicit non-empty list: only MCP enforces; webhook is declared
-	// non-enforcing (can_deny=false equivalent).
-	cfg := PipelineConfig{FailClosedTransports: []TransportType{TransportMCP}}
+	// Webhook is the declared non-enforcing exception; everything else —
+	// MCP included — still enforces.
+	cfg := PipelineConfig{NonEnforcingTransports: []NonEnforcingTransport{
+		{Transport: TransportWebhook, Reason: "informational webhook sink; cannot block upstream"},
+	}}
 	p := NewPipeline(cfg, nil, ev, auditor)
 
 	d, err := p.Evaluate(context.Background(), &GovernanceRequest{
@@ -309,15 +311,18 @@ func TestPipeline_CheckIndeterminate_NonEnforcingTransport_RecordsWouldHaveBlock
 	}
 }
 
-// TestPipeline_Config_EmptyFailClosedListRejected pins the ADR-047 §6 ruling:
-// an explicit empty FailClosedTransports slice is not an acceptable production
-// policy. It is rejected at config validation and — because an invalid
-// configuration cannot distinguish allow from deny — every decision is
-// CHECK_INDETERMINATE / missing_config on every transport.
-func TestPipeline_Config_EmptyFailClosedListRejected(t *testing.T) {
-	cfg := PipelineConfig{FailClosedTransports: []TransportType{}}
-	if err := cfg.Validate(); !errors.Is(err, ErrEmptyFailClosedList) {
-		t.Fatalf("Validate() = %v, want ErrEmptyFailClosedList", err)
+// TestPipeline_Config_InvalidNonEnforcingDeclarationRejected pins the
+// ADR-047 §6 ruling on the inverted model: a non-enforcing declaration that
+// does not name its transport or record its reason is not an acceptable
+// production policy. It is rejected at config validation and — because an
+// invalid configuration cannot distinguish allow from deny — every decision
+// is CHECK_INDETERMINATE / missing_config on every transport.
+func TestPipeline_Config_InvalidNonEnforcingDeclarationRejected(t *testing.T) {
+	cfg := PipelineConfig{NonEnforcingTransports: []NonEnforcingTransport{
+		{Transport: TransportWebhook}, // no reason — ambiguous exemption
+	}}
+	if err := cfg.Validate(); !errors.Is(err, ErrInvalidNonEnforcingTransport) {
+		t.Fatalf("Validate() = %v, want ErrInvalidNonEnforcingTransport", err)
 	}
 
 	auditor := &collectingAuditor{}
@@ -354,14 +359,18 @@ func TestPipeline_Config_EmptyFailClosedListRejected(t *testing.T) {
 	}
 }
 
-// TestPipeline_Config_ValidatePopulatedListAccepted confirms the validation
-// boundary: nil and populated lists remain valid; only the explicit empty
-// slice is rejected.
-func TestPipeline_Config_ValidatePopulatedListAccepted(t *testing.T) {
+// TestPipeline_Config_ValidateNonEnforcingListAccepted confirms the
+// validation boundary: nil, empty, and well-formed populated lists are all
+// valid — only malformed entries are rejected.
+func TestPipeline_Config_ValidateNonEnforcingListAccepted(t *testing.T) {
 	for _, cfg := range []PipelineConfig{
 		{},
-		{FailClosedTransports: []TransportType{TransportMCP}},
-		{FailClosedTransports: []TransportType{TransportWebhook}},
+		{NonEnforcingTransports: []NonEnforcingTransport{}},
+		{NonEnforcingTransports: []NonEnforcingTransport{{Transport: TransportWebhook, Reason: "informational only"}}},
+		{NonEnforcingTransports: []NonEnforcingTransport{
+			{Transport: TransportWebhook, Reason: "informational only"},
+			{Transport: TransportCLI, Reason: "interactive session; evaluator outage must not brick it"},
+		}},
 	} {
 		if err := cfg.Validate(); err != nil {
 			t.Errorf("Validate(%+v) = %v, want nil", cfg, err)

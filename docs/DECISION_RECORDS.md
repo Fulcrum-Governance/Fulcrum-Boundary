@@ -211,8 +211,9 @@ when present, `adapter` (the transport), `request_hash` (the canonical action
 digest), and `trust_state: "UNKNOWN"` when no trust posture was obtained — it
 records what failed and where, not a policy verdict. A record whose `action` is
 allow-compatible but still carries `check` is the ADR-047 can_deny=false case:
-a declared non-enforcing surface (a transport explicitly left out of a non-empty
-`FailClosedTransports` list, informational-mode webhooks, dry-run) where the
+a declared non-enforcing surface (a transport explicitly named in
+`PipelineConfig.NonEnforcingTransports` with a recorded reason,
+informational-mode webhooks, dry-run) where the
 field is the recorded would-have-blocked result.
 
 Both `request_id` and `check` are strictly additive `omitempty` fields: records

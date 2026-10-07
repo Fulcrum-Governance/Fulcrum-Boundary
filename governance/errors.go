@@ -6,15 +6,14 @@ import (
 	"fmt"
 )
 
-// ErrEmptyFailClosedList is returned by PipelineConfig.Validate when
-// FailClosedTransports is a non-nil empty slice. ADR-047: an empty fail-closed
-// transport list is not an acceptable production enforcement policy — it
-// would silently opt every execution-capable transport out of required-check
-// enforcement. Omit the field to use the enforcing defaults, or list the
-// transports that must enforce; a deployment that needs broader emergency
-// bypass requires an explicit, time-bounded, identity-attributed, audited
-// break-glass mechanism, which this package does not provide.
-var ErrEmptyFailClosedList = errors.New("governance: FailClosedTransports must not be an explicit empty list")
+// ErrInvalidNonEnforcingTransport is returned by PipelineConfig.Validate when
+// a NonEnforcingTransports entry is incomplete: the entry must name a
+// transport and carry the operator's recorded reason. ADR-047 permits
+// non-enforcing surfaces only as an explicit, deliberate declaration — a
+// declaration missing either half is ambiguous about what it exempts and why,
+// so the configuration fails closed (every Evaluate returns
+// CHECK_INDETERMINATE/missing_config) rather than guessing.
+var ErrInvalidNonEnforcingTransport = errors.New("governance: NonEnforcingTransports entries must name a transport and carry a reason")
 
 // ErrMissingAuditPublisher is the configuration error recorded when a
 // pipeline built with PipelineConfig.RequireAudit gets a nil AuditPublisher:

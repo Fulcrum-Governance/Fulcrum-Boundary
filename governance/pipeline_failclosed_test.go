@@ -69,8 +69,8 @@ func (b *programmableTrustBackend) TerminateAgent(_ context.Context, agentID str
 // failure (ADR-047 missing_identity): on an enforcing transport the pipeline
 // returns CHECK_INDETERMINATE before any other stage; on an explicitly
 // non-enforcing transport it records the would-have-blocked check and
-// continues. An explicit empty FailClosedTransports list is a configuration
-// error that blocks everything rather than disarming the guard. The table
+// continues. A malformed non-enforcing declaration is a configuration error
+// that blocks everything rather than disarming the guard. The table
 // also pins the negative cases that must NOT trip the guard, so a future
 // refactor cannot quietly widen or narrow the condition.
 func TestPipeline_RequireAgentID_CheckIndeterminateWhenMissing(t *testing.T) {
@@ -79,7 +79,7 @@ func TestPipeline_RequireAgentID_CheckIndeterminateWhenMissing(t *testing.T) {
 		requireAgentID bool
 		transport      TransportType
 		agentID        string
-		failClosed     []TransportType
+		nonEnforcing   []NonEnforcingTransport
 		wantAction     string
 		wantReason     string // substring; "" means do not assert reason
 		wantStage      string
@@ -89,7 +89,7 @@ func TestPipeline_RequireAgentID_CheckIndeterminateWhenMissing(t *testing.T) {
 		{
 			name:           "missing id on enforcing transport blocks check_indeterminate",
 			requireAgentID: true,
-			transport:      TransportMCP, // in DefaultFailClosedTransports
+			transport:      TransportMCP, // enforcing by default
 			agentID:        "",
 			wantAction:     ActionCheckIndeterminate,
 			wantReason:     "agent identity is required for protected adapter",
@@ -115,7 +115,7 @@ func TestPipeline_RequireAgentID_CheckIndeterminateWhenMissing(t *testing.T) {
 			name:           "missing id on non-enforcing transport allows but records the check",
 			requireAgentID: true,
 			transport:      TransportWebhook,
-			failClosed:     []TransportType{TransportMCP}, // webhook declared non-enforcing
+			nonEnforcing:   []NonEnforcingTransport{{Transport: TransportWebhook, Reason: "informational webhook sink"}},
 			agentID:        "",
 			wantAction:     "allow",
 			wantStage:      CheckStageIdentity,
@@ -123,13 +123,13 @@ func TestPipeline_RequireAgentID_CheckIndeterminateWhenMissing(t *testing.T) {
 			wantCheck:      true,
 		},
 		{
-			name:           "explicit empty fail-closed list is a config error and blocks",
+			name:           "non-enforcing declaration without reason is a config error and blocks",
 			requireAgentID: true,
 			transport:      TransportMCP,
 			agentID:        "",
-			failClosed:     []TransportType{}, // invalid: rejected by Validate
+			nonEnforcing:   []NonEnforcingTransport{{Transport: TransportWebhook}}, // invalid: rejected by Validate
 			wantAction:     ActionCheckIndeterminate,
-			wantReason:     "FailClosedTransports must not be an explicit empty list",
+			wantReason:     "must name a transport and carry a reason",
 			wantStage:      CheckStageConfig,
 			wantCategory:   FailureMissingConfig,
 			wantCheck:      true,
@@ -139,8 +139,8 @@ func TestPipeline_RequireAgentID_CheckIndeterminateWhenMissing(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := PipelineConfig{
-				RequireAgentID:       tc.requireAgentID,
-				FailClosedTransports: tc.failClosed,
+				RequireAgentID:         tc.requireAgentID,
+				NonEnforcingTransports: tc.nonEnforcing,
 			}
 			p := NewPipeline(cfg, nil, nil, nil)
 			req := &GovernanceRequest{
@@ -163,14 +163,16 @@ func TestPipeline_RequireAgentID_CheckIndeterminateWhenMissing(t *testing.T) {
 					t.Errorf("check = %+v, want %s/%s", d.Check, tc.wantStage, tc.wantCategory)
 				}
 			}
-			// When the identity/config check blocks, no trust posture was
-			// obtained — the record must say unknown rather than claim one.
-			if tc.wantStage == CheckStageIdentity && tc.wantAction == ActionCheckIndeterminate {
+			// When the identity check fails, no trust posture was obtained —
+			// the record must say unknown rather than claim one, whether the
+			// transport blocks (enforcing) or continues (declared
+			// non-enforcing).
+			if tc.wantStage == CheckStageIdentity {
 				if d.TrustScore != 0.0 {
-					t.Errorf("trust score = %v, want 0.0 on indeterminate block", d.TrustScore)
+					t.Errorf("trust score = %v, want 0.0 when no posture was obtained", d.TrustScore)
 				}
 				if d.TrustState != TrustStateUnknown.String() {
-					t.Errorf("trust state = %q, want %q on indeterminate block", d.TrustState, TrustStateUnknown.String())
+					t.Errorf("trust state = %q, want %q when no posture was obtained", d.TrustState, TrustStateUnknown.String())
 				}
 			}
 		})
@@ -183,14 +185,15 @@ func TestPipeline_RequireAgentID_CheckIndeterminateWhenMissing(t *testing.T) {
 // FAILS must be flipped to CHECK_INDETERMINATE on an enforcing transport
 // (ADR-047: a trust update that cannot produce a valid result blocks; it is
 // neither allow nor a policy deny). The non-enforcing case proves the flip is
-// gated on FailClosedTransports and the recorded check travels with the
-// allow; the empty-list case proves an invalid configuration fails closed at
-// the config stage before RecordDecision is ever reached.
+// gated on the declared NonEnforcingTransports set and the recorded check
+// travels with the allow; the malformed-declaration case proves an invalid
+// configuration fails closed at the config stage before RecordDecision is
+// ever reached.
 func TestPipeline_TrustRecordError_EnforcingCheckIndeterminate(t *testing.T) {
 	tests := []struct {
 		name          string
 		transport     TransportType
-		failClosed    []TransportType
+		nonEnforcing  []NonEnforcingTransport
 		wantAction    string
 		wantReason    string
 		wantStage     string
@@ -215,18 +218,21 @@ func TestPipeline_TrustRecordError_EnforcingCheckIndeterminate(t *testing.T) {
 		{
 			name:          "record error on non-enforcing transport still allows but records the check",
 			transport:     TransportWebhook,
-			failClosed:    []TransportType{TransportMCP}, // webhook declared non-enforcing
+			nonEnforcing:  []NonEnforcingTransport{{Transport: TransportWebhook, Reason: "informational webhook sink"}},
 			wantAction:    "allow",
 			wantStage:     CheckStageTrustUpdate,
 			wantCategory:  FailureUnavailable,
+			wantScore:     1.0, // the lookup succeeded; only the update failed, so posture stands
+			wantState:     TrustStateTrusted.String(),
+			assertState:   true,
 			expectReached: true,
 		},
 		{
-			name:          "record error, explicit empty list -> config error blocks before update",
+			name:          "record error, malformed non-enforcing declaration -> config error blocks before update",
 			transport:     TransportMCP,
-			failClosed:    []TransportType{}, // invalid config
+			nonEnforcing:  []NonEnforcingTransport{{Transport: TransportWebhook}}, // invalid: no reason
 			wantAction:    ActionCheckIndeterminate,
-			wantReason:    "FailClosedTransports must not be an explicit empty list",
+			wantReason:    "must name a transport and carry a reason",
 			wantStage:     CheckStageConfig,
 			wantCategory:  FailureMissingConfig,
 			expectReached: false,
@@ -239,7 +245,7 @@ func TestPipeline_TrustRecordError_EnforcingCheckIndeterminate(t *testing.T) {
 				checkState: TrustStateTrusted, // not blocked: reach the allow path
 				recordErr:  fmt.Errorf("trust store unreachable"),
 			}
-			cfg := PipelineConfig{FailClosedTransports: tc.failClosed}
+			cfg := PipelineConfig{NonEnforcingTransports: tc.nonEnforcing}
 			p := NewPipeline(cfg, backend, nil, nil)
 			req := &GovernanceRequest{
 				ToolName:  "read_file",
@@ -280,6 +286,42 @@ func TestPipeline_TrustRecordError_EnforcingCheckIndeterminate(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestPipeline_TrustLookupError_NonEnforcing_RecordsUnknownPosture pins the
+// posture-honesty rule on the declared non-enforcing branch: when the trust
+// lookup fails and the transport continues by declaration, the decision and
+// its projected evaluation context must report trust UNKNOWN / 0.0 — the
+// lookup produced no posture, so neither the record nor Stage-4 policy
+// evaluation may see the TRUSTED/1.0 defaults the lookup failed to supply.
+func TestPipeline_TrustLookupError_NonEnforcing_RecordsUnknownPosture(t *testing.T) {
+	backend := &programmableTrustBackend{checkErr: fmt.Errorf("redis down")}
+	cfg := PipelineConfig{NonEnforcingTransports: []NonEnforcingTransport{
+		{Transport: TransportWebhook, Reason: "informational webhook sink"},
+	}}
+	p := NewPipeline(cfg, backend, nil, nil)
+
+	d, err := p.Evaluate(context.Background(), &GovernanceRequest{
+		ToolName:  "notify",
+		Transport: TransportWebhook,
+		AgentID:   "agent-1",
+		TenantID:  "tenant-1",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if d.Action != "allow" {
+		t.Fatalf("declared non-enforcing transport continues; got %q", d.Action)
+	}
+	if d.Check == nil || d.Check.Stage != CheckStageTrust {
+		t.Fatalf("the failed lookup must be recorded; check = %+v", d.Check)
+	}
+	if d.TrustScore != 0.0 {
+		t.Errorf("trust score = %v, want 0.0 — no posture was obtained", d.TrustScore)
+	}
+	if d.TrustState != TrustStateUnknown.String() {
+		t.Errorf("trust state = %q, want %q — the record must not claim TRUSTED", d.TrustState, TrustStateUnknown.String())
 	}
 }
 

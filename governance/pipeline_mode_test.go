@@ -157,8 +157,7 @@ func TestPipeline_PolicyEvalEscalate_DecisionMode(t *testing.T) {
 
 func TestPipeline_FailClosedEvaluatorError_DecisionMode(t *testing.T) {
 	ev := &errorEvaluator{err: fmt.Errorf("evaluator unavailable")}
-	cfg := PipelineConfig{FailClosedTransports: []TransportType{TransportMCP}}
-	p := NewPipeline(cfg, nil, ev, nil)
+	p := NewPipeline(PipelineConfig{}, nil, ev, nil) // MCP enforces by default
 	d, err := p.Evaluate(context.Background(), &GovernanceRequest{
 		ToolName: "x", Transport: TransportMCP, TenantID: "t1",
 	})

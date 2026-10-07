@@ -40,12 +40,14 @@ Mechanics (`governance/request.go`, `governance/errors.go`, `pipeline.go`):
   also carries `request_id`, agent/tenant ids when present, transport,
   `request_hash` (canonical action digest), and `trust_state: "UNKNOWN"` when
   no posture was obtained. No secrets or raw arguments are recorded.
-- **Enforcing vs non-enforcing.** A transport in `FailClosedTransports` is
-  enforcing: check failure → `check_indeterminate` and the action is not
-  executed. A transport explicitly left out of a *non-empty*
-  `FailClosedTransports` list is a declared non-enforcing surface (ADR-047's
+- **Enforcing vs non-enforcing.** Every transport enforces by default: check
+  failure → `check_indeterminate` and the action is not executed. A transport
+  is non-enforcing only when explicitly declared in
+  `PipelineConfig.NonEnforcingTransports` with a recorded reason (ADR-047's
   can_deny=false): the action may continue and the decision and record carry
-  the would-have-blocked `CheckFailure` context rather than an ordinary allow.
+  the would-have-blocked `CheckFailure` context rather than an ordinary
+  allow. An empty, unknown, or misspelled request transport is undeclared and
+  therefore enforces — a check failure can never fail open by omission.
 - **Evaluator, trust-lookup, interceptor, and trust-update panics** are
   recovered at the pipeline boundary and classified `category: "panic"`.
 - **Invalid check results** — a nil evaluator decision, an out-of-vocabulary
@@ -57,16 +59,17 @@ Mechanics (`governance/request.go`, `governance/errors.go`, `pipeline.go`):
   and logs once per failure with structured, identifier-digested fields. A
   successful publish clears `Degraded()`. `AuditFailures()` never decreases,
   so the outage is visible after recovery.
-- **Configuration validity.** `PipelineConfig.Validate()` rejects a non-nil
-  empty `FailClosedTransports` (`ErrEmptyFailClosedList`) — an empty list is
-  not an acceptable production enforcement policy, and emergency bypass would
-  require a break-glass mechanism this package does not offer. A pipeline
-  built with `RequireAudit: true` and a nil auditor records
-  `ErrMissingAuditPublisher`. `NewPipeline` stores any configuration error;
-  every `Evaluate` then returns `check_indeterminate` /
+- **Configuration validity.** `PipelineConfig.Validate()` rejects a
+  `NonEnforcingTransports` entry that does not name a transport or does not
+  record the operator's reason (`ErrInvalidNonEnforcingTransport`) — a
+  non-enforcing surface exists only as an explicit, reasoned declaration, and
+  emergency bypass would require a break-glass mechanism this package does
+  not offer. A pipeline built with `RequireAudit: true` and a nil auditor
+  records `ErrMissingAuditPublisher`. `NewPipeline` stores any configuration
+  error; every `Evaluate` then returns `check_indeterminate` /
   `missing_config` (`stage: "config"`) — an invalid configuration fails
-  closed rather than silently failing open. `Pipeline.ConfigError()` exposes
-  the stored error.
+  closed rather than silently failing open, and dry-run does not launder it
+  into an allow. `Pipeline.ConfigError()` exposes the stored error.
 
 ## 1. Pipeline Fail-Mode Architecture
 
@@ -119,7 +122,10 @@ reshaped:
 4. **Then** — and only then — if `p.dryRun` and the action is `deny` or
    `check_indeterminate`, the action is rewritten to `allow`,
    `decision.DryRun = true`, and the original reason is prefixed with
-   `DRY-RUN would deny:` or `DRY-RUN would block:` respectively.
+   `DRY-RUN would deny:` or `DRY-RUN would block:` respectively. The one
+   exception: a configuration-error outcome (`stage: "config"`) is never
+   rewritten — dry-run cannot launder an invalid enforcement posture into an
+   allow.
 
 This ordering guarantees that the audit log always reflects what governance
 would have blocked, even when dry-run flips the caller-visible action.
@@ -146,10 +152,10 @@ Fault classes × transports. Each cell is one of:
 - **HTTP 400 / codes.Internal** — adapter surfaces a protocol-specific
   fail-closed error before pipeline entry.
 
-The pipeline rows below assume enforcing transports (the defaults cover all
-seven). The non-enforcing column outcome — allow with recorded check context —
-applies only to transports explicitly left out of a non-empty
-`FailClosedTransports` list.
+The pipeline rows below assume enforcing transports — which is the default
+posture for every transport, known or not. The non-enforcing column outcome —
+allow with recorded check context — applies only to transports explicitly
+declared in `NonEnforcingTransports`.
 
 | Fault Class | MCP | CLI | Code Exec | gRPC | Managed Agents | A2A | Webhook |
 |---|---|---|---|---|---|---|---|
@@ -160,7 +166,7 @@ applies only to transports explicitly left out of a non-empty
 | Adapter parse failure | JSON-RPC error `adapters/mcp/gateway.go` or ERR→caller from raw adapter use | ERR→caller `adapters/cli/adapter.go` | ERR→caller `adapters/codeexec/adapter.go` | `codes.InvalidArgument` with deny trailers `adapters/grpc/adapter.go` | ERR→caller or deny confirmation from proxy resolver `adapters/managedagents` | ERR→caller `adapters/a2a/adapter.go` | HTTP 400 `adapters/webhook/adapter.go` |
 | Interceptor error or panic | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE; informational mode records only |
 | PolicyEval error, panic, nil result, or invalid action | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE | CHECK_INDETERMINATE; execution mode 403/not forwarded; informational mode records only |
-| Transport left out of a non-empty `FailClosedTransports` (declared non-enforcing) | ALLOW + check recorded | ALLOW + check recorded | ALLOW + check recorded | ALLOW + check recorded | ALLOW + check recorded | ALLOW + check recorded | ALLOW + check recorded |
+| Transport declared in `NonEnforcingTransports` (non-enforcing, can_deny=false) | ALLOW + check recorded | ALLOW + check recorded | ALLOW + check recorded | ALLOW + check recorded | ALLOW + check recorded | ALLOW + check recorded | ALLOW + check recorded |
 | Audit publisher outage or panic | Decision unchanged; `Degraded()` true, `AuditFailures()` increments, one structured warn per failure | same | same | same | same | same | same |
 | Downstream tool error (5xx / non-zero exit) | PASS through governed proxy response inspection `adapters/mcp/forwarder.go` | PASS `adapters/cli/adapter.go` | PASS `adapters/codeexec/adapter.go` | PASS handler error after allow decision, with governance trailers where the server context permits `adapters/grpc/adapter.go` | PASS through proxied session stream with response inspection `adapters/managedagents/response_inspector.go` | PASS `adapters/a2a/adapter.go` | Execution mode passes downstream response after allow; informational mode never forwards |
 
@@ -198,24 +204,33 @@ applies only to transports explicitly left out of a non-empty
   decision is emitted before forwarding happens, so downstream 5xx or non-zero
   exit does not retroactively change the action in the audit event.
 
-## 3. `FailClosedTransports` Defaults
+## 3. Non-enforcing declarations (`NonEnforcingTransports`)
 
-`PipelineConfig.FailClosedTransports` is `nil` by default, which means Boundary
-applies `DefaultFailClosedTransports` — all seven transports (`mcp`,
-`managed_agents`, `cli`, `code_exec`, `grpc`, `a2a`, `webhook`). Every
-transport the pipeline serves is execution-capable, so the default posture is
-enforce everywhere.
+`PipelineConfig.NonEnforcingTransports` is empty by default, which means
+every transport enforces (`mcp`, `managed_agents`, `cli`, `code_exec`,
+`grpc`, `a2a`, `webhook`, and any transport added later — including the
+custom `claude-code-hook` label used by the hook boundary and any
+`HTTPMiddlewareConfig.TransportType` an operator sets). Every transport the
+pipeline serves is execution-capable, so the default posture is enforce
+everywhere.
 
-A populated (non-empty) list overrides the default: the listed transports
-enforce; any transport left out is declared non-enforcing (ADR-047
-can_deny=false) and records would-have-blocked context on check failure.
+Enforcement is not a list to be completed — it is the default. A populated
+list names the ONLY non-enforcing surfaces: `{transport, reason}` entries
+where each transport is declared ADR-047 can_deny=false and records
+would-have-blocked context on check failure. Every transport not listed —
+including an empty, unknown, or misspelled request transport — still
+enforces. This inverts the earlier `FailClosedTransports` model in which
+omission from the list silently disabled enforcement for the omitted
+transport.
 
-A non-nil **empty** list is invalid — `PipelineConfig.Validate()` returns
-`ErrEmptyFailClosedList` and `NewPipeline` records it so every `Evaluate`
-returns `check_indeterminate`/`missing_config` rather than silently opting
-every transport out of enforcement. There is no fail-open-everywhere opt-out;
-emergency bypass would require an explicit, time-bounded, identity-attributed,
-audited break-glass mechanism, which this package does not provide.
+Each entry must name a transport and record the operator's reason;
+`PipelineConfig.Validate()` rejects an incomplete entry with
+`ErrInvalidNonEnforcingTransport`, and `NewPipeline` records the error so
+every `Evaluate` returns `check_indeterminate`/`missing_config` rather than
+silently accepting an ambiguous exemption. There is no fail-open-everywhere
+opt-out; emergency bypass would require an explicit, time-bounded,
+identity-attributed, audited break-glass mechanism, which this package does
+not provide.
 
 | Transport | Default | Rationale |
 |---|---|---|
@@ -227,8 +242,9 @@ audited break-glass mechanism, which this package does not provide.
 | `TransportA2A` | **enforcing** | Preview A2A governed lifecycle. Malformed requests, unknown mandatory fields, and check failures deny or return unsupported fail-closed responses. |
 | `TransportWebhook` | **enforcing** | Execution-mode webhooks are an approval gate: `HandlerWithConfig` blocks any decision that is not `Allowed()`, so `check_indeterminate` gets HTTP 403 and is never forwarded. Informational mode is the documented can_deny=false exception — it never forwards regardless and records the verdict for an action that already happened. |
 
-The pipeline exercises this map with `p.failClosed[req.Transport]`
-(`pipeline.go`), which is O(1) and never errors on unknown keys.
+The pipeline exercises this set with `p.nonEnforcing[req.Transport]`
+(`pipeline.go`, `markCheckFailure`), which is O(1); a miss — including an
+empty or unknown transport name — means enforcing.
 
 ## 4. DryRun Mode Interaction
 
@@ -281,8 +297,11 @@ The ADR-047 failure matrix is covered by table-driven behavioral tests in
 | Every failure category × every transport | `TestPipeline_CheckIndeterminate_FailureMatrix` — unavailable, timeout, canceled, panic (evaluator/trust lookup/trust update), nil evaluator result, unknown evaluator action (`invalid_result`), stale snapshot (`CheckError`), missing identity, trust lookup/update errors — each across all seven transports, asserting blocked action, `Check` fields, recorded audit context, and zero downstream execution |
 | Webhook execution mode | `TestPipeline_CheckIndeterminate_WebhookExecutionBlocksByDefault`; handler level: `TestHandlerWithConfig_Execution_CheckIndeterminateDoesNotForward`, `TestHandlerWithConfig_Informational_CheckIndeterminateStillRecords` (`adapters/webhook/adapter_test.go`) |
 | Non-enforcing transport | `TestPipeline_CheckIndeterminate_NonEnforcingTransport_RecordsWouldHaveBlocked`, `TestPipeline_EvaluatorError_NonEnforcingTransport_Allows` |
-| Empty fail-closed list | `TestPipeline_Config_EmptyFailClosedListRejected`, `TestPipeline_FailClosedTransports_ExplicitEmptySliceIsConfigError` |
-| Configured transport combinations | `TestPipeline_Config_ValidatePopulatedListAccepted` plus the per-list rows in the failclosed/evaluator table tests |
+| Empty/unknown transport enforces | `TestPipeline_EvaluatorError_UndeclaredTransport_CheckIndeterminate` (`""`, `"bogus"`, custom `claude-code-hook`) |
+| Omission is not an opt-out | `TestPipeline_EvaluatorError_OmissionIsNotNonEnforcing` — declared webhook non-enforcing while `mcp`/`cli`/`grpc`/unknown still block |
+| Malformed non-enforcing declaration | `TestPipeline_Config_InvalidNonEnforcingDeclarationRejected`, `TestPipeline_NonEnforcingTransports_MalformedEntryIsConfigError` |
+| Dry-run cannot launder a config error | `TestPipeline_DryRun_InvalidConfig_NotLaunderedToAllow` |
+| Configured transport combinations | `TestPipeline_Config_ValidateNonEnforcingListAccepted` plus the per-declaration rows in the failclosed/evaluator table tests |
 | Nil auditor + RequireAudit | `TestPipeline_RequireAudit_NilAuditorIsConfigError` |
 | Audit publisher outage/recovery | `TestPipeline_AuditDeliveryFailure_ExposesDegraded`, `TestPipeline_AuditPublisherPanic_DegradedNotFatal` |
 | `Degraded()` flip/clear | `TestPipeline_AuditDeliveryFailure_ExposesDegraded` (flips on failure, clears on the next successful publish, failure counter monotonic) |
@@ -323,15 +342,26 @@ bypass evidence are recorded.
   without claiming a policy verdict. See §0.
 
 - **[RESOLVED — ADR-047] Webhook failed open by default.**
-  `TransportWebhook` was absent from `DefaultFailClosedTransports`, so an
-  evaluator error allowed execution-mode webhooks to forward. Webhook is now
-  in the default enforcing set; informational mode remains the documented
+  `TransportWebhook` was absent from the old `DefaultFailClosedTransports`
+  list, so an evaluator error allowed execution-mode webhooks to forward.
+  Under the inverted `NonEnforcingTransports` model webhook enforces like
+  every other transport; informational mode remains the documented
   non-enforcing exception.
 
 - **[RESOLVED — ADR-047] An explicit empty `FailClosedTransports` silently
-  opted every transport out.** The configuration is now rejected
-  (`ErrEmptyFailClosedList` via `PipelineConfig.Validate()`); a pipeline
-  built with it fails closed at the `config` stage.
+  opted every transport out.** Superseded by the inverted model: there is no
+  enforcing list to empty. `NonEnforcingTransports` nil/empty means all
+  transports enforce; an exemption exists only as a `{transport, reason}`
+  entry, and a malformed entry is rejected
+  (`ErrInvalidNonEnforcingTransport` via `PipelineConfig.Validate()`) so a
+  pipeline built with it fails closed at the `config` stage.
+
+- **[RESOLVED — ADR-047] Omission from the enforcing list silently disabled
+  enforcement.** `markCheckFailure` read `p.failClosed[req.Transport]`, so a
+  non-empty `FailClosedTransports` that omitted a transport — or an
+  empty/unknown request transport that matched nothing — failed open with an
+  ordinary allow. `NonEnforcingTransports` inverts this: only a named,
+  reasoned declaration is non-enforcing; everything else enforces.
 
 - **[RESOLVED — ADR-047] Evaluator/trust panics propagated to the caller.**
   All four check call sites are panic-safe; a recovered panic classifies as

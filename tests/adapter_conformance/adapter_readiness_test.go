@@ -1,6 +1,8 @@
 package adapter_conformance
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"sort"
@@ -8,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/fulcrum-governance/fulcrum-boundary/governance"
+	"github.com/fulcrum-governance/fulcrum-boundary/policyeval"
 	"gopkg.in/yaml.v3"
 )
 
@@ -221,4 +224,37 @@ func titleCase(s string) string {
 		return ""
 	}
 	return strings.ToUpper(s[:1]) + s[1:]
+}
+
+// erroringEvaluator is a PolicyEvaluator stub that always returns an
+// infrastructure error, so the conformance tests can drive the pipeline's
+// required-check-failure branch.
+type erroringEvaluator struct{}
+
+func (erroringEvaluator) Evaluate(context.Context, *policyeval.EvaluationRequest) (*policyeval.Decision, error) {
+	return nil, errors.New("evaluator unavailable")
+}
+
+// requireTransportFailsClosedByDefault asserts the ADR-047 default-enforcing
+// posture for a transport: under a zero-value PipelineConfig — no
+// NonEnforcingTransports declared — an evaluator error must return
+// check_indeterminate and block execution. Enforcement is the pipeline
+// default, not list membership.
+func requireTransportFailsClosedByDefault(t *testing.T, transport governance.TransportType) {
+	t.Helper()
+	p := governance.NewPipeline(governance.PipelineConfig{}, nil, erroringEvaluator{}, nil)
+	d, err := p.Evaluate(context.Background(), &governance.GovernanceRequest{
+		ToolName:  "conformance_probe",
+		Transport: transport,
+		TenantID:  "tenant-conformance",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if d.Action != governance.ActionCheckIndeterminate {
+		t.Fatalf("transport %s: action = %q, want %q — every undeclared transport enforces by default", transport, d.Action, governance.ActionCheckIndeterminate)
+	}
+	if d.Allowed() {
+		t.Fatalf("transport %s: check_indeterminate must not allow execution", transport)
+	}
 }

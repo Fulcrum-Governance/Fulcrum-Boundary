@@ -14,35 +14,26 @@ import (
 	"github.com/fulcrum-governance/fulcrum-boundary/policyeval"
 )
 
-// DefaultFailClosedTransports enumerates the transports that enforce required
-// checks out of the box — the transports where a check failure returns
-// CHECK_INDETERMINATE and blocks execution (ADR-047). Every transport the
-// pipeline serves is execution-capable, so the default list is all seven:
+// NonEnforcingTransport declares a single transport as a non-enforcing
+// surface — ADR-047's can_deny=false. On a required-check failure it records
+// the would-have-blocked CHECK_INDETERMINATE context and continues instead of
+// blocking. It is the ONLY way a transport may continue after a check
+// failure, and it is deliberately heavyweight: opting out of enforcement must
+// be an explicit, reasoned operator choice, never the side effect of an
+// incomplete enforcing list or an unknown transport name.
 //
-//   - TransportMCP — model-facing tool surface; the primary governance wedge.
-//   - TransportManagedAgents — hosted agent tool confirmations.
-//   - TransportCLI — wrapper-owned command execution.
-//   - TransportCodeExec — arbitrary code execution.
-//   - TransportGRPC — internal service surface for control-plane calls.
-//   - TransportA2A — agent-to-agent tasks crossing a governed boundary.
-//   - TransportWebhook — execution-mode webhooks are an approval gate;
-//     informational mode is the documented can_deny=false exception and is
-//     handled at the handler, which never forwards regardless.
-//
-// Operators who want different defaults must set
-// PipelineConfig.FailClosedTransports explicitly to a non-empty list of
-// enforcing transports; the transports they leave out are declared
-// non-enforcing (can_deny=false) and record the would-have-blocked
-// CHECK_INDETERMINATE context instead of blocking. An explicit empty slice is
-// rejected by PipelineConfig.Validate.
-var DefaultFailClosedTransports = []TransportType{
-	TransportMCP,
-	TransportManagedAgents,
-	TransportCLI,
-	TransportCodeExec,
-	TransportGRPC,
-	TransportA2A,
-	TransportWebhook,
+// Surfaces that legitimately cannot deny (e.g. an informational-mode webhook
+// sink that observes traffic it did not originate) are the intended entries.
+type NonEnforcingTransport struct {
+	// Transport is the transport declared non-enforcing. Required:
+	// PipelineConfig.Validate rejects an entry that names no transport.
+	Transport TransportType
+	// Reason is the operator's recorded justification for the can_deny=false
+	// posture (e.g. "informational webhook sink; cannot block upstream").
+	// Required: a non-enforcing declaration with no recorded reason fails
+	// configuration validation. It travels into the warning log emitted when
+	// a would-have-blocked failure is recorded on this transport.
+	Reason string
 }
 
 // PipelineConfig holds configuration for the governance pipeline.
@@ -71,26 +62,32 @@ type PipelineConfig struct {
 	// agent identity. This is intended for production trust-aware deployments.
 	RequireAgentID bool
 
-	// FailClosedTransports are the enforcing transports: on a required-check
-	// failure (policy evaluation, trust lookup, trust update, interceptor, or
-	// identity) they return CHECK_INDETERMINATE and block execution. A
-	// transport absent from the list is declared non-enforcing (ADR-047's
-	// can_deny=false): it may continue and the decision record carries the
-	// would-have-blocked CHECK_INDETERMINATE context rather than an ordinary
-	// allow.
+	// NonEnforcingTransports declares the transports that are explicitly
+	// NON-enforcing (ADR-047 can_deny=false): on a required-check failure
+	// (policy evaluation, trust lookup, trust update, interceptor, or
+	// identity) the decision and record carry the would-have-blocked
+	// CHECK_INDETERMINATE context and the allow-compatible action stands.
+	//
+	// The model is inverted from a fail-closed list because ADR-047 requires
+	// the safe default: a transport is non-enforcing ONLY when named here,
+	// with a recorded Reason. There is no opt-out by omission.
 	//
 	// Semantics:
-	//   - nil (field unset) → DefaultFailClosedTransports is applied (all
-	//     seven transports enforce).
-	//   - non-nil empty slice → invalid: PipelineConfig.Validate returns
-	//     ErrEmptyFailClosedList, and a pipeline built with it records the
-	//     configuration error and returns CHECK_INDETERMINATE for every
-	//     request rather than silently failing open. (ADR-047: an empty
-	//     fail-closed list is not an acceptable production policy; emergency
-	//     bypass would require an explicit, time-bounded, identity-attributed,
-	//     audited break-glass setting, which this package does not offer.)
-	//   - non-nil populated slice → only the listed transports enforce.
-	FailClosedTransports []TransportType
+	//   - nil or empty → every transport enforces. A required-check failure
+	//     returns CHECK_INDETERMINATE and blocks execution on all of them —
+	//     including transports added after this config was written.
+	//   - populated → only the listed transports are non-enforcing; every
+	//     other transport — including an empty, unknown, or misspelled
+	//     request transport — enforces.
+	//   - an entry with an empty Transport or empty Reason → invalid:
+	//     PipelineConfig.Validate returns ErrInvalidNonEnforcingTransport,
+	//     and a pipeline built with it records the configuration error and
+	//     returns CHECK_INDETERMINATE for every request rather than silently
+	//     failing open. (ADR-047: emergency bypass beyond a named
+	//     non-enforcing surface would require an explicit, time-bounded,
+	//     identity-attributed, audited break-glass setting, which this
+	//     package does not offer.)
+	NonEnforcingTransports []NonEnforcingTransport
 
 	// DryRun enables audit-only mode. When true, any decision that would
 	// otherwise deny or block as check_indeterminate is converted to allow
@@ -131,8 +128,13 @@ type PipelineConfig struct {
 // configuration returns CHECK_INDETERMINATE/missing_config for every request
 // instead of silently failing open.
 func (cfg PipelineConfig) Validate() error {
-	if cfg.FailClosedTransports != nil && len(cfg.FailClosedTransports) == 0 {
-		return ErrEmptyFailClosedList
+	for i, d := range cfg.NonEnforcingTransports {
+		if strings.TrimSpace(string(d.Transport)) == "" {
+			return fmt.Errorf("%w: entry %d names no transport", ErrInvalidNonEnforcingTransport, i)
+		}
+		if strings.TrimSpace(d.Reason) == "" {
+			return fmt.Errorf("%w: entry %d (transport %q) carries no reason", ErrInvalidNonEnforcingTransport, i, d.Transport)
+		}
 	}
 	return nil
 }
@@ -165,7 +167,7 @@ type Pipeline struct {
 	buildDigest      string
 	topologyProfile  string
 	requireAgentID   bool
-	failClosed       map[TransportType]bool
+	nonEnforcing     map[TransportType]string
 	dryRun           bool
 	signer           ReceiptSigner
 	escalation       EscalationHandler
@@ -196,17 +198,14 @@ func NewPipeline(cfg PipelineConfig, trust TrustChecker, evaluator PolicyEvaluat
 		evaluator = policyeval.NewEvaluator(nil)
 	}
 
-	// nil FailClosedTransports → apply the all-transports enforcing default.
-	// A non-nil list is taken verbatim; a non-nil empty list is invalid and
-	// is reported via configErr above (the empty map enforces nothing, which
-	// is exactly why the configuration is rejected).
-	failClosedList := cfg.FailClosedTransports
-	if failClosedList == nil {
-		failClosedList = DefaultFailClosedTransports
-	}
-	fc := make(map[TransportType]bool, len(failClosedList))
-	for _, t := range failClosedList {
-		fc[t] = true
+	// Every transport enforces by default; only the transports explicitly
+	// declared in NonEnforcingTransports (each with a recorded reason) are
+	// non-enforcing. Omission — including an empty or unknown transport name
+	// on the request — never disables enforcement (ADR-047). Malformed
+	// entries are reported via configErr above.
+	nonEnforcing := make(map[TransportType]string, len(cfg.NonEnforcingTransports))
+	for _, d := range cfg.NonEnforcingTransports {
+		nonEnforcing[d.Transport] = d.Reason
 	}
 
 	return &Pipeline{
@@ -220,7 +219,7 @@ func NewPipeline(cfg PipelineConfig, trust TrustChecker, evaluator PolicyEvaluat
 		buildDigest:      cfg.BuildDigest,
 		topologyProfile:  cfg.TopologyProfile,
 		requireAgentID:   cfg.RequireAgentID,
-		failClosed:       fc,
+		nonEnforcing:     nonEnforcing,
 		dryRun:           cfg.DryRun,
 		signer:           cfg.ReceiptSigner,
 		escalation:       cfg.Escalation,
@@ -280,14 +279,17 @@ func toolMatches(pattern, toolName string) bool {
 //  4. PolicyEval Engine — the portable evaluator. An evaluator error, panic,
 //     nil decision, or out-of-vocabulary action is a required-check failure.
 //
-// A required-check failure is CHECK_INDETERMINATE (ADR-047): on an enforcing
-// transport (FailClosedTransports) it blocks execution — it is neither allow
-// nor a substantive policy denial; on a transport explicitly left out of a
-// non-empty enforcing list it is the recorded would-have-blocked result. The
-// deferred trust update is a fifth required check: a backend error or panic
-// flips an otherwise-allowed decision to check_indeterminate on enforcing
-// transports. Evaluator, trust, interceptor, and trust-update panics are
-// recovered at the pipeline boundary and classified category "panic".
+// A required-check failure is CHECK_INDETERMINATE (ADR-047): it blocks
+// execution — it is neither allow nor a substantive policy denial — on every
+// transport except one explicitly declared non-enforcing in
+// PipelineConfig.NonEnforcingTransports (with a recorded reason), where it is
+// the recorded would-have-blocked result. Enforcement does not depend on the
+// request transport being recognized: an empty, unknown, or misspelled
+// transport enforces like any other. The deferred trust update is a fifth
+// required check: a backend error or panic flips an otherwise-allowed
+// decision to check_indeterminate on enforcing transports. Evaluator, trust,
+// interceptor, and trust-update panics are recovered at the pipeline boundary
+// and classified category "panic".
 //
 // Audit is emitted exactly once per call via a deferred hook (plus a
 // trust_transition event when the trust state changes). Dry-run conversion
@@ -346,7 +348,10 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 		if trustUpdate != nil && trustUpdate.Transition {
 			p.emitTrustTransition(ctx, req, decision, *trustUpdate)
 		}
-		if p.dryRun && (decision.Action == "deny" || decision.Action == ActionCheckIndeterminate) {
+		// A configuration-error outcome is never laundered through dry-run:
+		// an invalid enforcement posture cannot distinguish allow from deny,
+		// so its check_indeterminate stands even in audit-only mode.
+		if p.dryRun && p.configErr == nil && (decision.Action == "deny" || decision.Action == ActionCheckIndeterminate) {
 			original := decision.Reason
 			if original == "" {
 				original = "(no reason)"
@@ -399,8 +404,10 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 			if !decision.Allowed() {
 				return decision, nil
 			}
-			// Non-enforcing transport: the failed check is recorded on the
-			// decision and evaluation continues with the default posture.
+			// Declared non-enforcing transport: the failed check is recorded
+			// on the decision and evaluation continues — but the projection
+			// must not present a trust posture the lookup never obtained.
+			trustState = TrustStateUnknown
 		} else {
 			trustState = state
 			decision.TrustState = state.String()
@@ -567,15 +574,20 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 }
 
 // markCheckFailure records an ADR-047 CHECK_INDETERMINATE context on the
-// decision and, when the request's transport is enforcing (listed in
-// FailClosedTransports), blocks: the action becomes
-// ActionCheckIndeterminate — never allow, never a substantive policy deny.
-// On an explicitly non-enforcing transport the action is left untouched and
-// the failure is the recorded would-have-blocked result, with the warning log
-// the fail-open path always promised but never emitted. An already-blocked
-// decision keeps its verdict; the failed check is still recorded.
+// decision and, unless the request's transport is explicitly declared
+// non-enforcing (PipelineConfig.NonEnforcingTransports), blocks: the action
+// becomes ActionCheckIndeterminate — never allow, never a substantive policy
+// deny. Enforcement is the default: an empty, unknown, or misspelled request
+// transport is not in the declared non-enforcing set and therefore enforces —
+// a check failure can never fail open by omission or by an unrecognized
+// transport name. On a declared non-enforcing transport the action is left
+// untouched and the failure is the recorded would-have-blocked result, with
+// the warning log the fail-open path always promised but never emitted. An
+// already-blocked decision keeps its verdict; the failed check is still
+// recorded.
 func (p *Pipeline) markCheckFailure(decision *GovernanceDecision, req *GovernanceRequest, cf *CheckFailure) {
-	p.markCheckFailureEnforced(decision, req, cf, p.failClosed[req.Transport])
+	_, declaredNonEnforcing := p.nonEnforcing[req.Transport]
+	p.markCheckFailureEnforced(decision, req, cf, !declaredNonEnforcing)
 }
 
 // markCheckFailureEnforced is markCheckFailure with the enforcement choice
@@ -594,18 +606,21 @@ func (p *Pipeline) markCheckFailureEnforced(decision *GovernanceDecision, req *G
 		// is recorded on Check without rewriting it.
 		return
 	}
+	if cf.Stage == CheckStageTrust || cf.Stage == CheckStageIdentity || cf.Stage == CheckStageConfig {
+		// No trust posture was obtained; on either branch the record must
+		// not claim one. A trust_update failure is different: the lookup
+		// posture was genuinely obtained earlier, so it is preserved.
+		decision.TrustScore = 0.0
+		decision.TrustState = TrustStateUnknown.String()
+	}
 	if enforcing {
 		decision.Action = ActionCheckIndeterminate
 		decision.Reason = fmt.Sprintf("check indeterminate (%s/%s): %s", cf.Stage, cf.Category, cf.Cause)
-		if cf.Stage == CheckStageTrust || cf.Stage == CheckStageIdentity || cf.Stage == CheckStageConfig {
-			// No trust posture was obtained; the record must not claim one.
-			decision.TrustScore = 0.0
-			decision.TrustState = TrustStateUnknown.String()
-		}
 		return
 	}
 	slog.WarnContext(context.Background(), "governance: required check indeterminate on non-enforcing transport; recording would-have-blocked",
 		slog.String("transport", string(req.Transport)),
+		slog.String("non_enforcing_reason", p.nonEnforcing[req.Transport]),
 		slog.String("check_stage", cf.Stage),
 		slog.String("check_class", cf.Class),
 		slog.String("failure_category", string(cf.Category)),
