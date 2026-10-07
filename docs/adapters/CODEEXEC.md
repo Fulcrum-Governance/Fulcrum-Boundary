@@ -34,6 +34,8 @@ Boundary analyzes the submitted source before execution and exposes policy signa
 
 The default sandbox policy allows Python, JavaScript, and TypeScript, allows file reads and environment reads, and denies network, filesystem writes/deletes, subprocesses, restricted imports, eval-like system calls, and obfuscated execution. Unsupported languages or denied capabilities produce a denial response before executor invocation.
 
+The executable language set is narrower than the analyzed set. The `Sandbox` executor maps `python` to `python3 -c` and `javascript` to `node -e`; it has no TypeScript runtime contract (`node -e` does not transpile TS syntax), so a TypeScript execution request fails closed as a deterministic `sandbox_config` deny rather than surfacing a runtime syntax error.
+
 ## Execution Boundary
 
 `NewAdapterWithExecutor` wires CodeExec to an operator-provided `Executor` and `ExecutionBoundary`. The boundary metadata must name what actually isolates execution.
@@ -57,10 +59,11 @@ The container implementation fixes a hardening profile for every run:
 - the runtime's default seccomp profile (not disabled)
 - `--ipc none`
 - `--pids-limit 64`, `--memory 128m`/`--memory-swap 128m`, `--cpus 1`
+- `--entrypoint` pinned to the interpreter — an image-defined ENTRYPOINT never runs and never sees the governed argv
 - a wall-clock timeout (`SandboxConfig.Timeout`, default 30s) that kills and removes the container
-- no host mounts except an optional explicit read-only input directory (`HostInputDir` + `MountDestDir`)
+- among the arguments the adapter supplies, the only mount is an optional validated read-only `--mount type=bind` of `HostInputDir` at `MountDestDir`; the adapter never emits `-v`, `--volume`, or `--volumes-from`. `MountDestDir` must be absolute, clean, free of `:` `,` and control characters, and must not be `/` or overlap `/tmp`, `/usr`, `/bin`, `/lib`, `/etc`, `/proc`, `/sys`, `/dev`, or `/opt` (which includes the interpreter directories); a fixed destination such as `/input` is recommended. Runtime-level configuration outside the adapter's argv — for example containers.conf default mounts — can add mounts the adapter does not see; auditing it is an operator hardening requirement.
 
-Every container is named `fulcrum-codeexec-<request id>` and force-removed after the run, including when the wall-clock timeout kills the runtime client — a timed-out container is never left running.
+Every container is named `fulcrum-codeexec-<request id>-<random suffix>` and force-removed after the run — scoped to the container that execution created — including when the wall-clock timeout kills the runtime client. The random suffix keeps concurrent executions sharing a request ID from colliding on a name or force-removing each other's container; a timed-out container is never left running.
 
 **Fail-closed semantics.** When the sandbox cannot produce a valid execution result — container runtime missing, image unresolvable, container start failure, caller cancellation, or the deadline expiring before the container starts — the executor returns a deny envelope (exit code 126, `codeexec_denied=true`) classified `CHECK_INDETERMINATE` with a machine-readable `failure_category` (`sandbox_runtime_unavailable`, `sandbox_start_failure`, `sandbox_config`, `sandbox_canceled`) and safe request context (request/tenant/agent IDs, transport, enforcement stage, check class). This is the ADR-047 indeterminate outcome expressed on the existing deny path; the pipeline-level `CHECK_INDETERMINATE` decision type is tracked under FUL-464. A container that started and then exceeded the timeout is an ordinary execution timeout (`timeout=true`, exit 124), not an indeterminate result; the `timeout` flag is set only on `context.DeadlineExceeded`, so a caller cancellation is never reported as a timeout. A governed-code exit of 125 is reported as an ordinary result: run-level 125s (image or create failures) are told apart by the run `--cidfile` and the runtime CLI's own error output, not by the exit code alone.
 

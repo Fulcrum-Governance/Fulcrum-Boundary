@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -38,6 +39,11 @@ var (
 	// ErrContainerRuntimeUnavailable is returned when neither docker nor
 	// podman (nor a configured runtime binary) can be resolved.
 	ErrContainerRuntimeUnavailable = errors.New("codeexec: no container runtime (docker/podman) available")
+	// ErrSandboxMountConfig rejects a container sandbox whose input mount is
+	// misconfigured: a bad source can become a named volume instead of a
+	// host bind, and a bad destination can shadow sandbox controls or the
+	// interpreter.
+	ErrSandboxMountConfig = errors.New("codeexec: invalid sandbox mount configuration")
 )
 
 // DefaultSandboxTimeout bounds one sandboxed execution when the caller does
@@ -65,10 +71,17 @@ type SandboxConfig struct {
 	// MaxOutputBytes caps captured stdout and stderr. Default: the package
 	// output ceiling used for inspection (50 KB).
 	MaxOutputBytes int64
-	// HostInputDir, when set with MountDestDir, is the only host path mounted
-	// into the container, always read-only.
+	// HostInputDir, when set with MountDestDir, is the only host path the
+	// adapter mounts into the container, always as a read-only bind. It must
+	// be an absolute, clean host path free of ':' , ',' and control
+	// characters.
 	HostInputDir string
-	// MountDestDir is the in-container mount point for HostInputDir.
+	// MountDestDir is the in-container mount point for HostInputDir. It must
+	// be an absolute, clean container path that is not "/" and does not
+	// equal, contain, or sit inside a protected system directory (/tmp,
+	// /usr, /bin, /lib, /etc, /proc, /sys, /dev, /opt — including the
+	// directories the interpreter resolves from). A fixed destination such
+	// as /input is recommended.
 	MountDestDir string
 }
 
@@ -99,6 +112,9 @@ func NewSandbox(cfg SandboxConfig) (Sandbox, error) {
 	case SandboxTypeContainer:
 		if strings.TrimSpace(cfg.Image) == "" {
 			return nil, ErrSandboxImageRequired
+		}
+		if err := validateMountConfig(cfg.HostInputDir, cfg.MountDestDir); err != nil {
+			return nil, err
 		}
 		return &containerSandbox{cfg: cfg.normalize()}, nil
 	case SandboxTypeLocal:
@@ -133,13 +149,94 @@ func resolveRuntime(configured string) (string, error) {
 	return "", ErrContainerRuntimeUnavailable
 }
 
+// protectedMountDestDirs are container paths the input mount must never
+// shadow: the tmpfs scratch dir, system trees, and the directories the
+// interpreter resolves from. A destination equal to, above, or below any of
+// these can override the sandbox's own controls or the interpreter binary.
+var protectedMountDestDirs = []string{
+	"/tmp", "/usr", "/bin", "/lib", "/etc", "/proc", "/sys", "/dev", "/opt",
+}
+
+// validateMountConfig fails closed on a partially or unsafely configured
+// input mount. HostInputDir and MountDestDir must be set together or not at
+// all. Both must be absolute, clean paths free of ':' , ',' and control
+// characters — a ':' or ',' inside a --mount/--volume spec splits into extra
+// fields, and a non-absolute source is interpreted by the runtime as a named
+// volume rather than a host path. The destination must not be "/" or
+// overlap a protectedMountDestDirs entry.
+func validateMountConfig(hostDir, destDir string) error {
+	if (hostDir == "") != (destDir == "") {
+		return fmt.Errorf("%w: HostInputDir and MountDestDir must be set together or not at all", ErrSandboxMountConfig)
+	}
+	if hostDir == "" {
+		return nil
+	}
+	if err := validHostInputDir(hostDir); err != nil {
+		return err
+	}
+	return validMountDestDir(destDir)
+}
+
+// validHostInputDir validates the host side of the input bind. Host paths
+// use filepath semantics.
+func validHostInputDir(dir string) error {
+	if !filepath.IsAbs(dir) || filepath.Clean(dir) != dir {
+		return fmt.Errorf("%w: HostInputDir %q must be an absolute, clean path", ErrSandboxMountConfig, dir)
+	}
+	if strings.ContainsAny(dir, ":,") || hasControlChars(dir) {
+		return fmt.Errorf("%w: HostInputDir %q contains ':' ',' or a control character", ErrSandboxMountConfig, dir)
+	}
+	return nil
+}
+
+// validMountDestDir validates the container side of the input bind.
+// Container paths are POSIX, so path (not filepath) semantics apply.
+func validMountDestDir(dir string) error {
+	if !path.IsAbs(dir) || path.Clean(dir) != dir {
+		return fmt.Errorf("%w: MountDestDir %q must be an absolute, clean container path", ErrSandboxMountConfig, dir)
+	}
+	if strings.ContainsAny(dir, ":,") || hasControlChars(dir) {
+		return fmt.Errorf("%w: MountDestDir %q contains ':' ',' or a control character", ErrSandboxMountConfig, dir)
+	}
+	if dir == "/" {
+		return fmt.Errorf("%w: MountDestDir must not be the filesystem root", ErrSandboxMountConfig)
+	}
+	for _, protected := range protectedMountDestDirs {
+		if pathWithin(dir, protected) || pathWithin(protected, dir) {
+			return fmt.Errorf("%w: MountDestDir %q must not equal, contain, or sit inside protected path %q", ErrSandboxMountConfig, dir, protected)
+		}
+	}
+	return nil
+}
+
+// pathWithin reports whether p equals dir or is a descendant of dir. Both
+// arguments must be absolute, clean POSIX paths.
+func pathWithin(p, dir string) bool {
+	return p == dir || strings.HasPrefix(p, dir+"/")
+}
+
+// hasControlChars reports whether s contains a byte below 0x20 or DEL.
+func hasControlChars(s string) bool {
+	for _, r := range s {
+		if r < 0x20 || r == 0x7f {
+			return true
+		}
+	}
+	return false
+}
+
 // interpreterArgs maps a language to its in-boundary interpreter command.
-// Languages without a mapping cannot produce a valid execution result.
+// Languages without a mapping cannot produce a valid execution result and
+// fail closed as a sandbox_config deny. "typescript" is deliberately absent:
+// the sandbox has no TypeScript runtime contract — `node -e` does not
+// transpile TS syntax, so mapping it would surface a runtime syntax error on
+// ordinary input instead of a deterministic deny. Restore the mapping only
+// alongside a real TS runtime contract.
 func interpreterArgs(language, code string) ([]string, error) {
 	switch strings.ToLower(language) {
 	case "python":
 		return []string{"python3", "-c", code}, nil
-	case "javascript", "typescript":
+	case "javascript":
 		return []string{"node", "-e", code}, nil
 	default:
 		return nil, fmt.Errorf("codeexec: no interpreter for language %q", language)
@@ -147,11 +244,13 @@ func interpreterArgs(language, code string) ([]string, error) {
 }
 
 // containerSandbox executes code inside a hardened OCI container. The
-// hardening contract is fixed: no network, read-only root filesystem, a
-// size-limited noexec tmpfs for /tmp, non-root UID, all capabilities dropped,
-// no-new-privileges, the runtime's default seccomp profile, IPC isolation,
-// pids/memory/CPU limits, and no host mounts beyond an explicit read-only
-// input directory.
+// hardening contract is fixed for the argv the adapter supplies: no network,
+// read-only root filesystem, a size-limited noexec tmpfs for /tmp, non-root
+// UID, all capabilities dropped, no-new-privileges, the runtime's default
+// seccomp profile, IPC isolation, pids/memory/CPU limits, and no mount flags
+// beyond an optional validated read-only bind of the operator input
+// directory. Runtime-level defaults outside the adapter's argv (for example
+// containers.conf default mounts) are an operator hardening requirement.
 type containerSandbox struct {
 	cfg SandboxConfig
 }
@@ -161,7 +260,7 @@ func (s *containerSandbox) Boundary() ExecutionBoundary {
 	return ExecutionBoundary{
 		Name:          "oci-container",
 		Kind:          "container",
-		Description:   "Code executes inside a hardened OCI container: no network, read-only root filesystem, size-limited tmpfs /tmp, non-root UID, all capabilities dropped, no-new-privileges, default seccomp profile, pids/memory/CPU limits, wall-clock timeout.",
+		Description:   "Code executes inside a hardened OCI container: no network, read-only root filesystem, size-limited tmpfs /tmp, non-root UID, all capabilities dropped, no-new-privileges, default seccomp profile, pids/memory/CPU limits, wall-clock timeout, and only the validated read-only input bind among adapter-supplied mounts.",
 		SecureSandbox: true,
 	}
 }
@@ -194,10 +293,19 @@ func (s *containerSandbox) containerRunArgs(name, cidPath string, entrypoint []s
 		"--cpus", "1",
 	}
 	if s.cfg.HostInputDir != "" && s.cfg.MountDestDir != "" {
-		args = append(args, "--volume", s.cfg.HostInputDir+":"+s.cfg.MountDestDir+":ro")
+		// --mount (not --volume): the explicit key=value form is unambiguous
+		// once validateMountConfig has rejected ':' , ',' and control
+		// characters. Mounts are the only volume mechanism the adapter
+		// supplies — argv never contains -v, --volume, or --volumes-from.
+		args = append(args, "--mount",
+			"type=bind,src="+s.cfg.HostInputDir+",dst="+s.cfg.MountDestDir+",readonly")
 	}
+	// --entrypoint pins argv[0] to the interpreter. Without it an
+	// image-defined ENTRYPOINT would receive the interpreter argv as its own
+	// arguments and image code would run instead of the governed snippet.
+	args = append(args, "--entrypoint", entrypoint[0])
 	args = append(args, s.cfg.Image)
-	args = append(args, entrypoint...)
+	args = append(args, entrypoint[1:]...)
 	return args
 }
 
@@ -224,18 +332,21 @@ func (s *containerSandbox) Execute(ctx context.Context, req *governance.Governan
 	defer cancel()
 
 	name := sandboxContainerName(req)
-	// The container is force-removed when Execute returns for any reason.
-	// --rm alone cannot be relied on: if the CLI is killed at the timeout the
-	// daemon-side container keeps running.
-	defer removeContainer(runtime, name)
-
 	// The runtime CLI writes the container ID to cidPath at create time and
 	// only then; its presence is evidence the container started. On exit 125
 	// an absent cidfile plus runtime error output marks a run-level failure
 	// (image resolution, create errors, daemon faults), not a governed-code
-	// exit — see the classification below.
+	// exit — see the classification below. The cidfile also proves
+	// ownership for cleanup below.
 	cidPath := filepath.Join(os.TempDir(), "fulcrum-codeexec-"+uuid.NewString()+".cid")
 	defer func() { _ = os.Remove(cidPath) }()
+
+	// The container this execution created is force-removed when Execute
+	// returns for any reason. --rm alone cannot be relied on: if the CLI is
+	// killed at the timeout the daemon-side container keeps running.
+	// Removal is ownership-scoped so a concurrent execution sharing the
+	// RequestID can never have its live container killed by this defer.
+	defer func() { removeOwnedContainer(runtime, name, cidPath) }()
 
 	var stdout, stderr cappedBuffer
 	stdout.limit = s.cfg.MaxOutputBytes
@@ -358,6 +469,26 @@ func runtimeRunError(stderr string) bool {
 	return false
 }
 
+// removeOwnedContainer force-removes only the container this execution
+// created. It prefers the container ID recorded in the run --cidfile, which
+// the runtime CLI writes at create time and which identifies exactly this
+// run's container. When no cidfile exists — the container was never created,
+// or the runtime already removed it — the unique per-execution name is the
+// target; it cannot match another execution's container because the name
+// carries a per-execution random suffix.
+func removeOwnedContainer(runtime, name, cidPath string) {
+	target := name
+	// #nosec G304 -- cidPath is generated inside Execute as a --cidfile path
+	// under os.TempDir() with a random uuid file name; it is never derived
+	// from request input.
+	if data, err := os.ReadFile(cidPath); err == nil {
+		if cid := strings.TrimSpace(string(data)); cid != "" {
+			target = cid
+		}
+	}
+	removeContainer(runtime, target)
+}
+
 // removeContainer force-removes the named container, tolerating "no such
 // container" from a normal --rm teardown.
 func removeContainer(runtime, name string) {
@@ -369,8 +500,12 @@ func removeContainer(runtime, name string) {
 	_ = exec.CommandContext(ctx, runtime, "rm", "-f", name).Run()
 }
 
-// sandboxContainerName derives a deterministic-prefix container name so
-// cleanup and deployment audits can find sandbox containers.
+// sandboxContainerName derives the container name for one execution. The
+// validated RequestID stays a deterministic prefix so cleanup and deployment
+// audits can find sandbox containers, but the trailing random component is
+// mandatory: concurrent executions may share a RequestID (retries, resumed
+// runs), and an identical name would let one execution's cleanup force-
+// remove the other's live container.
 func sandboxContainerName(req *governance.GovernanceRequest) string {
 	id := ""
 	if req != nil {
@@ -379,7 +514,7 @@ func sandboxContainerName(req *governance.GovernanceRequest) string {
 	if !validNamePart(id) {
 		id = uuid.NewString()
 	}
-	return "fulcrum-codeexec-" + id
+	return "fulcrum-codeexec-" + id + "-" + uuid.NewString()
 }
 
 // validNamePart reports whether s is safe inside an OCI container name.

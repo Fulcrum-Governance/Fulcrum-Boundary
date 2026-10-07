@@ -388,6 +388,122 @@ func TestSandboxIntegration_StartTimeoutFailsClosed(t *testing.T) {
 	}
 }
 
+// entrypointTestImage is a local-only image derived from the integration
+// image whose ENTRYPOINT is `echo ENTRYPOINT-RAN`. It exists to prove the
+// adapter pins --entrypoint to the interpreter: if governed argv were merely
+// appended after the image name, this image's entrypoint would consume it.
+const entrypointTestImage = "fulcrum-codeexec-entrypoint-test:local"
+
+var (
+	entrypointOnce  sync.Once
+	entrypointError error
+)
+
+// ensureEntrypointTestImage builds the ENTRYPOINT test image once per test
+// binary. The base layer is the already-pulled integration image, so the
+// build is a local metadata operation.
+func ensureEntrypointTestImage(t *testing.T, runtime string) {
+	t.Helper()
+	entrypointOnce.Do(func() {
+		if exec.Command(runtime, "image", "inspect", entrypointTestImage).Run() == nil {
+			return
+		}
+		dir, err := os.MkdirTemp("", "fulcrum-entrypoint-image")
+		if err != nil {
+			entrypointError = err
+			return
+		}
+		defer func() { _ = os.RemoveAll(dir) }()
+		dockerfile := "FROM " + sandboxIntegrationImage + "\nENTRYPOINT [\"echo\", \"ENTRYPOINT-RAN\"]\n"
+		if err := os.WriteFile(filepath.Join(dir, "Dockerfile"), []byte(dockerfile), 0o600); err != nil {
+			entrypointError = err
+			return
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		entrypointError = exec.CommandContext(ctx, runtime, "build", "-t", entrypointTestImage, dir).Run()
+	})
+	if entrypointError != nil {
+		t.Fatalf("failed to build entrypoint test image %q: %v", entrypointTestImage, entrypointError)
+	}
+}
+
+// An image-defined ENTRYPOINT must never run: the adapter pins --entrypoint
+// to the interpreter, so governed code executes and the image entrypoint
+// does not. The marker is computed so that merely echoing the source text
+// (what the image entrypoint would do) cannot produce it.
+func TestSandboxIntegration_ImageEntrypointCannotRun(t *testing.T) {
+	runtime := requireSandboxRuntime(t)
+	ensureSandboxImage(t, runtime)
+	ensureEntrypointTestImage(t, runtime)
+
+	sandbox, err := codeexec.NewSandbox(codeexec.SandboxConfig{
+		Type:       codeexec.SandboxTypeContainer,
+		Production: true,
+		Image:      entrypointTestImage,
+		Timeout:    20 * time.Second,
+	})
+	if err != nil {
+		t.Fatalf("NewSandbox: %v", err)
+	}
+	resp, err := sandbox.Execute(context.Background(), pythonRequest("print('marker' + str(6 * 7))"))
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	out := string(resp.Content) + resp.Metadata["stderr"]
+	if strings.Contains(out, "ENTRYPOINT-RAN") {
+		t.Fatalf("image ENTRYPOINT ran instead of the interpreter: exit=%d out=%q", resp.ExitCode, out)
+	}
+	if resp.ExitCode != 0 || !strings.Contains(string(resp.Content), "marker42") {
+		t.Fatalf("expected computed interpreter output marker42, got exit=%d stdout=%q stderr=%q",
+			resp.ExitCode, string(resp.Content), resp.Metadata["stderr"])
+	}
+}
+
+// Concurrent executions that share a RequestID must not collide on the
+// container name: each run gets a unique name, each completes, and neither
+// cleanup can kill the other's live container.
+func TestSandboxIntegration_ConcurrentSameRequestID(t *testing.T) {
+	runtime := requireSandboxRuntime(t)
+	ensureSandboxImage(t, runtime)
+
+	sandbox := newContainerSandbox(t, 30*time.Second)
+	type execResult struct {
+		marker string
+		resp   *governance.ToolResponse
+		err    error
+	}
+	results := make(chan execResult, 2)
+	var wg sync.WaitGroup
+	for _, marker := range []string{"concurrent-A", "concurrent-B"} {
+		wg.Add(1)
+		go func(marker string) {
+			defer wg.Done()
+			req := pythonRequest("import time\ntime.sleep(1)\nprint('" + marker + "')")
+			req.RequestID = "req-concurrent-shared"
+			resp, err := sandbox.Execute(context.Background(), req)
+			results <- execResult{marker: marker, resp: resp, err: err}
+		}(marker)
+	}
+	wg.Wait()
+	close(results)
+	for r := range results {
+		if r.err != nil {
+			t.Fatalf("Execute(%s): %v", r.marker, r.err)
+		}
+		if r.resp.Metadata["codeexec_denied"] == "true" {
+			t.Fatalf("execution %s denied under a shared RequestID — concurrent name collision: %+v", r.marker, r.resp.Metadata)
+		}
+		if r.resp.ExitCode != 0 || !strings.Contains(string(r.resp.Content), r.marker) {
+			t.Fatalf("execution %s did not complete cleanly: exit=%d stdout=%q stderr=%q",
+				r.marker, r.resp.ExitCode, string(r.resp.Content), r.resp.Metadata["stderr"])
+		}
+	}
+	if n := countSandboxContainers(t, runtime); n != 0 {
+		t.Fatalf("concurrent executions left %d sandbox containers behind", n)
+	}
+}
+
 type collectingAuditPublisher struct {
 	mu     sync.Mutex
 	events []governance.AuditEvent

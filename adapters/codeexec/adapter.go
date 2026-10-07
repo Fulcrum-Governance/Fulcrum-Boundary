@@ -217,16 +217,18 @@ func (a *Adapter) InspectResponse(_ context.Context, resp *governance.ToolRespon
 	}
 
 	// Check for sensitive data patterns.
-	content := string(resp.Content)
-	for _, pattern := range sensitivePatterns {
-		if strings.Contains(content, pattern) {
-			inspection.SensitiveData = true
-			inspection.Safe = false
-			inspection.Concerns = append(inspection.Concerns,
-				fmt.Sprintf("potential sensitive data detected: %q pattern found", pattern))
-			break
-		}
+	flagSensitiveContent(inspection, "output", string(resp.Content))
+
+	// stderr is untrusted interpreter output carried in Metadata, not in
+	// Content — inspect it with the same size and sensitive-data checks or
+	// it would bypass them entirely.
+	stderr := resp.Metadata["stderr"]
+	if int64(len(stderr)) > maxSafeOutputSize {
+		inspection.Concerns = append(inspection.Concerns,
+			fmt.Sprintf("stderr size %d bytes exceeds %d byte limit", len(stderr), maxSafeOutputSize))
+		inspection.Safe = false
 	}
+	flagSensitiveContent(inspection, "stderr", stderr)
 
 	// Non-zero exit code is a concern (might indicate attempted privilege escalation).
 	if resp.ExitCode != 0 {
@@ -235,6 +237,21 @@ func (a *Adapter) InspectResponse(_ context.Context, resp *governance.ToolRespon
 	}
 
 	return inspection, nil
+}
+
+// flagSensitiveContent records a sensitive-data concern on inspection when
+// text contains a known credential/secret pattern. field names the inspected
+// surface ("output" or "stderr") for the concern message.
+func flagSensitiveContent(inspection *governance.ResponseInspection, field, text string) {
+	for _, pattern := range sensitivePatterns {
+		if strings.Contains(text, pattern) {
+			inspection.SensitiveData = true
+			inspection.Safe = false
+			inspection.Concerns = append(inspection.Concerns,
+				fmt.Sprintf("potential sensitive data detected in %s: %q pattern found", field, pattern))
+			return
+		}
+	}
 }
 
 // EmitGovernanceMetadata attaches governance and code-exec specific metadata

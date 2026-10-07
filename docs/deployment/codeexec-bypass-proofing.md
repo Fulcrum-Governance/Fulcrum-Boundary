@@ -16,7 +16,8 @@ close the bypass paths the tests cannot.
   none`, read-only root filesystem, size-limited `noexec` tmpfs `/tmp`,
   non-root UID, all capabilities dropped, `no-new-privileges`, default
   seccomp profile, `--ipc none`, pids/memory/CPU limits, wall-clock
-  timeout, and no host mounts beyond an explicit read-only input directory.
+  timeout, and no mount flags beyond an optional validated read-only
+  `--mount type=bind` of the operator input directory.
 
 ## Required Controls
 
@@ -26,7 +27,7 @@ close the bypass paths the tests cannot.
 | Sole execution path | No other tool exposed to the agent may execute code outside the governed CodeExec route — no shell/terminal tool, notebook kernel, or second executor. |
 | Interpreter custody | Host interpreters (`python3`, `node`, …) must not be directly invocable by the agent. The `local` sandbox type is non-production and refused when `Production: true`. |
 | Image pinning | Deployments should pin the image by digest and pre-pull it. The runtime pull path is fail-closed (an unresolvable image denies execution), but pinning removes ambiguity about what ran. |
-| Mount surface | Only the operator-declared read-only input directory may be mounted. Do not extend the mount list without updating this contract and the integration tests. |
+| Mount surface | The adapter passes only the operator-declared read-only input bind and never `--volumes-from`. Runtime-level defaults outside the adapter's argv — for example containers.conf `mounts=` — can add mounts the adapter does not see; audit runtime configuration and do not extend the adapter's mount list without updating this contract and the integration tests. |
 | Egress containment | `--network none` covers the container. It does not restrict other processes on the host; do not treat it as host egress policy. |
 
 ## Verification

@@ -186,6 +186,202 @@ func flagValue(args []string, flag string) string {
 	return ""
 }
 
+// hasAnyFlag reports whether args contains any of the given exact flags.
+func hasAnyFlag(args []string, flags ...string) bool {
+	for _, a := range args {
+		for _, f := range flags {
+			if a == f {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func indexOf(args []string, want string) int {
+	for i, a := range args {
+		if a == want {
+			return i
+		}
+	}
+	return -1
+}
+
+// --entrypoint must pin argv[0] to the interpreter: with an image-defined
+// ENTRYPOINT, argv appended after the image name is passed to the image's
+// entrypoint instead of the interpreter. The arg tail must be exactly
+// --entrypoint <interp> <image> <interp args...>.
+func TestContainerRunArgs_PinsEntrypointToInterpreter(t *testing.T) {
+	s, err := NewSandbox(SandboxConfig{
+		Type:       SandboxTypeContainer,
+		Production: true,
+		Image:      "python:3.11-slim",
+	})
+	if err != nil {
+		t.Fatalf("NewSandbox container: %v", err)
+	}
+	cs := s.(*containerSandbox)
+	args := cs.containerRunArgs("fulcrum-codeexec-test", "/tmp/fulcrum-codeexec-test.cid",
+		[]string{"python3", "-c", "print(1)"})
+	if got := flagValue(args, "--entrypoint"); got != "python3" {
+		t.Fatalf("--entrypoint = %q, want python3 (the interpreter must own argv[0])", got)
+	}
+	tail := args[len(args)-5:]
+	want := []string{"--entrypoint", "python3", "python:3.11-slim", "-c", "print(1)"}
+	for i := range want {
+		if tail[i] != want[i] {
+			t.Fatalf("arg tail = %v, want %v", tail, want)
+		}
+	}
+	if indexOf(args, "--entrypoint") > indexOf(args, "python:3.11-slim") {
+		t.Fatalf("--entrypoint must precede the image reference: %v", args)
+	}
+}
+
+// The input mount must be a --mount type=bind spec. The adapter must never
+// emit -v, --volume, or --volumes-from.
+func TestContainerRunArgs_InputMountIsValidatedBindOnly(t *testing.T) {
+	hostDir := t.TempDir()
+	s, err := NewSandbox(SandboxConfig{
+		Type:         SandboxTypeContainer,
+		Production:   true,
+		Image:        "python:3.11-slim",
+		HostInputDir: hostDir,
+		MountDestDir: "/input",
+	})
+	if err != nil {
+		t.Fatalf("NewSandbox container with valid mount: %v", err)
+	}
+	cs := s.(*containerSandbox)
+	args := cs.containerRunArgs("fulcrum-codeexec-test", "/tmp/fulcrum-codeexec-test.cid",
+		[]string{"python3", "-c", "print(1)"})
+	want := "type=bind,src=" + hostDir + ",dst=/input,readonly"
+	if got := flagValue(args, "--mount"); got != want {
+		t.Fatalf("--mount = %q, want %q", got, want)
+	}
+	if hasAnyFlag(args, "-v", "--volume", "--volumes-from") {
+		t.Fatalf("args must not contain -v/--volume/--volumes-from: %v", args)
+	}
+}
+
+// A mount destination that shadows /tmp, a system tree, or the interpreter
+// directories can override sandbox controls. Both fields are required
+// together, absolute, clean, and free of ':' , ',' and control characters —
+// otherwise a --mount/--volume spec splits into extra fields or the source
+// silently becomes a named volume.
+func TestNewSandbox_MountConfigRejected(t *testing.T) {
+	hostDir := t.TempDir()
+	tests := []struct {
+		name string
+		host string
+		dest string
+	}{
+		{"host relative", "data/input", "/input"},
+		{"host contains colon", hostDir + ":extra", "/input"},
+		{"host contains comma", hostDir + ",extra", "/input"},
+		{"host contains control char", hostDir + "\t", "/input"},
+		{"host not clean", hostDir + "/sub/..", "/input"},
+		{"dest relative", hostDir, "input"},
+		{"dest not clean", hostDir, "/data/../input"},
+		{"dest is filesystem root", hostDir, "/"},
+		{"dest equals protected /etc", hostDir, "/etc"},
+		{"dest inside protected /etc", hostDir, "/etc/inputs"},
+		{"dest inside protected /tmp", hostDir, "/tmp/inputs"},
+		{"dest equals protected /tmp", hostDir, "/tmp"},
+		{"dest inside interpreter tree /usr", hostDir, "/usr/local/bin"},
+		{"dest equals protected /bin", hostDir, "/bin"},
+		{"dest inside protected /proc", hostDir, "/proc/inputs"},
+		{"dest inside protected /sys", hostDir, "/sys/inputs"},
+		{"dest inside protected /dev", hostDir, "/dev/inputs"},
+		{"dest inside protected /opt", hostDir, "/opt/inputs"},
+		{"dest contains colon", hostDir, "/input:extra"},
+		{"dest contains comma", hostDir, "/input,extra"},
+		{"dest contains control char", hostDir, "/input\n"},
+		{"dest set without host", "", "/input"},
+		{"host set without dest", hostDir, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := NewSandbox(SandboxConfig{
+				Type:         SandboxTypeContainer,
+				Production:   true,
+				Image:        "python:3.11-slim",
+				HostInputDir: tt.host,
+				MountDestDir: tt.dest,
+			})
+			if !errors.Is(err, ErrSandboxMountConfig) {
+				t.Fatalf("expected ErrSandboxMountConfig, got %v", err)
+			}
+		})
+	}
+}
+
+func TestNewSandbox_MountConfigAccepted(t *testing.T) {
+	for _, dest := range []string{"/input", "/data", "/data/inputs", "/mnt/inputs"} {
+		_, err := NewSandbox(SandboxConfig{
+			Type:         SandboxTypeContainer,
+			Production:   true,
+			Image:        "python:3.11-slim",
+			HostInputDir: t.TempDir(),
+			MountDestDir: dest,
+		})
+		if err != nil {
+			t.Fatalf("MountDestDir %q rejected: %v", dest, err)
+		}
+	}
+}
+
+// Concurrent executions sharing a RequestID (retries, resumed runs) must get
+// distinct container names; an identical name would let one execution's
+// cleanup force-remove the other's live container. The validated RequestID
+// stays a prefix for audit lookup.
+func TestSandboxContainerName_UniquePerExecution(t *testing.T) {
+	req := &governance.GovernanceRequest{RequestID: "req-shared"}
+	a := sandboxContainerName(req)
+	b := sandboxContainerName(req)
+	if a == b {
+		t.Fatalf("same RequestID produced identical container name %q: concurrent executions would collide", a)
+	}
+	for _, n := range []string{a, b} {
+		if !strings.HasPrefix(n, "fulcrum-codeexec-req-shared-") {
+			t.Fatalf("name %q lost the request-id audit prefix", n)
+		}
+	}
+}
+
+// TypeScript has no runtime contract in the sandbox: `node -e` does not
+// transpile TS, so the mapping is absent and a TS request fails closed.
+func TestInterpreterArgs_TypeScriptFailsClosed(t *testing.T) {
+	for _, lang := range []string{"typescript", "TypeScript"} {
+		if _, err := interpreterArgs(lang, "const x: number = 1"); err == nil {
+			t.Fatalf("interpreterArgs(%q) must fail closed: no TS runtime contract exists", lang)
+		}
+	}
+}
+
+// A TypeScript execution request denies deterministically — the language
+// check precedes runtime resolution, so the outcome does not depend on a
+// container runtime being present.
+func TestContainerSandbox_TypeScriptDeniedDeterministic(t *testing.T) {
+	s, err := NewSandbox(SandboxConfig{
+		Type:       SandboxTypeContainer,
+		Production: true,
+		Image:      "python:3.11-slim",
+	})
+	if err != nil {
+		t.Fatalf("NewSandbox container: %v", err)
+	}
+	resp, err := s.Execute(context.Background(), &governance.GovernanceRequest{
+		RequestID: "req-ts",
+		Language:  "typescript",
+		Code:      "const x: number = 1",
+	})
+	if err != nil {
+		t.Fatalf("Execute returned error instead of fail-closed deny envelope: %v", err)
+	}
+	assertIndeterminateDeny(t, resp, "sandbox_config")
+}
+
 func TestContainerSandbox_UnsupportedLanguageFailsClosed(t *testing.T) {
 	s, err := NewSandbox(SandboxConfig{
 		Type:       SandboxTypeContainer,
