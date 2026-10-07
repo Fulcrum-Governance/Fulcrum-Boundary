@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **CodeExec named sandbox boundary (preview adapter gap BND-CODE-001).**
+  `adapters/codeexec` gains a `Sandbox` interface with a hardened OCI
+  `container` implementation (`--network none`, read-only rootfs,
+  size-limited tmpfs `/tmp`, non-root UID, dropped capabilities,
+  `no-new-privileges`, pids/memory/CPU limits, wall-clock timeout, optional
+  read-only input mount) and an explicitly non-production `local`
+  implementation that `NewSandbox` refuses under `Production: true`.
+  Sandbox runtime, image, and start failures return a fail-closed deny
+  envelope classified `CHECK_INDETERMINATE` per ADR-047 (the pipeline-level
+  decision type is tracked under FUL-464). Runtime-gated integration tests
+  cover deny-before-start, output, network isolation, filesystem isolation,
+  host-path reads, pids containment, and timeout kill; they run in a new
+  `codeexec-sandbox` CI job on ubuntu-latest. Adapter status stays
+  `preview`; deployment bypass controls are documented in
+  `docs/deployment/codeexec-bypass-proofing.md`.
+
 ## [0.13.1] - 2026-09-02
 
 ### Fixed
