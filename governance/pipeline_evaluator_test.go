@@ -18,14 +18,15 @@ func (e *errorEvaluator) Evaluate(_ context.Context, _ *policyeval.EvaluationReq
 	return nil, e.err
 }
 
-// TestPipeline_EvaluatorError_FailClosedTransport_Denies exercises the
-// fail-closed branch at pipeline.go:189-193. A transport in the fail-closed
-// set must DENY on evaluator error, with a reason that surfaces the
-// underlying cause.
-func TestPipeline_EvaluatorError_FailClosedTransport_Denies(t *testing.T) {
+// TestPipeline_EvaluatorError_EnforcingTransport_CheckIndeterminate exercises
+// the enforcing branch: enforcement is the default, so an empty config must
+// return CHECK_INDETERMINATE on evaluator error — ADR-047 requires a
+// required-check failure to block without being labeled allow or a
+// substantive policy deny. The reason surfaces the stage, category, and a
+// fixed-vocabulary cause; the raw error stays operator-side in Check.Detail.
+func TestPipeline_EvaluatorError_EnforcingTransport_CheckIndeterminate(t *testing.T) {
 	ev := &errorEvaluator{err: fmt.Errorf("evaluator unavailable")}
-	cfg := PipelineConfig{FailClosedTransports: []TransportType{TransportMCP}}
-	p := NewPipeline(cfg, nil, ev, nil)
+	p := NewPipeline(PipelineConfig{}, nil, ev, nil)
 
 	req := &GovernanceRequest{
 		ToolName:  "read_file",
@@ -36,25 +37,44 @@ func TestPipeline_EvaluatorError_FailClosedTransport_Denies(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if d.Action != "deny" {
-		t.Fatalf("expected deny on evaluator error for fail-closed transport, got %s", d.Action)
+	if d.Action != ActionCheckIndeterminate {
+		t.Fatalf("expected check_indeterminate on evaluator error for enforcing transport, got %s", d.Action)
 	}
-	if !strings.Contains(d.Reason, "policy evaluation failed (fail-closed)") {
-		t.Errorf("expected reason to surface fail-closed cause, got %q", d.Reason)
+	if d.Allowed() {
+		t.Fatal("check_indeterminate must not be executable")
 	}
-	if !strings.Contains(d.Reason, "evaluator unavailable") {
-		t.Errorf("expected reason to wrap the underlying error, got %q", d.Reason)
+	if !strings.Contains(d.Reason, "policy evaluation failed") {
+		t.Errorf("expected reason to surface the failed check, got %q", d.Reason)
+	}
+	// The caller-facing reason/cause carry the fixed-vocabulary description
+	// only; the raw evaluator error is operator-side diagnostics.
+	if strings.Contains(d.Reason, "evaluator unavailable") {
+		t.Errorf("raw evaluator error must not reach the caller-facing reason, got %q", d.Reason)
+	}
+	if d.Check == nil || d.Check.Category != FailureUnavailable || d.Check.Stage != CheckStagePolicyEval {
+		t.Errorf("check context = %+v, want policy_eval/unavailable", d.Check)
+	}
+	if d.Check != nil {
+		if strings.Contains(d.Check.Cause, "evaluator unavailable") {
+			t.Errorf("raw evaluator error must not reach the serialized cause, got %q", d.Check.Cause)
+		}
+		if !strings.Contains(d.Check.Detail, "evaluator unavailable") {
+			t.Errorf("check detail = %q, want the raw evaluator error preserved operator-side", d.Check.Detail)
+		}
 	}
 }
 
-// TestPipeline_EvaluatorError_FailOpenTransport_Allows verifies the fail-open
-// branch. A transport NOT in the fail-closed set must retain the default
-// allow action when the evaluator errors. Reason stays empty — callers
-// reading audit logs see the action but no synthetic reason.
-func TestPipeline_EvaluatorError_FailOpenTransport_Allows(t *testing.T) {
+// TestPipeline_EvaluatorError_NonEnforcingTransport_Allows verifies the
+// declared non-enforcing branch. A transport explicitly named in
+// NonEnforcingTransports (ADR-047 can_deny=false) retains the default allow
+// action when the evaluator errors, but the decision records the
+// would-have-blocked CHECK_INDETERMINATE context rather than looking like a
+// clean allow.
+func TestPipeline_EvaluatorError_NonEnforcingTransport_Allows(t *testing.T) {
 	ev := &errorEvaluator{err: fmt.Errorf("evaluator unavailable")}
-	// Explicit empty slice opts into full fail-open (see Phase 1 semantics).
-	cfg := PipelineConfig{FailClosedTransports: []TransportType{}}
+	cfg := PipelineConfig{NonEnforcingTransports: []NonEnforcingTransport{
+		{Transport: TransportWebhook, Reason: "informational webhook sink; cannot block upstream"},
+	}}
 	p := NewPipeline(cfg, nil, ev, nil)
 
 	req := &GovernanceRequest{
@@ -67,31 +87,33 @@ func TestPipeline_EvaluatorError_FailOpenTransport_Allows(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if d.Action != "allow" {
-		t.Fatalf("expected allow on evaluator error for fail-open transport, got %s", d.Action)
+		t.Fatalf("expected allow on evaluator error for non-enforcing transport, got %s", d.Action)
 	}
-	if d.Reason != "" {
-		t.Errorf("expected empty reason for fail-open path, got %q", d.Reason)
+	if d.Check == nil || d.Check.Category != FailureUnavailable || d.Check.Stage != CheckStagePolicyEval {
+		t.Errorf("non-enforcing allow must record the would-have-blocked check, got %+v", d.Check)
 	}
 }
 
 // TestPipeline_EvaluatorError_AuditEmittedOnBothPaths confirms that both the
-// fail-closed and fail-open branches still emit exactly one audit event —
-// the defer hook at pipeline.go:118-130 runs regardless of which branch the
-// evaluator error takes.
+// enforcing and non-enforcing branches still emit exactly one audit event —
+// the defer hook in Evaluate runs regardless of which branch the evaluator
+// error takes — and that both events carry the check context.
 func TestPipeline_EvaluatorError_AuditEmittedOnBothPaths(t *testing.T) {
 	ev := &errorEvaluator{err: fmt.Errorf("evaluator unavailable")}
 	auditor := &collectingAuditor{}
-	cfg := PipelineConfig{FailClosedTransports: []TransportType{TransportMCP}}
+	cfg := PipelineConfig{NonEnforcingTransports: []NonEnforcingTransport{
+		{Transport: TransportWebhook, Reason: "informational webhook sink; cannot block upstream"},
+	}}
 	p := NewPipeline(cfg, nil, ev, auditor)
 
-	// Fail-closed request.
+	// Enforcing request (MCP is not declared non-enforcing).
 	_, err := p.Evaluate(context.Background(), &GovernanceRequest{
 		ToolName: "a", Transport: TransportMCP, TenantID: "t1",
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	// Fail-open request (Webhook is not in the explicit fail-closed list).
+	// Non-enforcing request (Webhook is the declared exception).
 	_, err = p.Evaluate(context.Background(), &GovernanceRequest{
 		ToolName: "b", Transport: TransportWebhook, TenantID: "t1",
 	})
@@ -103,11 +125,17 @@ func TestPipeline_EvaluatorError_AuditEmittedOnBothPaths(t *testing.T) {
 	if len(events) != 2 {
 		t.Fatalf("expected 2 audit events (one per Evaluate), got %d", len(events))
 	}
-	if events[0].Action != "deny" {
-		t.Errorf("fail-closed path: expected audit action deny, got %s", events[0].Action)
+	if events[0].Action != ActionCheckIndeterminate {
+		t.Errorf("enforcing path: expected audit action check_indeterminate, got %s", events[0].Action)
+	}
+	if events[0].Check == nil {
+		t.Error("enforcing audit event must carry check context")
 	}
 	if events[1].Action != "allow" {
-		t.Errorf("fail-open path: expected audit action allow, got %s", events[1].Action)
+		t.Errorf("non-enforcing path: expected audit action allow, got %s", events[1].Action)
+	}
+	if events[1].Check == nil {
+		t.Error("non-enforcing audit event must record the would-have-blocked check")
 	}
 }
 
@@ -148,5 +176,84 @@ func TestPipeline_ConcreteEvaluator_StillAccepted(t *testing.T) {
 	}
 	if d.Action != "allow" {
 		t.Errorf("expected allow, got %s", d.Action)
+	}
+}
+
+// TestPipeline_EvaluatorError_UndeclaredTransport_CheckIndeterminate pins the
+// ADR-047 default-enforcing rule: a required-check failure must block on ANY
+// transport that is not explicitly declared non-enforcing — including an
+// empty transport name, a transport the pipeline does not know, and a custom
+// adapter transport. Under the pre-inversion fail-closed LIST these rows all
+// failed open (allow) because the map lookup missed; an unknown result must
+// never authorize.
+func TestPipeline_EvaluatorError_UndeclaredTransport_CheckIndeterminate(t *testing.T) {
+	ev := &errorEvaluator{err: fmt.Errorf("evaluator unavailable")}
+	p := NewPipeline(PipelineConfig{}, nil, ev, nil)
+
+	for _, transport := range []TransportType{"", "bogus", TransportType("claude-code-hook")} {
+		t.Run("transport="+string(transport), func(t *testing.T) {
+			d, err := p.Evaluate(context.Background(), &GovernanceRequest{
+				ToolName:  "read_file",
+				Transport: transport,
+				TenantID:  "t1",
+			})
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if d.Action != ActionCheckIndeterminate {
+				t.Fatalf("action = %q, want %q — an undeclared transport must enforce", d.Action, ActionCheckIndeterminate)
+			}
+			if d.Allowed() {
+				t.Fatal("check_indeterminate must not allow execution")
+			}
+			if d.Check == nil || d.Check.Stage != CheckStagePolicyEval {
+				t.Errorf("check = %+v, want policy_eval context recorded", d.Check)
+			}
+		})
+	}
+}
+
+// TestPipeline_EvaluatorError_OmissionIsNotNonEnforcing pins the second
+// fail-open loophole the inverted model closes: declaring one transport
+// non-enforcing must NOT silently disable enforcement on any other. The old
+// FailClosedTransports:[mcp] shape allowed a cli request through on an
+// evaluator error; now only the named transport is exempt and every other
+// transport — cli included — still blocks.
+func TestPipeline_EvaluatorError_OmissionIsNotNonEnforcing(t *testing.T) {
+	ev := &errorEvaluator{err: fmt.Errorf("evaluator unavailable")}
+	cfg := PipelineConfig{NonEnforcingTransports: []NonEnforcingTransport{
+		{Transport: TransportWebhook, Reason: "informational webhook sink; cannot block upstream"},
+	}}
+	p := NewPipeline(cfg, nil, ev, nil)
+
+	// The declared non-enforcing surface continues and records.
+	d, err := p.Evaluate(context.Background(), &GovernanceRequest{
+		ToolName: "notify", Transport: TransportWebhook, TenantID: "t1",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if d.Action != "allow" {
+		t.Fatalf("declared non-enforcing transport should continue; got %q", d.Action)
+	}
+	if d.Check == nil {
+		t.Fatal("non-enforcing continuation must record the would-have-blocked check")
+	}
+
+	// Every transport NOT declared non-enforcing still enforces — the
+	// omission loophole is closed.
+	for _, transport := range []TransportType{TransportMCP, TransportCLI, TransportGRPC, "bogus", ""} {
+		d, err := p.Evaluate(context.Background(), &GovernanceRequest{
+			ToolName: "read_file", Transport: transport, TenantID: "t1",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if d.Action != ActionCheckIndeterminate {
+			t.Fatalf("transport %q: action = %q, want %q — omission must not disable enforcement", transport, d.Action, ActionCheckIndeterminate)
+		}
+		if d.Allowed() {
+			t.Fatalf("transport %q: check_indeterminate must not allow execution", transport)
+		}
 	}
 }

@@ -45,14 +45,8 @@ func TestA2AConformanceDeclaration(t *testing.T) {
 }
 
 func TestA2ADefaultFailClosed(t *testing.T) {
-	found := false
-	for _, tr := range governance.DefaultFailClosedTransports {
-		if tr == governance.TransportA2A {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Fatal("TransportA2A must default to fail-closed for preview lifecycle")
-	}
+	// Under the inverted enforcement model there is no list to check:
+	// TransportA2A must enforce required checks by default — an evaluator
+	// error blocks governed tasks with check_indeterminate.
+	requireTransportFailsClosedByDefault(t, governance.TransportA2A)
 }

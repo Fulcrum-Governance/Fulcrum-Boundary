@@ -63,6 +63,23 @@ jobs:
         working-directory: verify-witnessed
         run: go test ./... -count=1 -race -cover
 
+  codeexec-sandbox:
+    name: test codeexec container sandbox
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.26.5'
+          cache: true
+      # ubuntu-latest provides a Docker daemon. The integration tests skip
+      # when no runtime exists but fail when CI=true and none is available,
+      # so this job is the proof that they actually run.
+      - name: pull sandbox image
+        run: docker pull python:3.11-slim
+      - name: run codeexec sandbox tests
+        run: go test ./adapters/codeexec/ -count=1 -v
+
   examples:
     name: build examples
     runs-on: ubuntu-latest
@@ -225,6 +242,7 @@ jobs:
       - test
       - grpc-adapter
       - verify-witnessed
+      - codeexec-sandbox
       - examples
       - cross-verifier
       - lint
