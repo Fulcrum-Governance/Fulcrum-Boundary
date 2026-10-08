@@ -9,6 +9,8 @@
 package managedagentsconformance
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -34,7 +36,18 @@ type Transcript struct {
 	Budget         budgetEvidence     `json:"budget"`
 	Trust          trustEvidence      `json:"trust"`
 	FailClosed     failClosedEvidence `json:"fail_closed"`
+	Provenance     *provenanceLinkage `json:"provenance,omitempty"`
+	NotObserved    []string           `json:"criteria_not_observed,omitempty"`
 	TranscriptHash string             `json:"transcript_sha256,omitempty"`
+}
+
+// provenanceLinkage is the transcript-embedded link to the run's
+// provenance.json and sanitized raw event log. SessionID is the same
+// pseudonym as the top-level session_id; no raw identifier appears.
+type provenanceLinkage struct {
+	Mode         string `json:"mode"`
+	SessionID    string `json:"session_id"`
+	RawLogSHA256 string `json:"raw_log_sha256"`
 }
 
 type transcriptEvent struct {
@@ -63,8 +76,10 @@ type decisionRecord struct {
 }
 
 type budgetEvidence struct {
-	Ceiling float64 `json:"ceiling"`
-	Used    float64 `json:"used"`
+	Ceiling       float64 `json:"ceiling"`
+	Used          float64 `json:"used"`
+	UsageObserved bool    `json:"usage_observed"`
+	SpendUnknown  bool    `json:"spend_unknown,omitempty"`
 }
 
 type trustEvidence struct {
@@ -170,10 +185,19 @@ func CheckThreadTracking(tr Transcript) error {
 	return nil
 }
 
-// CheckBudget requires a positive ceiling with usage inside it.
+// CheckBudget requires a positive ceiling with usage inside it AND observed
+// usage evidence: a recorded Used of 0 means nothing unless upstream usage
+// actually arrived, and a run that flagged spend as unknown can never satisfy
+// the criterion.
 func CheckBudget(tr Transcript) error {
 	if tr.Budget.Ceiling <= 0 {
 		return fmt.Errorf("budget ceiling missing: %+v", tr.Budget)
+	}
+	if tr.Budget.SpendUnknown {
+		return fmt.Errorf("spend was recorded as unknown; not budget evidence: %+v", tr.Budget)
+	}
+	if !tr.Budget.UsageObserved {
+		return fmt.Errorf("no observed usage evidence; used=%v is not evidence: %+v", tr.Budget.Used, tr.Budget)
 	}
 	if tr.Budget.Used < 0 || tr.Budget.Used > tr.Budget.Ceiling {
 		return fmt.Errorf("budget usage outside ceiling: %+v", tr.Budget)
@@ -228,6 +252,78 @@ func CheckFailClosed(tr Transcript) error {
 func CheckLiveMode(tr Transcript) error {
 	if tr.Mode != "live" {
 		return fmt.Errorf("live conformance requires a mode=live transcript, got mode=%q", tr.Mode)
+	}
+	return nil
+}
+
+// provenanceFile mirrors the linkage fields of the driver's provenance.json.
+type provenanceFile struct {
+	Mode                string `json:"mode"`
+	TranscriptSessionID string `json:"transcript_session_id"`
+	TranscriptSHA256    string `json:"transcript_sha256"`
+	RawLogFile          string `json:"raw_log_file"`
+	RawLogSHA256        string `json:"raw_log_sha256"`
+}
+
+// CheckLiveProvenance verifies the transcript ↔ provenance ↔ raw-log linkage
+// for a live transcript. transcriptPath points at the sanitized transcript;
+// provenance.json and the raw event log must sit in the same directory. The
+// check rejects when:
+//   - the transcript carries no provenance block or a non-live one;
+//   - provenance.json is missing, unreadable, or says mode=stub (or anything
+//     but live);
+//   - the pseudonymized session ids do not all agree;
+//   - the SHA-256 recorded for the sanitized raw log (in the transcript and
+//     in provenance.json) does not match the raw log file's real digest.
+//
+// This prevents accidents — picking up a stub or mismatched evidence set — it
+// is not tamper evidence: a determined human can still forge the files.
+func CheckLiveProvenance(tr Transcript, transcriptPath string) error {
+	if tr.Mode != "live" {
+		return fmt.Errorf("live conformance requires a mode=live transcript, got mode=%q", tr.Mode)
+	}
+	if tr.Provenance == nil {
+		return fmt.Errorf("live transcript carries no provenance linkage block")
+	}
+	if tr.Provenance.Mode != "live" {
+		return fmt.Errorf("transcript provenance mode=%q, want live", tr.Provenance.Mode)
+	}
+	if tr.Provenance.SessionID == "" || tr.Provenance.SessionID != tr.SessionID {
+		return fmt.Errorf("transcript provenance session id %q does not match transcript session id %q", tr.Provenance.SessionID, tr.SessionID)
+	}
+	dir := filepath.Dir(transcriptPath)
+	provBytes, err := os.ReadFile(filepath.Join(dir, "provenance.json"))
+	if err != nil {
+		return fmt.Errorf("live transcript requires a sibling provenance.json: %w", err)
+	}
+	var prov provenanceFile
+	if err := json.Unmarshal(provBytes, &prov); err != nil {
+		return fmt.Errorf("parse provenance.json: %w", err)
+	}
+	if prov.Mode != "live" {
+		return fmt.Errorf("provenance.json mode=%q contradicts live transcript", prov.Mode)
+	}
+	if prov.TranscriptSessionID == "" || prov.TranscriptSessionID != tr.SessionID {
+		return fmt.Errorf("provenance session linkage %q does not match transcript session id %q", prov.TranscriptSessionID, tr.SessionID)
+	}
+	if tr.TranscriptHash != "" && prov.TranscriptSHA256 != "" && prov.TranscriptSHA256 != tr.TranscriptHash {
+		return fmt.Errorf("provenance transcript_sha256 %q does not match transcript %q", prov.TranscriptSHA256, tr.TranscriptHash)
+	}
+	rawName := prov.RawLogFile
+	if rawName == "" {
+		rawName = "events.raw.jsonl"
+	}
+	rawBytes, err := os.ReadFile(filepath.Join(dir, filepath.Base(rawName)))
+	if err != nil {
+		return fmt.Errorf("live transcript requires the sibling raw event log %q: %w", rawName, err)
+	}
+	sum := sha256.Sum256(rawBytes)
+	actual := hex.EncodeToString(sum[:])
+	if tr.Provenance.RawLogSHA256 != actual {
+		return fmt.Errorf("transcript raw_log_sha256 %q does not match %s digest %q", tr.Provenance.RawLogSHA256, rawName, actual)
+	}
+	if prov.RawLogSHA256 != "" && prov.RawLogSHA256 != actual {
+		return fmt.Errorf("provenance raw_log_sha256 %q does not match %s digest %q", prov.RawLogSHA256, rawName, actual)
 	}
 	return nil
 }

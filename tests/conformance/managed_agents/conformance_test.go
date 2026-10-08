@@ -76,10 +76,17 @@ func TestFailClosedBehaviorOnPipelineError(t *testing.T) {
 // TestLiveModeTranscriptOnly rejects anything but a live-mode transcript when
 // the live conformance gate is enabled. A stub-mode transcript is offline
 // fixture evidence produced by the session driver; it exercises this harness
-// but must never be accepted as live conformance evidence.
+// but must never be accepted as live conformance evidence. The transcript's
+// provenance linkage must also check out: a mode=live transcript whose
+// provenance.json says stub, or whose recorded raw-log hash does not match
+// the sanitized raw event log beside it, is rejected. (Accident prevention,
+// not tamper evidence — a determined human can still forge files.)
 func TestLiveModeTranscriptOnly(t *testing.T) {
-	tr := loadTranscript(t)
+	tr, _, path := loadTranscriptWithPath(t)
 	if err := CheckLiveMode(tr); err != nil {
+		t.Fatal(err)
+	}
+	if err := CheckLiveProvenance(tr, path); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -93,11 +100,17 @@ func TestSanitizedTranscriptEvidence(t *testing.T) {
 
 func loadTranscript(t *testing.T) Transcript {
 	t.Helper()
-	tr, _ := loadTranscriptBytes(t)
+	tr, _, _ := loadTranscriptWithPath(t)
 	return tr
 }
 
 func loadTranscriptBytes(t *testing.T) (Transcript, []byte) {
+	t.Helper()
+	tr, data, _ := loadTranscriptWithPath(t)
+	return tr, data
+}
+
+func loadTranscriptWithPath(t *testing.T) (Transcript, []byte, string) {
 	t.Helper()
 	if os.Getenv(enableEnv) != "true" {
 		t.Skip(enableEnv + " not set")
@@ -110,5 +123,5 @@ func loadTranscriptBytes(t *testing.T) (Transcript, []byte) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return tr, data
+	return tr, data, path
 }

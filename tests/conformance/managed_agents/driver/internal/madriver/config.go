@@ -15,6 +15,7 @@ package madriver
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -63,14 +64,21 @@ type Config struct {
 	MaxTurns        int
 	MaxOutputTokens int
 	Timeout         time.Duration
-	AckSpend        bool // --i-understand-this-spends-money
-	AgentID         string
-	EnvironmentID   string
-	APIBase         string
-	Prompt          string
-	DenyTool        string
-	ErrorTool       string
-	TenantID        string
+	// UsageBlindEvents and UsageBlindWindow bound how long the stream may run
+	// without any usable usage signal before the driver fails closed.
+	UsageBlindEvents int
+	UsageBlindWindow time.Duration
+	AckSpend         bool // --i-understand-this-spends-money
+	// AllowInsecureAPIBase bypasses the https+api.anthropic.com --api-base
+	// check. It exists for tests only; a live run must never need it.
+	AllowInsecureAPIBase bool
+	AgentID              string
+	EnvironmentID        string
+	APIBase              string
+	Prompt               string
+	DenyTool             string
+	ErrorTool            string
+	TenantID             string
 }
 
 // DefaultOutDir returns the default evidence output directory,
@@ -96,17 +104,19 @@ func LiveGoPath() string {
 // DefaultConfig returns the flag defaults shared by main and tests.
 func DefaultConfig() Config {
 	return Config{
-		Mode:            ModeStub,
-		OutDir:          DefaultOutDir(),
-		MaxSpendUSD:     5.00,
-		MaxTurns:        6,
-		MaxOutputTokens: 1024,
-		Timeout:         10 * time.Minute,
-		APIBase:         DefaultAPIBase,
-		Prompt:          "Read the repository README and summarize it in one paragraph.",
-		DenyTool:        defaultDenyTool,
-		ErrorTool:       defaultErrTool,
-		TenantID:        "ma-conformance",
+		Mode:             ModeStub,
+		OutDir:           DefaultOutDir(),
+		MaxSpendUSD:      5.00,
+		MaxTurns:         6,
+		MaxOutputTokens:  1024,
+		Timeout:          10 * time.Minute,
+		UsageBlindEvents: 8,
+		UsageBlindWindow: 60 * time.Second,
+		APIBase:          DefaultAPIBase,
+		Prompt:           "Read the repository README and summarize it in one paragraph.",
+		DenyTool:         defaultDenyTool,
+		ErrorTool:        defaultErrTool,
+		TenantID:         "ma-conformance",
 	}
 }
 
@@ -138,31 +148,53 @@ func (c Config) validateCommon(repoRoot string) error {
 	if c.Timeout <= 0 {
 		return fmt.Errorf("--timeout must be > 0, got %s", c.Timeout)
 	}
+	if c.UsageBlindEvents <= 0 {
+		return fmt.Errorf("--usage-blind-events must be > 0, got %d", c.UsageBlindEvents)
+	}
+	if c.UsageBlindWindow <= 0 {
+		return fmt.Errorf("--usage-blind-window must be > 0, got %s", c.UsageBlindWindow)
+	}
 	return nil
 }
 
-// checkLiveGates enforces the three live-mode gates. Every gate must hold or
-// the run refuses to start; the upstream key is checked for presence only and
+// checkLiveGates enforces the live-mode gates in order: the acknowledgement
+// flag, the operator gate file, the --api-base policy, and only then the
+// upstream key environment variable — the key value must not be read when an
+// earlier gate has already failed. The key is checked for presence only and
 // never logged or persisted.
 func checkLiveGates(c Config, getenv func(string) string, fileExists func(string) bool) error {
-	var missing []string
 	if !c.AckSpend {
-		missing = append(missing, "flag --i-understand-this-spends-money")
+		return errors.New("live mode refused: missing flag --i-understand-this-spends-money")
 	}
 	if !fileExists(LiveGoPath()) {
-		missing = append(missing, "gate file "+LiveGoPath())
+		return errors.New("live mode refused: missing gate file " + LiveGoPath())
+	}
+	if err := checkAPIBase(c); err != nil {
+		return err
 	}
 	if strings.TrimSpace(getenv(UpstreamKeyEnv)) == "" {
-		missing = append(missing, "env "+UpstreamKeyEnv)
-	}
-	if len(missing) > 0 {
-		return fmt.Errorf("live mode refused: missing %s", strings.Join(missing, "; "))
+		return errors.New("live mode refused: missing env " + UpstreamKeyEnv)
 	}
 	if strings.TrimSpace(c.AgentID) == "" {
 		return errors.New("live mode requires --agent (upstream managed agent id)")
 	}
 	if strings.TrimSpace(c.EnvironmentID) == "" {
 		return errors.New("live mode requires --environment-id (upstream environment id)")
+	}
+	return nil
+}
+
+// checkAPIBase refuses any --api-base other than the documented upstream
+// before the first request can be built, so a mistyped or hostile base can
+// never receive the key. --allow-insecure-api-base exists only so tests may
+// point a fake upstream at httptest listeners.
+func checkAPIBase(c Config) error {
+	if c.AllowInsecureAPIBase {
+		return nil
+	}
+	u, err := url.Parse(c.APIBase)
+	if err != nil || u.Scheme != "https" || u.Host != "api.anthropic.com" {
+		return fmt.Errorf("live mode requires --api-base https://api.anthropic.com, got %q", c.APIBase)
 	}
 	return nil
 }
@@ -181,13 +213,15 @@ func (c Config) validate(repoRoot string, getenv func(string) string, fileExists
 }
 
 // outDirOutsideRepo rejects any output directory that resolves to the repo
-// root or a path inside it.
+// root or a path inside it. Both paths are symlink-resolved first — including
+// the deepest existing ancestor of a not-yet-created out-dir — so a symlink
+// cannot smuggle the evidence directory back inside the worktree.
 func outDirOutsideRepo(outDir, repoRoot string) error {
-	absOut, err := filepath.Abs(outDir)
+	absOut, err := resolveSymlinks(outDir)
 	if err != nil {
 		return fmt.Errorf("resolve --out-dir: %w", err)
 	}
-	absRoot, err := filepath.Abs(repoRoot)
+	absRoot, err := resolveSymlinks(repoRoot)
 	if err != nil {
 		return fmt.Errorf("resolve repo root: %w", err)
 	}
@@ -201,6 +235,34 @@ func outDirOutsideRepo(outDir, repoRoot string) error {
 		return fmt.Errorf("--out-dir %q must be outside the git worktree %q", absOut, absRoot)
 	}
 	return nil
+}
+
+// resolveSymlinks returns the absolute, symlink-resolved form of path. When
+// path does not exist yet, it resolves the deepest existing ancestor and
+// re-appends the missing tail so callers can validate directories that will
+// only be created later.
+func resolveSymlinks(path string) (string, error) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+	dir := abs
+	var tail []string
+	for {
+		resolved, err := filepath.EvalSymlinks(dir)
+		if err == nil {
+			for i := len(tail) - 1; i >= 0; i-- {
+				resolved = filepath.Join(resolved, tail[i])
+			}
+			return resolved, nil
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "", fmt.Errorf("no existing ancestor for %q", path)
+		}
+		tail = append(tail, filepath.Base(dir))
+		dir = parent
+	}
 }
 
 // driverRepoRoot walks up from this source file to the directory containing

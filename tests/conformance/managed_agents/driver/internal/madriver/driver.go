@@ -2,6 +2,8 @@ package madriver
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,11 +25,14 @@ const (
 	StopCompleted = "completed"
 	// StopSpendAbort means the guard aborted at 80 percent of the ceiling.
 	StopSpendAbort = "aborted_spend_80_percent"
-	// StopSpendUnknown means a usage-bearing event arrived without spend data;
-	// the session was stopped fail-closed.
+	// StopSpendUnknown means a usage-bearing event arrived without spend data
+	// or the stream ran too long without any usage signal; the session was
+	// stopped fail-closed.
 	StopSpendUnknown = "stopped_spend_unknown"
 	// StopMaxTurns means the governed-turn cap was reached.
 	StopMaxTurns = "aborted_max_turns"
+	// StopOutputCap means an observed request exceeded --max-output-tokens.
+	StopOutputCap = "aborted_output_token_cap"
 )
 
 // Deps injects the environment seams so tests can exercise live-mode gates and
@@ -69,6 +74,9 @@ type Result struct {
 	RawLogPath     string
 	ProvenancePath string
 	SecretHits     []string
+	// NotObserved lists the conformance criteria the run produced no evidence
+	// for; the driver reports them rather than fabricating evidence.
+	NotObserved []string
 }
 
 // recorder accumulates the evidence the transcript is built from.
@@ -129,6 +137,18 @@ type recordingForwarder struct {
 
 func (f *recordingForwarder) SendConfirmation(ctx context.Context, sessionID string, confirmation managedagents.ToolConfirmation) error {
 	err := f.inner.SendConfirmation(ctx, sessionID, confirmation)
+	// ErrConfirmationNotAsked means the upstream never paused for this call,
+	// so no confirmation could be delivered. The resolution is still recorded
+	// — explicitly as NOT delivered — rather than silently succeeding or
+	// failing the governed stream.
+	if errors.Is(err, ErrConfirmationNotAsked) {
+		f.rec.mu.Lock()
+		f.rec.confirmations = append(f.rec.confirmations, confirmation)
+		f.rec.confirmByID[confirmation.ToolUseID] = confirmation.Result
+		f.rec.deliveredByID[confirmation.ToolUseID] = false
+		f.rec.mu.Unlock()
+		return nil
+	}
 	if err != nil {
 		return err
 	}
@@ -225,10 +245,12 @@ func Run(ctx context.Context, cfg Config, deps Deps, logw io.Writer) (Result, er
 
 	var upstream Upstream
 	if cfg.Mode == ModeLive {
-		// The key is read once, held in a variable, and passed only to the
-		// upstream transport. It is never written to disk, a log, or a
-		// transcript, and every serialized line still passes the redactor.
+		// The key is read once, held in a variable, registered with the
+		// redactor so the exact value (and its edge fragments) can never reach
+		// an output file, and passed only to the upstream transport. It is
+		// never written to disk, a log, or a transcript.
 		key := deps.Getenv(UpstreamKeyEnv)
+		registerSecretValue(key)
 		upstream = deps.NewLive(cfg.APIBase, key)
 	} else {
 		upstream = deps.NewStub(cfg)
@@ -238,11 +260,26 @@ func Run(ctx context.Context, cfg Config, deps Deps, logw io.Writer) (Result, er
 	}
 	defer upstream.Close()
 
+	// stopSession asks the upstream to halt a session the driver is aborting.
+	// It uses its own short deadline because the run context may already be
+	// expired (wall-clock timeout path).
+	stopSession := func(sessionID string) {
+		stopCtx, stopCancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer stopCancel()
+		if err := upstream.Stop(stopCtx, sessionID); err != nil {
+			fmt.Fprintf(logw, "warning: upstream stop for session %s: %s\n", sessionID, RedactString(err.Error()))
+		}
+	}
+
+	// The wall-clock deadline covers the WHOLE run — session create, stream
+	// open, prompt send, and the proxied stream read — not just Proxy.
 	started := time.Now().UTC()
-	session, err := upstream.CreateSession(ctx, CreateSessionParams{
+	runCtx, cancel := context.WithTimeout(ctx, cfg.Timeout)
+	defer cancel()
+
+	session, err := upstream.CreateSession(runCtx, CreateSessionParams{
 		AgentID:       cfg.AgentID,
 		EnvironmentID: cfg.EnvironmentID,
-		Prompt:        cfg.Prompt,
 		BudgetUSD:     cfg.MaxSpendUSD,
 	})
 	if err != nil {
@@ -255,7 +292,7 @@ func Run(ctx context.Context, cfg Config, deps Deps, logw io.Writer) (Result, er
 	}
 
 	rec := &recorder{confirmByID: map[string]string{}, deliveredByID: map[string]bool{}}
-	guard := newSpendGuard(cfg.MaxSpendUSD, cfg.MaxOutputTokens)
+	guard := newSpendGuard(cfg.MaxSpendUSD, cfg.MaxOutputTokens, cfg.UsageBlindEvents, cfg.UsageBlindWindow)
 	trust := governance.NewStandaloneTrustBackend(governance.StandaloneTrustConfig{})
 	pipeline := governance.NewPipeline(governance.PipelineConfig{
 		GatewayVersion: "ma-conformance-driver",
@@ -273,26 +310,35 @@ func Run(ctx context.Context, cfg Config, deps Deps, logw io.Writer) (Result, er
 	resolver := &managedagents.ToolResolver{Adapter: adapter, Pipeline: pipeline, Tracker: tracker, Forwarder: forwarder}
 	proxy := managedagents.NewSessionProxy(resolver, tracker)
 
-	stream, err := upstream.OpenEventStream(ctx, session.ID)
+	stream, err := upstream.OpenEventStream(runCtx, session.ID)
 	if err != nil {
+		stopSession(session.ID)
 		return Result{}, fmt.Errorf("open session event stream: %w", err)
 	}
-	// Per the upstream docs the stream must be open before events are sent.
-	if err := upstream.SendEvents(ctx, session.ID, []map[string]any{{
+	// The prompt is sent exactly once — here, AFTER the event stream is open
+	// — so early tool-use and usage events are not missed and governance is
+	// not blind to them. Live session creation carries no initial_events.
+	if err := upstream.SendEvents(runCtx, session.ID, []map[string]any{{
 		"type":    "user.message",
-		"content": []map[string]any{{"type": "text", "text": cfg.Prompt}},
+		"content": []map[string]any{{"type": "text", "text": cfg.effectivePrompt()}},
 	}}); err != nil {
+		stopSession(session.ID)
 		return Result{}, fmt.Errorf("send initial user.message: %w", err)
 	}
 
-	runCtx, cancel := context.WithTimeout(ctx, cfg.Timeout)
-	defer cancel()
 	proxyErr := proxy.Proxy(runCtx, &guardedSource{inner: stream, guard: guard, maxTurns: cfg.MaxTurns}, &recordingSink{rec: rec})
 	stopReason := classifyStop(proxyErr)
+	if proxyErr != nil {
+		// Every abort path — spend guard, turn/output caps, timeout, stream
+		// error — tells the upstream to halt rather than leaving a paid
+		// session running.
+		stopSession(session.ID)
+	}
 	fmt.Fprintf(logw, "mode=%s session=%s stop=%s spend=$%.4f\n", cfg.Mode, session.ID, stopReason, guard.used())
 
 	res := Result{Mode: cfg.Mode, StopReason: stopReason, SpendUSD: guard.used()}
-	writeErr := writeOutputs(cfg, deps, rec, session, guard, trust, upstream, started, stopReason, &res)
+	spendUnknown := errors.Is(proxyErr, ErrSpendUnknown) || !guard.observedUsage()
+	writeErr := writeOutputs(cfg, deps, rec, session, guard, trust, upstream, started, stopReason, spendUnknown, &res)
 	if writeErr != nil {
 		return res, writeErr
 	}
@@ -307,10 +353,21 @@ func Run(ctx context.Context, cfg Config, deps Deps, logw io.Writer) (Result, er
 		return res, errors.New("secret-like content detected in output directory")
 	}
 
-	if errors.Is(proxyErr, ErrSpendUnknown) {
+	if len(res.NotObserved) > 0 {
+		fmt.Fprintf(logw, "criteria not observed: %s\n", strings.Join(res.NotObserved, ", "))
+	}
+
+	switch {
+	case proxyErr == nil,
+		errors.Is(proxyErr, ErrSpendAbort),
+		errors.Is(proxyErr, ErrMaxTurns),
+		errors.Is(proxyErr, ErrOutputTokenCap):
+		return res, nil
+	default:
+		// Fail-closed stops and infrastructure failures surface as errors;
+		// the evidence written above still stands.
 		return res, proxyErr
 	}
-	return res, nil
 }
 
 func classifyStop(err error) string {
@@ -323,20 +380,23 @@ func classifyStop(err error) string {
 		return StopSpendUnknown
 	case errors.Is(err, ErrMaxTurns):
 		return StopMaxTurns
+	case errors.Is(err, ErrOutputTokenCap):
+		return StopOutputCap
 	default:
 		return "error: " + RedactString(err.Error())
 	}
 }
 
 // writeOutputs emits the three evidence artifacts under --out-dir.
-func writeOutputs(cfg Config, deps Deps, rec *recorder, session *SessionInfo, guard *spendGuard, trust *governance.StandaloneTrustBackend, upstream Upstream, started time.Time, stopReason string, res *Result) error {
-	rawPath, err := writeRawLog(cfg.OutDir, rec, upstream.RequestIDs())
+func writeOutputs(cfg Config, deps Deps, rec *recorder, session *SessionInfo, guard *spendGuard, trust *governance.StandaloneTrustBackend, upstream Upstream, started time.Time, stopReason string, spendUnknown bool, res *Result) error {
+	rawPath, rawHash, err := writeRawLog(cfg.OutDir, rec, upstream.RequestIDs())
 	if err != nil {
 		return err
 	}
 	res.RawLogPath = rawPath
 
-	doc := buildTranscript(cfg, rec, session, guard, trust)
+	doc := buildTranscript(cfg, rec, session, guard, trust, spendUnknown, rawHash)
+	res.NotObserved = doc.NotObserved
 	transcriptPath, err := writeTranscriptFile(cfg.OutDir, doc)
 	if err != nil {
 		return err
@@ -344,18 +404,21 @@ func writeOutputs(cfg Config, deps Deps, rec *recorder, session *SessionInfo, gu
 	res.TranscriptPath = transcriptPath
 
 	prov := provenanceDoc{
-		Mode:               cfg.Mode,
-		SessionID:          session.ID,
-		AgentID:            session.AgentID,
-		StartedUTC:         started.Format(time.RFC3339),
-		EndedUTC:           time.Now().UTC().Format(time.RFC3339),
-		DriverCommit:       buildRevision(),
-		AdapterCommit:      buildRevision(),
-		TranscriptSHA256:   doc.TranscriptHash,
-		UpstreamRequestIDs: upstream.RequestIDs(),
-		BetaHeader:         BetaHeader,
-		StopReason:         stopReason,
-		SpendUSD:           guard.used(),
+		Mode:                cfg.Mode,
+		SessionID:           session.ID,
+		TranscriptSessionID: doc.SessionID,
+		AgentID:             session.AgentID,
+		StartedUTC:          started.Format(time.RFC3339),
+		EndedUTC:            time.Now().UTC().Format(time.RFC3339),
+		DriverCommit:        buildRevision(),
+		AdapterCommit:       buildRevision(),
+		TranscriptSHA256:    doc.TranscriptHash,
+		RawLogFile:          filepath.Base(rawPath),
+		RawLogSHA256:        rawHash,
+		UpstreamRequestIDs:  upstream.RequestIDs(),
+		BetaHeader:          BetaHeader,
+		StopReason:          stopReason,
+		SpendUSD:            guard.used(),
 	}
 	provPath, err := writeProvenanceFile(cfg.OutDir, prov)
 	if err != nil {
@@ -367,17 +430,31 @@ func writeOutputs(cfg Config, deps Deps, rec *recorder, session *SessionInfo, gu
 
 // buildTranscript converts recorded evidence into the sanitized transcript
 // document: every identifier is pseudonymized and every string is redacted.
-func buildTranscript(cfg Config, rec *recorder, session *SessionInfo, guard *spendGuard, trust *governance.StandaloneTrustBackend) *transcriptDoc {
+// session_created_through_boundary is DERIVED from observed proxy handling —
+// at least one stream event for the created session must have flowed through
+// the governed path — never set as a constant.
+func buildTranscript(cfg Config, rec *recorder, session *SessionInfo, guard *spendGuard, trust *governance.StandaloneTrustBackend, spendUnknown bool, rawLogSHA256 string) *transcriptDoc {
 	rec.mu.Lock()
 	defer rec.mu.Unlock()
 
+	sessionID := pseudonym("sess", session.ID)
 	doc := &transcriptDoc{
 		Sanitized:      true,
 		Mode:           cfg.Mode,
-		SessionCreated: true,
-		SessionID:      pseudonym("sess", session.ID),
+		SessionCreated: sessionObserved(rec, session.ID),
+		SessionID:      sessionID,
 		AgentID:        pseudonym("agent", session.AgentID),
-		Budget:         budgetDoc{Ceiling: cfg.MaxSpendUSD, Used: guard.used()},
+		Budget: budgetDoc{
+			Ceiling:       cfg.MaxSpendUSD,
+			Used:          guard.used(),
+			UsageObserved: guard.observedUsage(),
+			SpendUnknown:  spendUnknown,
+		},
+		Provenance: &provenanceLink{
+			Mode:         cfg.Mode,
+			SessionID:    sessionID,
+			RawLogSHA256: rawLogSHA256,
+		},
 	}
 	for _, event := range rec.events {
 		doc.Events = append(doc.Events, transcriptEvent{
@@ -434,7 +511,100 @@ func buildTranscript(cfg Config, rec *recorder, session *SessionInfo, guard *spe
 			doc.Trust.Score = 1.0
 		}
 	}
+	doc.NotObserved = unobservedCriteria(doc)
 	return doc
+}
+
+// sessionObserved reports whether at least one event for the created session
+// actually flowed through the Boundary-governed stream — the observable
+// evidence behind session_created_through_boundary.
+func sessionObserved(rec *recorder, sessionID string) bool {
+	for _, event := range rec.events {
+		if event.SessionID == sessionID {
+			return true
+		}
+	}
+	return false
+}
+
+// unobservedCriteria reports which conformance criteria have no evidence in
+// the transcript. The driver reports these as NOT OBSERVED rather than
+// synthesizing evidence — for example session.thread_created or
+// agent.mcp_tool_use may never arrive if the upstream agent does not create a
+// thread or hold an MCP tool, and whether prompting can reliably induce them
+// is UNVERIFIED.
+func unobservedCriteria(doc *transcriptDoc) []string {
+	var missing []string
+	if !doc.SessionCreated {
+		missing = append(missing, "session_created_through_boundary")
+	}
+	allow, deny := false, false
+	for _, c := range doc.Confirmations {
+		switch c.Result {
+		case managedagents.ConfirmationAllow:
+			allow = true
+		case managedagents.ConfirmationDeny:
+			deny = true
+		}
+	}
+	if !allow {
+		missing = append(missing, "tool_confirmation_allow")
+	}
+	if !deny {
+		missing = append(missing, "tool_confirmation_deny")
+	}
+	mcp, threadCreated := false, false
+	for _, e := range doc.Events {
+		if e.Type == managedagents.EventAgentMCPToolUse {
+			mcp = true
+		}
+		if e.Type == managedagents.EventThreadCreated {
+			threadCreated = true
+		}
+	}
+	if !mcp {
+		missing = append(missing, "mcp_tool_use_event")
+	}
+	if !threadCreated {
+		missing = append(missing, "thread_creation_and_tracking")
+	}
+	if !doc.Budget.UsageObserved || doc.Budget.SpendUnknown {
+		missing = append(missing, "budget_tracking_against_ceiling")
+	}
+	if !doc.Trust.Tracked {
+		missing = append(missing, "trust_tracking_in_decisions")
+	}
+	metadataOK := len(doc.Decisions) > 0
+	for _, d := range doc.Decisions {
+		if d.AgentID == "" || d.SessionID == "" || d.ThreadID == "" || d.Tool == "" || d.Action == "" || d.Rule == "" || d.Trust == 0 {
+			metadataOK = false
+		}
+	}
+	if !metadataOK {
+		missing = append(missing, "decision_metadata")
+	}
+	if !doc.FailClosed.Observed || doc.FailClosed.Action != managedagents.ConfirmationDeny {
+		missing = append(missing, "fail_closed_on_pipeline_error")
+	}
+	return missing
+}
+
+// effectivePrompt returns the user.message the driver sends. In live mode an
+// operator-supplied --prompt wins; otherwise the driver runs its conformance
+// scenario prompt, which instructs the agent to exercise the tools the
+// scenario names (the referenced upstream agent must actually be configured
+// with them — see the README driver section).
+func (c Config) effectivePrompt() string {
+	if c.Mode == ModeLive && c.Prompt == DefaultConfig().Prompt {
+		return fmt.Sprintf(
+			"Governance conformance probe. Perform these steps in order, then stop: "+
+				"(1) call read_file on README.md and summarize it in one sentence; "+
+				"(2) call %q once; (3) call %q once; (4) if an MCP tool is available, call it once; "+
+				"(5) if the session supports spawning a thread, open one for a one-line note. "+
+				"Report the outcome of each step.",
+			c.DenyTool, c.ErrorTool)
+	}
+	return c.Prompt
 }
 
 // toolForConfirmation finds the tool name recorded for a confirmation's
@@ -461,12 +631,13 @@ func decisionToolUseID(rec *recorder, d observedDecision) string {
 }
 
 // writeRawLog writes every observed event, confirmation, and audit event as
-// redacted JSONL to <out-dir>/events.raw.jsonl. The file lives outside the
-// repo and is never committed; it exists for operator inspection only.
-func writeRawLog(dir string, rec *recorder, requestIDs []string) (string, error) {
+// redacted JSONL to <out-dir>/events.raw.jsonl and returns the file path plus
+// the SHA-256 of the exact sanitized bytes written. The file lives outside
+// the repo and is never committed; it exists for operator inspection only.
+func writeRawLog(dir string, rec *recorder, requestIDs []string) (path string, sha256Hex string, err error) {
 	rec.mu.Lock()
 	defer rec.mu.Unlock()
-	path := filepath.Join(dir, "events.raw.jsonl")
+	path = filepath.Join(dir, "events.raw.jsonl")
 	var b strings.Builder
 	write := func(kind string, v any) {
 		raw, err := json.Marshal(v)
@@ -485,10 +656,12 @@ func writeRawLog(dir string, rec *recorder, requestIDs []string) (string, error)
 	for _, a := range rec.auditEvents {
 		write("audit", a)
 	}
-	if err := os.WriteFile(path, []byte(b.String()), 0o600); err != nil {
-		return "", fmt.Errorf("write raw event log: %w", err)
+	content := []byte(b.String())
+	sum := sha256.Sum256(content)
+	if err := os.WriteFile(path, content, 0o600); err != nil {
+		return "", "", fmt.Errorf("write raw event log: %w", err)
 	}
-	return path, nil
+	return path, hex.EncodeToString(sum[:]), nil
 }
 
 // buildRevision returns the VCS revision stamped into the binary by the Go

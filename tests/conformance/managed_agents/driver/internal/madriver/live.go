@@ -8,10 +8,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/fulcrum-governance/fulcrum-boundary/adapters/managedagents"
 )
@@ -33,6 +35,20 @@ import (
 //   - Confirmations: {type:"user.tool_confirmation", tool_use_id, result:
 //     "allow"|"deny", deny_message?}; upstream rejects a confirmation with 400
 //     when the referenced call's evaluated_permission is not "ask".
+//
+// Transport timeouts for the live HTTP client. They are package variables so
+// tests can shorten them; production callers use the defaults. The wall-clock
+// run deadline is separate (context on every request).
+var (
+	liveDialTimeout           = 10 * time.Second
+	liveTLSHandshakeTimeout   = 10 * time.Second
+	liveResponseHeaderTimeout = 30 * time.Second
+	// liveStreamIdleTimeout bounds how long the SSE body may go silent before
+	// the stream is declared dead — a hung upstream must not keep a paid
+	// session (or the driver) alive forever.
+	liveStreamIdleTimeout = 90 * time.Second
+)
+
 type liveUpstream struct {
 	base   string
 	key    string
@@ -40,6 +56,8 @@ type liveUpstream struct {
 
 	mu         sync.Mutex
 	requestIDs []string
+	// stream is the open SSE response body so Close can release it.
+	stream io.Closer
 	// pendingAsk holds tool-use event ids the upstream told us are awaiting a
 	// confirmation (evaluated_permission == "ask", plus ids named by
 	// session.status_idle stop_reason.requires_action). The forwarder refuses
@@ -53,9 +71,13 @@ type liveUpstream struct {
 
 func newLiveUpstream(base, key string) *liveUpstream {
 	return &liveUpstream{
-		base:       strings.TrimRight(base, "/"),
-		key:        key,
-		client:     &http.Client{},
+		base: strings.TrimRight(base, "/"),
+		key:  key,
+		client: &http.Client{Transport: &http.Transport{
+			DialContext:           (&net.Dialer{Timeout: liveDialTimeout, KeepAlive: 30 * time.Second}).DialContext,
+			TLSHandshakeTimeout:   liveTLSHandshakeTimeout,
+			ResponseHeaderTimeout: liveResponseHeaderTimeout,
+		}},
 		pendingAsk: map[string]bool{},
 		delivered:  map[string]bool{},
 	}
@@ -68,6 +90,10 @@ func (l *liveUpstream) CreateSession(ctx context.Context, params CreateSessionPa
 	if cents < 1 {
 		cents = 1
 	}
+	// The prompt is deliberately NOT sent here in initial_events: the driver
+	// posts it via SendEvents exactly once, after the stream is open, so early
+	// tool-use and usage events are never missed and the same user.message is
+	// never delivered twice.
 	body := map[string]any{
 		"agent":          params.AgentID,
 		"environment_id": params.EnvironmentID,
@@ -75,12 +101,6 @@ func (l *liveUpstream) CreateSession(ctx context.Context, params CreateSessionPa
 			"type":          "limit",
 			"max_list_cost": map[string]any{"amount": strconv.FormatInt(cents, 10), "currency": "USD"},
 		},
-	}
-	if strings.TrimSpace(params.Prompt) != "" {
-		body["initial_events"] = []map[string]any{{
-			"type":    "user.message",
-			"content": []map[string]any{{"type": "text", "text": params.Prompt}},
-		}}
 	}
 	resp, err := l.do(ctx, http.MethodPost, "/v1/sessions", "", body)
 	if err != nil {
@@ -105,7 +125,19 @@ func (l *liveUpstream) OpenEventStream(ctx context.Context, sessionID string) (m
 	if err != nil {
 		return nil, err
 	}
-	return &sseSource{up: l, resp: resp, scan: bufio.NewScanner(resp.Body)}, nil
+	// The SSE body gets an idle-read deadline: if no bytes arrive for
+	// liveStreamIdleTimeout the body is closed and Next returns an error
+	// instead of blocking on a dead stream. Cancelling ctx also closes the
+	// body so the response is always released.
+	body := newIdleTimeoutBody(resp.Body, liveStreamIdleTimeout)
+	go func() {
+		<-ctx.Done()
+		body.Close()
+	}()
+	l.mu.Lock()
+	l.stream = body
+	l.mu.Unlock()
+	return &sseSource{up: l, scan: bufio.NewScanner(body)}, nil
 }
 
 func (l *liveUpstream) SendEvents(ctx context.Context, sessionID string, events []map[string]any) error {
@@ -119,6 +151,22 @@ func (l *liveUpstream) SendEvents(ctx context.Context, sessionID string, events 
 	return nil
 }
 
+// Stop asks the upstream to halt the session after a driver abort.
+//
+// UNVERIFIED: the public Managed Agents documentation (docs.claude.com,
+// checked for this driver on 2026-10-08 without live access) does not clearly
+// publish an interrupt/cancel event name or a session delete/archive
+// endpoint. The driver sends {"type":"user.interrupt"} as the best-reading
+// interrupt event; whether upstream honours it (or rejects it) is UNVERIFIED
+// and must be confirmed before the live run. Close() still releases the
+// transport regardless of the outcome.
+func (l *liveUpstream) Stop(ctx context.Context, sessionID string) error {
+	if err := l.SendEvents(ctx, sessionID, []map[string]any{{"type": "user.interrupt"}}); err != nil {
+		return fmt.Errorf("send session interrupt (UNVERIFIED event name): %w", err)
+	}
+	return nil
+}
+
 func (l *liveUpstream) Forwarder() managedagents.ConfirmationForwarder { return l }
 
 func (l *liveUpstream) RequestIDs() []string {
@@ -129,20 +177,37 @@ func (l *liveUpstream) RequestIDs() []string {
 	return out
 }
 
-func (l *liveUpstream) Close() error { return nil }
+// Close releases the open stream body (if any) and the transport's idle
+// connections.
+func (l *liveUpstream) Close() error {
+	l.mu.Lock()
+	stream := l.stream
+	l.stream = nil
+	l.mu.Unlock()
+	if stream != nil {
+		_ = stream.Close()
+	}
+	l.client.CloseIdleConnections()
+	return nil
+}
+
+// ErrConfirmationNotAsked is returned by the live forwarder when Boundary
+// resolves a confirmation for a tool call the upstream never marked as
+// awaiting one. It is not a silent success: the recording forwarder converts
+// it into a delivered=false transcript record.
+var ErrConfirmationNotAsked = errors.New("upstream session is not awaiting a confirmation for this tool call")
 
 // SendConfirmation implements managedagents.ConfirmationForwarder. It only
 // posts a confirmation for an event the upstream marked as awaiting one
 // (evaluated_permission "ask" or listed in a requires_action stop_reason);
 // sending anything else is a protocol error the upstream rejects with 400, so
-// unconfirmed-but-evaluated tool calls are recorded as decisions without a
-// confirmation attempt.
+// it returns ErrConfirmationNotAsked instead of silently succeeding.
 func (l *liveUpstream) SendConfirmation(ctx context.Context, sessionID string, confirmation managedagents.ToolConfirmation) error {
 	l.mu.Lock()
 	pending := l.pendingAsk[confirmation.ToolUseID]
 	l.mu.Unlock()
 	if !pending {
-		return nil
+		return ErrConfirmationNotAsked
 	}
 	event := map[string]any{
 		"type":        managedagents.ConfirmationEventType,
@@ -215,10 +280,59 @@ func (l *liveUpstream) do(ctx context.Context, method, path, query string, body 
 	return resp, nil
 }
 
+// idleTimeoutBody wraps the SSE response body with an idle-read deadline:
+// every successful Read rearms a timer, and if it fires the underlying body is
+// closed so a blocked Read returns an error instead of hanging on a silent
+// upstream.
+type idleTimeoutBody struct {
+	body    io.ReadCloser
+	timeout time.Duration
+
+	mu     sync.Mutex
+	timer  *time.Timer
+	closed bool
+}
+
+func newIdleTimeoutBody(body io.ReadCloser, timeout time.Duration) *idleTimeoutBody {
+	b := &idleTimeoutBody{body: body, timeout: timeout}
+	b.rearm()
+	return b
+}
+
+func (b *idleTimeoutBody) rearm() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.closed {
+		return
+	}
+	if b.timer == nil {
+		b.timer = time.AfterFunc(b.timeout, func() { _ = b.body.Close() })
+		return
+	}
+	b.timer.Reset(b.timeout)
+}
+
+func (b *idleTimeoutBody) Read(p []byte) (int, error) {
+	n, err := b.body.Read(p)
+	if n > 0 {
+		b.rearm()
+	}
+	return n, err
+}
+
+func (b *idleTimeoutBody) Close() error {
+	b.mu.Lock()
+	b.closed = true
+	if b.timer != nil {
+		b.timer.Stop()
+	}
+	b.mu.Unlock()
+	return b.body.Close()
+}
+
 // sseSource adapts the session SSE stream to managedagents.EventSource.
 type sseSource struct {
 	up   *liveUpstream
-	resp *http.Response
 	scan *bufio.Scanner
 }
 

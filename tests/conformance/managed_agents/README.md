@@ -40,8 +40,10 @@ The harness verifies the sanitized transcript contains evidence for:
   `rule`, and `trust`;
 - fail-closed behavior on pipeline error;
 - sanitized transcript evidence;
-- `mode` must be `"live"` (`TestLiveModeTranscriptOnly` rejects stub
-  transcripts so an offline driver run can never pass as live evidence).
+- `mode` must be `"live"` with a consistent provenance linkage
+  (`TestLiveModeTranscriptOnly` rejects stub transcripts, a stub
+  `provenance.json`, and any raw-log hash mismatch — accident prevention,
+  not tamper evidence).
 
 ## Driver
 
@@ -62,10 +64,35 @@ go run ./tests/conformance/managed_agents/driver --mode stub \
   `BOUNDARY_MA_UPSTREAM_KEY` and writes `mode: "stub"` evidence.
 - `--mode live` refuses to start unless `--i-understand-this-spends-money`
   is passed, the gate file
-  `~/.fulcrum-evidence/ma-conformance/LIVE_GO` exists, and
-  `BOUNDARY_MA_UPSTREAM_KEY` is set. It enforces driver-side spend, turn,
-  output-token, and wall-clock ceilings, aborting at 80 percent of the spend
-  ceiling and failing closed when usage data is missing.
+  `~/.fulcrum-evidence/ma-conformance/LIVE_GO` exists, `BOUNDARY_MA_UPSTREAM_KEY`
+  is set, and `--api-base` is exactly `https://api.anthropic.com` (the
+  test-only `--allow-insecure-api-base` flag bypasses this one check). It
+  enforces driver-side spend, turn, output-token, usage-observation, and
+  wall-clock ceilings, aborting at 80 percent of the spend ceiling and
+  failing closed when usage data is missing for more than
+  `--usage-blind-events` events or `--usage-blind-window` seconds. On every
+  abort it sends the upstream a session interrupt (UNVERIFIED event name,
+  see `live.go`) and closes the transport.
+
+### Live scenario
+
+The driver does not create upstream agents or tools (that surface is
+UNVERIFIED in the public Managed Agents docs); `--agent` must reference an
+existing upstream managed agent configured with:
+
+- a harmless tool (the default prompt asks it to read a file);
+- a tool matching `--deny-tool` (default `delete_production_issue`) so
+  Boundary's static deny policy produces a `deny` confirmation;
+- a tool matching `--error-tool` (default `fulcrum_failclosed_probe`) so the
+  driver's forced-evaluator-error probe produces the fail-closed record;
+- ideally an MCP tool, for `agent.mcp_tool_use` evidence.
+
+In live mode with the default `--prompt`, the driver sends a conformance
+scenario prompt that asks the agent to call each of those in order and to
+open a thread. Where upstream cannot be confirmed to support a behavior —
+notably thread creation and MCP tool use — the driver marks the criterion
+NOT OBSERVED in `criteria_not_observed` rather than fabricating evidence.
+Operator-supplied `--prompt` overrides the scenario prompt.
 
 Stub runs are validated in-process by the driver's own tests
 (`driver/internal/madriver`), which run the same criterion checks this
@@ -126,9 +153,10 @@ The sanitized evidence file is JSON:
       "trust": 1.0
     }
   ],
-  "budget": {"ceiling": 1.0, "used": 0.25},
+  "budget": {"ceiling": 1.0, "used": 0.25, "usage_observed": true},
   "trust": {"tracked": true, "score": 1.0},
   "fail_closed": {"observed": true, "action": "deny", "reason": "pipeline error"},
+  "provenance": {"mode": "live", "session_id": "sess-redacted", "raw_log_sha256": "..."},
   "transcript_sha256": ""
 }
 ```

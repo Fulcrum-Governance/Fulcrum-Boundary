@@ -24,7 +24,27 @@ type transcriptDoc struct {
 	Budget         budgetDoc         `json:"budget"`
 	Trust          trustDoc          `json:"trust"`
 	FailClosed     failClosedDoc     `json:"fail_closed"`
-	TranscriptHash string            `json:"transcript_sha256,omitempty"`
+	// Provenance links this sanitized transcript back to the run that produced
+	// it: the pseudonymized session id plus the SHA-256 of the sanitized raw
+	// event log written beside it. The linkage prevents accidents (accepting
+	// a stub or mismatched file as live evidence); a determined human could
+	// still forge a file, so it is not tamper evidence.
+	Provenance *provenanceLink `json:"provenance"`
+	// NotObserved lists conformance criteria the driver could not observe
+	// evidence for in this run. The driver reports absence rather than
+	// fabricating or defaulting evidence (for example thread creation, which
+	// upstream may never emit).
+	NotObserved    []string `json:"criteria_not_observed,omitempty"`
+	TranscriptHash string   `json:"transcript_sha256,omitempty"`
+}
+
+// provenanceLink is the transcript-embedded half of the transcript ↔
+// provenance.json linkage. SessionID is the same pseudonym as the top-level
+// session_id so no raw identifier enters the sanitized document.
+type provenanceLink struct {
+	Mode         string `json:"mode"`
+	SessionID    string `json:"session_id"`
+	RawLogSHA256 string `json:"raw_log_sha256"`
 }
 
 type transcriptEvent struct {
@@ -59,6 +79,14 @@ type decisionDoc struct {
 type budgetDoc struct {
 	Ceiling float64 `json:"ceiling"`
 	Used    float64 `json:"used"`
+	// UsageObserved records that at least one usable upstream usage signal
+	// arrived. A Used of 0 without it is not evidence and must never pass the
+	// budget criterion.
+	UsageObserved bool `json:"usage_observed"`
+	// SpendUnknown marks runs that ended without trustworthy spend evidence
+	// (fail-closed stop or no usage signal at all); Used is then a lower
+	// bound, not an observed figure.
+	SpendUnknown bool `json:"spend_unknown,omitempty"`
 }
 
 type trustDoc struct {
@@ -84,16 +112,19 @@ func pseudonym(prefix, raw string) string {
 	return prefix + "-" + hex.EncodeToString(sum[:])[:12]
 }
 
-// writeTranscriptFile marshals the sanitized transcript, computes
-// transcript_sha256 over the bytes with the hash field absent, then writes the
-// final document (hash included) to <out-dir>/transcript.sanitized.json. Every
-// serialized byte passes through the redactor once more before hitting disk.
+// writeTranscriptFile marshals the sanitized transcript, redacts the
+// serialized bytes, computes transcript_sha256 over exactly those redacted
+// bytes (hash field absent), then writes the final document (hash included)
+// to <out-dir>/transcript.sanitized.json. Re-hashing the file with the hash
+// field cleared and the same marshal+redact steps therefore reproduces the
+// recorded digest — the hash is over sanitized content, never raw JSON.
 func writeTranscriptFile(dir string, doc *transcriptDoc) (path string, err error) {
 	doc.TranscriptHash = ""
 	unsigned, err := json.MarshalIndent(doc, "", "  ")
 	if err != nil {
 		return "", fmt.Errorf("marshal transcript: %w", err)
 	}
+	unsigned = []byte(RedactString(string(unsigned)))
 	sum := sha256.Sum256(unsigned)
 	doc.TranscriptHash = hex.EncodeToString(sum[:])
 

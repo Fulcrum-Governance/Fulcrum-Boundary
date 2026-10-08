@@ -20,6 +20,11 @@ type Upstream interface {
 	// SendEvents posts user.* events to the session (live) or records them
 	// (stub).
 	SendEvents(ctx context.Context, sessionID string, events []map[string]any) error
+	// Stop asks the upstream to halt the session: the driver calls it on every
+	// abort path (spend guard, turn/output caps, timeout, stream error) so a
+	// governed run never leaves a paid session running. Live mode sends the
+	// documented interrupt event; stub mode just records the call.
+	Stop(ctx context.Context, sessionID string) error
 	// Forwarder returns the ConfirmationForwarder the ToolResolver uses to
 	// emit user.tool_confirmation events for governed tool calls.
 	Forwarder() managedagents.ConfirmationForwarder
@@ -30,14 +35,17 @@ type Upstream interface {
 	Close() error
 }
 
-// CreateSessionParams carries what session creation needs. MaxOutputTokens is
-// enforced driver-side against observed usage, not sent upstream — no
-// per-request max_output_tokens field is documented on the sessions API, so
-// sending one would be an unverified guess.
+// CreateSessionParams carries what session creation needs. The prompt is not
+// part of it: it is sent exactly once via SendEvents AFTER the event stream is
+// open, so early tool-use and usage events cannot be missed (and the same
+// user.message is never delivered twice, as an initial_events body plus a
+// post-open send would do). MaxOutputTokens is enforced driver-side against
+// observed usage, not sent upstream — no per-request max_output_tokens field
+// is documented on the sessions API, so sending one would be an unverified
+// guess.
 type CreateSessionParams struct {
 	AgentID       string
 	EnvironmentID string
-	Prompt        string
 	BudgetUSD     float64
 }
 

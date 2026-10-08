@@ -22,6 +22,7 @@ type stubUpstream struct {
 	sentEvents      []map[string]any
 	pendingGoverned int // scripted governable events still awaiting a confirmation
 	streamOpened    bool
+	stopCalls       int
 }
 
 func newStubUpstream(cfg Config) *stubUpstream {
@@ -48,6 +49,22 @@ func (s *stubUpstream) SendEvents(_ context.Context, _ string, events []map[stri
 	defer s.mu.Unlock()
 	s.sentEvents = append(s.sentEvents, events...)
 	return nil
+}
+
+// Stop mirrors the live upstream's session-halt call; the stub records it so
+// tests can assert the driver stops the session on every abort path.
+func (s *stubUpstream) Stop(_ context.Context, _ string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.stopCalls++
+	return nil
+}
+
+// StopCalls reports how many times the driver asked the upstream to halt.
+func (s *stubUpstream) StopCalls() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.stopCalls
 }
 
 func (s *stubUpstream) Forwarder() managedagents.ConfirmationForwarder { return s }

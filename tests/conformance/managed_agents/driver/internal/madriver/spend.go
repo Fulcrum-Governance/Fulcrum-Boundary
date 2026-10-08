@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/fulcrum-governance/fulcrum-boundary/adapters/managedagents"
 )
@@ -30,8 +31,9 @@ var priceTable = map[string]struct {
 
 var (
 	// ErrSpendUnknown is returned when an event that must carry a spend signal
-	// arrives without parseable usage fields. Live mode treats unknown spend
-	// as fail-closed and stops the session.
+	// arrives without parseable usage fields, or when no usage evidence has
+	// arrived within the configured blind-event/blind-window limits. Live mode
+	// treats unknown spend as fail-closed and stops the session.
 	ErrSpendUnknown = errors.New("spend unknown: usage fields missing or unparseable")
 
 	// ErrSpendAbort is returned when observed spend reaches 80 percent of the
@@ -41,6 +43,14 @@ var (
 	// ErrMaxTurns is returned when the session resolves more governable tool
 	// events than --max-turns allows.
 	ErrMaxTurns = errors.New("maximum governed turns reached; aborting")
+
+	// ErrOutputTokenCap is returned when an observed model request reports
+	// output tokens over --max-output-tokens. No per-request
+	// max_output_tokens field is documented on the sessions API (UNVERIFIED
+	// whether upstream supports one), so the driver cannot preempt a
+	// generation; it enforces the cap by terminating the session as soon as
+	// an over-cap request is reported.
+	ErrOutputTokenCap = errors.New("observed request output exceeded --max-output-tokens; aborting session")
 )
 
 // spendGuard tracks observed session spend and decides when to stop the
@@ -62,14 +72,28 @@ type spendGuard struct {
 	listCostUSD     float64
 	sawListCost     bool
 	tokenCostUSD    float64
-	outputOverLimit bool
+	// usageEvidence records that at least one usable spend signal arrived; a
+	// transcript budget of Used=0 without it must never satisfy the budget
+	// criterion.
+	usageEvidence bool
+	// eventsBlind counts consecutive events carrying no usable spend signal.
+	// lastEvidence is the wall-clock time of the most recent signal.
+	eventsBlind  int
+	lastEvidence time.Time
+	startedAt    time.Time
+	blindEvents  int
+	blindWindow  time.Duration
+	now          func() time.Time
 }
 
-func newSpendGuard(ceilingUSD float64, maxOutputTokens int) *spendGuard {
+func newSpendGuard(ceilingUSD float64, maxOutputTokens, blindEvents int, blindWindow time.Duration) *spendGuard {
 	return &spendGuard{
 		ceilingUSD:      ceilingUSD,
 		abortAtUSD:      ceilingUSD * 0.8,
 		maxOutputTokens: maxOutputTokens,
+		blindEvents:     blindEvents,
+		blindWindow:     blindWindow,
+		now:             time.Now,
 	}
 }
 
@@ -81,12 +105,17 @@ func (g *spendGuard) used() float64 {
 	return g.tokenCostUSD
 }
 
-// overOutputLimit reports whether any observed model request exceeded the
-// configured per-request output-token cap.
-func (g *spendGuard) overOutputLimit() bool { return g.outputOverLimit }
+// observedUsage reports whether any usable spend signal has arrived. It backs
+// the transcript's budget.usage_observed evidence flag.
+func (g *spendGuard) observedUsage() bool { return g.usageEvidence }
 
 // observe folds one upstream event into the spend estimate.
 func (g *spendGuard) observe(event managedagents.Event) error {
+	now := g.now()
+	if g.startedAt.IsZero() {
+		g.startedAt = now
+	}
+	evidence := false
 	switch event.Type {
 	case "session.usage":
 		cents, ok := listCostCents(event.Data)
@@ -94,19 +123,46 @@ func (g *spendGuard) observe(event managedagents.Event) error {
 			return fmt.Errorf("%w: session.usage event carried no list_cost", ErrSpendUnknown)
 		}
 		g.sawListCost = true
-		g.listCostUSD = float64(cents) / 100
+		// list_cost is cumulative and REPLACES the prior figure rather than
+		// adding to it; a later snapshot that reports less must not lower the
+		// spend estimate, so the guard keeps the maximum observed value.
+		if usd := float64(cents) / 100; usd > g.listCostUSD {
+			g.listCostUSD = usd
+		}
+		evidence = true
 	case "span.model_request_end":
 		cost, outputTokens, err := modelRequestCost(event.Data)
 		if err != nil {
 			return err
 		}
 		g.tokenCostUSD += cost
+		evidence = true
 		if outputTokens > 0 && outputTokens > g.maxOutputTokens {
-			g.outputOverLimit = true
+			return ErrOutputTokenCap
 		}
 	}
-	if event.Usage != nil && event.Usage.CostUSD > 0 && !g.sawListCost {
-		g.tokenCostUSD += event.Usage.CostUSD
+	if event.Usage != nil && event.Usage.CostUSD > 0 {
+		if !g.sawListCost {
+			g.tokenCostUSD += event.Usage.CostUSD
+		}
+		evidence = true
+	}
+	if evidence {
+		g.usageEvidence = true
+		g.eventsBlind = 0
+		g.lastEvidence = now
+	} else {
+		// Fail closed when the stream runs blind: no usable usage signal
+		// after --usage-blind-events events or --usage-blind-window seconds
+		// means spend is unknown and the session must stop.
+		g.eventsBlind++
+		ref := g.lastEvidence
+		if ref.IsZero() {
+			ref = g.startedAt
+		}
+		if g.eventsBlind >= g.blindEvents || now.Sub(ref) >= g.blindWindow {
+			return fmt.Errorf("%w: no usage signal after %d events / %s", ErrSpendUnknown, g.eventsBlind, now.Sub(ref).Round(time.Second))
+		}
 	}
 	if g.used() >= g.abortAtUSD {
 		return ErrSpendAbort
