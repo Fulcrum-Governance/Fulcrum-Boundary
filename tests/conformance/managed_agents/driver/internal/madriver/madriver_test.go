@@ -852,6 +852,26 @@ func TestKeyReadOnlyAfterEarlierGates(t *testing.T) {
 	}
 }
 
+// TestDefaultLiveSpendCeilingIsFiveUSD pins the first-run live spend ceiling
+// at $5.00: raising it requires the explicit --max-spend-usd flag, and any
+// value above the hard maximum is refused outright. The 80-percent abort is
+// covered by TestSpendGuardStopsAtEightyPercent and
+// TestStubRunAbortOnSpendCeiling.
+func TestDefaultLiveSpendCeilingIsFiveUSD(t *testing.T) {
+	if got := DefaultConfig().MaxSpendUSD; got != 5.00 {
+		t.Fatalf("default live spend ceiling = %.2f, want 5.00", got)
+	}
+	repoRoot, err := driverRepoRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := liveTestConfig(t)
+	cfg.MaxSpendUSD = hardMaxSpendUSD + 0.01
+	if err := cfg.validate(repoRoot, func(string) string { return "fake" }, func(string) bool { return true }); err == nil {
+		t.Fatal("a ceiling above the hard maximum must be rejected")
+	}
+}
+
 // TestLiveAPIBaseValidation requires https + api.anthropic.com in live mode,
 // with only the test flag able to bypass.
 func TestLiveAPIBaseValidation(t *testing.T) {

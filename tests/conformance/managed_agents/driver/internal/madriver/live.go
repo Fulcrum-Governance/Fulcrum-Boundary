@@ -132,7 +132,9 @@ func (l *liveUpstream) OpenEventStream(ctx context.Context, sessionID string) (m
 	body := newIdleTimeoutBody(resp.Body, liveStreamIdleTimeout)
 	go func() {
 		<-ctx.Done()
-		body.Close()
+		// Best-effort release on cancel: the caller surfaces the real read
+		// error, and Close has no failure mode the driver can act on here.
+		_ = body.Close()
 	}()
 	l.mu.Lock()
 	l.stream = body

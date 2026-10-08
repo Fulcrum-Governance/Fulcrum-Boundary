@@ -94,6 +94,17 @@ notably thread creation and MCP tool use — the driver marks the criterion
 NOT OBSERVED in `criteria_not_observed` rather than fabricating evidence.
 Operator-supplied `--prompt` overrides the scenario prompt.
 
+### After any live run
+
+- The upstream key used for the run must be rotated or deleted afterwards;
+  treat it as exposed to the session's runtime for the duration of the run.
+- The key is never written to any file, log, transcript, or error output: it
+  is held only in a variable, registered with the redactor so the exact value
+  and its first and last 8 characters are scrubbed, and the driver scans the
+  output directory for secret-shaped content before exiting.
+- The key is read only after the `--i-understand-this-spends-money` flag and
+  the `LIVE_GO` gate file checks pass — a refused run never touches it.
+
 Stub runs are validated in-process by the driver's own tests
 (`driver/internal/madriver`), which run the same criterion checks this
 harness uses (see `checks.go`). The env-gated live run is:

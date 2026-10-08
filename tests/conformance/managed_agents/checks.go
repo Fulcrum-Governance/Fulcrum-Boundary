@@ -291,8 +291,15 @@ func CheckLiveProvenance(tr Transcript, transcriptPath string) error {
 	if tr.Provenance.SessionID == "" || tr.Provenance.SessionID != tr.SessionID {
 		return fmt.Errorf("transcript provenance session id %q does not match transcript session id %q", tr.Provenance.SessionID, tr.SessionID)
 	}
+	// Both evidence reads are scoped to a root opened on the transcript's
+	// directory so only sibling files are reachable.
 	dir := filepath.Dir(transcriptPath)
-	provBytes, err := os.ReadFile(filepath.Join(dir, "provenance.json"))
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		return fmt.Errorf("open evidence directory %q: %w", dir, err)
+	}
+	defer func() { _ = root.Close() }()
+	provBytes, err := root.ReadFile("provenance.json")
 	if err != nil {
 		return fmt.Errorf("live transcript requires a sibling provenance.json: %w", err)
 	}
@@ -313,7 +320,7 @@ func CheckLiveProvenance(tr Transcript, transcriptPath string) error {
 	if rawName == "" {
 		rawName = "events.raw.jsonl"
 	}
-	rawBytes, err := os.ReadFile(filepath.Join(dir, filepath.Base(rawName)))
+	rawBytes, err := root.ReadFile(filepath.Base(rawName))
 	if err != nil {
 		return fmt.Errorf("live transcript requires the sibling raw event log %q: %w", rawName, err)
 	}
