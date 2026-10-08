@@ -39,7 +39,43 @@ The harness verifies the sanitized transcript contains evidence for:
 - decision metadata: `agent_id`, `session_id`, `thread_id`, `tool`, `action`,
   `rule`, and `trust`;
 - fail-closed behavior on pipeline error;
-- sanitized transcript evidence.
+- sanitized transcript evidence;
+- `mode` must be `"live"` (`TestLiveModeTranscriptOnly` rejects stub
+  transcripts so an offline driver run can never pass as live evidence).
+
+## Driver
+
+`driver/` contains the session driver that produces these transcripts. It
+runs one Managed Agents session through the Boundary adapter stack
+(`SessionProxy` + `ToolResolver` + `governance.Pipeline`, embedded in-process
+because `cmd/boundary` exposes no managed-agents listener) and writes a raw
+event log, a sanitized transcript, and `provenance.json` under `--out-dir`,
+which must be outside the git worktree.
+
+```bash
+go run ./tests/conformance/managed_agents/driver --mode stub \
+  --out-dir /tmp/ma-run
+```
+
+- `--mode stub` (default) is fully offline: an in-process fake upstream emits
+  scripted events covering all conformance scenarios. It never reads
+  `BOUNDARY_MA_UPSTREAM_KEY` and writes `mode: "stub"` evidence.
+- `--mode live` refuses to start unless `--i-understand-this-spends-money`
+  is passed, the gate file
+  `~/.fulcrum-evidence/ma-conformance/LIVE_GO` exists, and
+  `BOUNDARY_MA_UPSTREAM_KEY` is set. It enforces driver-side spend, turn,
+  output-token, and wall-clock ceilings, aborting at 80 percent of the spend
+  ceiling and failing closed when usage data is missing.
+
+Stub runs are validated in-process by the driver's own tests
+(`driver/internal/madriver`), which run the same criterion checks this
+harness uses (see `checks.go`). The env-gated live run is:
+
+```bash
+BOUNDARY_MA_CONFORMANCE=true \
+BOUNDARY_MA_TRANSCRIPT=/path/to/transcript.sanitized.json \
+go test ./tests/conformance/managed_agents/ -v -timeout 5m
+```
 
 ## Transcript Safety
 
@@ -66,6 +102,7 @@ The sanitized evidence file is JSON:
 ```json
 {
   "sanitized": true,
+  "mode": "live",
   "session_created_through_boundary": true,
   "session_id": "sess-redacted",
   "thread_id": "thread-redacted",
