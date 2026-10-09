@@ -63,8 +63,8 @@ func TestSourceAndDependencyIndependence(t *testing.T) {
 		t.Fatalf("read go.mod: %v", err)
 	}
 	text := string(goMod)
-	if !strings.Contains(text, "\ngo 1.26.5\n") {
-		t.Error("go.mod does not pin Go 1.26.5")
+	if !strings.Contains(text, "\ngo 1.26.9\n") {
+		t.Error("go.mod does not pin Go 1.26.9")
 	}
 	if strings.Contains(text, "replace ") || strings.Contains(text, "replace(") {
 		t.Error("go.mod contains a forbidden replace directive")
