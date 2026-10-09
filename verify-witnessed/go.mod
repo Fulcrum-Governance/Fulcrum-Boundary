@@ -1,5 +1,5 @@
 module github.com/Fulcrum-Governance/Fulcrum-Boundary/verify-witnessed
 
-go 1.26.5
+go 1.26.9
 
 require golang.org/x/mod v0.40.0
