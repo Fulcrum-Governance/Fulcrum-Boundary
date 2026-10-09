@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go-version: ['1.25.0', '1.26.5']
+        go-version: ['1.25.0', '1.26.9']
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -57,7 +57,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26.5'
+          go-version: '1.26.9'
           cache: true
       - name: test verify-witnessed module
         working-directory: verify-witnessed
@@ -70,7 +70,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26.5'
+          go-version: '1.26.9'
           cache: true
       # ubuntu-latest provides a Docker daemon. The integration tests skip
       # when no runtime exists but fail when CI=true and none is available,
@@ -105,7 +105,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26.5'
+          go-version: '1.26.9'
           cache: true
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -157,7 +157,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26.6'
+          go-version: '1.26.9'
           cache: true
       # adapters/grpc and verify-witnessed are separate Go modules: the root
       # `./...` pattern does not reach them, so each scanner needs its own
@@ -165,32 +165,32 @@ jobs:
       # stay separate so a red names its scanner and its module.
       - name: gosec (root module)
         env:
-          GOTOOLCHAIN: go1.26.6
+          GOTOOLCHAIN: go1.26.9
         run: go run github.com/securego/gosec/v2/cmd/gosec@v2.26.1 ./...
       - name: gosec (adapters/grpc module)
         env:
-          GOTOOLCHAIN: go1.26.6
+          GOTOOLCHAIN: go1.26.9
         working-directory: adapters/grpc
         run: go run github.com/securego/gosec/v2/cmd/gosec@v2.26.1 ./...
       - name: gosec (verify-witnessed module)
         env:
-          GOTOOLCHAIN: go1.26.6
+          GOTOOLCHAIN: go1.26.9
         working-directory: verify-witnessed
         run: go run github.com/securego/gosec/v2/cmd/gosec@v2.26.1 ./...
       - name: govulncheck (root module)
         env:
-          GOTOOLCHAIN: go1.26.6
+          GOTOOLCHAIN: go1.26.9
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@v1.3.0
           govulncheck ./...
       - name: govulncheck (adapters/grpc module)
         env:
-          GOTOOLCHAIN: go1.26.6
+          GOTOOLCHAIN: go1.26.9
         working-directory: adapters/grpc
         run: govulncheck ./...
       - name: govulncheck (verify-witnessed module)
         env:
-          GOTOOLCHAIN: go1.26.6
+          GOTOOLCHAIN: go1.26.9
         working-directory: verify-witnessed
         run: govulncheck ./...
 
@@ -201,7 +201,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26.5'
+          go-version: '1.26.9'
           cache: true
       # The harness builds the reference image and runs the probe list inside
       # it; CI=true makes a missing Docker daemon a failure, not a skip.
@@ -223,7 +223,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26.5'
+          go-version: '1.26.9'
           cache: true
       # Native Go fuzz targets, sequential, 60s each. Seeds also run on every
       # `go test ./...`; this job exercises the mutation engine. The SQL
