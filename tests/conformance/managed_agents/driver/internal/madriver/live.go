@@ -73,11 +73,15 @@ func newLiveUpstream(base, key string) *liveUpstream {
 	return &liveUpstream{
 		base: strings.TrimRight(base, "/"),
 		key:  key,
-		client: &http.Client{Transport: &http.Transport{
-			DialContext:           (&net.Dialer{Timeout: liveDialTimeout, KeepAlive: 30 * time.Second}).DialContext,
-			TLSHandshakeTimeout:   liveTLSHandshakeTimeout,
-			ResponseHeaderTimeout: liveResponseHeaderTimeout,
-		}},
+		client: &http.Client{
+			Transport: &http.Transport{
+				DialContext:           (&net.Dialer{Timeout: liveDialTimeout, KeepAlive: 30 * time.Second}).DialContext,
+				TLSHandshakeTimeout:   liveTLSHandshakeTimeout,
+				ResponseHeaderTimeout: liveResponseHeaderTimeout,
+			},
+			// Never follow redirects: a redirect target would be sent the x-api-key header.
+			CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse },
+		},
 		pendingAsk: map[string]bool{},
 		delivered:  map[string]bool{},
 	}
@@ -274,7 +278,7 @@ func (l *liveUpstream) do(ctx context.Context, method, path, query string, body 
 		l.requestIDs = append(l.requestIDs, id)
 		l.mu.Unlock()
 	}
-	if resp.StatusCode >= 400 {
+	if resp.StatusCode >= 300 {
 		defer resp.Body.Close()
 		text, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		return nil, fmt.Errorf("%s %s: upstream status %d: %s", method, path, resp.StatusCode, RedactString(string(text)))
