@@ -2,7 +2,7 @@ module github.com/fulcrum-governance/fulcrum-boundary/adapters/grpc
 
 go 1.25.0
 
-toolchain go1.26.5
+toolchain go1.26.9
 
 replace github.com/fulcrum-governance/fulcrum-boundary => ../../
 
