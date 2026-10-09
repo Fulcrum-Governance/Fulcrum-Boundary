@@ -134,7 +134,7 @@ denies a routed GitHub write-after-taint action before upstream execution and
 writes a decision record that `verify-record` recomputes independently.
 
 On Linux or Windows, use a [release archive](./docs/INSTALL.md) (SHA256SUMS is
-published and build provenance is verifiable with `gh attestation verify`) or
+published, and the release files carry GitHub build-provenance attestations) or
 the published `v0.13.1` container image:
 
 ```bash
@@ -154,8 +154,11 @@ as `UNKNOWN` and the Postgres guard denies it fail-closed. Use a `_cgo` archive
 or build from source for the full classifier. See the [install guide](./docs/INSTALL.md)
 for platform commands, checksums, SBOMs, and provenance evidence. Checksums
 establish integrity of the download; they do not establish who built it.
-Provenance for the release archives is checked with `gh attestation verify
-ARCHIVE --repo Fulcrum-Governance/Fulcrum-Boundary`.
+`SHA256SUMS` and the release archives carry GitHub build-provenance
+attestations that identify the workflow that built them; check one with
+`gh attestation verify FILE --repo Fulcrum-Governance/Fulcrum-Boundary`.
+`SHA256SUMS-cgo` carries no attestation, and the install script verifies the
+checksum only. No detached signature files are published.
 
 ## See Boundary stop the action
 
@@ -338,7 +341,7 @@ go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.13.1
 ```
 
 `v0.13.1` is the current public release. The root and nested-module tags both
-resolve to the same immutable release commit; see the release-truth record.
+resolve to the same release commit; see the release-truth record.
 
 Before submitting a change:
 
