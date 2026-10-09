@@ -133,8 +133,9 @@ The demo is fixture-only: no credentials, network calls, or live mutations. It
 denies a routed GitHub write-after-taint action before upstream execution and
 writes a decision record that `verify-record` recomputes independently.
 
-On Linux or Windows, use a signed-checksum [release archive](./docs/INSTALL.md)
-or the published `v0.13.1` container image:
+On Linux or Windows, use a [release archive](./docs/INSTALL.md) (SHA256SUMS is
+published and build provenance is verifiable with `gh attestation verify`) or
+the published `v0.13.1` container image:
 
 ```bash
 docker run --rm ghcr.io/fulcrum-governance/boundary:v0.13.1 selftest
@@ -151,7 +152,10 @@ The Homebrew cask, container image, and `_static-nocgo` archives are static
 builds. Their Postgres AST classifier is unavailable, so routed SQL classifies
 as `UNKNOWN` and the Postgres guard denies it fail-closed. Use a `_cgo` archive
 or build from source for the full classifier. See the [install guide](./docs/INSTALL.md)
-for platform commands, checksums, SBOMs, and provenance evidence.
+for platform commands, checksums, SBOMs, and provenance evidence. Checksums
+establish integrity of the download; they do not establish who built it.
+Provenance for the release archives is checked with `gh attestation verify
+ARCHIVE --repo Fulcrum-Governance/Fulcrum-Boundary`.
 
 ## See Boundary stop the action
 
