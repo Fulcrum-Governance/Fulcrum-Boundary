@@ -15,6 +15,7 @@ package madriver
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -69,9 +70,12 @@ type Config struct {
 	UsageBlindEvents int
 	UsageBlindWindow time.Duration
 	AckSpend         bool // --i-understand-this-spends-money
-	// AllowInsecureAPIBase bypasses the https+api.anthropic.com --api-base
-	// check. It exists for tests only; a live run must never need it.
-	AllowInsecureAPIBase bool
+	// allowLoopbackAPIBase is the test-only mock-server seam for --api-base.
+	// It is unexported so no flag in main.go can bind it, it is refused
+	// outright in live mode (there is no api-base bypass on the live path),
+	// and on the stub/mock path it only ever permits loopback hosts
+	// (127.0.0.0/8, ::1, localhost).
+	allowLoopbackAPIBase bool
 	AgentID              string
 	EnvironmentID        string
 	APIBase              string
@@ -184,24 +188,51 @@ func checkLiveGates(c Config, getenv func(string) string, fileExists func(string
 	return nil
 }
 
-// checkAPIBase refuses any --api-base other than the documented upstream
-// before the first request can be built, so a mistyped or hostile base can
-// never receive the key. --allow-insecure-api-base exists only so tests may
-// point a fake upstream at httptest listeners.
+// checkAPIBase enforces the live-mode --api-base policy: the base must be
+// exactly https://api.anthropic.com — no other scheme, host, userinfo, port,
+// or path — checked before the first request can be built so a mistyped or
+// hostile base can never receive the key. There is no bypass on the live
+// path: the test-only loopback seam is refused outright here.
 func checkAPIBase(c Config) error {
-	if c.AllowInsecureAPIBase {
+	if c.allowLoopbackAPIBase {
+		return errors.New("live mode refused: the loopback --api-base seam is test-only and cannot be used in live mode")
+	}
+	if c.APIBase != DefaultAPIBase {
+		return fmt.Errorf("live mode requires --api-base exactly %q, got %q", DefaultAPIBase, c.APIBase)
+	}
+	return nil
+}
+
+// checkMockAPIBase applies the --api-base policy on the stub/mock path. The
+// production base is always accepted; anything else requires the test-only
+// seam and then only a loopback host (127.0.0.0/8, ::1, localhost) on an
+// http(s) URL without userinfo — the strongest relaxation reachable inside
+// the package still cannot name a remote upstream.
+func checkMockAPIBase(c Config) error {
+	if c.APIBase == DefaultAPIBase {
 		return nil
 	}
+	if !c.allowLoopbackAPIBase {
+		return fmt.Errorf("--api-base %q is not permitted: want exactly %q", c.APIBase, DefaultAPIBase)
+	}
 	u, err := url.Parse(c.APIBase)
-	if err != nil || u.Scheme != "https" || u.Host != "api.anthropic.com" {
-		return fmt.Errorf("live mode requires --api-base https://api.anthropic.com, got %q", c.APIBase)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" {
+		return fmt.Errorf("mock --api-base %q must be a valid http(s) URL on a loopback host", c.APIBase)
+	}
+	if u.User != nil {
+		return fmt.Errorf("mock --api-base %q must not carry userinfo", c.APIBase)
+	}
+	host := u.Hostname()
+	if ip := net.ParseIP(host); (ip == nil || !ip.IsLoopback()) && !strings.EqualFold(host, "localhost") {
+		return fmt.Errorf("mock --api-base %q must use a loopback host (127.0.0.0/8, ::1, localhost)", c.APIBase)
 	}
 	return nil
 }
 
 // validate runs the common checks plus live gates when Mode == ModeLive. The
 // getenv/fileExists seams exist so tests can exercise the gates without the
-// real credential or operator file. Stub mode never consults getenv.
+// real credential or operator file. Stub mode never consults getenv but does
+// apply the mock-path --api-base policy.
 func (c Config) validate(repoRoot string, getenv func(string) string, fileExists func(string) bool) error {
 	if err := c.validateCommon(repoRoot); err != nil {
 		return err
@@ -209,7 +240,7 @@ func (c Config) validate(repoRoot string, getenv func(string) string, fileExists
 	if c.Mode == ModeLive {
 		return checkLiveGates(c, getenv, fileExists)
 	}
-	return nil
+	return checkMockAPIBase(c)
 }
 
 // outDirOutsideRepo rejects any output directory that resolves to the repo

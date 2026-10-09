@@ -872,8 +872,9 @@ func TestDefaultLiveSpendCeilingIsFiveUSD(t *testing.T) {
 	}
 }
 
-// TestLiveAPIBaseValidation requires https + api.anthropic.com in live mode,
-// with only the test flag able to bypass.
+// TestLiveAPIBaseValidation requires --api-base to be exactly
+// https://api.anthropic.com in live mode. There is no bypass on the live
+// path: even the test-only loopback seam is refused when Mode is live.
 func TestLiveAPIBaseValidation(t *testing.T) {
 	repoRoot, err := driverRepoRoot()
 	if err != nil {
@@ -883,27 +884,90 @@ func TestLiveAPIBaseValidation(t *testing.T) {
 	env := func(string) string { return "fake" }
 
 	cases := []struct {
+		name    string
 		base    string
-		bypass  bool
+		seam    bool
 		wantErr bool
 	}{
-		{DefaultAPIBase, false, false},
-		{"http://api.anthropic.com", false, true},
-		{"https://evil.example.com", false, true},
-		{"https://api.anthropic.com.evil.com", false, true},
-		{"http://127.0.0.1:9999", false, true},
-		{"http://127.0.0.1:9999", true, false},
+		{"production base", DefaultAPIBase, false, false},
+		{"http scheme", "http://api.anthropic.com", false, true},
+		{"other host", "https://evil.example.com", false, true},
+		{"suffix host trick", "https://api.anthropic.com.evil.example", false, true},
+		{"userinfo host trick", "https://api.anthropic.com@evil.example", false, true},
+		{"userinfo on real host", "https://user:pass@api.anthropic.com", false, true},
+		{"explicit port", "https://api.anthropic.com:8443", false, true},
+		{"default port spelled out", "https://api.anthropic.com:443", false, true},
+		{"trailing path", "https://api.anthropic.com/v1", false, true},
+		{"trailing slash", "https://api.anthropic.com/", false, true},
+		{"empty base", "", false, true},
+		{"malformed base", "ht!tp://not a url", false, true},
+		{"loopback refused without seam", "http://127.0.0.1:9999", false, true},
+		{"seam cannot be enabled in live mode", DefaultAPIBase, true, true},
+		{"seam plus loopback refused in live mode", "http://127.0.0.1:9999", true, true},
 	}
 	for _, tc := range cases {
 		cfg := liveTestConfig(t)
 		cfg.APIBase = tc.base
-		cfg.AllowInsecureAPIBase = tc.bypass
+		cfg.allowLoopbackAPIBase = tc.seam
 		err := cfg.validate(repoRoot, env, present)
 		if tc.wantErr && err == nil {
-			t.Fatalf("api-base %q (bypass=%v) must refuse", tc.base, tc.bypass)
+			t.Fatalf("%s: api-base %q (seam=%v) must refuse", tc.name, tc.base, tc.seam)
 		}
 		if !tc.wantErr && err != nil {
-			t.Fatalf("api-base %q (bypass=%v) must be accepted: %v", tc.base, tc.bypass, err)
+			t.Fatalf("%s: api-base %q (seam=%v) must be accepted: %v", tc.name, tc.base, tc.seam, err)
+		}
+	}
+}
+
+// TestMockAPIBaseSeam covers the test-only loopback seam on the stub/mock
+// path: loopback hosts are permitted through it, every non-loopback base is
+// refused even with the seam set, and without the seam nothing but the exact
+// production base passes.
+func TestMockAPIBaseSeam(t *testing.T) {
+	repoRoot, err := driverRepoRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Stub mode must never consult getenv or fileExists; fail loudly if it
+	// does so a regression cannot reintroduce a credential read here.
+	guards := func(string) string {
+		t.Fatal("stub mode must not read env vars")
+		return ""
+	}
+	noFiles := func(string) bool {
+		t.Fatal("stub mode must not stat gate files")
+		return false
+	}
+
+	cases := []struct {
+		name    string
+		base    string
+		seam    bool
+		wantErr bool
+	}{
+		{"production base", DefaultAPIBase, false, false},
+		{"production base with seam set", DefaultAPIBase, true, false},
+		{"loopback ipv4 through seam", "http://127.0.0.1:9999", true, false},
+		{"loopback localhost through seam", "http://localhost:8080", true, false},
+		{"loopback ipv6 through seam", "http://[::1]:8080", true, false},
+		{"loopback https through seam", "https://127.0.0.1:8443", true, false},
+		{"loopback refused without seam", "http://127.0.0.1:9999", false, true},
+		{"non-loopback refused with seam", "http://192.168.1.10:8080", true, true},
+		{"remote host refused with seam", "https://api.anthropic.com.evil.example", true, true},
+		{"userinfo refused with seam", "http://user@127.0.0.1:9999", true, true},
+		{"non-http scheme refused with seam", "file:///etc/passwd", true, true},
+		{"empty base refused", "", false, true},
+	}
+	for _, tc := range cases {
+		cfg := testConfig(t) // stub mode
+		cfg.APIBase = tc.base
+		cfg.allowLoopbackAPIBase = tc.seam
+		err := cfg.validate(repoRoot, guards, noFiles)
+		if tc.wantErr && err == nil {
+			t.Fatalf("%s: api-base %q (seam=%v) must refuse", tc.name, tc.base, tc.seam)
+		}
+		if !tc.wantErr && err != nil {
+			t.Fatalf("%s: api-base %q (seam=%v) must be accepted: %v", tc.name, tc.base, tc.seam, err)
 		}
 	}
 }

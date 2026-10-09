@@ -65,8 +65,12 @@ go run ./tests/conformance/managed_agents/driver --mode stub \
 - `--mode live` refuses to start unless `--i-understand-this-spends-money`
   is passed, the gate file
   `~/.fulcrum-evidence/ma-conformance/LIVE_GO` exists, `BOUNDARY_MA_UPSTREAM_KEY`
-  is set, and `--api-base` is exactly `https://api.anthropic.com` (the
-  test-only `--allow-insecure-api-base` flag bypasses this one check). It
+  is set, and `--api-base` is exactly `https://api.anthropic.com`. There is
+  no api-base bypass on the live path: the old `--allow-insecure-api-base`
+  CLI flag is removed, and the only relaxation left is an unexported,
+  test-only Config field the CLI cannot set — it is rejected outright in
+  live mode and, on the stub/mock path, permits loopback hosts
+  (127.0.0.0/8, ::1, localhost) only. The driver
   enforces driver-side spend, turn, output-token, usage-observation, and
   wall-clock ceilings, aborting at 80 percent of the spend ceiling and
   failing closed when usage data is missing for more than
