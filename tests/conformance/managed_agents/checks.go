@@ -61,6 +61,9 @@ type confirmation struct {
 	ToolUseID string `json:"tool_use_id"`
 	Result    string `json:"result"`
 	Tool      string `json:"tool,omitempty"`
+	// Delivered mirrors the driver's confirmation field; it must round-trip
+	// so CheckLiveProvenance can reproduce the recorded transcript digest.
+	Delivered *bool `json:"delivered,omitempty"`
 }
 
 type decisionRecord struct {
@@ -273,6 +276,12 @@ type provenanceFile struct {
 //   - provenance.json is missing, unreadable, or says mode=stub (or anything
 //     but live);
 //   - the pseudonymized session ids do not all agree;
+//   - the transcript file on disk does not hash to the digest recorded for it
+//     (the digest is recomputed from the bytes read from disk by clearing
+//     transcript_sha256, re-marshalling, and hashing — the same recipe the
+//     driver used to record it), or either document carries no
+//     transcript_sha256: for live mode an absent hash is rejected outright
+//     (fail closed) rather than skipped;
 //   - the SHA-256 recorded for the sanitized raw log (in the transcript and
 //     in provenance.json) does not match the raw log file's real digest.
 //
@@ -313,8 +322,43 @@ func CheckLiveProvenance(tr Transcript, transcriptPath string) error {
 	if prov.TranscriptSessionID == "" || prov.TranscriptSessionID != tr.SessionID {
 		return fmt.Errorf("provenance session linkage %q does not match transcript session id %q", prov.TranscriptSessionID, tr.SessionID)
 	}
-	if tr.TranscriptHash != "" && prov.TranscriptSHA256 != "" && prov.TranscriptSHA256 != tr.TranscriptHash {
-		return fmt.Errorf("provenance transcript_sha256 %q does not match transcript %q", prov.TranscriptSHA256, tr.TranscriptHash)
+	// The recorded transcript digest is verified against the actual bytes on
+	// disk — stored hashes alone say nothing about whether the file was
+	// modified after it was written. The digest recipe is the driver's:
+	// parse the file, clear transcript_sha256, MarshalIndent, SHA-256.
+	transcriptBytes, err := root.ReadFile(filepath.Base(transcriptPath))
+	if err != nil {
+		return fmt.Errorf("read transcript %q for digest verification: %w", transcriptPath, err)
+	}
+	onDisk, err := ParseTranscript(transcriptBytes)
+	if err != nil {
+		return fmt.Errorf("re-parse transcript %q: %w", transcriptPath, err)
+	}
+	recorded := onDisk.TranscriptHash
+	if recorded == "" {
+		return fmt.Errorf("transcript file %q carries no recorded transcript_sha256; the digest cannot be verified (fail closed)", transcriptPath)
+	}
+	onDisk.TranscriptHash = ""
+	unsigned, err := json.MarshalIndent(onDisk, "", "  ")
+	if err != nil {
+		return fmt.Errorf("re-marshal transcript %q: %w", transcriptPath, err)
+	}
+	trSum := sha256.Sum256(unsigned)
+	trActual := hex.EncodeToString(trSum[:])
+	if tr.TranscriptHash == "" {
+		return fmt.Errorf("live transcript carries no transcript_sha256; the digest cannot be verified (fail closed)")
+	}
+	if tr.TranscriptHash != trActual {
+		return fmt.Errorf("transcript_sha256 %q does not match the digest %q recomputed from the transcript bytes", tr.TranscriptHash, trActual)
+	}
+	if recorded != trActual {
+		return fmt.Errorf("transcript file's recorded digest %q does not match its content digest %q", recorded, trActual)
+	}
+	if prov.TranscriptSHA256 == "" {
+		return fmt.Errorf("provenance.json carries no transcript_sha256; the digest cannot be verified (fail closed)")
+	}
+	if prov.TranscriptSHA256 != trActual {
+		return fmt.Errorf("provenance transcript_sha256 %q does not match the transcript digest %q", prov.TranscriptSHA256, trActual)
 	}
 	rawName := prov.RawLogFile
 	if rawName == "" {
