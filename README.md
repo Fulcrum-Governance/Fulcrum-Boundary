@@ -5,7 +5,9 @@
 <p align="center">
   Boundary records the routed decision — a hash-verifiable receipt written
   before the tool ran. Verification is integrity, not authenticity: it shows
-  the record was not altered after emission, not that the verdict was right.
+  the covered fields still match the stored decision hash, not that the
+  verdict was right — and only while that hash stays beyond the editor's
+  reach.
   Boundary does not replace Claude Code's own permission system or any other
   safety mode; it is a separate, routed gate that runs alongside them.
 </p>
@@ -83,8 +85,10 @@ Restart Claude Code, then run `/boundary:drill`.
   to disk before the verdict reached stdout — the record exists whether or
   not you go looking for it.
 - **Verify it yourself.** `boundary verify-record <file>` recomputes the
-  record's hash independently, so an edit after the fact is detectable by
-  recomputation — not by trusting this README or the transcript.
+  covered fields' hash and checks it against the stored decision hash. An
+  edit after the fact is detectable where that stored hash was kept beyond
+  the editor's reach — or anchored by a trusted signing key — not by
+  trusting this README or the transcript.
 - **A separate layer from permission prompts.** `PreToolUse` hooks run
   before Claude Code's own permission handling, and Claude Code's hook
   contract documents a `deny` as blocking the call in any permission mode —
@@ -100,7 +104,7 @@ Restart Claude Code, then run `/boundary:drill`.
 | This proves | This does not prove |
 | --- | --- |
 | The routed tool call was decided — allow, warn, ask, or deny — before it ran. | That every tool call in the session was governed. Only `Bash`/`Shell` and `Edit`/`Write`/`MultiEdit`/`NotebookEdit` route through this hook; an MCP tool, a subprocess's own command, or shell used outside Claude Code is a bypass. |
-| `boundary verify-record` recomputes the record's hash independently, so tampering after emission is detectable. | That the verdict was correct, or who produced the record. Hashes are integrity, not authenticity. |
+| `boundary verify-record` recomputes the record's hash independently and checks it against the stored decision hash — an edit after emission is detectable only while that stored hash stays out of the editor's reach. | That the verdict was correct, or who produced the record. Hashes are integrity, not authenticity. |
 | A denied call's `execution_claim` reports `upstream_called=false` / `executed=false`. | Anything about upstream side effects beyond this route — that field is the hook's own self-report, not independent corroboration. |
 | The hook is a routed pre-execution gate that runs independently of Claude Code's permission prompts. | That Boundary is a sandbox, contains the agent, or detects prompt injection in tool inputs. It classifies and records; it does not isolate the process or inspect prompt content. |
 | Command Boundary and Edit Boundary classified this call under their current preview posture. | Production-grade classification coverage. Both are delivered previews — validate against your own policy before relying on a verdict for anything load-bearing. |
@@ -217,7 +221,9 @@ See [Architecture](./ARCHITECTURE.md) for the contracts and extension points.
 
 Every governed verdict produces a structured [decision record](./docs/DECISION_RECORDS.md).
 A receipt-grade record carries request, policy-bundle, and decision hashes, so
-an edit after emission is detectable by recomputation:
+`boundary verify-record` can check the covered fields against the stored
+decision hash — an edit after emission is detectable only while that stored
+hash is kept out of the editor's reach:
 
 ```bash
 boundary verify-record github-lethal-trifecta-artifacts/decision-record.json
