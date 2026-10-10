@@ -189,7 +189,56 @@ func (s *guardedSource) Next(ctx context.Context) (managedagents.Event, error) {
 	if s.err != nil {
 		return managedagents.Event{}, s.err
 	}
-	event, err := s.inner.Next(ctx)
+	s.guard.arm()
+	if s.guard.blindExceeded() {
+		s.err = fmt.Errorf("%w: no usage signal within %s", ErrSpendUnknown, s.guard.blindWindow)
+		return managedagents.Event{}, s.err
+	}
+	// The blind window is a time limit, not only an event limit: the read is
+	// raced against the blind deadline so a stream that goes silent trips
+	// the limit instead of hanging on the transport's (longer) idle timeout.
+	// The channel is buffered so the read goroutine never blocks past an
+	// abandoned call; it exits when the stream unblocks or the run context
+	// is cancelled.
+	type result struct {
+		event managedagents.Event
+		err   error
+	}
+	ch := make(chan result, 1)
+	go func() {
+		event, err := s.inner.Next(ctx)
+		ch <- result{event, err}
+	}()
+	var deadlineC <-chan time.Time
+	var timer *time.Timer
+	if deadline := s.guard.blindDeadline(); !deadline.IsZero() {
+		timer = time.NewTimer(time.Until(deadline))
+		deadlineC = timer.C
+	}
+	if timer != nil {
+		defer timer.Stop()
+	}
+	var event managedagents.Event
+	var err error
+	select {
+	case r := <-ch:
+		event, err = r.event, r.err
+	case <-deadlineC:
+		if s.guard.blindExceeded() {
+			s.err = fmt.Errorf("%w: no usage signal within %s", ErrSpendUnknown, s.guard.blindWindow)
+			return managedagents.Event{}, s.err
+		}
+		// The guard's clock has not closed the window yet (an injected
+		// clock can lag the real timer); wait on the read alone.
+		select {
+		case r := <-ch:
+			event, err = r.event, r.err
+		case <-ctx.Done():
+			return managedagents.Event{}, ctx.Err()
+		}
+	case <-ctx.Done():
+		return managedagents.Event{}, ctx.Err()
+	}
 	if err != nil {
 		return managedagents.Event{}, err
 	}

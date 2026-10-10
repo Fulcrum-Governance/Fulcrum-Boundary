@@ -39,6 +39,42 @@ func TestGuardedSourceTripsBlindLimitOnSilentStream(t *testing.T) {
 	}
 }
 
+// TestSpendGuardBlindDeadlineUsesInjectedClock covers the time check itself:
+// the blind deadline anchors at the first observed stream activity (or last
+// usage signal) plus the window, evaluated on the guard's clock.
+func TestSpendGuardBlindDeadlineUsesInjectedClock(t *testing.T) {
+	start := time.Now()
+	now := start
+	g := newSpendGuard(5.00, 1024, 100, time.Minute)
+	g.now = func() time.Time { return now }
+	if g.blindExceeded() {
+		t.Fatal("an unarmed guard has no blind deadline")
+	}
+	g.arm()
+	if g.blindExceeded() {
+		t.Fatal("just-armed guard must not be blind yet")
+	}
+	now = start.Add(61 * time.Second)
+	if !g.blindExceeded() {
+		t.Fatal("61s after stream start with no usage signal must exceed the 60s window")
+	}
+	// A usage signal re-anchors the window on the signal's own timestamp.
+	now = start.Add(2 * time.Hour)
+	if err := g.observe(managedagents.Event{
+		Type: "session.usage",
+		Data: map[string]any{"usage": map[string]any{"list_cost": "10"}},
+	}); err != nil {
+		t.Fatalf("usage event: %v", err)
+	}
+	if g.blindExceeded() {
+		t.Fatal("the blind window must re-anchor on the latest usage signal")
+	}
+	now = now.Add(61 * time.Second)
+	if !g.blindExceeded() {
+		t.Fatal("61s after the last usage signal must exceed the window")
+	}
+}
+
 // TestSilentStreamTripsBlindLimitInRun covers the whole run path: the session
 // is interrupted and the run reports stopped_spend_unknown instead of waiting
 // out the stream idle timeout.

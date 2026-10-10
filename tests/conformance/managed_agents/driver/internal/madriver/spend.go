@@ -127,6 +127,36 @@ func (g *spendGuard) addPriced(cost float64) {
 	g.tokenCostUSD += cost
 }
 
+// arm records when the stream started being read so a stream that produces
+// no events at all is still bounded by the blind window. observe arms it on
+// the first event; guardedSource arms it before the first read.
+func (g *spendGuard) arm() {
+	if g.startedAt.IsZero() {
+		g.startedAt = g.now()
+	}
+}
+
+// blindDeadline is the instant the stream becomes usage-blind: the most
+// recent usable usage signal plus the configured window (stream start when
+// no signal has arrived yet). A zero time means the window is not armed.
+func (g *spendGuard) blindDeadline() time.Time {
+	ref := g.lastEvidence
+	if ref.IsZero() {
+		ref = g.startedAt
+	}
+	if ref.IsZero() {
+		return time.Time{}
+	}
+	return ref.Add(g.blindWindow)
+}
+
+// blindExceeded reports whether the blind window has passed per the guard's
+// clock. now is injectable so tests can move time without real sleeps.
+func (g *spendGuard) blindExceeded() bool {
+	deadline := g.blindDeadline()
+	return !deadline.IsZero() && !g.now().Before(deadline)
+}
+
 // observe folds one upstream event into the spend estimate.
 func (g *spendGuard) observe(event managedagents.Event) error {
 	now := g.now()
