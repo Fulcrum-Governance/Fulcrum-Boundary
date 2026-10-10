@@ -72,6 +72,10 @@ type spendGuard struct {
 	listCostUSD     float64
 	sawListCost     bool
 	tokenCostUSD    float64
+	// postSnapshotUSD accumulates priced spend observed after the most
+	// recent list_cost snapshot so used() never under-reports the spend
+	// accrued between snapshots.
+	postSnapshotUSD float64
 	// usageEvidence records that at least one usable spend signal arrived; a
 	// transcript budget of Used=0 without it must never satisfy the budget
 	// criterion.
@@ -97,10 +101,12 @@ func newSpendGuard(ceilingUSD float64, maxOutputTokens, blindEvents int, blindWi
 	}
 }
 
-// used returns the best current spend estimate in USD.
+// used returns the best current spend estimate in USD: once a list_cost
+// snapshot has been seen it is the snapshot plus the priced spend observed
+// since it, never the snapshot alone.
 func (g *spendGuard) used() float64 {
 	if g.sawListCost {
-		return g.listCostUSD
+		return g.listCostUSD + g.postSnapshotUSD
 	}
 	return g.tokenCostUSD
 }
@@ -108,6 +114,18 @@ func (g *spendGuard) used() float64 {
 // observedUsage reports whether any usable spend signal has arrived. It backs
 // the transcript's budget.usage_observed evidence flag.
 func (g *spendGuard) observedUsage() bool { return g.usageEvidence }
+
+// addPriced folds one token-priced spend signal into the estimate. Before the
+// first list_cost snapshot it builds the token-only estimate; after one it
+// accrues separately so the snapshot figure and the post-snapshot spend are
+// never conflated or dropped.
+func (g *spendGuard) addPriced(cost float64) {
+	if g.sawListCost {
+		g.postSnapshotUSD += cost
+		return
+	}
+	g.tokenCostUSD += cost
+}
 
 // observe folds one upstream event into the spend estimate.
 func (g *spendGuard) observe(event managedagents.Event) error {
@@ -125,9 +143,12 @@ func (g *spendGuard) observe(event managedagents.Event) error {
 		g.sawListCost = true
 		// list_cost is cumulative and REPLACES the prior figure rather than
 		// adding to it; a later snapshot that reports less must not lower the
-		// spend estimate, so the guard keeps the maximum observed value.
+		// spend estimate, so the guard keeps the maximum observed value. A
+		// snapshot that sets a new maximum already covers every priced event
+		// observed so far, so the post-snapshot accrual restarts from zero.
 		if usd := float64(cents) / 100; usd > g.listCostUSD {
 			g.listCostUSD = usd
+			g.postSnapshotUSD = 0
 		}
 		evidence = true
 	case "span.model_request_end":
@@ -135,16 +156,14 @@ func (g *spendGuard) observe(event managedagents.Event) error {
 		if err != nil {
 			return err
 		}
-		g.tokenCostUSD += cost
+		g.addPriced(cost)
 		evidence = true
 		if outputTokens > 0 && outputTokens > g.maxOutputTokens {
 			return ErrOutputTokenCap
 		}
 	}
 	if event.Usage != nil && event.Usage.CostUSD > 0 {
-		if !g.sawListCost {
-			g.tokenCostUSD += event.Usage.CostUSD
-		}
+		g.addPriced(event.Usage.CostUSD)
 		evidence = true
 	}
 	if evidence {
