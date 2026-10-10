@@ -176,6 +176,27 @@ func (f *recordingForwarder) SendConfirmation(ctx context.Context, sessionID str
 	return nil
 }
 
+// redactingWriter scrubs everything written to the run log: the raw session
+// id is replaced by the same pseudonym the transcript uses, and secret-shaped
+// content goes through the shared redactor. Installed on logw as soon as the
+// session id exists so no code path can print the raw identifier.
+type redactingWriter struct {
+	inner io.Writer
+	raw   string
+	alias string
+}
+
+func (w *redactingWriter) Write(p []byte) (int, error) {
+	s := string(p)
+	if w.raw != "" {
+		s = strings.ReplaceAll(s, w.raw, w.alias)
+	}
+	if _, err := io.WriteString(w.inner, RedactString(s)); err != nil {
+		return 0, err
+	}
+	return len(p), nil
+}
+
 // auditRecorder collects pipeline audit events into the raw log.
 type auditRecorder struct {
 	rec *recorder
@@ -356,6 +377,9 @@ func Run(ctx context.Context, cfg Config, deps Deps, logw io.Writer) (Result, er
 		// configured id is the same identity either way.
 		session.AgentID = cfg.AgentID
 	}
+	// From here on the session id exists: every log line carries the
+	// pseudonym, never the raw upstream identifier.
+	logw = &redactingWriter{inner: logw, raw: session.ID, alias: pseudonym("sess", session.ID)}
 
 	rec := &recorder{confirmByID: map[string]string{}, deliveredByID: map[string]bool{}}
 	guard := newSpendGuard(cfg.MaxSpendUSD, cfg.MaxOutputTokens, cfg.UsageBlindEvents, cfg.UsageBlindWindow)
