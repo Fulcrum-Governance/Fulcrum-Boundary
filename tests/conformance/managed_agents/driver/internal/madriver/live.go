@@ -347,6 +347,15 @@ func (b *idleTimeoutBody) Close() error {
 type sseSource struct {
 	up   *liveUpstream
 	scan *bufio.Scanner
+	// cleanEnd records that the stream carried a session-completion signal:
+	// the [DONE] sentinel or a terminal session.status_idle event (any stop
+	// reason other than requires_action, which means the session is parked
+	// awaiting confirmations and still live). Only a cleanEnd stream may
+	// report io.EOF; any other end is an unexpected close. UNVERIFIED: the
+	// upstream may emit additional terminal status names (e.g. a
+	// status_completed); those close as unexpected here, which errs toward
+	// interrupting a session rather than reporting a clean finish.
+	cleanEnd bool
 }
 
 func (s *sseSource) Next(ctx context.Context) (managedagents.Event, error) {
@@ -362,6 +371,7 @@ func (s *sseSource) Next(ctx context.Context) (managedagents.Event, error) {
 		}
 		payload := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
 		if payload == "[DONE]" {
+			s.cleanEnd = true
 			return managedagents.Event{}, io.EOF
 		}
 		event, err := eventFromSSE([]byte(payload))
@@ -369,12 +379,32 @@ func (s *sseSource) Next(ctx context.Context) (managedagents.Event, error) {
 			return managedagents.Event{}, err
 		}
 		s.noteAsk(event)
+		s.noteCompletion(event)
 		return event, nil
 	}
 	if err := s.scan.Err(); err != nil {
 		return managedagents.Event{}, err
 	}
+	if !s.cleanEnd {
+		// The stream ended with no completion signal: the session may still
+		// be running (and billing). A non-EOF error makes the driver
+		// interrupt the session instead of reporting a clean finish.
+		return managedagents.Event{}, ErrStreamClosed
+	}
 	return managedagents.Event{}, io.EOF
+}
+
+// noteCompletion records a terminal session status as a clean-end signal:
+// session.status_idle whose stop reason is not requires_action means the
+// session finished its work, so the stream closing afterwards is expected.
+func (s *sseSource) noteCompletion(event managedagents.Event) {
+	if event.Type != managedagents.EventStatusIdle {
+		return
+	}
+	if event.StopReason != nil && event.StopReason.Type == "requires_action" {
+		return
+	}
+	s.cleanEnd = true
 }
 
 // noteAsk records tool-use events the upstream flagged as awaiting a

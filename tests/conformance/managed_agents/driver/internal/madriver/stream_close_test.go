@@ -95,6 +95,24 @@ func TestSSESourceTerminalIdleThenCloseIsClean(t *testing.T) {
 	}
 }
 
+// TestRunInterruptsSessionOnUnexpectedStreamClose ties the fix to the run:
+// when the stream reports an unexpected close, Run interrupts the session
+// and fails instead of reporting a completed run.
+func TestRunInterruptsSessionOnUnexpectedStreamClose(t *testing.T) {
+	up := &fakeUpstream{streamErr: ErrStreamClosed}
+	cfg := liveTestConfig(t)
+	res, err := Run(context.Background(), cfg, liveDeps(up), io.Discard)
+	if err == nil {
+		t.Fatal("an unexpected stream close must fail the run")
+	}
+	if got := up.StopCalls(); got != 1 {
+		t.Fatalf("unexpected close must interrupt the session exactly once, got %d", got)
+	}
+	if res.StopReason == StopCompleted {
+		t.Fatal("an unexpected close must not be reported as a completed run")
+	}
+}
+
 // TestSSESourceRequiresActionIdleThenCloseIsAnError: an idle stop_reason of
 // requires_action means the session is parked awaiting confirmations — the
 // session is still live, so a close there is unexpected.
