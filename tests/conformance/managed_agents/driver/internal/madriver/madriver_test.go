@@ -425,6 +425,7 @@ type fakeUpstream struct {
 	streamErr    error
 	block        bool // source blocks until ctx done (timeout tests)
 	confirmErr   error
+	stopErr      error
 	userMessages int
 	stopCalls    int
 	closed       bool
@@ -461,7 +462,7 @@ func (f *fakeUpstream) Stop(_ context.Context, _ string) error {
 	defer f.mu.Unlock()
 	f.calls = append(f.calls, "stop")
 	f.stopCalls++
-	return nil
+	return f.stopErr
 }
 
 func (f *fakeUpstream) Forwarder() managedagents.ConfirmationForwarder { return f }
