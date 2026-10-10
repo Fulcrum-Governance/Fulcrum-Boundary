@@ -64,6 +64,8 @@ type confirmation struct {
 	// Delivered mirrors the driver's confirmation field; it must round-trip
 	// so CheckLiveProvenance can reproduce the recorded transcript digest.
 	Delivered *bool `json:"delivered,omitempty"`
+	// Enforced mirrors the driver's not-held deny marker; same round-trip need.
+	Enforced *bool `json:"enforced,omitempty"`
 }
 
 type decisionRecord struct {

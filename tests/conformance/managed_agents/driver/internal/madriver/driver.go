@@ -145,14 +145,20 @@ func (f *recordingForwarder) SendConfirmation(ctx context.Context, sessionID str
 	err := f.inner.SendConfirmation(ctx, sessionID, confirmation)
 	// ErrConfirmationNotAsked means the upstream never paused for this call,
 	// so no confirmation could be delivered. The resolution is still recorded
-	// — explicitly as NOT delivered — rather than silently succeeding or
-	// failing the governed stream.
+	// — explicitly as NOT delivered. For a deny this is a failed enforcement:
+	// the call already executed upstream, so the error propagates (failing
+	// the run and interrupting the session) instead of letting the evidence
+	// claim the deny was enforced. An allow is benign — the call proceeding
+	// IS the allowed outcome — so it records not-delivered and continues.
 	if errors.Is(err, ErrConfirmationNotAsked) {
 		f.rec.mu.Lock()
 		f.rec.confirmations = append(f.rec.confirmations, confirmation)
 		f.rec.confirmByID[confirmation.ToolUseID] = confirmation.Result
 		f.rec.deliveredByID[confirmation.ToolUseID] = false
 		f.rec.mu.Unlock()
+		if confirmation.Result == managedagents.ConfirmationDeny {
+			return fmt.Errorf("%w (tool_use_id %s)", ErrConfirmationNotEnforced, pseudonym("tool", confirmation.ToolUseID))
+		}
 		return nil
 	}
 	if err != nil {
@@ -538,11 +544,19 @@ func buildTranscript(cfg Config, rec *recorder, session *SessionInfo, guard *spe
 	}
 	for _, c := range rec.confirmations {
 		delivered := rec.deliveredByID[c.ToolUseID]
+		// A deny is enforced only when it reached the upstream; a not-held
+		// deny (the call already executed) records enforced=false so the
+		// transcript cannot be read as a successful enforcement.
+		var enforced *bool
+		if c.Result == managedagents.ConfirmationDeny {
+			enforced = &delivered
+		}
 		doc.Confirmations = append(doc.Confirmations, confirmationDoc{
 			ToolUseID: pseudonym("tool", c.ToolUseID),
 			Result:    c.Result,
 			Tool:      RedactString(toolForConfirmation(rec, c.ToolUseID)),
 			Delivered: &delivered,
+			Enforced:  enforced,
 		})
 	}
 	for _, d := range rec.decisions {
