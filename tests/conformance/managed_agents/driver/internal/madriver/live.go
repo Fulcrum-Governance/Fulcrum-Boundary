@@ -197,6 +197,13 @@ func (l *liveUpstream) Close() error {
 	return nil
 }
 
+// ErrStreamClosed is returned when the session SSE stream ends without the
+// upstream signalling session completion ([DONE] or a terminal status event).
+// It must not wrap io.EOF: SessionProxy treats io.EOF as a clean finish, and
+// an unexpected close leaves a paid session running unless the driver
+// interrupts it.
+var ErrStreamClosed = errors.New("session event stream closed before a completion signal")
+
 // ErrConfirmationNotAsked is returned by the live forwarder when Boundary
 // resolves a confirmation for a tool call the upstream never marked as
 // awaiting one. It is not a silent success: the recording forwarder converts
