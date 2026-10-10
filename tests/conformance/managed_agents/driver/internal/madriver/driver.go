@@ -128,6 +128,12 @@ func (s *recordingSink) Emit(_ context.Context, event managedagents.Event) error
 	return nil
 }
 
+// ErrConfirmationNotEnforced is returned when Boundary resolved a DENY for a
+// tool call the upstream never held for confirmation: the call already
+// executed, so reporting the deny as enforced would be false evidence. The
+// run is interrupted rather than allowed to complete.
+var ErrConfirmationNotEnforced = errors.New("denied tool call executed without upstream confirmation")
+
 // recordingForwarder wraps the upstream's ConfirmationForwarder so every
 // user.tool_confirmation Boundary resolves is captured before it is sent.
 type recordingForwarder struct {

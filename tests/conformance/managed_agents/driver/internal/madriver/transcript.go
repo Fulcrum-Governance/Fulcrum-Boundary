@@ -62,6 +62,10 @@ type confirmationDoc struct {
 	// did not accept one for that call (e.g. the call's evaluated_permission
 	// was not "ask"). Stub mode always delivers to the in-process fake.
 	Delivered *bool `json:"delivered,omitempty"`
+	// Enforced is recorded for deny results only: false when the deny was
+	// resolved but never held by the upstream — the call already executed,
+	// so the transcript must not claim the deny was enforced.
+	Enforced *bool `json:"enforced,omitempty"`
 }
 
 type decisionDoc struct {
