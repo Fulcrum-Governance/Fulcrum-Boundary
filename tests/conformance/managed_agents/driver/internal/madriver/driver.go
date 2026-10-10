@@ -262,13 +262,18 @@ func Run(ctx context.Context, cfg Config, deps Deps, logw io.Writer) (Result, er
 
 	// stopSession asks the upstream to halt a session the driver is aborting.
 	// It uses its own short deadline because the run context may already be
-	// expired (wall-clock timeout path).
-	stopSession := func(sessionID string) {
+	// expired (wall-clock timeout path). A failed stop is not a warning: it
+	// is returned so the run result reports the paid session may still be
+	// running instead of masquerading as a clean abort.
+	stopSession := func(sessionID string) error {
 		stopCtx, stopCancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer stopCancel()
 		if err := upstream.Stop(stopCtx, sessionID); err != nil {
 			fmt.Fprintf(logw, "warning: upstream stop for session %s: %s\n", sessionID, RedactString(err.Error()))
+			return fmt.Errorf("upstream interrupt failed for session %s; the paid session may still be running: %w",
+				pseudonym("sess", sessionID), err)
 		}
+		return nil
 	}
 
 	// The wall-clock deadline covers the WHOLE run — session create, stream
@@ -312,8 +317,7 @@ func Run(ctx context.Context, cfg Config, deps Deps, logw io.Writer) (Result, er
 
 	stream, err := upstream.OpenEventStream(runCtx, session.ID)
 	if err != nil {
-		stopSession(session.ID)
-		return Result{}, fmt.Errorf("open session event stream: %w", err)
+		return Result{}, errors.Join(fmt.Errorf("open session event stream: %w", err), stopSession(session.ID))
 	}
 	// The prompt is sent exactly once — here, AFTER the event stream is open
 	// — so early tool-use and usage events are not missed and governance is
@@ -322,17 +326,18 @@ func Run(ctx context.Context, cfg Config, deps Deps, logw io.Writer) (Result, er
 		"type":    "user.message",
 		"content": []map[string]any{{"type": "text", "text": cfg.effectivePrompt()}},
 	}}); err != nil {
-		stopSession(session.ID)
-		return Result{}, fmt.Errorf("send initial user.message: %w", err)
+		return Result{}, errors.Join(fmt.Errorf("send initial user.message: %w", err), stopSession(session.ID))
 	}
 
 	proxyErr := proxy.Proxy(runCtx, &guardedSource{inner: stream, guard: guard, maxTurns: cfg.MaxTurns}, &recordingSink{rec: rec})
 	stopReason := classifyStop(proxyErr)
+	var stopErr error
 	if proxyErr != nil {
 		// Every abort path — spend guard, turn/output caps, timeout, stream
 		// error — tells the upstream to halt rather than leaving a paid
-		// session running.
-		stopSession(session.ID)
+		// session running. A rejected interrupt is not silent: it propagates
+		// so the run result cannot claim a clean abort.
+		stopErr = stopSession(session.ID)
 	}
 	fmt.Fprintf(logw, "mode=%s session=%s stop=%s spend=$%.4f\n", cfg.Mode, session.ID, stopReason, guard.used())
 
@@ -358,15 +363,20 @@ func Run(ctx context.Context, cfg Config, deps Deps, logw io.Writer) (Result, er
 	}
 
 	switch {
-	case proxyErr == nil,
-		errors.Is(proxyErr, ErrSpendAbort),
+	case proxyErr == nil:
+		return res, nil
+	case errors.Is(proxyErr, ErrSpendAbort),
 		errors.Is(proxyErr, ErrMaxTurns),
 		errors.Is(proxyErr, ErrOutputTokenCap):
-		return res, nil
+		// The guard aborted the run cleanly ONLY when the upstream accepted
+		// the interrupt; a failed stop means the paid session may still be
+		// running, so the run reports that failure instead.
+		return res, stopErr
 	default:
 		// Fail-closed stops and infrastructure failures surface as errors;
-		// the evidence written above still stands.
-		return res, proxyErr
+		// the evidence written above still stands. A failed interrupt is
+		// joined on rather than hidden inside a warning line.
+		return res, errors.Join(proxyErr, stopErr)
 	}
 }
 
