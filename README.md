@@ -87,8 +87,7 @@ Restart Claude Code, then run `/boundary:drill`.
 - **Verify it yourself.** `boundary verify-record <file>` recomputes the
   covered fields' hash and checks it against the stored decision hash. An
   edit after the fact is detectable where that stored hash was kept beyond
-  the editor's reach — or anchored by a trusted signing key — not by
-  trusting this README or the transcript.
+  the editor's reach, not by trusting this README or the transcript.
 - **A separate layer from permission prompts.** `PreToolUse` hooks run
   before Claude Code's own permission handling, and Claude Code's hook
   contract documents a `deny` as blocking the call in any permission mode —
