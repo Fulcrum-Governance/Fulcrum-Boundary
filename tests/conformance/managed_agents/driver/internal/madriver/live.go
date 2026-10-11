@@ -58,6 +58,9 @@ type liveUpstream struct {
 	requestIDs []string
 	// stream is the open SSE response body so Close can release it.
 	stream io.Closer
+	// interrupted records that the driver itself sent a session interrupt, so
+	// the end_turn idle that interrupt produces is not read as a natural finish.
+	interrupted bool
 	// pendingAsk holds tool-use event ids the upstream told us are awaiting a
 	// confirmation (evaluated_permission == "ask", plus ids named by
 	// session.status_idle stop_reason.requires_action). The forwarder refuses
@@ -167,10 +170,24 @@ func (l *liveUpstream) SendEvents(ctx context.Context, sessionID string, events 
 // and must be confirmed before the live run. Close() still releases the
 // transport regardless of the outcome.
 func (l *liveUpstream) Stop(ctx context.Context, sessionID string) error {
+	// Mark the interrupt as the driver's own BEFORE sending it: the upstream
+	// answers an interrupt with an end_turn idle, which is the same value as a
+	// natural finish, so the stream reader must not read that echo as the
+	// session completing on its own.
+	l.mu.Lock()
+	l.interrupted = true
+	l.mu.Unlock()
 	if err := l.SendEvents(ctx, sessionID, []map[string]any{{"type": "user.interrupt"}}); err != nil {
 		return fmt.Errorf("send session interrupt (UNVERIFIED event name): %w", err)
 	}
 	return nil
+}
+
+// interruptSent reports whether the driver has sent its own session interrupt.
+func (l *liveUpstream) interruptSent() bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.interrupted
 }
 
 func (l *liveUpstream) Forwarder() managedagents.ConfirmationForwarder { return l }
@@ -203,6 +220,28 @@ func (l *liveUpstream) Close() error {
 // an unexpected close leaves a paid session running unless the driver
 // interrupts it.
 var ErrStreamClosed = errors.New("session event stream closed before a completion signal")
+
+// ErrUncleanIdle is returned when the session goes idle for a reason that is
+// not a natural finish. Per Anthropic's Managed Agents docs
+// (platform.claude.com/docs/en/managed-agents/workflow-runs) session.status_idle
+// carries end_turn and requires_action, and other stop reasons exist
+// (budget_reached, retries_exhausted, refusal; the list is not closed). A
+// retries_exhausted idle can occur even when the server is about to start a new
+// turn by itself, so the session may still be running and billing. The driver
+// treats every reason other than a natural end_turn (and the parked
+// requires_action) as unclean: it interrupts the session and fails the run.
+var ErrUncleanIdle = errors.New("session went idle for a reason that is not a clean end")
+
+// UncleanIdleError records the idle stop reason that made the run unclean.
+type UncleanIdleError struct {
+	Reason string
+}
+
+func (e *UncleanIdleError) Error() string {
+	return fmt.Sprintf("%s: stop_reason %q", ErrUncleanIdle, e.Reason)
+}
+
+func (e *UncleanIdleError) Is(target error) bool { return target == ErrUncleanIdle }
 
 // ErrConfirmationNotAsked is returned by the live forwarder when Boundary
 // resolves a confirmation for a tool call the upstream never marked as
@@ -348,13 +387,13 @@ type sseSource struct {
 	up   *liveUpstream
 	scan *bufio.Scanner
 	// cleanEnd records that the stream carried a session-completion signal:
-	// the [DONE] sentinel or a terminal session.status_idle event (any stop
-	// reason other than requires_action, which means the session is parked
-	// awaiting confirmations and still live). Only a cleanEnd stream may
-	// report io.EOF; any other end is an unexpected close. UNVERIFIED: the
-	// upstream may emit additional terminal status names (e.g. a
-	// status_completed); those close as unexpected here, which errs toward
-	// interrupting a session rather than reporting a clean finish.
+	// the [DONE] sentinel or a natural end_turn idle that the driver did not
+	// cause with its own interrupt. requires_action means the session is parked
+	// awaiting confirmations and still live; every other stop reason (and a
+	// missing one) is an unclean idle that Next returns as an error. Only a
+	// cleanEnd stream may report io.EOF; any other end is an unexpected close,
+	// which errs toward interrupting a session rather than reporting a clean
+	// finish.
 	cleanEnd bool
 }
 
@@ -379,7 +418,9 @@ func (s *sseSource) Next(ctx context.Context) (managedagents.Event, error) {
 			return managedagents.Event{}, err
 		}
 		s.noteAsk(event)
-		s.noteCompletion(event)
+		if err := s.noteCompletion(event); err != nil {
+			return managedagents.Event{}, err
+		}
 		return event, nil
 	}
 	if err := s.scan.Err(); err != nil {
@@ -394,17 +435,33 @@ func (s *sseSource) Next(ctx context.Context) (managedagents.Event, error) {
 	return managedagents.Event{}, io.EOF
 }
 
-// noteCompletion records a terminal session status as a clean-end signal:
-// session.status_idle whose stop reason is not requires_action means the
-// session finished its work, so the stream closing afterwards is expected.
-func (s *sseSource) noteCompletion(event managedagents.Event) {
+// noteCompletion classifies a session.status_idle event. Only a natural
+// end_turn is a clean end, and only when the driver did not itself send an
+// interrupt (an interrupt also yields an end_turn idle, indistinguishable by
+// value). requires_action leaves the session parked and live. Every other
+// stop reason, including a missing one and any unknown string, is returned as
+// an UncleanIdleError so the driver interrupts the session and fails the run.
+func (s *sseSource) noteCompletion(event managedagents.Event) error {
 	if event.Type != managedagents.EventStatusIdle {
-		return
+		return nil
 	}
-	if event.StopReason != nil && event.StopReason.Type == "requires_action" {
-		return
+	reason := ""
+	if event.StopReason != nil {
+		reason = event.StopReason.Type
 	}
-	s.cleanEnd = true
+	switch reason {
+	case "requires_action":
+		return nil
+	case "end_turn":
+		if !s.up.interruptSent() {
+			s.cleanEnd = true
+		}
+		return nil
+	case "":
+		return &UncleanIdleError{Reason: "(missing stop_reason)"}
+	default:
+		return &UncleanIdleError{Reason: reason}
+	}
 }
 
 // noteAsk records tool-use events the upstream flagged as awaiting a
