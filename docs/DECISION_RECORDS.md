@@ -22,7 +22,7 @@ receipt-grade tier is the hash-bearing subset of the fields below.
 | Tier | Claim | What it adds | Where it is documented |
 | --- | --- | --- | --- |
 | A — structured decision record | `BND-CLAIM-002` | The verdict, reason, decision mode, matched rule, and identity/context fields below. Emitted for every governed verdict. | This page. |
-| B — receipt-grade record | `BND-CLAIM-005` | The `request_hash`, `policy_bundle_hash`, and `decision_hash` fields that make after-the-fact alteration detectable by recomputation via `boundary verify-record`. | [`docs/RECEIPTS.md`](RECEIPTS.md). |
+| B — receipt-grade record | `BND-CLAIM-005` | The `request_hash`, `policy_bundle_hash`, and `decision_hash` fields that let `boundary verify-record` detect after-the-fact alteration of the covered fields, but only while the stored hash is kept beyond the editor's reach. | [`docs/RECEIPTS.md`](RECEIPTS.md). |
 
 When you inspect a record, the tier you are looking at depends on which fields
 are populated. A Tier A record always carries the content fields; it is also a
@@ -138,7 +138,7 @@ A `schema_version "2"` record adds four route-context fields that describe the
 governed route the request traveled. They are structured forms of context the
 adapter already knows. They are **descriptive context, not attestation**: they
 are covered by `decision_hash` (so altering one is detectable by
-`boundary verify-record`), but recording them does not make the deployment
+`boundary verify-record` only while the stored hash is kept beyond the editor's reach), but recording them does not make the deployment
 posture verified or the adapter self-report independently corroborated.
 
 | Field | What it records | What it does not do |
