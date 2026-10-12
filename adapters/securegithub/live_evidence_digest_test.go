@@ -119,9 +119,11 @@ func TestLiveEvidenceIndexRejectsInMemoryFileMismatch(t *testing.T) {
 func TestLadderFactsNotDerivedFromEditedTranscript(t *testing.T) {
 	res := writtenDeniedWriteResult(t)
 	rewriteTranscriptFile(t, res.TranscriptPath, `"github_mutation_called": false`, `"github_mutation_called": true`)
+	// The index itself must reject an edited transcript. Accepting it and merely
+	// withholding the ladder fact would still let an edited file into the index.
 	idx, err := BuildLiveEvidenceIndex([]LiveConformanceResult{res})
-	if err == nil && idx.LadderFacts().LiveNoMutationProven {
-		t.Fatal("ladder reports LiveNoMutationProven from a transcript edited after writing")
+	if err == nil {
+		t.Fatalf("index accepted a transcript edited after writing (LiveNoMutationProven=%v)", idx.LadderFacts().LiveNoMutationProven)
 	}
 }
 
