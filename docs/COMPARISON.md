@@ -53,7 +53,7 @@ end:
    record is receipt-grade — carrying request, policy-bundle, and decision
    hashes ([docs/RECEIPTS.md](./RECEIPTS.md)).
 4. **Verify.** `boundary verify-record` recomputes the hashes from the
-   record's own fields; an edited verdict fails recomputation. The hashes are
+   record's own fields; an edited verdict fails the check against the stored decision hash, as long as that hash was kept beyond the editor's reach. The hashes are
    unkeyed SHA-256 over canonical bytes — integrity, not authenticity, and
    not proof that a verdict was correct or that it was enforced.
 5. **Replay.** `boundary replay` re-evaluates the recorded request against
@@ -94,7 +94,8 @@ envelopes only. Every other adapter ships as a labeled preview
   compose.
 - It does not claim decision records are signed, or that a record proves the
   action was blocked. Records are hash-verifiable: tampering after emission
-  is detectable by recomputation — integrity, not authenticity.
+  is detectable by recomputation only while the stored hash is kept beyond the editor's reach —
+  integrity, not authenticity.
 - It does not claim protection for non-routed paths, production status for
   any surface other than the MCP route, or that passing policy tests prove
   production route enforcement.

@@ -28,7 +28,7 @@ In the Docker demo, the agent can reach the gateway but cannot reach Postgres di
 
 **Threat:** The agent or a compromised process modifies decision records after Boundary emits them.
 
-**Mitigation:** Production deployments should forward Boundary logs to an external system the agent cannot reach, preferably append-only storage or an equivalent immutable log sink.
+**Mitigation:** Production deployments should forward Boundary logs to an external system the agent cannot reach, preferably append-only storage or an equivalent log sink the agent cannot modify.
 
 **Release scope:** Boundary emits structured decision records to stdout. The Docker demo makes the records inspectable; production log integrity depends on the deployment's log pipeline.
 

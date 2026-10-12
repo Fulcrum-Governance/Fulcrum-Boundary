@@ -62,15 +62,15 @@ four commits and 30 files. The published `v0.13.0` installer's
 direct-release lane selected its `SHA256SUMS` entry with an unanchored match
 that also captured the archive's `.spdx.json` SBOM line, so checksum
 verification failed on the never-downloaded SBOM and the installer refused to
-install — fail-closed, nothing written. The immutable `v0.13.0` tag retains
+install — fail-closed, nothing written. The `v0.13.0` tag retains
 that defect; `v0.13.1` ships the repair. It selects the manifest entry by the
 complete filename field,
 requires exactly one exact entry (zero or duplicates still refuse), and is
 pinned by hermetic direct-release regression tests. The Homebrew lane was
 unaffected.
 
-The founder-controlled immutable public-install smoke passed on 2026-09-02.
-The public raw `main` and immutable `v0.13.1` installers were byte-identical
+The founder-controlled public-install smoke passed on 2026-09-02.
+The public raw `main` and `v0.13.1` installers were byte-identical
 at SHA-256
 `c4bf951e9849e1a48142adb35d55bb2e67f1fe4bd9dfc3b1d68d8a71e27a6a23`.
 With Homebrew and existing Boundary binaries excluded, the installer selected

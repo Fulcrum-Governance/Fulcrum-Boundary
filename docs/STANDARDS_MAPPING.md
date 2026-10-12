@@ -168,7 +168,7 @@ risk:
   ([DECISION_RECORDS.md](./DECISION_RECORDS.md)).
 - Receipt-grade records are hash-verifiable: `boundary verify-record`
   recomputes the request, policy-bundle, and decision hashes, so tampering
-  after emission is detectable by recomputation (`BND-CLAIM-005`,
+  after emission is detectable by recomputation only while the stored hash is kept beyond the editor's reach (`BND-CLAIM-005`,
   delivered). Schema_version 2 extends the hashed surface to route context
   — `adapter_id`, `route_id`, `topology_profile` (`BND-CLAIM-REC-001`,
   delivered).

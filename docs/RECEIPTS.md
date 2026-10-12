@@ -3,7 +3,8 @@
 Fulcrum Boundary decision records are **receipt-grade** when they carry stable
 hashes for the governed request, the policy bundle, and the emitted decision.
 These hashes let you detect after-the-fact tampering by recomputing them with
-`boundary verify-record`. The signature fields are schema-supported but optional;
+`boundary verify-record`, provided the stored decision hash was kept beyond the
+editor's reach. The signature fields are schema-supported but optional;
 unsigned records can still be checked against their hashes.
 
 This page documents the **receipt-grade record** (Tier B, `BND-CLAIM-005`): the
@@ -146,7 +147,7 @@ The schema includes `signature` and `signature_key_id` fields for operators that
 attach their own signing layer. These fields are empty by default; Boundary's
 default decision-record path does not sign records. `boundary verify-record`
 does **not** verify signatures — it validates the stable hashes that make
-tampering detectable. Signing is an operator-attached layer, not a shipped
+tampering detectable only while the stored hash is kept beyond the editor's reach. Signing is an operator-attached layer, not a shipped
 default.
 
 ## What this does not prove
