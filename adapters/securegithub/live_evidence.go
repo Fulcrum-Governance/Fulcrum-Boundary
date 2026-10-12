@@ -1,8 +1,13 @@
 package securegithub
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 )
 
@@ -37,9 +42,69 @@ type LiveEvidenceIndex struct {
 	Entries       []LiveEvidenceEntry `json:"entries"`
 }
 
+// VerifyTranscriptFile reads a conformance transcript from disk and recomputes
+// its digest from those bytes. It returns the decoded transcript and the
+// recomputed digest, and fails closed when the path is empty, the file cannot be
+// read or strictly decoded, carries no embedded digest, the embedded digest does
+// not equal the recomputed one, or the bytes are not the canonical rendering the
+// writer produces (so appended content or reordered fields are rejected).
+//
+// Scope: this detects an edit to the file relative to the digest the file
+// itself carries, and (via BuildLiveEvidenceIndex) relative to the digest the
+// caller holds. It does not authenticate who wrote the file: a party who can
+// rewrite the file and every stored copy of its digest is not detected.
+func VerifyTranscriptFile(path string) (LiveConformanceTranscript, string, error) {
+	if strings.TrimSpace(path) == "" {
+		return LiveConformanceTranscript{}, "", fmt.Errorf("transcript path is empty: digest cannot be recomputed")
+	}
+	raw, err := os.ReadFile(path) // #nosec G304 -- path is the operator-selected conformance transcript path; reading it is the purpose of this verifier.
+	if err != nil {
+		return LiveConformanceTranscript{}, "", fmt.Errorf("read transcript for digest recomputation: %w", err)
+	}
+	var tr LiveConformanceTranscript
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&tr); err != nil {
+		return LiveConformanceTranscript{}, "", fmt.Errorf("decode transcript: %w", err)
+	}
+	embedded := tr.TranscriptSHA256
+	if embedded == "" {
+		return LiveConformanceTranscript{}, "", fmt.Errorf("transcript carries no embedded digest")
+	}
+	tr.TranscriptSHA256 = ""
+	body, err := json.MarshalIndent(tr, "", "  ")
+	if err != nil {
+		return LiveConformanceTranscript{}, "", err
+	}
+	sum := sha256.Sum256(body)
+	recomputed := hex.EncodeToString(sum[:])
+	if recomputed != embedded {
+		return LiveConformanceTranscript{}, "", fmt.Errorf("transcript digest mismatch: embedded %s, recomputed %s", embedded, recomputed)
+	}
+	tr.TranscriptSHA256 = recomputed
+	canonical, err := json.MarshalIndent(tr, "", "  ")
+	if err != nil {
+		return LiveConformanceTranscript{}, "", err
+	}
+	if !bytes.Equal(canonical, raw) {
+		return LiveConformanceTranscript{}, "", fmt.Errorf("transcript bytes are not the canonical rendering of the transcript")
+	}
+	return tr, recomputed, nil
+}
+
+func sameTranscript(a, b LiveConformanceTranscript) bool {
+	ab, errA := json.Marshal(a)
+	bb, errB := json.Marshal(b)
+	return errA == nil && errB == nil && bytes.Equal(ab, bb)
+}
+
 // BuildLiveEvidenceIndex reduces live-conformance results to a sanitized,
 // hash-only index. It fails closed if any transcript is unsanitized, declares
 // raw content or credential data, or serializes to bytes that look secret-like.
+// Each entry is built from the transcript file on disk, never from the
+// in-memory digest alone: the digest is recomputed from the file bytes, must
+// equal every digest the caller supplied, and the in-memory transcript must
+// equal the file's (FUL-708).
 func BuildLiveEvidenceIndex(results []LiveConformanceResult) (LiveEvidenceIndex, error) {
 	idx := LiveEvidenceIndex{
 		SchemaVersion: LiveEvidenceSchemaVersion,
@@ -56,6 +121,28 @@ func BuildLiveEvidenceIndex(results []LiveConformanceResult) (LiveEvidenceIndex,
 		if tr.RawContentIncluded || tr.CredentialDataIncluded {
 			return LiveEvidenceIndex{}, fmt.Errorf("live evidence entry %q includes raw content or credential data", tr.Mode)
 		}
+		fileTr, digest, err := VerifyTranscriptFile(r.TranscriptPath)
+		if err != nil {
+			return LiveEvidenceIndex{}, fmt.Errorf("live evidence entry %q: %w", tr.Mode, err)
+		}
+		for _, supplied := range []string{r.TranscriptSHA256, tr.TranscriptSHA256} {
+			if supplied != "" && supplied != digest {
+				return LiveEvidenceIndex{}, fmt.Errorf("live evidence entry %q: supplied digest %s does not match recomputed %s", tr.Mode, supplied, digest)
+			}
+		}
+		if !sameTranscript(tr, fileTr) {
+			return LiveEvidenceIndex{}, fmt.Errorf("live evidence entry %q: in-memory transcript differs from the verified file", tr.Mode)
+		}
+		if !fileTr.Sanitized || fileTr.RawContentIncluded || fileTr.CredentialDataIncluded {
+			return LiveEvidenceIndex{}, fmt.Errorf("live evidence entry %q: transcript file is not sanitized or declares raw/credential data", tr.Mode)
+		}
+		// The decision hash earns ladder credit, so it must come from the verified
+		// file. A caller-supplied hash that the file does not carry, or that
+		// disagrees with it, is rejected rather than trusted.
+		if r.DecisionRecord != "" && r.DecisionRecord != fileTr.DecisionRecordHash {
+			return LiveEvidenceIndex{}, fmt.Errorf("live evidence entry %q: supplied decision record hash is not the one in the verified transcript", tr.Mode)
+		}
+		tr = fileTr
 		idx.Entries = append(idx.Entries, LiveEvidenceEntry{
 			Mode:                 tr.Mode,
 			ExpectedAction:       tr.ExpectedAction,
@@ -64,8 +151,8 @@ func BuildLiveEvidenceIndex(results []LiveConformanceResult) (LiveEvidenceIndex,
 			MatchedRule:          tr.MatchedRule,
 			UpstreamCalled:       tr.UpstreamCalled,
 			GitHubMutationCalled: tr.GitHubMutationCalled,
-			DecisionRecordHash:   firstNonEmpty(tr.DecisionRecordHash, r.DecisionRecord),
-			TranscriptSHA256:     firstNonEmpty(tr.TranscriptSHA256, r.TranscriptSHA256),
+			DecisionRecordHash:   tr.DecisionRecordHash,
+			TranscriptSHA256:     digest,
 		})
 	}
 	body, err := json.Marshal(idx)
