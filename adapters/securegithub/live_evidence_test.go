@@ -5,7 +5,17 @@ import (
 	"time"
 )
 
-func deniedWriteResult() LiveConformanceResult {
+// deniedWriteResult returns a genuinely written transcript (real file, real
+// digest) so the evidence index can recompute the digest from disk (FUL-708).
+func deniedWriteResult(t *testing.T) LiveConformanceResult {
+	t.Helper()
+	return deniedWriteResultWith(t, nil)
+}
+
+// deniedWriteResultWith applies mutate to the transcript BEFORE it is written,
+// so the file and its digest stay consistent with the mutated facts.
+func deniedWriteResultWith(t *testing.T, mutate func(*LiveConformanceTranscript)) LiveConformanceResult {
+	t.Helper()
 	tr := LiveConformanceTranscript{
 		SchemaVersion:        LiveConformanceSchemaVersion,
 		Sanitized:            true,
@@ -23,18 +33,21 @@ func deniedWriteResult() LiveConformanceResult {
 		UpstreamCalled:       false,
 		GitHubMutationCalled: false,
 		DecisionRecordHash:   "abc123",
-		TranscriptSHA256:     "f0f0",
 	}
-	return LiveConformanceResult{
-		Transcript:       tr,
-		TranscriptPath:   "/tmp/x/denied-write-after-taint.sanitized.json",
-		TranscriptSHA256: "f0f0",
-		DecisionRecord:   "abc123",
+	if mutate != nil {
+		mutate(&tr)
 	}
+	res, err := writeConformanceTranscript(
+		LiveConfig{TranscriptDir: t.TempDir()}, tr, "denied-write-after-taint.sanitized.json")
+	if err != nil {
+		t.Fatalf("writeConformanceTranscript: %v", err)
+	}
+	return res
 }
 
 func TestBuildLiveEvidenceIndexHashOnly(t *testing.T) {
-	idx, err := BuildLiveEvidenceIndex([]LiveConformanceResult{deniedWriteResult()})
+	res := deniedWriteResult(t)
+	idx, err := BuildLiveEvidenceIndex([]LiveConformanceResult{res})
 	if err != nil {
 		t.Fatalf("BuildLiveEvidenceIndex: %v", err)
 	}
@@ -48,7 +61,7 @@ func TestBuildLiveEvidenceIndexHashOnly(t *testing.T) {
 		t.Fatalf("entries = %d, want 1", len(idx.Entries))
 	}
 	e := idx.Entries[0]
-	if e.Mode != "denied-write-after-taint" || e.TranscriptSHA256 != "f0f0" || e.DecisionRecordHash != "abc123" {
+	if e.Mode != "denied-write-after-taint" || e.TranscriptSHA256 != res.TranscriptSHA256 || len(e.TranscriptSHA256) != 64 || e.DecisionRecordHash != "abc123" {
 		t.Fatalf("unexpected entry: %+v", e)
 	}
 	if e.UpstreamCalled || e.GitHubMutationCalled {
@@ -57,17 +70,17 @@ func TestBuildLiveEvidenceIndexHashOnly(t *testing.T) {
 }
 
 func TestBuildLiveEvidenceIndexRejectsUnsanitized(t *testing.T) {
-	bad := deniedWriteResult()
+	bad := deniedWriteResult(t)
 	bad.Transcript.Sanitized = false
 	if _, err := BuildLiveEvidenceIndex([]LiveConformanceResult{bad}); err == nil {
 		t.Fatal("expected error for unsanitized transcript")
 	}
-	leak := deniedWriteResult()
+	leak := deniedWriteResult(t)
 	leak.Transcript.RawContentIncluded = true
 	if _, err := BuildLiveEvidenceIndex([]LiveConformanceResult{leak}); err == nil {
 		t.Fatal("expected error for raw-content-included transcript")
 	}
-	cred := deniedWriteResult()
+	cred := deniedWriteResult(t)
 	cred.Transcript.CredentialDataIncluded = true
 	if _, err := BuildLiveEvidenceIndex([]LiveConformanceResult{cred}); err == nil {
 		t.Fatal("expected error for credential-data-included transcript")
@@ -75,7 +88,7 @@ func TestBuildLiveEvidenceIndexRejectsUnsanitized(t *testing.T) {
 }
 
 func TestLiveEvidenceIndexLadderFactsL1(t *testing.T) {
-	idx, err := BuildLiveEvidenceIndex([]LiveConformanceResult{deniedWriteResult()})
+	idx, err := BuildLiveEvidenceIndex([]LiveConformanceResult{deniedWriteResult(t)})
 	if err != nil {
 		t.Fatalf("build: %v", err)
 	}
@@ -95,8 +108,7 @@ func TestLiveEvidenceIndexLadderFactsL1(t *testing.T) {
 }
 
 func TestLiveEvidenceIndexLadderFactsNotL1WhenMutationCalled(t *testing.T) {
-	r := deniedWriteResult()
-	r.Transcript.GitHubMutationCalled = true
+	r := deniedWriteResultWith(t, func(tr *LiveConformanceTranscript) { tr.GitHubMutationCalled = true })
 	idx, err := BuildLiveEvidenceIndex([]LiveConformanceResult{r})
 	if err != nil {
 		t.Fatalf("build: %v", err)

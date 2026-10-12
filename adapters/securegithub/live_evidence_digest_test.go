@@ -17,18 +17,9 @@ import (
 	"testing"
 )
 
-// writtenDeniedWriteResult produces a real on-disk transcript through the same
-// writer the live path uses, so the digest and the bytes are genuinely linked.
 func writtenDeniedWriteResult(t *testing.T) LiveConformanceResult {
 	t.Helper()
-	base := deniedWriteResult().Transcript
-	base.TranscriptSHA256 = ""
-	res, err := writeConformanceTranscript(
-		LiveConfig{TranscriptDir: t.TempDir()}, base, "denied-write-after-taint.sanitized.json")
-	if err != nil {
-		t.Fatalf("writeConformanceTranscript: %v", err)
-	}
-	return res
+	return deniedWriteResult(t)
 }
 
 func rewriteTranscriptFile(t *testing.T, path, old, repl string) {

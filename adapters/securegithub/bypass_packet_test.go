@@ -16,7 +16,7 @@ func fullAttestation() DeploymentAttestation {
 }
 
 func TestBuildBypassProofPacketL2(t *testing.T) {
-	idx, err := BuildLiveEvidenceIndex([]LiveConformanceResult{deniedWriteResult()})
+	idx, err := BuildLiveEvidenceIndex([]LiveConformanceResult{deniedWriteResult(t)})
 	if err != nil {
 		t.Fatalf("index: %v", err)
 	}
@@ -42,7 +42,7 @@ func TestBuildBypassProofPacketL2(t *testing.T) {
 }
 
 func TestBypassPacketFailsClosedOnMissingDenial(t *testing.T) {
-	idx, _ := BuildLiveEvidenceIndex([]LiveConformanceResult{deniedWriteResult()})
+	idx, _ := BuildLiveEvidenceIndex([]LiveConformanceResult{deniedWriteResult(t)})
 	att := fullAttestation()
 	att.EgressPolicyEnforced = AttestedDenial{Attested: false}
 	p, err := BuildBypassProofPacket(idx, att)
@@ -76,7 +76,7 @@ func TestBypassPacketFailsClosedWithoutL1Evidence(t *testing.T) {
 }
 
 func TestBypassPacketRejectsAttestationEvidenceWithSecrets(t *testing.T) {
-	idx, _ := BuildLiveEvidenceIndex([]LiveConformanceResult{deniedWriteResult()})
+	idx, _ := BuildLiveEvidenceIndex([]LiveConformanceResult{deniedWriteResult(t)})
 	att := fullAttestation()
 	att.AppCredentialRuntimeOnly = AttestedDenial{Attested: true, Evidence: "Authorization: Bearer ghp_exampleTokenMaterialThatMustNotBeStored"}
 	if _, err := BuildBypassProofPacket(idx, att); err == nil {
@@ -90,7 +90,7 @@ func TestBypassPacketRejectsAttestationEvidenceWithSecrets(t *testing.T) {
 // the "private key" substring. The strict containsSecretLikeData scrubber must
 // catch it and BuildBypassProofPacket must fail closed.
 func TestBypassPacketRejectsRawKeyBodyEvidence(t *testing.T) {
-	idx, _ := BuildLiveEvidenceIndex([]LiveConformanceResult{deniedWriteResult()})
+	idx, _ := BuildLiveEvidenceIndex([]LiveConformanceResult{deniedWriteResult(t)})
 	att := fullAttestation()
 	att.AppCredentialRuntimeOnly = AttestedDenial{
 		Attested: true,
@@ -102,7 +102,7 @@ func TestBypassPacketRejectsRawKeyBodyEvidence(t *testing.T) {
 }
 
 func TestBypassPacketUnsanitizedIndexRejected(t *testing.T) {
-	idx, _ := BuildLiveEvidenceIndex([]LiveConformanceResult{deniedWriteResult()})
+	idx, _ := BuildLiveEvidenceIndex([]LiveConformanceResult{deniedWriteResult(t)})
 	idx.Sanitized = false
 	if _, err := BuildBypassProofPacket(idx, fullAttestation()); err == nil {
 		t.Fatal("expected fail-closed error for unsanitized live-evidence index")
