@@ -39,7 +39,7 @@ Canonical: [`LIMITATIONS.md`](../LIMITATIONS.md),
 
 A decision record is receipt-grade when it carries the request, policy-bundle,
 and decision hashes. Tampering after emission is detectable by recomputing those
-hashes with `boundary verify-record`. The hashes are unkeyed SHA-256 over
+hashes with `boundary verify-record`, but only while the stored hash is kept beyond the editor's reach. The hashes are unkeyed SHA-256 over
 canonical bytes: this is integrity, not authenticity. "Hash-verifiable" here does
 not mean the record is proved, tamper-proof, immutable, or attested. The hash
 is unkeyed, so anyone can edit a record and recompute a new internally consistent

@@ -2,7 +2,7 @@
 
 Boundary decision records carry an unkeyed SHA-256 `decision_hash` over their
 RFC 8785 / JCS canonical bytes. That hash is **integrity, not authenticity**: it
-detects tampering after emission, but an unkeyed hash does not attest who
+detects tampering after emission only while the stored hash is kept beyond the editor's reach, and an unkeyed hash does not attest who
 produced the record (see [`RECEIPTS.md`](RECEIPTS.md) and
 [`DECISION_RECORDS.md`](DECISION_RECORDS.md)).
 

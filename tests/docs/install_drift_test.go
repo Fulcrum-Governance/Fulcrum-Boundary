@@ -28,7 +28,7 @@ var (
 	currentReleaseAnchor     = regexp.MustCompile("(?m)^Current release: `(v[0-9]+\\.[0-9]+\\.[0-9]+)`")
 	publishedReleaseAnchor   = regexp.MustCompile("(?m)^Published release: `(v[0-9]+\\.[0-9]+\\.[0-9]+)`$")
 	currentReleaseDateAnchor = regexp.MustCompile("(?m)^Current release date: `([0-9]{4}-[0-9]{2}-[0-9]{2})`$")
-	publicInstallSmokeAnchor = regexp.MustCompile(`The founder-controlled immutable public-install smoke passed on ([0-9]{4}-[0-9]{2}-[0-9]{2})\.`)
+	publicInstallSmokeAnchor = regexp.MustCompile(`The founder-controlled public-install smoke passed on ([0-9]{4}-[0-9]{2}-[0-9]{2})\.`)
 	stalePublicInstallSmoke  = regexp.MustCompile("(?i)public-install smoke(?: against the published `v[0-9]+\\.[0-9]+\\.[0-9]+` channels)? has not run")
 
 	// Canonical, copy-pasteable install / version references that must track the
