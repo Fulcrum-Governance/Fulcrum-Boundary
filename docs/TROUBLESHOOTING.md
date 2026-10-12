@@ -259,7 +259,7 @@ run prints `record verification: ok` and `record_id: <id>` and exits `0`.
 - **`schema_version mismatch`** — the file is not a `DecisionRecordV1` (the
   record's `schema_version` must equal `"1"`).
 - **`decision_hash mismatch`** — the record's content was modified after
-  emission; the recomputed hash no longer matches. This is the tamper-detection
+  emission; the recomputed hash no longer matches. This is the tamper-evidence
   check working as intended.
 - **`--policies` or `--request` fails on a shipped demo record** — expected. The
   fixture demo records carry placeholder cross-check values (for example a
