@@ -136,6 +136,12 @@ func BuildLiveEvidenceIndex(results []LiveConformanceResult) (LiveEvidenceIndex,
 		if !fileTr.Sanitized || fileTr.RawContentIncluded || fileTr.CredentialDataIncluded {
 			return LiveEvidenceIndex{}, fmt.Errorf("live evidence entry %q: transcript file is not sanitized or declares raw/credential data", tr.Mode)
 		}
+		// The decision hash earns ladder credit, so it must come from the verified
+		// file. A caller-supplied hash that the file does not carry, or that
+		// disagrees with it, is rejected rather than trusted.
+		if r.DecisionRecord != "" && r.DecisionRecord != fileTr.DecisionRecordHash {
+			return LiveEvidenceIndex{}, fmt.Errorf("live evidence entry %q: supplied decision record hash is not the one in the verified transcript", tr.Mode)
+		}
 		tr = fileTr
 		idx.Entries = append(idx.Entries, LiveEvidenceEntry{
 			Mode:                 tr.Mode,
@@ -145,7 +151,7 @@ func BuildLiveEvidenceIndex(results []LiveConformanceResult) (LiveEvidenceIndex,
 			MatchedRule:          tr.MatchedRule,
 			UpstreamCalled:       tr.UpstreamCalled,
 			GitHubMutationCalled: tr.GitHubMutationCalled,
-			DecisionRecordHash:   firstNonEmpty(tr.DecisionRecordHash, r.DecisionRecord),
+			DecisionRecordHash:   tr.DecisionRecordHash,
 			TranscriptSHA256:     digest,
 		})
 	}
