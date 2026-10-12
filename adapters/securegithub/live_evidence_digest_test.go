@@ -124,3 +124,45 @@ func TestLadderFactsNotDerivedFromEditedTranscript(t *testing.T) {
 		t.Fatal("ladder reports LiveNoMutationProven from a transcript edited after writing")
 	}
 }
+
+// Devin Review (FUL-708, live_evidence.go:139): the decision hash that earns
+// ladder credit must come from the verified transcript file, never from the
+// caller-supplied result. These pin that boundary.
+
+// Negative control: the verified file has no decision hash, the caller supplies
+// one. The index must not accept a hash that is absent from the file.
+func TestLiveEvidenceIndexRejectsDecisionHashAbsentFromFile(t *testing.T) {
+	res := deniedWriteResultWith(t, func(tr *LiveConformanceTranscript) { tr.DecisionRecordHash = "" })
+	res.DecisionRecord = "abc123"
+	if idx, err := BuildLiveEvidenceIndex([]LiveConformanceResult{res}); err == nil {
+		t.Fatalf("index accepted a decision hash that is not in the verified file: %+v", idx.Entries)
+	}
+}
+
+// Negative control: the caller supplies a decision hash that disagrees with the
+// one in the verified file.
+func TestLiveEvidenceIndexRejectsDecisionHashDisagreeingWithFile(t *testing.T) {
+	res := deniedWriteResult(t) // file carries "abc123"
+	res.DecisionRecord = "zzz999"
+	if _, err := BuildLiveEvidenceIndex([]LiveConformanceResult{res}); err == nil {
+		t.Fatal("index accepted a decision hash that disagrees with the verified file")
+	}
+}
+
+// Fail-closed: a verified file with no decision hash and no caller hash yields
+// no ladder credit (the decision-record fact stays false and the level is not L1).
+func TestLiveEvidenceIndexNoLadderCreditWithoutDecisionHash(t *testing.T) {
+	res := deniedWriteResultWith(t, func(tr *LiveConformanceTranscript) { tr.DecisionRecordHash = "" })
+	res.DecisionRecord = ""
+	idx, err := BuildLiveEvidenceIndex([]LiveConformanceResult{res})
+	if err != nil {
+		return // rejecting outright is also fail-closed
+	}
+	f := idx.LadderFacts()
+	if f.DecisionRecordHashPresent {
+		t.Fatal("decision hash reported present with none in the verified file")
+	}
+	if level, _ := ClassifyBypassLevel(f); level == BypassL1 {
+		t.Fatal("ladder awarded L1 without a decision hash in the verified file")
+	}
+}
