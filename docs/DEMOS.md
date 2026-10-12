@@ -68,7 +68,7 @@ boundary demo tamper-evidence
 boundary demo tamper-evidence --json
 ```
 
-This demonstrates **hash-verifiable** tamper detection. It is **not**
+This demonstrates **hash-verifiable** tamper evidence. It is **not**
 tamper-proof or immutable storage: it detects a forged record, it does not
 prevent one from being written elsewhere, and it does not attest that the
 deployment topology forced the route through Boundary.
