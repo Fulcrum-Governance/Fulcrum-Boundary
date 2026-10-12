@@ -13,7 +13,7 @@ describe what Boundary decided and why.
 A decision record becomes **receipt-grade** (Tier B, `BND-CLAIM-005`) when it
 also carries the stable request, policy-bundle, and decision hashes that
 `boundary verify-record` recomputes. Those hash fields, the verification
-walkthrough, and the tamper-detection behavior are documented in
+walkthrough, and the tamper-evidence behavior are documented in
 [`docs/RECEIPTS.md`](RECEIPTS.md). Same record type (`DecisionRecordV1`); the
 receipt-grade tier is the hash-bearing subset of the fields below.
 
@@ -239,7 +239,7 @@ covered in [`docs/RECEIPTS.md`](RECEIPTS.md).
 - **It is not cryptographic proof of a verdict.** A decision record states the
   verdict and reason; on its own it does not cryptographically attest that the
   verdict was correct or that any particular party produced it. The integrity
-  and tamper-detection properties — and their limits — belong to the
+  and tamper-evidence properties — and their limits — belong to the
   receipt-grade tier in [`docs/RECEIPTS.md`](RECEIPTS.md), not to the content
   fields here.
 - **It is not runtime enforcement.** A record that an action was decided `deny`
@@ -258,7 +258,7 @@ covered in [`docs/RECEIPTS.md`](RECEIPTS.md).
   and `topology_profile` describe the route a request traveled and the posture
   asserted at emission. They do not verify that the deployment matches the
   asserted `topology_profile`, and they do not prove that no unrouted path to the
-  same tool exists. Recording route-context extends tamper-detection to those
+  same tool exists. Recording route-context extends tamper evidence to those
   fields; it does not add attestation or authenticity.
 
 ## Locating a written record

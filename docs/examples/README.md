@@ -53,7 +53,7 @@ route-context fields:
 The route-context fields (`adapter_id`, `route_id`, `topology_profile`,
 `execution_claim`) are covered by `decision_hash`, so editing any of them — for
 example changing `topology_profile` — fails verification exactly like editing
-`action`. Recording route-context extends tamper-detection to those fields; it
+`action`. Recording route-context extends tamper evidence to those fields; it
 does not attest that the deployment matches the asserted `topology_profile` and
 does not corroborate the `execution_claim` self-report.
 
