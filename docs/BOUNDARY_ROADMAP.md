@@ -36,7 +36,7 @@ local-first, fixture-safe, and require no account, no cloud, and no live calls.
 | Capability | What it does today |
 | --- | --- |
 | `DecisionRecordV1` (`schema_version "1"`) | Every governed verdict emits one structured JSON decision record — allow, deny, warn, escalate, or require-approval — carrying the verdict, reason, decision mode, and matched rule. Field reference: [`docs/DECISION_RECORDS.md`](DECISION_RECORDS.md). |
-| `boundary verify-record` | Recomputes the stable request, policy-bundle, and decision hashes on a receipt-grade record so after-the-fact alteration is detectable by recomputation. Walkthrough: [`docs/RECEIPTS.md`](RECEIPTS.md). |
+| `boundary verify-record` | Recomputes the stable request, policy-bundle, and decision hashes on a receipt-grade record so an after-the-fact alteration is detectable by recomputation, but only while the stored hash is kept beyond the editor's reach. Walkthrough: [`docs/RECEIPTS.md`](RECEIPTS.md). |
 | `boundary doctor` | Renders local routed-surface diagnostics and bypass caveats, including a `--json` form, without network calls. Reference: [`docs/DOCTOR.md`](DOCTOR.md). |
 | `boundary evidence bundle` / `boundary evidence verify` | Packages local release artifacts with a manifest and SHA-256 hashes, then re-checks a bundle for manifest shape, artifact existence, and hash integrity. Reference: [`docs/EVIDENCE_BUNDLE.md`](EVIDENCE_BUNDLE.md). |
 | Two proof-lane demos | `boundary demo github-lethal-trifecta` (MCP, the first production route) and `boundary demo command-secret-exfil` (Command Boundary, delivered preview). Each denies a dangerous action and emits a hash-verifiable decision record. |
