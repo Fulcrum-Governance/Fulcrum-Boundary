@@ -57,7 +57,7 @@ func VerifyTranscriptFile(path string) (LiveConformanceTranscript, string, error
 	if strings.TrimSpace(path) == "" {
 		return LiveConformanceTranscript{}, "", fmt.Errorf("transcript path is empty: digest cannot be recomputed")
 	}
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(path) // #nosec G304 -- path is the operator-selected conformance transcript path; reading it is the purpose of this verifier.
 	if err != nil {
 		return LiveConformanceTranscript{}, "", fmt.Errorf("read transcript for digest recomputation: %w", err)
 	}
