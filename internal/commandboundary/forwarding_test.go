@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 // FUL-653: `command run` classifies one argv, so `find -exec <cmd>` and
@@ -151,4 +152,43 @@ func TestExecutorFindExecForwardingBlocksWithRecord(t *testing.T) {
 			t.Fatalf("record for %q kept C0 observe class", argv)
 		}
 	}
+}
+
+// Deeply nested forwarding must stay cheap and must never allow. Before the
+// classifyOwn split, each nesting level re-decomposed its payload through
+// Classify, so cost roughly doubled per level (about 0.4s at 20 levels).
+func TestClassifyNestedForwardingIsBoundedAndNeverAllows(t *testing.T) {
+	for _, wrapper := range [][]string{{"find", ".", "-exec"}, {"xargs"}, {"env"}} {
+		argv := []string{}
+		for i := 0; i < 40; i++ {
+			argv = append(argv, wrapper...)
+		}
+		argv = append(argv, "sh")
+		start := time.Now()
+		got, err := Classify(argv)
+		elapsed := time.Since(start)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !blocking(got.RecommendedAction) {
+			t.Fatalf("40x %q nesting = %s, want deny or require_approval", wrapper[0], got.RecommendedAction)
+		}
+		if elapsed > 100*time.Millisecond {
+			t.Fatalf("40x %q nesting took %v; nested forwarding classification must not be exponential", wrapper[0], elapsed)
+		}
+		if _, err := ClassifyLine(joinWords(argv)); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func joinWords(words []string) string {
+	out := ""
+	for i, w := range words {
+		if i > 0 {
+			out += " "
+		}
+		out += w
+	}
+	return out
 }

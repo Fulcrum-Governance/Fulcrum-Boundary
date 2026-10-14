@@ -6,7 +6,29 @@ import (
 	"strings"
 )
 
+// Classify classifies one already-split argv, including the commands it
+// forwards execution to (see forwardedClassification).
 func Classify(argv []string) (Classification, error) {
+	classification, err := classifyOwn(argv)
+	if err != nil {
+		return classification, err
+	}
+	class, risk, action, reason := classification.Class, classification.Risk, classification.RecommendedAction, classification.Reason
+	if forwarded, ok := forwardedClassification(argv); ok &&
+		actionSeverity(forwarded.RecommendedAction) > actionSeverity(action) {
+		class, risk, action = forwarded.Class, forwarded.Risk, forwarded.RecommendedAction
+		reason = "forwards execution to a command that is more restrictive: " + forwarded.Reason
+	}
+	classification.Class, classification.Risk, classification.RecommendedAction, classification.Reason = class, risk, action, reason
+	return classification, nil
+}
+
+// classifyOwn classifies argv by its own command word only, without looking at
+// forwarded payloads. The line decomposer uses it for each segment because the
+// decomposer already walks payloads itself under its depth cap; calling
+// Classify there would re-decompose every payload at each level and make
+// nested forwarding (`xargs xargs … sh`) exponential.
+func classifyOwn(argv []string) (Classification, error) {
 	if len(argv) == 0 || strings.TrimSpace(argv[0]) == "" {
 		return Classification{}, errors.New("command is required")
 	}
@@ -15,11 +37,6 @@ func Classify(argv []string) (Classification, error) {
 	args := append([]string(nil), argv[1:]...)
 	class, reason := classifyCommand(command, args)
 	risk, action := postureFor(class)
-	if forwarded, ok := forwardedClassification(argv); ok &&
-		actionSeverity(forwarded.RecommendedAction) > actionSeverity(action) {
-		class, risk, action = forwarded.Class, forwarded.Risk, forwarded.RecommendedAction
-		reason = "forwards execution to a command that is more restrictive: " + forwarded.Reason
-	}
 	return Classification{
 		SchemaVersion:     SchemaVersionClassification,
 		Command:           command,
