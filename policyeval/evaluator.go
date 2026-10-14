@@ -2,6 +2,7 @@ package policyeval
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"sync"
@@ -220,6 +221,7 @@ func (e *Evaluator) Evaluate(ctx context.Context, req *EvaluationRequest) (*Deci
 	finalAction := ActionAllow
 	var escalationReason string
 	var evaluationErrors []string
+	var evaluationTimedOut bool
 
 policyLoop:
 	for _, policy := range policies {
@@ -244,9 +246,11 @@ policyLoop:
 				Field{Key: "policy_id", Value: policy.PolicyId},
 				Field{Key: "error", Value: err.Error()})
 			evaluationErrors = append(evaluationErrors, fmt.Sprintf("policy %s: %v", policy.PolicyId, err))
+			evaluationTimedOut = evaluationTimedOut || errors.Is(err, context.DeadlineExceeded)
 			continue
 		}
 		evaluationErrors = append(evaluationErrors, decision.EvaluationErrors...)
+		evaluationTimedOut = evaluationTimedOut || decision.EvaluationTimedOut
 
 		// Collect matched rules and actions
 		matchedRules = append(matchedRules, decision.MatchedRules...)
@@ -308,6 +312,7 @@ policyLoop:
 		EvaluationDurationMs: duration.Milliseconds(),
 		EscalationReason:     escalationReason,
 		EvaluationErrors:     evaluationErrors,
+		EvaluationTimedOut:   evaluationTimedOut,
 	}, nil
 }
 
@@ -341,6 +346,7 @@ func (e *Evaluator) evaluatePolicy(ctx context.Context, policy *Policy, evalCtx 
 	finalAction := ActionAllow
 	var escalationReason string
 	var evaluationErrors []string
+	var evaluationTimedOut bool
 
 	for _, rule := range policy.Rules {
 		if !rule.Enabled {
@@ -360,6 +366,7 @@ func (e *Evaluator) evaluatePolicy(ctx context.Context, policy *Policy, evalCtx 
 				Field{Key: "rule_id", Value: rule.RuleId},
 				Field{Key: "error", Value: err.Error()})
 			evaluationErrors = append(evaluationErrors, fmt.Sprintf("policy %s rule %s: %v", policy.PolicyId, rule.RuleId, err))
+			evaluationTimedOut = evaluationTimedOut || errors.Is(err, context.DeadlineExceeded)
 			continue
 		}
 
@@ -424,6 +431,7 @@ done:
 		EvaluationDurationMs: duration.Milliseconds(),
 		EscalationReason:     escalationReason,
 		EvaluationErrors:     evaluationErrors,
+		EvaluationTimedOut:   evaluationTimedOut,
 	}, nil
 }
 

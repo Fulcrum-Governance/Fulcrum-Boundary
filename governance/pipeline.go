@@ -572,10 +572,14 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 	// still denied. Anything short of deny becomes CHECK_INDETERMINATE.
 	var deniedDespiteFault *CheckFailure
 	if len(evalDecision.EvaluationErrors) > 0 {
+		category := FailureInvalidResult
+		if evalDecision.EvaluationTimedOut {
+			category = FailureTimeout
+		}
 		cf := &CheckFailure{
 			Stage:    CheckStagePolicyEval,
 			Class:    CheckClassPolicy,
-			Category: FailureInvalidResult,
+			Category: category,
 			Cause:    "policy or rule evaluation faulted and was skipped",
 			Detail:   strings.Join(evalDecision.EvaluationErrors, "; "),
 		}
@@ -638,6 +642,9 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 	}
 	// The deny stands; the skipped faults are still recorded on Check.
 	p.markCheckFailure(decision, req, deniedDespiteFault)
+	// The deny stood on a rule that evaluated cleanly, so it is still a real
+	// policy outcome for trust scoring even though a sibling check faulted.
+	decision.trustCountableDespiteCheck = deniedDespiteFault != nil && decision.Action == "deny"
 
 	return decision, nil
 }
@@ -908,7 +915,7 @@ func (p *Pipeline) recordTrustDecision(ctx context.Context, req *GovernanceReque
 	if !ok {
 		return nil, nil
 	}
-	if decision == nil || decision.Check != nil || strings.HasPrefix(decision.Reason, "trust check failed") || strings.Contains(decision.Reason, " is ISOLATED") || strings.Contains(decision.Reason, " is TERMINATED") {
+	if decision == nil || (decision.Check != nil && !decision.trustCountableDespiteCheck) || strings.HasPrefix(decision.Reason, "trust check failed") || strings.Contains(decision.Reason, " is ISOLATED") || strings.Contains(decision.Reason, " is TERMINATED") {
 		return nil, nil
 	}
 	update, err := backend.RecordDecision(ctx, req, decision)

@@ -93,6 +93,11 @@ type Decision struct {
 	// Non-empty means Action may be more permissive than the loaded policy
 	// set intends: a skipped deny rule never fired.
 	EvaluationErrors []string
+
+	// EvaluationTimedOut reports that at least one EvaluationErrors entry was
+	// caused by a context deadline (for example an external-call condition), so
+	// callers can classify the fault as a timeout rather than an invalid result.
+	EvaluationTimedOut bool
 }
 
 // RuleMatch represents a matched rule within a policy.
