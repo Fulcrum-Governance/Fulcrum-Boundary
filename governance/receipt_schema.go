@@ -66,7 +66,7 @@ type DecisionRecordV1 struct {
 	//
 	// These describe the governed route the request traveled. They are
 	// descriptive context, not attestation: recording them extends
-	// tamper-detection (they are covered by decision_hash) but does not make
+	// tamper-evidence (they are covered by decision_hash) but does not make
 	// the deployment posture verified or the adapter self-report corroborated.
 
 	// AdapterID names the adapter that parsed and routed the request.
