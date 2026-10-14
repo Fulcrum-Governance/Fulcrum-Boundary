@@ -134,8 +134,10 @@ constitute community-marketplace acceptance or any broader launch claim.
 
 ## Published baseline before v0.13.1: v0.13.0
 
-The published `v0.13.0` record is preserved below exactly as reconciled at its
-own publication. Nothing in the v0.13.1 section above rewrites it.
+The published `v0.13.0` record is preserved below as reconciled at its own
+publication, with one exception. On 2026-10-14 a sentence about the
+`boundary-plugins` repository was removed, because that repository was created
+after `v0.13.0` was published. The v0.13.1 section above records its state.
 
 ## Published v0.13.0 release
 
@@ -205,9 +207,7 @@ Records remain hash-verifiable for covered-field integrity only — integrity,
 not authenticity, correctness, or execution proof. Command Boundary and Edit
 Boundary — the classifiers the hook routes into — remain delivered previews.
 The release does not change adapter maturity or any claim status, and
-Boundary does not emit `proved` decisions. The `boundary-plugins` marketplace
-repository does not exist and no marketplace submission has been made; the
-marketplace scaffold in this repository remains unpublished.
+Boundary does not emit `proved` decisions.
 
 ## Published baseline before v0.13.0: v0.12.0
 
