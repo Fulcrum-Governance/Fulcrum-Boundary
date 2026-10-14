@@ -34,8 +34,9 @@ const (
 // TestCLIReferenceTopology attacks the cli-reference-v1 reference topology:
 // eight adversarial probes that must all fail to execute the protected tool —
 // including `boundary shell` launched through the setgid shim, which must not
-// carry boundary_exec — two governed-route probes that assert the Boundary
-// wrapper works and records its decision, and two extra probes. Every
+// carry boundary_exec — three governed-route probes that assert the Boundary
+// wrapper allows, denies, and blocks `find -exec` forwarding (FUL-653) and
+// records each decision, and three extra direct-agent probes. Every
 // expectation is asserted on real exit codes, real output, and the decision
 // record file.
 func TestCLIReferenceTopology(t *testing.T) {
@@ -128,18 +129,46 @@ func TestCLIReferenceTopology(t *testing.T) {
 		},
 		{
 			Name: "governed-allow",
-			Description: "An allowed routed command reaches the protected binary through the setgid " +
-				"wrapper shim: the preview command policy only executes allowlisted argv[0] names, and " +
-				"`find` is the C0 (observe) command that hands a path to execve, so the governed " +
-				"allow route is `boundary command run -- find <tools dir> -name <tool> -exec <tool> ;`. " +
-				"The marker can only appear if the tool executed under the wrapper's boundary_exec group.",
-			Expected: "exit 0, marker on stdout, decision record action=allow executed=true",
+			Description: "An allowed routed command runs as a child of the setgid wrapper shim holding " +
+				"boundary_exec, without reaching a shell or the protected tool: `ls` is a C0 (observe) " +
+				"command, and the tools directory is 0750 root:boundary_exec, so its listing can only " +
+				"succeed under the wrapper's group. (Before FUL-653 this probe used `find -exec <tool>`; " +
+				"that shape now classifies by the forwarded command and is asserted blocked by " +
+				"governed-find-exec-forwarding below.)",
+			Expected: "exit 0, tool name in the listing, decision record action=allow executed=true",
+			Steps: [][]string{
+				{"boundary", "command", "run", "--", "ls", "/opt/fulcrum/tools"},
+				{"tail", "-n", "1", cliRecordPath},
+			},
+			Judge: cliGovernedAllowListingJudge,
+		},
+		{
+			Name: "list-tools-as-agent",
+			Description: "The governed-allow shape attempted directly by the agent: listing the tools " +
+				"directory must fail without the boundary_exec group, so the governed listing above " +
+				"proves the wrapper conferred the group.",
+			Expected: "non-zero exit, permission denied, no marker",
+			Steps:    [][]string{{"ls", "/opt/fulcrum/tools"}},
+			Judge:    blocked,
+		},
+		{
+			Name: "governed-find-exec-forwarding",
+			Description: "FUL-653: a routed `find -exec/-execdir/-ok` must be governed by the command it " +
+				"forwards. Forwarding to the protected tool (unclassified, C7) or to a shell must not " +
+				"execute; each attempt must record action deny or require_approval with executed=false.",
+			Expected: "every run non-zero, no marker, verdict deny or require_approval, record executed=false",
 			Steps: [][]string{
 				{"boundary", "command", "run", "--",
 					"find", "/opt/fulcrum/tools", "-name", cliToolName, "-exec", cliToolPath, ";"},
 				{"tail", "-n", "1", cliRecordPath},
+				{"boundary", "command", "run", "--",
+					"find", "/tmp", "-maxdepth", "0", "-exec", "/bin/sh", "-c", cliToolPath, ";"},
+				{"tail", "-n", "1", cliRecordPath},
+				{"boundary", "command", "run", "--",
+					"find", "/tmp", "-maxdepth", "0", "-execdir", "/bin/sh", "-c", cliToolPath, "+"},
+				{"tail", "-n", "1", cliRecordPath},
 			},
-			Judge: cliGovernedAllowJudge,
+			Judge: cliGovernedBlockedPairsJudge,
 		},
 		{
 			Name: "governed-deny",
@@ -156,8 +185,8 @@ func TestCLIReferenceTopology(t *testing.T) {
 		},
 		{
 			Name: "find-exec-as-agent",
-			Description: "The governed-allow shape attempted directly by the agent: find -exec must " +
-				"fail without the boundary_exec group, closing the same path the wrapper opens.",
+			Description: "`find -exec <tool>` attempted directly by the agent (the route FUL-653 closed " +
+				"on the governed path): it must fail without the boundary_exec group.",
 			Expected: "non-zero exit, permission denied, no marker",
 			Steps:    [][]string{{"find", "/opt/fulcrum/tools", "-name", cliToolName, "-exec", cliToolPath, ";"}},
 			Judge:    blocked,
@@ -192,16 +221,20 @@ func TestCLIReferenceTopology(t *testing.T) {
 	}
 }
 
-// cliGovernedAllowJudge asserts the governed allow probe: exit 0, the
-// protected tool's marker on stdout, an allow verdict on stderr, and a
-// decision record with action=allow executed=true.
-func cliGovernedAllowJudge(steps []ExecResult) (bool, string) {
+// cliGovernedAllowListingJudge asserts the governed allow probe: exit 0, the
+// protected tool's name in the wrapper child's listing of the group-only tools
+// directory, an allow verdict on stderr, and a decision record with
+// action=allow executed=true.
+func cliGovernedAllowListingJudge(steps []ExecResult) (bool, string) {
 	run, tail := steps[0], steps[1]
 	if run.ExitCode != 0 {
 		return false, fmt.Sprintf("governed run exited %d, want 0 (stderr: %s)", run.ExitCode, run.Stderr)
 	}
-	if !markerIn(cliMarker, run.Stdout) {
-		return false, "protected tool marker missing from governed run stdout"
+	if !strings.Contains(run.Stdout, cliToolName) {
+		return false, fmt.Sprintf("tool name missing from governed listing stdout: %q", run.Stdout)
+	}
+	if markerIn(cliMarker, run.Stdout+run.Stderr) {
+		return false, "governed listing executed the protected tool (marker appeared)"
 	}
 	if !strings.Contains(run.Stderr, "action=allow") {
 		return false, fmt.Sprintf("allow verdict missing from boundary stderr: %s", run.Stderr)
@@ -213,7 +246,39 @@ func cliGovernedAllowJudge(steps []ExecResult) (bool, string) {
 	if record.Action != "allow" || !record.Executed {
 		return false, fmt.Sprintf("decision record action=%q executed=%t, want allow/true", record.Action, record.Executed)
 	}
-	return true, fmt.Sprintf("exit 0, marker observed, decision record action=%q executed=%t", record.Action, record.Executed)
+	return true, fmt.Sprintf("exit 0, tool listed, no marker, decision record action=%q executed=%t", record.Action, record.Executed)
+}
+
+// cliGovernedBlockedPairsJudge asserts (run, record-tail) step pairs: every
+// governed run exits non-zero with no marker, reports deny or require_approval
+// with executed=false on stderr, and appends a matching decision record.
+func cliGovernedBlockedPairsJudge(steps []ExecResult) (bool, string) {
+	if len(steps) == 0 || len(steps)%2 != 0 {
+		return false, fmt.Sprintf("want (run, tail) step pairs, got %d step(s)", len(steps))
+	}
+	var verdicts []string
+	for i := 0; i < len(steps); i += 2 {
+		run, tail := steps[i], steps[i+1]
+		if run.ExitCode == 0 {
+			return false, fmt.Sprintf("governed run %d exited 0", i/2+1)
+		}
+		if markerIn(cliMarker, run.Stdout+run.Stderr) {
+			return false, fmt.Sprintf("governed run %d executed the protected tool (marker appeared)", i/2+1)
+		}
+		blockingVerdict := strings.Contains(run.Stderr, "action=deny") || strings.Contains(run.Stderr, "action=require_approval")
+		if !blockingVerdict || !strings.Contains(run.Stderr, "executed=false") {
+			return false, fmt.Sprintf("governed run %d: blocking verdict missing from boundary stderr: %s", i/2+1, run.Stderr)
+		}
+		record, ok := parseRecordTail(tail)
+		if !ok {
+			return false, fmt.Sprintf("decision record tail %d unreadable (exit %d): %s", i/2+1, tail.ExitCode, tail.Stdout+tail.Stderr)
+		}
+		if (record.Action != "deny" && record.Action != "require_approval") || record.Executed {
+			return false, fmt.Sprintf("decision record %d action=%q executed=%t, want deny|require_approval/false", i/2+1, record.Action, record.Executed)
+		}
+		verdicts = append(verdicts, record.Action)
+	}
+	return true, fmt.Sprintf("%d governed runs blocked, no marker, records %s executed=false", len(verdicts), strings.Join(verdicts, ","))
 }
 
 // cliGovernedDenyJudge asserts the governed deny probe: non-zero exit, no
