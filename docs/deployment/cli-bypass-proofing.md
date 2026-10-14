@@ -76,19 +76,30 @@ fails for an incidental reason does not count as a block.
 | copy-or-symlink | `cp` the binary to `/tmp`, then symlink and run it | copy denied (unreadable), run denied, no marker |
 | su-or-sudo-escalation | `sudo` / `su root` to reach the tool | unavailable or denied, no marker |
 | shell-via-shim | `boundary shell` subshell handed the tool path on stdin (with and without `--no-install`) | non-zero exit, permission denied, no marker, no new decision record |
-| governed-allow | `boundary command run -- find <tools dir> -name <tool> -exec <tool> ;` | exit 0, marker on stdout, decision record `action=allow executed=true` |
+| governed-allow | `boundary command run -- ls <tools dir>` | exit 0, tool name listed, no marker, decision record `action=allow executed=true` |
+| list-tools-as-agent | the governed-allow shape attempted directly | permission denied, no marker |
+| governed-find-exec-forwarding | `boundary command run -- find ... -exec <tool> ;`, `-exec /bin/sh -c <tool> ;`, `-execdir /bin/sh -c <tool> +` | each non-zero exit, no marker, decision record `action=deny` or `action=require_approval`, `executed=false` |
 | governed-deny | `boundary command run -- <tool> --token=...` | non-zero exit, no marker, decision record `action=deny executed=false` |
-| find-exec-as-agent | the governed-allow shape attempted directly | permission denied, no marker |
+| find-exec-as-agent | `find <tools dir> -name <tool> -exec <tool> ;` attempted directly | permission denied, no marker |
 | exec-wrapper-applet | `nohup <absolute path>` | permission denied, no marker |
 
-The governed-allow shape uses `find -exec` because the preview command
-policy executes only allowlisted argv[0] names and `find` is the `C0`
-(observe) entry that hands a path to execve. The marker line records the
-executing group, so the evidence shows the tool ran with `boundary_exec` —
-i.e. as a child of the wrapper route. The governed route is not shell-free:
-a governed `find -exec` can forward to a shell (for example `-exec /bin/sh`),
-and the forwarded shell runs holding `boundary_exec`; closing that is
-tracked as FUL-653.
+The governed-allow shape lists the tools directory, which is `0750
+root:boundary_exec`: the listing can only succeed as a child of the
+wrapper route holding `boundary_exec`, and it reaches neither a shell nor
+the protected tool. `list-tools-as-agent` is the same listing without the
+wrapper and must be denied.
+
+`boundary command run` classifies a forwarding command by the command it
+forwards, using the same extraction as `boundary command classify` for a
+shell line: the payload of `find`'s `-exec`, `-execdir`, `-ok`, and `-okdir`,
+and the command wrapped by `xargs`, `env`, `nohup`, `exec`, `sudo`, `doas`,
+`command`, and `builtin`. The verdict is the more restrictive of the
+forwarding command and its payload, so `find -exec /bin/sh ...` or `find
+-exec <unclassified tool>` is no longer allowed as observe (FUL-653).
+That covers only those forwarders. `watch`, `parallel`, `make`, `ssh`, and
+an interpreter's inline `-e`/`-c` program are not decomposed; they are
+classified by their own name. The governed route is not shell-free, and
+Boundary governs only commands routed through it.
 
 Each run writes `tests/bypass/evidence/cli-reference-v1.json` and
 `cli-reference-v1.md`: topology id, image ids, the boundary version/commit

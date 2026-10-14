@@ -15,6 +15,11 @@ func Classify(argv []string) (Classification, error) {
 	args := append([]string(nil), argv[1:]...)
 	class, reason := classifyCommand(command, args)
 	risk, action := postureFor(class)
+	if forwarded, ok := forwardedClassification(argv); ok &&
+		actionSeverity(forwarded.RecommendedAction) > actionSeverity(action) {
+		class, risk, action = forwarded.Class, forwarded.Risk, forwarded.RecommendedAction
+		reason = "forwards execution to a command that is more restrictive: " + forwarded.Reason
+	}
 	return Classification{
 		SchemaVersion:     SchemaVersionClassification,
 		Command:           command,
@@ -479,4 +484,53 @@ func isObserveSubcommand(sub string) bool {
 	default:
 		return false
 	}
+}
+
+// forwardedClassification classifies the commands an argv hands execution to
+// from argument position, so `command run` (which classifies one argv, not a
+// shell line) governs `find -exec/-execdir/-ok/-okdir <cmd>` and wrapper
+// commands such as `xargs <cmd>` by the command they forward, not by the
+// forwarding utility's own class (FUL-653).
+//
+// It reuses the line decomposer's extraction (argumentCommands and
+// prefixInnerArgv in line.go) rather than a second parser, so the argv path and
+// the hook's line path agree on what is modeled. Only the payloads are
+// decomposed — never argv itself — because the decomposer classifies each
+// segment through Classify; each payload is strictly shorter than argv, so the
+// recursion terminates. A payload the decomposer cannot fully model floors the
+// result at require_approval (see aggregateOf).
+//
+// The same limits as line.go apply: `watch`, `parallel`, `make`, `ssh`, and an
+// interpreter's inline `-e`/`-c` program are not modeled here.
+func forwardedClassification(argv []string) (Classification, bool) {
+	normalized := append([]string(nil), argv...)
+	normalized[0] = trustedCommandName(strings.TrimSpace(normalized[0]))
+
+	payloads := argumentCommands(normalized)
+	if inner, ok := prefixInnerArgv(normalized); ok {
+		payloads = append(payloads, inner)
+	}
+	if len(payloads) == 0 {
+		return Classification{}, false
+	}
+	d := &lineDecomposer{parseable: true}
+	for _, payload := range payloads {
+		d.decomposeArgv(payload, 1, SegmentOriginArgumentCommand)
+	}
+	return aggregateOf(d.segments, d.parseable), true
+}
+
+// trustedCommandName mirrors classifyCommand's argv0 handling: an absolute path
+// under a standard system bin directory is matched by its base name, so
+// `/usr/bin/find -exec ...` is recognized as `find`.
+func trustedCommandName(command string) string {
+	name := strings.ToLower(command)
+	if filepath.IsAbs(name) || strings.Contains(name, "/") {
+		cleaned := filepath.Clean(name)
+		switch filepath.Dir(cleaned) {
+		case "/bin", "/usr/bin", "/usr/local/bin", "/sbin", "/usr/sbin":
+			return filepath.Base(cleaned)
+		}
+	}
+	return name
 }
