@@ -293,10 +293,10 @@ The three-beat story Boundary already ships and the launch leads with.
 
 | Stage | Name | What it does | Terminal behavior | Evidence (`pipeline.go`) |
 |-------|------|--------------|-------------------|--------------------------|
-| **1** | **Trust check** (`TrustChecker`) | Skipped when checker `nil` or `AgentID==""`. Isolated/Terminated → `deny`; Evaluating → score 0.5; enforces `RequireAgentID` for protected transports. | checker **error → fail-closed `deny`** | `Evaluate`, stage 1 trust check |
+| **1** | **Trust check** (`TrustChecker`) | Skipped when checker `nil` or `AgentID==""`. Isolated/Terminated → `deny`; Evaluating → score 0.5; enforces `RequireAgentID` for protected transports. | checker **error → `check_indeterminate` (fail-closed, blocks)** | `Evaluate`, stage 1 trust check |
 | **2** | **Static policies** | Linear scan of `StaticPolicyRule`s. Tool matches by exact name, `*`/`""`, or `path.Match` glob (malformed → silent non-match). Supports field matches (e.g. `arguments.sql contains "DROP TABLE"`). | first matching `deny`/`warn`/`escalate`/`require_approval` is terminal | `Evaluate`, stage 2 static policies; `toolMatches` |
-| **3** | **Domain interceptors** (`Interceptor` registry, one fn/tool) | Where SQL parsing, path allow-lists, rate limits live. `nil,nil` declines; `Allowed=false` blocks. | interceptor **error → fail-closed `deny`** | `Evaluate`, stage 3 domain interceptors |
-| **4** | **PolicyEval engine** (`policyeval.Evaluator`) | Full policy evaluation. Maps `ActionDeny/Escalate/RequireApproval/Warn`. | evaluator **error → per-transport: fail-closed transports `deny`, others fail-open** | `Evaluate`, stage 4 PolicyEval engine |
+| **3** | **Domain interceptors** (`Interceptor` registry, one fn/tool) | Where SQL parsing, path allow-lists, rate limits live. `nil,nil` declines; `Allowed=false` blocks. | interceptor **error → `check_indeterminate` (fail-closed, blocks)** | `Evaluate`, stage 3 domain interceptors |
+| **4** | **PolicyEval engine** (`policyeval.Evaluator`) | Full policy evaluation. Maps `ActionDeny/Escalate/RequireApproval/Warn`. | evaluator **error → `check_indeterminate` (fail-closed, blocks) on every transport unless declared non-enforcing** | `Evaluate`, stage 4 PolicyEval engine |
 
 > The `Evaluate` doc comment notes standalone vs Redis-backed trust modes for Stage 1 (`governance/pipeline.go`, `Evaluate`); for the OSS dev-tool spec, **trust is opt-in and defaults to absent** — Stage 1 is a no-op unless the developer enables `--trust-mode`. Treat the kernel/Redis framing as an internal implementation note. (C3)
 
@@ -318,7 +318,7 @@ Every decision resolves to **exactly one of five verbs**, all literal outcomes i
 
 *Evidence:* literal verbs at `governance/pipeline.go`, `Evaluate` (verdict assignments); `Allowed()` at `governance/request.go:97`.
 
-**Fail-closed by default.** On a stage error, the **fail-closed transports** deny rather than allow. The default set (`DefaultFailClosedTransports`, `governance/pipeline.go`): **`mcp`, `managed_agents`, `cli`, `code_exec`, `grpc`, `a2a`**. A `nil` `FailClosedTransports` applies this secure default; a **non-nil empty slice is an explicit opt-out to fail-open**; a populated slice fail-closes exactly the listed transports. (Transport constants: `governance/request.go:9–15`.)
+**Fail-closed by default.** On a required-check failure, **every transport** returns `check_indeterminate` and blocks rather than allow. A transport is non-enforcing only when explicitly declared in `PipelineConfig.NonEnforcingTransports` (`governance/pipeline.go`) as a `{transport, reason}` entry — ADR-047's can_deny=false. There is no opt-out by omission: empty, unknown, or misspelled request transports enforce like any other, and a malformed declaration is a configuration error (`ErrInvalidNonEnforcingTransport`) that fails closed at the `config` stage. (Transport constants: `governance/request.go:9–15`.)
 
 ## 3.4 Decision modes — Boundary never says "proved" (C7)
 
@@ -364,10 +364,10 @@ flowchart TB
 
     subgraph P["governance.Pipeline.Evaluate — four ordered stages"]
         direction TB
-        S1["1 · Trust check<br/>(opt-in; error → fail-closed deny)"] --> S2
+        S1["1 · Trust check<br/>(opt-in; error → check_indeterminate fail-closed)"] --> S2
         S2["2 · Static policies<br/>(glob + field match)"] --> S3
-        S3["3 · Domain interceptors<br/>(SQL parse · path allow-list · rate limit)<br/>error → fail-closed deny"] --> S4
-        S4["4 · PolicyEval engine<br/>(11 conditions · error → per-transport<br/>fail-closed / fail-open)"]
+        S3["3 · Domain interceptors<br/>(SQL parse · path allow-list · rate limit)<br/>error → check_indeterminate fail-closed"] --> S4
+        S4["4 · PolicyEval engine<br/>(11 conditions · error → check_indeterminate<br/>fail-closed unless declared non-enforcing)"]
     end
 
     P --> Verdict{"Verdict<br/>(exactly one)"}

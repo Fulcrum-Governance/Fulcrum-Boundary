@@ -70,3 +70,4 @@ verifiers/**/.venv/
 /.sdd
 /.codex/
 /.conductor/
+node_modules/

@@ -5,7 +5,9 @@
 <p align="center">
   Boundary records the routed decision — a hash-verifiable receipt written
   before the tool ran. Verification is integrity, not authenticity: it shows
-  the record was not altered after emission, not that the verdict was right.
+  the covered fields still match the stored decision hash, not that the
+  verdict was right — and only while that hash stays beyond the editor's
+  reach.
   Boundary does not replace Claude Code's own permission system or any other
   safety mode; it is a separate, routed gate that runs alongside them.
 </p>
@@ -83,8 +85,9 @@ Restart Claude Code, then run `/boundary:drill`.
   to disk before the verdict reached stdout — the record exists whether or
   not you go looking for it.
 - **Verify it yourself.** `boundary verify-record <file>` recomputes the
-  record's hash independently, so an edit after the fact is detectable by
-  recomputation — not by trusting this README or the transcript.
+  covered fields' hash and checks it against the stored decision hash. An
+  edit after the fact is detectable where that stored hash was kept beyond
+  the editor's reach, not by trusting this README or the transcript.
 - **A separate layer from permission prompts.** `PreToolUse` hooks run
   before Claude Code's own permission handling, and Claude Code's hook
   contract documents a `deny` as blocking the call in any permission mode —
@@ -100,7 +103,7 @@ Restart Claude Code, then run `/boundary:drill`.
 | This proves | This does not prove |
 | --- | --- |
 | The routed tool call was decided — allow, warn, ask, or deny — before it ran. | That every tool call in the session was governed. Only `Bash`/`Shell` and `Edit`/`Write`/`MultiEdit`/`NotebookEdit` route through this hook; an MCP tool, a subprocess's own command, or shell used outside Claude Code is a bypass. |
-| `boundary verify-record` recomputes the record's hash independently, so tampering after emission is detectable. | That the verdict was correct, or who produced the record. Hashes are integrity, not authenticity. |
+| `boundary verify-record` recomputes the record's hash independently and checks it against the stored decision hash — an edit after emission is detectable only while that stored hash stays out of the editor's reach. | That the verdict was correct, or who produced the record. Hashes are integrity, not authenticity. |
 | A denied call's `execution_claim` reports `upstream_called=false` / `executed=false`. | Anything about upstream side effects beyond this route — that field is the hook's own self-report, not independent corroboration. |
 | The hook is a routed pre-execution gate that runs independently of Claude Code's permission prompts. | That Boundary is a sandbox, contains the agent, or detects prompt injection in tool inputs. It classifies and records; it does not isolate the process or inspect prompt content. |
 | Command Boundary and Edit Boundary classified this call under their current preview posture. | Production-grade classification coverage. Both are delivered previews — validate against your own policy before relying on a verdict for anything load-bearing. |
@@ -133,8 +136,9 @@ The demo is fixture-only: no credentials, network calls, or live mutations. It
 denies a routed GitHub write-after-taint action before upstream execution and
 writes a decision record that `verify-record` recomputes independently.
 
-On Linux or Windows, use a signed-checksum [release archive](./docs/INSTALL.md)
-or the published `v0.13.1` container image:
+On Linux or Windows, use a [release archive](./docs/INSTALL.md) (SHA256SUMS is
+published, and the release files carry GitHub build-provenance attestations) or
+the published `v0.13.1` container image:
 
 ```bash
 docker run --rm ghcr.io/fulcrum-governance/boundary:v0.13.1 selftest
@@ -151,7 +155,13 @@ The Homebrew cask, container image, and `_static-nocgo` archives are static
 builds. Their Postgres AST classifier is unavailable, so routed SQL classifies
 as `UNKNOWN` and the Postgres guard denies it fail-closed. Use a `_cgo` archive
 or build from source for the full classifier. See the [install guide](./docs/INSTALL.md)
-for platform commands, checksums, SBOMs, and provenance evidence.
+for platform commands, checksums, SBOMs, and provenance evidence. Checksums
+establish integrity of the download; they do not establish who built it.
+`SHA256SUMS` and the release archives carry GitHub build-provenance
+attestations that identify the workflow that built them; check one with
+`gh attestation verify FILE --repo Fulcrum-Governance/Fulcrum-Boundary`.
+`SHA256SUMS-cgo` carries no attestation, and the install script verifies the
+checksum only. No detached signature files are published.
 
 ## See Boundary stop the action
 
@@ -210,7 +220,9 @@ See [Architecture](./ARCHITECTURE.md) for the contracts and extension points.
 
 Every governed verdict produces a structured [decision record](./docs/DECISION_RECORDS.md).
 A receipt-grade record carries request, policy-bundle, and decision hashes, so
-an edit after emission is detectable by recomputation:
+`boundary verify-record` can check the covered fields against the stored
+decision hash — an edit after emission is detectable only while that stored
+hash is kept out of the editor's reach:
 
 ```bash
 boundary verify-record github-lethal-trifecta-artifacts/decision-record.json
@@ -316,6 +328,7 @@ against the [Adapter Readiness Matrix](./docs/ADAPTER_READINESS_MATRIX.md).
 | Understand the model | [Architecture](./ARCHITECTURE.md) and [Boundary Spec](./docs/BOUNDARY_SPEC.md) |
 | Compare Boundary with adjacent tools | [Where Boundary Fits](./docs/COMPARISON.md) |
 | Read current capability limits | [Release Truth](./docs/RELEASE_TRUTH_PUBLIC.md) and [Limitations](./LIMITATIONS.md) |
+| Read explicit enforcement coverage | [Enforcement Report](./docs/ENFORCEMENT_REPORT.md) |
 | Verify decision records | [Decision Records](./docs/DECISION_RECORDS.md), [Receipts](./docs/RECEIPTS.md), and [Signing](./docs/SIGNING.md) |
 | Test policies | [Policy Testing](./docs/POLICY_TESTING.md) |
 | Check route deployment | [Route Conformance](./docs/ROUTE_CONFORMANCE_CHECKLIST.md) |
@@ -333,7 +346,7 @@ go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.13.1
 ```
 
 `v0.13.1` is the current public release. The root and nested-module tags both
-resolve to the same immutable release commit; see the release-truth record.
+resolve to the same release commit; see the release-truth record.
 
 Before submitting a change:
 

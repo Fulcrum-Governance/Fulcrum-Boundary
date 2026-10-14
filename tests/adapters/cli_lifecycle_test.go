@@ -72,8 +72,10 @@ func TestCLIGovernedLifecyclePipelineErrorFailsClosed(t *testing.T) {
 	if resp.ExitCode != 126 || resp.Metadata["cli_denied"] != "true" {
 		t.Fatalf("expected fail-closed denied response, got %+v", resp)
 	}
-	if events := auditor.Events(); len(events) != 1 || events[0].Action != "deny" {
-		t.Fatalf("expected denied audit event, got %+v", events)
+	// ADR-047: the evaluator failure is recorded as check_indeterminate —
+	// blocked, but not labeled a policy denial.
+	if events := auditor.Events(); len(events) != 1 || events[0].Action != governance.ActionCheckIndeterminate {
+		t.Fatalf("expected check_indeterminate audit event, got %+v", events)
 	}
 }
 

@@ -23,8 +23,7 @@ delegated_steps:
     owner: deployment topology
     contract: docs/adapters/CLI.md
 bypass_model: process
-fail_closed_transports:
-  - cli
+non_enforcing_transports: []
 evidence:
   tests:
     - adapters/cli/adapter_test.go

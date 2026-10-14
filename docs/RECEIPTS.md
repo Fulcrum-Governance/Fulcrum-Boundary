@@ -3,12 +3,13 @@
 Fulcrum Boundary decision records are **receipt-grade** when they carry stable
 hashes for the governed request, the policy bundle, and the emitted decision.
 These hashes let you detect after-the-fact tampering by recomputing them with
-`boundary verify-record`. The signature fields are schema-supported but optional;
+`boundary verify-record`, provided the stored decision hash was kept beyond the
+editor's reach. The signature fields are schema-supported but optional;
 unsigned records can still be checked against their hashes.
 
 This page documents the **receipt-grade record** (Tier B, `BND-CLAIM-005`): the
 hashes, what each hash covers, the `boundary verify-record` walkthrough, and the
-tamper-detection behavior.
+tamper-evidence behavior.
 
 The record's content fields — the verdict, reason, decision mode, matched rule,
 and identity/context fields — and the full field reference live in
@@ -86,14 +87,33 @@ flags is what adds those bindings.
 For a `schema_version "2"` record, the route-context fields (`adapter_id`,
 `route_id`, `topology_profile`, `execution_claim`) are content covered by
 `decision_hash`, so altering any of them is caught by check 5 exactly like any
-other content field. Tamper-detection extends to route-context; it does **not**
+other content field. Tamper evidence extends to route-context; it does **not**
 mean the asserted `topology_profile` is verified against the deployment or that
 the `execution_claim` self-report is independently corroborated — see
 [`docs/DECISION_RECORDS.md`](DECISION_RECORDS.md#route-context-fields-schema_version-2).
 A committed V2 example is at
 [`docs/examples/decision-record-v2.example.json`](examples/decision-record-v2.example.json).
 
-## Tamper detection
+The record file itself is ingested strictly: the input must be a single JSON
+object, member names must be unique under case folding at every depth (a
+repeated or case-variant key is rejected, never last-wins), no bytes may
+follow the top-level value, and member names are a closed, case-sensitive
+set — at the top level only `DecisionRecordV1` fields, inside `check` only
+`stage`, `class`, `category`, and `cause`, and inside `execution_claim`
+only `upstream_called`, `executed`, and `source`. A member
+name the schema does not declare is rejected (`reason=unknown-field`), never
+dropped before hashing; otherwise attacker-added content could hide inside a
+record whose stored `decision_hash` still verifies. Non-finite numbers
+(`NaN`, `Infinity`, `-Infinity` — not legal JSON) and nesting beyond the
+decoder's depth limit are rejected as `parse-error`. The Python,
+TypeScript, and Rust standalone verifiers reimplement the same strict
+ingest and hash check; [`docs/VERIFIER_PARITY.md`](VERIFIER_PARITY.md) is
+the generated report showing all four agreeing on the shared conformance
+corpus, including the rejection vectors. Agreement is asserted on that
+corpus — the report's "Known divergences" section lists the edge inputs on
+which the verifiers still differ.
+
+## Tamper evidence
 
 Each check is what trips when the corresponding input is altered:
 
@@ -127,7 +147,7 @@ The schema includes `signature` and `signature_key_id` fields for operators that
 attach their own signing layer. These fields are empty by default; Boundary's
 default decision-record path does not sign records. `boundary verify-record`
 does **not** verify signatures — it validates the stable hashes that make
-tampering detectable. Signing is an operator-attached layer, not a shipped
+tampering detectable only while the stored hash is kept beyond the editor's reach. Signing is an operator-attached layer, not a shipped
 default.
 
 ## What this does not prove
@@ -154,7 +174,7 @@ described. The content-layer limits are in
   carry one in `execution_claim` (`upstream_called`, `executed`). Either way the
   flag is set by the adapter from its own control flow — a component reporting on
   itself, not an independently observed network fact. The `decision_hash` covers
-  `execution_claim` for tamper-detection, but nothing in the record corroborates
+  `execution_claim` for tamper evidence, but nothing in the record corroborates
   the self-report. Treat `execution_claim.upstream_called=false` as a
   self-attested adapter signal, not a verifiable property of the record.
 - **Verification with no flags is weak.** Without `--request`, `--policies`, and

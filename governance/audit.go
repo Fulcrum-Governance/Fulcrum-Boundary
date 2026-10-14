@@ -65,6 +65,13 @@ type AuditEvent struct {
 	// DecisionMode mirrors GovernanceDecision.DecisionMode so audit sinks
 	// can filter or aggregate by epistemic confidence level.
 	DecisionMode DecisionMode `json:"decision_mode,omitempty"`
+	// Check carries the ADR-047 CHECK_INDETERMINATE context when a required
+	// synchronous check could not produce a valid result; nil otherwise.
+	// Copied from GovernanceDecision.Check: when Action is
+	// "check_indeterminate" the failure blocked execution; when Action
+	// remains allow-compatible the transport is explicitly non-enforcing
+	// and Check is the recorded would-have-blocked result.
+	Check *CheckFailure `json:"check,omitempty"`
 
 	// Route-context (schema_version "2" decision-record fields). These are
 	// descriptive context the adapter already knows; they are copied verbatim
@@ -90,13 +97,33 @@ type AuditEvent struct {
 // Contract for the implementer: Publish must not block the caller — it runs on
 // the governance hot path. Treat it as fire-and-forget: buffer, drop, or hand
 // off asynchronously rather than performing synchronous network I/O. Errors are
-// the publisher's to absorb; Publish has no return value and must not panic.
+// the publisher's to absorb; Publish has no return value. A publisher that
+// panics is contained: the pipeline recovers it and counts it as an audit
+// delivery failure (Pipeline.Degraded / Pipeline.AuditFailures), never as a
+// decision change. Publishers that need delivery failures surfaced to the
+// pipeline implement CheckedAuditPublisher.
 //
 // In-repo implementations: noopAuditPublisher (the default, silently discards),
 // SlogAuditPublisher (slog_audit.go, structured slog records), and
 // kernel.NATSAuditPublisher (kernel mode, publishes to NATS JetStream).
 type AuditPublisher interface {
 	Publish(ctx context.Context, event AuditEvent)
+}
+
+// CheckedAuditPublisher is an optional extension interface an AuditPublisher
+// may implement to surface delivery failures to the pipeline. When the
+// configured auditor implements it, the pipeline calls PublishChecked instead
+// of Publish and treats a returned error (or a recovered panic, for either
+// method) as an audit delivery failure: the failure never changes the
+// decision, it is logged once with structured fields, and it flips the
+// pipeline's degraded state (Pipeline.Degraded / Pipeline.AuditFailures)
+// until a subsequent publish succeeds. Publishers that cannot detect their
+// own delivery failures simply keep implementing Publish; their emissions are
+// recorded as delivered.
+type CheckedAuditPublisher interface {
+	AuditPublisher
+	// PublishChecked publishes the event and reports a delivery error.
+	PublishChecked(ctx context.Context, event AuditEvent) error
 }
 
 // noopAuditPublisher silently discards events.

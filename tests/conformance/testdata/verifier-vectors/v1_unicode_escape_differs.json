@@ -1,0 +1,16 @@
+{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "rec_417821115e87",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-unicode",
+  "tool": "query",
+  "action": "deny",
+  "reason": "\u0063\u0061\u0066\u0065\u0301",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "sha256:417821115e87a096aa24c837923d93485b1780ed4007bf5d6a77093d787d5f37",
+  "trust_score": 1,
+  "trust_state": "TRUSTED"
+}

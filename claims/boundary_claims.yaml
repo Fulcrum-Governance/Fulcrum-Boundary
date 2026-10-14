@@ -829,7 +829,7 @@ claims:
     public_language:
       allowed:
         - "Schema_version 2 decision records record route-context fields (adapter_id, route_id, topology_profile, execution_claim) that are covered by decision_hash, and schema_version 1 records remain valid."
-        - "Route-context recording extends tamper-detection to those fields; it does not add attestation or authenticity."
+        - "Route-context recording extends tamper evidence to those fields; it does not add attestation or authenticity."
       forbidden:
         - "topology_profile is attested"
         - "topology_profile proves the deployment matches"

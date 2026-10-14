@@ -3,8 +3,10 @@ package codeexec
 import (
 	"context"
 	"encoding/json"
+	"os/exec"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/fulcrum-governance/fulcrum-boundary/governance"
 )
@@ -244,6 +246,29 @@ func TestAdapter_InspectResponse(t *testing.T) {
 			wantConcerns:  1,
 		},
 		{
+			name: "sensitive data in stderr metadata",
+			resp: &governance.ToolResponse{
+				Content: []byte("ok"),
+				Metadata: map[string]string{
+					"stderr": "Traceback (most recent call last)\n-----BEGIN PRIVATE KEY-----\nMIIB",
+				},
+			},
+			wantSafe:      false,
+			wantSensitive: true,
+			wantConcerns:  1,
+		},
+		{
+			name: "oversized stderr metadata",
+			resp: &governance.ToolResponse{
+				Content: []byte("ok"),
+				Metadata: map[string]string{
+					"stderr": strings.Repeat("e", 60*1024),
+				},
+			},
+			wantSafe:     false,
+			wantConcerns: 1,
+		},
+		{
 			name: "non-zero exit code",
 			resp: &governance.ToolResponse{
 				Content:  []byte("permission denied"),
@@ -416,6 +441,41 @@ func TestAdapter_ForwardGoverned_SandboxPolicyDeniesBeforeExecute(t *testing.T) 
 	}
 	if resp.ExitCode != 126 || !strings.Contains(string(resp.Content), "network") {
 		t.Fatalf("expected sandbox denial, got %+v", resp)
+	}
+}
+
+// Sensitive output written to stderr must be flagged like stdout: stderr is
+// untrusted interpreter output carried in Metadata. End-to-end through the
+// local executor: governed python writes a key pattern to stderr and the
+// adapter inspection marks the response unsafe and sensitive.
+func TestForwardGoverned_StderrSensitiveDataFlagged(t *testing.T) {
+	if _, err := exec.LookPath("python3"); err != nil {
+		t.Skip("python3 not available on this host")
+	}
+	s, err := NewSandbox(SandboxConfig{Type: SandboxTypeLocal, Timeout: 10 * time.Second})
+	if err != nil {
+		t.Fatalf("NewSandbox local: %v", err)
+	}
+	a := NewAdapterWithExecutor("tenant-1", s, s.Boundary())
+	req, err := a.ParseRequest(context.Background(), &CodeExecInput{
+		Code:     "import sys\nsys.stderr.write('-----BEGIN PRIVATE KEY-----\\n')",
+		Language: "python",
+	})
+	if err != nil {
+		t.Fatalf("ParseRequest: %v", err)
+	}
+	resp, err := a.ForwardGoverned(context.Background(), req, &governance.GovernanceDecision{
+		Action:    "allow",
+		RequestID: req.RequestID,
+	})
+	if err != nil {
+		t.Fatalf("ForwardGoverned: %v", err)
+	}
+	if resp.Metadata["codeexec_sensitive_data"] != "true" {
+		t.Fatalf("stderr sensitive pattern not flagged: %+v", resp.Metadata)
+	}
+	if resp.Metadata["codeexec_output_safe"] != "false" {
+		t.Fatalf("stderr sensitive pattern left output marked safe: %+v", resp.Metadata)
 	}
 }
 

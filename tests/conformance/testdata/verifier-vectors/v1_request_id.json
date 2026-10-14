@@ -1,0 +1,17 @@
+{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "rec_c0575e046a05",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-request-id",
+  "request_id": "req-9f31a2",
+  "tool": "query",
+  "action": "allow",
+  "reason": "pipeline-assigned request correlation id is covered by the hash",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "sha256:c0575e046a05e3b652a2036e9aeeb7523387ab89ab41d84446911deff214119c",
+  "trust_score": 1,
+  "trust_state": "TRUSTED"
+}

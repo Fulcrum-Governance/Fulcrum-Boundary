@@ -2,7 +2,8 @@
 
 Every governed verdict produces a structured decision record. Fulcrum Boundary
 emits one structured JSON decision record for every governed request, regardless
-of outcome (`allow`, `deny`, `warn`, `escalate`, or `require_approval`), plus a
+of outcome (`allow`, `deny`, `warn`, `escalate`, `require_approval`, or
+`check_indeterminate`), plus a
 variant for inputs that are rejected before a governed request can be built.
 
 This page is the versioned field reference for the **structured decision record**
@@ -12,7 +13,7 @@ describe what Boundary decided and why.
 A decision record becomes **receipt-grade** (Tier B, `BND-CLAIM-005`) when it
 also carries the stable request, policy-bundle, and decision hashes that
 `boundary verify-record` recomputes. Those hash fields, the verification
-walkthrough, and the tamper-detection behavior are documented in
+walkthrough, and the tamper-evidence behavior are documented in
 [`docs/RECEIPTS.md`](RECEIPTS.md). Same record type (`DecisionRecordV1`); the
 receipt-grade tier is the hash-bearing subset of the fields below.
 
@@ -21,7 +22,7 @@ receipt-grade tier is the hash-bearing subset of the fields below.
 | Tier | Claim | What it adds | Where it is documented |
 | --- | --- | --- | --- |
 | A — structured decision record | `BND-CLAIM-002` | The verdict, reason, decision mode, matched rule, and identity/context fields below. Emitted for every governed verdict. | This page. |
-| B — receipt-grade record | `BND-CLAIM-005` | The `request_hash`, `policy_bundle_hash`, and `decision_hash` fields that make after-the-fact alteration detectable by recomputation via `boundary verify-record`. | [`docs/RECEIPTS.md`](RECEIPTS.md). |
+| B — receipt-grade record | `BND-CLAIM-005` | The `request_hash`, `policy_bundle_hash`, and `decision_hash` fields that let `boundary verify-record` detect after-the-fact alteration of the covered fields, but only while the stored hash is kept beyond the editor's reach. | [`docs/RECEIPTS.md`](RECEIPTS.md). |
 
 When you inspect a record, the tier you are looking at depends on which fields
 are populated. A Tier A record always carries the content fields; it is also a
@@ -100,10 +101,12 @@ Field names and Go types are taken from `DecisionRecordV1`
 | `agent_id` | string | Optional | Agent identity, when supplied. |
 | `tenant_id` | string | Optional | Tenant identity, when supplied. |
 | `trace_id` | string | Optional | Caller-supplied trace correlation ID. |
+| `request_id` | string | Optional | Request correlation id assigned by the caller or pipeline. Unlike `record_id` (a digest-derived record identity), this correlates the record to the governed request that produced it. Populated whenever the request carried one — which is always for pipeline-emitted records — so `check_indeterminate` records carry it as required context. |
 | `tool` | string | Optional | Name of the tool being governed. |
-| `action` | string | Required | The verdict: `allow`, `deny`, `warn`, `escalate`, or `require_approval`. |
+| `action` | string | Required | The verdict: `allow`, `deny`, `warn`, `escalate`, `require_approval`, or `check_indeterminate` (ADR-047 — see the check-failure note below). |
 | `reason` | string | Optional | Human-readable rationale for the verdict. |
 | `decision_mode` | string | Optional | Epistemic label for how the verdict was reached. Boundary emits `deterministic` or `classified`. See the decision-mode note below. |
+| `check` | object | Optional | ADR-047 CHECK_INDETERMINATE context for a required check that could not produce a valid result: `stage` (enforcement stage: `trust`, `trust_update`, `interceptor`, `policy_eval`, `identity`, `config`), `class` (check class: `trust`, `policy`, `identity`, `config`), `category` (one of `unavailable`, `timeout`, `canceled`, `panic`, `invalid_result`, `missing_config`, `missing_identity`, `stale_snapshot`), and `cause` (short sanitized description — never secrets or raw arguments). When `action` is `check_indeterminate` the failure blocked execution; when `action` remains allow-compatible the transport is a declared non-enforcing surface and `check` is the recorded would-have-blocked result. |
 | `matched_rule` | string | Optional | The static policy rule that drove the verdict, when one matched. |
 | `policy_file` | string | Optional | The YAML file that supplied the matched rule. |
 | `policy_bundle_hash` | string | Optional | Stable hash of the canonical policy bundle. **(Tier B — [`docs/RECEIPTS.md`](RECEIPTS.md).)** |
@@ -135,7 +138,7 @@ A `schema_version "2"` record adds four route-context fields that describe the
 governed route the request traveled. They are structured forms of context the
 adapter already knows. They are **descriptive context, not attestation**: they
 are covered by `decision_hash` (so altering one is detectable by
-`boundary verify-record`), but recording them does not make the deployment
+`boundary verify-record` only while the stored hash is kept beyond the editor's reach), but recording them does not make the deployment
 posture verified or the adapter self-report independently corroborated.
 
 | Field | What it records | What it does not do |
@@ -185,6 +188,39 @@ record never carries it. The seam relays a vetted mode only and is guarded
 against adopting `proved`. See [`docs/PROOF_BOUNDARY.md`](PROOF_BOUNDARY.md) and
 [`INTEGRATION.md`](INTEGRATION.md).
 
+### Check-failure note (`check_indeterminate`, ADR-047)
+
+When a required synchronous check cannot produce a valid result — a trust
+lookup, trust update, interceptor run, policy evaluation, required identity, or
+pipeline configuration — ADR-047 classifies the outcome as `check_indeterminate`.
+It is neither `allow` nor a substantive policy denial, and it blocks execution:
+`GovernanceDecision.Allowed()` is false for it, so every execution-capable
+adapter blocks it exactly as it would a `deny`.
+
+The `check` object carries the machine-readable context the record must retain:
+
+| `check` field | Values | Meaning |
+| --- | --- | --- |
+| `stage` | `trust`, `trust_update`, `interceptor`, `policy_eval`, `identity`, `config` | The enforcement stage whose required check failed. |
+| `class` | `trust`, `policy`, `identity`, `config` | The class of the failed check. |
+| `category` | `unavailable`, `timeout`, `canceled`, `panic`, `invalid_result`, `missing_config`, `missing_identity`, `stale_snapshot` | The machine-readable failure category. Evaluator/trust/interceptor/trust-update panics are recovered at the pipeline boundary and classified `panic`; a nil evaluator decision or out-of-vocabulary result is `invalid_result`; a rejected pipeline configuration is `missing_config`. |
+| `cause` | short string | A sanitized description of the failure. It never contains secrets, credentials, or raw tool arguments. |
+
+A `check_indeterminate` record also carries `request_id`, `agent_id`/`tenant_id`
+when present, `adapter` (the transport), `request_hash` (the canonical action
+digest), and `trust_state: "UNKNOWN"` when no trust posture was obtained — it
+records what failed and where, not a policy verdict. A record whose `action` is
+allow-compatible but still carries `check` is the ADR-047 can_deny=false case:
+a declared non-enforcing surface (a transport explicitly named in
+`PipelineConfig.NonEnforcingTransports` with a recorded reason,
+informational-mode webhooks, dry-run) where the
+field is the recorded would-have-blocked result.
+
+Both `request_id` and `check` are strictly additive `omitempty` fields: records
+that do not populate them serialize byte-for-byte as before, and
+`boundary verify-record` covers them under `decision_hash` like every other
+content field.
+
 ## Parse-rejection records
 
 When a payload cannot be parsed into a governed request, Boundary emits a record
@@ -203,7 +239,7 @@ covered in [`docs/RECEIPTS.md`](RECEIPTS.md).
 - **It is not cryptographic proof of a verdict.** A decision record states the
   verdict and reason; on its own it does not cryptographically attest that the
   verdict was correct or that any particular party produced it. The integrity
-  and tamper-detection properties — and their limits — belong to the
+  and tamper-evidence properties — and their limits — belong to the
   receipt-grade tier in [`docs/RECEIPTS.md`](RECEIPTS.md), not to the content
   fields here.
 - **It is not runtime enforcement.** A record that an action was decided `deny`
@@ -222,7 +258,7 @@ covered in [`docs/RECEIPTS.md`](RECEIPTS.md).
   and `topology_profile` describe the route a request traveled and the posture
   asserted at emission. They do not verify that the deployment matches the
   asserted `topology_profile`, and they do not prove that no unrouted path to the
-  same tool exists. Recording route-context extends tamper-detection to those
+  same tool exists. Recording route-context extends tamper evidence to those
   fields; it does not add attestation or authenticity.
 
 ## Locating a written record

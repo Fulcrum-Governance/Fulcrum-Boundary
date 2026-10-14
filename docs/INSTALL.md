@@ -146,7 +146,7 @@ boundary selftest
 ```
 
 `@v0.13.1` is the current published install. The public Go module resolves
-through `refs/tags/v0.13.1` to the immutable release commit recorded below.
+through `refs/tags/v0.13.1` to the release commit recorded below.
 
 ### Offline witnessed-log verifier
 

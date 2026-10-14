@@ -1,0 +1,25 @@
+{
+  "schema_version": "2",
+  "event_type": "governance_decision",
+  "record_id": "rec_d90d76a5eef4",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-case-claim",
+  "tool": "github.create_or_update_file",
+  "action": "deny",
+  "reason": "case-variant member inside execution_claim must be rejected",
+  "decision_mode": "deterministic",
+  "matched_rule": "deny-github-write-after-taint-fixture",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "sha256:d90d76a5eef438fe8e22d776722452917139d5b6070a5b07db76a8d3a9d3547f",
+  "trust_score": 1,
+  "trust_state": "TRUSTED",
+  "adapter_id": "mcp-primary",
+  "route_id": "route-github-write",
+  "topology_profile": "single-route-forced",
+  "execution_claim": {
+    "upstream_called": false,
+    "EXECUTED": false,
+    "source": "mcp-adapter"
+  }
+}

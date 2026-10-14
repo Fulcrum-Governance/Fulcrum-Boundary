@@ -1,0 +1,16 @@
+{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "rec_7695ccfa8ff9",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-nan",
+  "tool": "query",
+  "action": "warn",
+  "reason": "NaN trust_score is unrepresentable in JCS",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "sha256:7695ccfa8ff94484c6bf68e70497ff0fd20f0959d65b4672be5e8f14244e1fe7",
+  "trust_score": NaN,
+  "trust_state": "TRUSTED"
+}

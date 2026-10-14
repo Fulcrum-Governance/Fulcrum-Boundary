@@ -73,8 +73,13 @@ func TestManagedAgentsAdapterParsesAndFailsClosed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if decision.Action != "deny" {
-		t.Fatalf("managed agents should fail closed, got %#v", decision)
+	// ADR-047: an evaluator failure on an enforcing transport is
+	// CHECK_INDETERMINATE — it blocks execution but is not a policy denial.
+	if decision.Action != governance.ActionCheckIndeterminate {
+		t.Fatalf("managed agents should fail closed as check_indeterminate, got %#v", decision)
+	}
+	if decision.Allowed() {
+		t.Fatal("check_indeterminate must not allow execution")
 	}
 }
 

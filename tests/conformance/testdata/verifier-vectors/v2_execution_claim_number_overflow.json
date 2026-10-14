@@ -1,0 +1,25 @@
+{
+  "schema_version": "2",
+  "event_type": "governance_decision",
+  "record_id": "rec_a612f9c7a11b",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-numof-claim",
+  "tool": "github.create_or_update_file",
+  "action": "deny",
+  "reason": "out-of-range number inside execution_claim is unrepresentable in JCS",
+  "decision_mode": "deterministic",
+  "matched_rule": "deny-github-write-after-taint-fixture",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "sha256:a612f9c7a11b26f3a1b16fc6b31940d71ca29a21303ac89aa109474499a93ead",
+  "trust_score": 1,
+  "trust_state": "TRUSTED",
+  "adapter_id": "mcp-primary",
+  "route_id": "route-github-write",
+  "topology_profile": "single-route-forced",
+  "execution_claim": {
+    "upstream_called": false,
+    "executed": false,
+    "source": 1e999
+  }
+}

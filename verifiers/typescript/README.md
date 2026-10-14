@@ -21,6 +21,14 @@ decision_hash mismatch: got sha256:… want sha256:…   # exit 1
 
 Multiple records can be passed; the exit code is 0 only if all pass.
 
+Input is parsed strictly: the file must hold exactly one JSON object, member
+names must be unique at every depth (no silent last-wins), member names must
+belong to the schema's closed set (unknown members are rejected, not dropped),
+and nesting is depth-limited; no bytes may follow the top-level value. On any
+failure the verifier also prints `reason=<code>` on stderr — the shared
+rejection vocabulary across the Go, Python, TypeScript, and Rust verifiers (see
+[docs/VERIFIER_PARITY.md](../../docs/VERIFIER_PARITY.md)).
+
 ## Node version notes
 
 - **Node 22** (LTS): requires `--experimental-strip-types` flag.
@@ -94,7 +102,9 @@ one-field forgery (`"action": "deny"` → `"action": "allow"`) is caught
 (mismatch, exit 1); a tampered reason is caught; a wrong stored `decision_hash`
 is caught; a missing `decision_hash` returns a clear error; `signature` and
 `signature_key_id` fields are excluded from the hash; and every record in the
-shared conformance corpus recomputes to its committed `decision_hash`.
+shared conformance corpus produces the outcome the manifest declares — verify
+vectors recompute to their committed `decision_hash`, reject vectors exit 1
+with the declared `reason=`.
 
 The conformance corpus under
 [`tests/conformance/testdata/verifier-vectors/`](../../tests/conformance/testdata/verifier-vectors)

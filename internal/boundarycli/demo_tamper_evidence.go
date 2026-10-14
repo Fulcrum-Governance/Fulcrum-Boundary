@@ -27,7 +27,7 @@ func runTamperEvidenceDemo(args []string, stdout, stderr io.Writer) int {
 		},
 		Notes: []string{
 			"Fixture mode uses no credentials, no network, and no live mutation.",
-			"This demonstrates hash-verifiable tamper detection, not tamper-proof or immutable storage; verification confirms a record matches its decision_hash, it does not attest deployment topology.",
+			"This demonstrates hash-verifiable tamper evidence, not tamper-proof or immutable storage; verification confirms a record matches its decision_hash, it does not attest deployment topology.",
 		},
 	})
 	jsonOutput := fs.Bool("json", false, "emit machine-readable JSON")

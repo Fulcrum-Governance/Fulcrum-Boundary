@@ -110,8 +110,13 @@ func TestA2AGovernedLifecyclePipelineErrorFailsClosedAndRecords(t *testing.T) {
 	if len(events) != 1 {
 		t.Fatalf("expected one decision record, got %d", len(events))
 	}
-	if events[0].Action != "deny" || events[0].Transport != governance.TransportA2A {
+	// ADR-047: the evaluator failure is recorded as check_indeterminate —
+	// blocked, but not labeled a policy denial.
+	if events[0].Action != governance.ActionCheckIndeterminate || events[0].Transport != governance.TransportA2A {
 		t.Fatalf("unexpected audit event: %+v", events[0])
+	}
+	if events[0].Check == nil {
+		t.Fatal("indeterminate audit event must carry check context")
 	}
 }
 

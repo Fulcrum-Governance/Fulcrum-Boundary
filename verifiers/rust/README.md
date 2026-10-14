@@ -23,6 +23,15 @@ decision_hash mismatch: got sha256:… want sha256:…              # exit 1
 
 Multiple files can be passed; the process exits 1 if any record fails.
 
+Input is parsed strictly: the file must hold exactly one JSON object, member
+names must be unique at every depth (no silent last-wins), member names must
+belong to the schema's closed set (unknown members are rejected, not dropped),
+and nesting is bounded by serde_json's recursion limit; no bytes may follow
+the top-level value. On any failure the verifier also prints `reason=<code>`
+on stderr — the shared rejection vocabulary across the Go, Python, TypeScript,
+and Rust verifiers (see
+[docs/VERIFIER_PARITY.md](../../docs/VERIFIER_PARITY.md)).
+
 ## What it checks
 
 The decision record is **record-scoped RFC 8785 / JCS conformant**: its bytes
@@ -97,9 +106,11 @@ The test suite ports every case from the Python verifier's test file:
 - Wrong stored `decision_hash` is caught (mismatch)
 - Missing `decision_hash` reports the right error
 - `signature` / `signature_key_id` fields are excluded from the hash
-- All 9 records in the shared conformance corpus
+- Every record in the shared conformance corpus
   ([`tests/conformance/testdata/verifier-vectors/`](../../tests/conformance/testdata/verifier-vectors))
-  recompute to their committed `decision_hash` values
+  produces the outcome the manifest declares — verify vectors recompute to
+  their committed `decision_hash`, reject vectors fail with the declared
+  `reason=`
 - Float regression: `v1_float_trust_score.json` (`trust_score` 1/3 →
   `0.3333333333333333`) verifies the ECMAScript number round-trip path
 

@@ -109,7 +109,7 @@ New fields (all the structured form of context the adapter already knows):
 `signature`, `signature_key_id` before hashing; the new route-context fields are
 **content**, so they are covered by `decision_hash` (tampering with a
 route-context field fails verification). `request_hash` and `policy_bundle_hash`
-are unchanged. Net effect: V2 extends tamper-detection to the route-context
+are unchanged. Net effect: V2 extends tamper evidence to the route-context
 fields — it does **not** add attestation or authenticity.
 
 **Go shape.** Prefer a single versioned superset struct (the new fields

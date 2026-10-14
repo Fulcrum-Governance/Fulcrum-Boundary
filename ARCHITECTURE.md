@@ -19,7 +19,7 @@ Stage 1: Trust check              Skipped when TrustChecker == nil OR
          (TrustChecker)           req.AgentID == "".
                                   Isolated / Terminated   → deny
                                   Evaluating              → score 0.5
-                                  CheckAgentState error   → deny (fail-closed)
+                                  CheckAgentState error   → check_indeterminate (fail-closed)
      │
      ▼
 Stage 2: Static policies          Linear scan of StaticPolicyRule list.
@@ -35,7 +35,7 @@ Stage 2: Static policies          Linear scan of StaticPolicyRule list.
 Stage 3: Domain interceptors      interceptors[req.ToolName](ctx, req)
                                   Returns nil       → continue
                                   Allowed == false  → terminate with result
-                                  Error             → deny (fail-closed)
+                                  Error             → check_indeterminate (fail-closed)
      │
      ▼
 Stage 4: PolicyEval engine        policyeval.Evaluator evaluates the request
@@ -46,8 +46,9 @@ Stage 4: PolicyEval engine        policyeval.Evaluator evaluates the request
                                   configured (skipped under dry-run; see
                                   "Escalation resolution" below); faults
                                   there deny fail-closed.
-                                  Evaluator errors follow fail-closed vs
-                                  fail-open as described below.
+                                  Evaluator errors → check_indeterminate
+                                  (fail-closed) unless the transport is
+                                  declared non-enforcing, as below.
      │
      ▼
 GovernanceDecision → AuditPublisher.Publish → [DryRun conversion] → return
@@ -195,15 +196,18 @@ denies a call is a *decision*; a crash in the trust backend is a *fault*.
 
 | Fault location | Default behaviour | Rationale |
 |---|---|---|
-| `TrustChecker.CheckAgentState` returns an error | **Fail-closed (deny)** | Trust unknown. Safer to deny than to let the agent proceed on stale state. |
-| `Interceptor` returns an error | **Fail-closed (deny)** | Domain logic is unreachable. The caller registered it because the tool needs it. |
-| `policyeval.Evaluator.Evaluate` returns an error | **Per-transport** | Configured via `PipelineConfig.FailClosedTransports`. |
+| `TrustChecker.CheckAgentState` returns an error | **Fail-closed (`check_indeterminate`)** | Trust unknown. Safer to block than to let the agent proceed on stale state. |
+| `Interceptor` returns an error | **Fail-closed (`check_indeterminate`)** | Domain logic is unreachable. The caller registered it because the tool needs it. |
+| `policyeval.Evaluator.Evaluate` returns an error | **Fail-closed (`check_indeterminate`)** | Every transport enforces unless explicitly declared non-enforcing in `PipelineConfig.NonEnforcingTransports`. |
 
-For Stage 4, the transport type decides. Transports listed in
-`FailClosedTransports` deny on evaluator errors; all other transports
-fall through and allow. A typical deployment marks `TransportCodeExec` and
-`TransportMCP` fail-closed and leaves `TransportCLI` fail-open so a flaky
-evaluator does not brick an interactive session.
+Every required-check failure, at any stage, returns `check_indeterminate` and
+blocks on all transports by default. A transport is non-enforcing only when
+explicitly declared in `PipelineConfig.NonEnforcingTransports` with a
+recorded reason — ADR-047's can_deny=false for surfaces that cannot block
+(e.g. an informational webhook sink); the decision then continues and records
+the would-have-blocked check context. An empty, unknown, or misspelled
+request transport is undeclared and therefore enforces: a check failure can
+never fail open by omission.
 
 ## Adding a new transport adapter
 

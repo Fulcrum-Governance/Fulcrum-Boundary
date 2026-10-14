@@ -34,7 +34,16 @@ func TestKernelTrustTimeoutFailsClosed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if decision.Action != "deny" || decision.TrustScore != 0 {
-		t.Fatalf("expected fail-closed trust denial, got %#v", decision)
+	// ADR-047: a trust lookup that cannot produce a valid result is
+	// CHECK_INDETERMINATE — it blocks execution but is neither allow nor a
+	// substantive policy denial.
+	if decision.Action != governance.ActionCheckIndeterminate || decision.TrustScore != 0 {
+		t.Fatalf("expected fail-closed trust check_indeterminate, got %#v", decision)
+	}
+	if decision.Allowed() {
+		t.Fatal("check_indeterminate must not allow execution")
+	}
+	if decision.Check == nil || decision.Check.Category != governance.FailureUnavailable {
+		t.Fatalf("expected trust lookup failure category unavailable, got %#v", decision.Check)
 	}
 }

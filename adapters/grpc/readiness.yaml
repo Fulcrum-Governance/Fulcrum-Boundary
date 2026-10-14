@@ -23,8 +23,7 @@ delegated_steps:
     owner: deployment topology
     contract: docs/security/FAIL_MODE_MATRIX.md
 bypass_model: api-gateway
-fail_closed_transports:
-  - grpc
+non_enforcing_transports: []
 evidence:
   tests:
     - adapters/grpc/adapter_test.go

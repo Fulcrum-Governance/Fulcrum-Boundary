@@ -1,0 +1,16 @@
+{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "rec_0f4422dc36cf",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-numof-exp",
+  "tool": "query",
+  "action": "warn",
+  "reason": "out-of-range number is unrepresentable in JCS",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "sha256:0f4422dc36cfebd729598752dcc322302372edd53aa2ac8e2e11b8c9a86b8694",
+  "trust_score": 1E400,
+  "trust_state": "TRUSTED"
+}

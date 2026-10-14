@@ -629,11 +629,14 @@ func runVerify(args []string, stdout, stderr io.Writer) int {
 // verification over the covered inputs; error carries the first failing check
 // when ok is false. record_id echoes the record's identifier when present. A
 // passing check is hash-verifiable integrity over the covered inputs, not proof
-// the action was executed, prevented, or that the verdict was correct.
+// the action was executed, prevented, or that the verdict was correct. reason
+// is the machine-readable rejection class shared across the cross-language
+// decision-record verifiers (docs/VERIFIER_PARITY.md); it is empty on success.
 type verifyRecordResultJSON struct {
 	SchemaVersion string `json:"schema_version"`
 	OK            bool   `json:"ok"`
 	Error         string `json:"error,omitempty"`
+	Reason        string `json:"reason,omitempty"`
 	RecordID      string `json:"record_id,omitempty"`
 }
 
@@ -678,34 +681,34 @@ func runVerifyRecord(args []string, stdout, stderr io.Writer) int {
 
 	body, err := os.ReadFile(positionals[0])
 	if err != nil {
-		return failVerifyRecord(stdout, stderr, *jsonOutput, "", fmt.Sprintf("read record: %v", err))
+		return failVerifyRecord(stdout, stderr, *jsonOutput, "", governance.RecordRejectRead, fmt.Sprintf("read record: %v", err))
 	}
-	var record governance.DecisionRecordV1
-	if err := json.Unmarshal(body, &record); err != nil {
-		return failVerifyRecord(stdout, stderr, *jsonOutput, "", fmt.Sprintf("parse record: %v", err))
+	record, err := governance.DecodeDecisionRecord(body)
+	if err != nil {
+		return failVerifyRecord(stdout, stderr, *jsonOutput, "", governance.RecordRejectReason(err), fmt.Sprintf("parse record: %v", err))
 	}
 
 	var rawRequest []byte
 	if *requestPath != "" {
 		rawRequest, err = os.ReadFile(*requestPath)
 		if err != nil {
-			return failVerifyRecord(stdout, stderr, *jsonOutput, record.RecordID, fmt.Sprintf("read request: %v", err))
+			return failVerifyRecord(stdout, stderr, *jsonOutput, record.RecordID, governance.RecordRejectRead, fmt.Sprintf("read request: %v", err))
 		}
 	}
 
 	if err := governance.VerifyDecisionRecord(record, rawRequest, *policyDir, *binaryDigest); err != nil {
-		return failVerifyRecord(stdout, stderr, *jsonOutput, record.RecordID, fmt.Sprintf("record verification failed: %v", err))
+		return failVerifyRecord(stdout, stderr, *jsonOutput, record.RecordID, verifyRecordFailReason(record, err), fmt.Sprintf("record verification failed: %v", err))
 	}
 	if *verifySignature {
 		if *publicKey == "" {
-			return failVerifyRecord(stdout, stderr, *jsonOutput, record.RecordID, "signature verification failed: --verify-signature requires --public-key")
+			return failVerifyRecord(stdout, stderr, *jsonOutput, record.RecordID, governance.RecordRejectSignature, "signature verification failed: --verify-signature requires --public-key")
 		}
 		pub, err := governance.ParseEd25519PublicKey(*publicKey)
 		if err != nil {
-			return failVerifyRecord(stdout, stderr, *jsonOutput, record.RecordID, fmt.Sprintf("signature verification failed: %v", err))
+			return failVerifyRecord(stdout, stderr, *jsonOutput, record.RecordID, governance.RecordRejectSignature, fmt.Sprintf("signature verification failed: %v", err))
 		}
 		if err := governance.VerifyReceiptSignature(record, pub); err != nil {
-			return failVerifyRecord(stdout, stderr, *jsonOutput, record.RecordID, fmt.Sprintf("signature verification failed: %v", err))
+			return failVerifyRecord(stdout, stderr, *jsonOutput, record.RecordID, governance.RecordRejectSignature, fmt.Sprintf("signature verification failed: %v", err))
 		}
 	}
 	if *jsonOutput {
@@ -724,15 +727,41 @@ func runVerifyRecord(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
+// verifyRecordFailReason maps a VerifyDecisionRecord error to the shared
+// machine-readable rejection vocabulary (the governance.RecordReject* codes)
+// used by the cross-language verifier parity harness.
+//
+// Reason precedence is a cross-verifier contract, not incidental ordering:
+// when decision_hash is absent or empty all four verifiers report
+// missing-hash even if another verification-stage check (for example an
+// unsupported schema_version) failed first — the class says "there is
+// nothing to recompute against", while the human-readable message names the
+// first failing check. Keep this switch's order aligned with the other
+// verifiers; changing precedence on one side breaks parity.
+func verifyRecordFailReason(record governance.DecisionRecordV1, err error) string {
+	switch {
+	case record.DecisionHash == "":
+		return governance.RecordRejectMissingHash
+	case strings.Contains(err.Error(), "schema_version"):
+		return governance.RecordRejectSchema
+	case strings.Contains(err.Error(), "mismatch"):
+		return governance.RecordRejectHashMismatch
+	default:
+		return governance.RecordRejectVerifyFail
+	}
+}
+
 // failVerifyRecord renders a verify-record failure as either the versioned JSON
-// object (ok=false with the message in error) or the legacy stderr line, then
+// object (ok=false with the message in error and the machine-readable rejection
+// class in reason) or the legacy stderr message plus a reason=<code> line, then
 // returns exit code 1 so the JSON and text paths share one failure shape.
-func failVerifyRecord(stdout, stderr io.Writer, jsonOutput bool, recordID, message string) int {
+func failVerifyRecord(stdout, stderr io.Writer, jsonOutput bool, recordID, reason, message string) int {
 	if jsonOutput {
 		if err := writeIndentedJSON(stdout, verifyRecordResultJSON{
 			SchemaVersion: "boundary.verify_record.v1",
 			OK:            false,
 			Error:         message,
+			Reason:        reason,
 			RecordID:      recordID,
 		}); err != nil {
 			fmt.Fprintf(stderr, "verify-record: %v\n", err)
@@ -740,6 +769,7 @@ func failVerifyRecord(stdout, stderr io.Writer, jsonOutput bool, recordID, messa
 		return 1
 	}
 	fmt.Fprintln(stderr, message)
+	fmt.Fprintf(stderr, "reason=%s\n", reason)
 	return 1
 }
 

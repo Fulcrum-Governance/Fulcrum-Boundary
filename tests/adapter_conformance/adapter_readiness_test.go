@@ -1,6 +1,8 @@
 package adapter_conformance
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"sort"
@@ -8,19 +10,20 @@ import (
 	"testing"
 
 	"github.com/fulcrum-governance/fulcrum-boundary/governance"
+	"github.com/fulcrum-governance/fulcrum-boundary/policyeval"
 	"gopkg.in/yaml.v3"
 )
 
 type readinessDeclaration struct {
-	Adapter              string            `yaml:"adapter"`
-	Status               string            `yaml:"status"`
-	TargetStatus         string            `yaml:"target_status"`
-	Lifecycle            map[string]string `yaml:"lifecycle"`
-	DelegatedSteps       []delegatedStep   `yaml:"delegated_steps"`
-	BypassModel          string            `yaml:"bypass_model"`
-	FailClosedTransports []string          `yaml:"fail_closed_transports"`
-	Evidence             readinessEvidence `yaml:"evidence"`
-	Gaps                 []readinessGap    `yaml:"gaps"`
+	Adapter                string            `yaml:"adapter"`
+	Status                 string            `yaml:"status"`
+	TargetStatus           string            `yaml:"target_status"`
+	Lifecycle              map[string]string `yaml:"lifecycle"`
+	DelegatedSteps         []delegatedStep   `yaml:"delegated_steps"`
+	BypassModel            string            `yaml:"bypass_model"`
+	NonEnforcingTransports []string          `yaml:"non_enforcing_transports"`
+	Evidence               readinessEvidence `yaml:"evidence"`
+	Gaps                   []readinessGap    `yaml:"gaps"`
 }
 
 type delegatedStep struct {
@@ -75,8 +78,19 @@ func TestProductionAdaptersPassConformanceRules(t *testing.T) {
 		if state != string(governance.AdapterStepImplemented) && state != string(governance.AdapterStepDelegated) {
 			t.Fatalf("%s is production but bypass_proof is %q", decl.Adapter, state)
 		}
-		if len(decl.FailClosedTransports) == 0 {
-			t.Fatalf("%s is production but declares no fail-closed transports", decl.Adapter)
+		// non_enforcing_transports is declarative posture documentation
+		// (ADR-047), not a mechanical switch: a production adapter must
+		// declare which transports it exposes as can_deny=false surfaces.
+		// An explicit empty list asserts every served transport enforces —
+		// enforcement is the pipeline default. An absent key (nil after
+		// unmarshal) means the posture was never declared and fails the gate.
+		if decl.NonEnforcingTransports == nil {
+			t.Fatalf("%s is production but does not declare non_enforcing_transports (an empty list asserts no non-enforcing surfaces)", decl.Adapter)
+		}
+		for _, transport := range decl.NonEnforcingTransports {
+			if strings.TrimSpace(transport) == "" {
+				t.Fatalf("%s declares a blank non_enforcing_transports entry", decl.Adapter)
+			}
 		}
 	}
 }
@@ -221,4 +235,37 @@ func titleCase(s string) string {
 		return ""
 	}
 	return strings.ToUpper(s[:1]) + s[1:]
+}
+
+// erroringEvaluator is a PolicyEvaluator stub that always returns an
+// infrastructure error, so the conformance tests can drive the pipeline's
+// required-check-failure branch.
+type erroringEvaluator struct{}
+
+func (erroringEvaluator) Evaluate(context.Context, *policyeval.EvaluationRequest) (*policyeval.Decision, error) {
+	return nil, errors.New("evaluator unavailable")
+}
+
+// requireTransportFailsClosedByDefault asserts the ADR-047 default-enforcing
+// posture for a transport: under a zero-value PipelineConfig — no
+// NonEnforcingTransports declared — an evaluator error must return
+// check_indeterminate and block execution. Enforcement is the pipeline
+// default, not list membership.
+func requireTransportFailsClosedByDefault(t *testing.T, transport governance.TransportType) {
+	t.Helper()
+	p := governance.NewPipeline(governance.PipelineConfig{}, nil, erroringEvaluator{}, nil)
+	d, err := p.Evaluate(context.Background(), &governance.GovernanceRequest{
+		ToolName:  "conformance_probe",
+		Transport: transport,
+		TenantID:  "tenant-conformance",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if d.Action != governance.ActionCheckIndeterminate {
+		t.Fatalf("transport %s: action = %q, want %q — every undeclared transport enforces by default", transport, d.Action, governance.ActionCheckIndeterminate)
+	}
+	if d.Allowed() {
+		t.Fatalf("transport %s: check_indeterminate must not allow execution", transport)
+	}
 }

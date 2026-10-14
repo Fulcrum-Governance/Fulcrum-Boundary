@@ -1,0 +1,19 @@
+name: boundary-cli-reference-v1
+
+# Single-service topology: the agent container the harness execs into as the
+# unprivileged "agent" user. See docs/deployment/cli-bypass-proofing.md.
+services:
+  agent:
+    build:
+      context: ../../..
+      dockerfile: tests/bypass/cli-reference/Dockerfile
+      args:
+        BOUNDARY_COMMIT: ${BOUNDARY_COMMIT:-unknown}
+    init: true
+    working_dir: /home/agent
+    # The agent must hold no capabilities: docker exec performs the entry
+    # execve with the container's bounding set effective, so a default
+    # bounding set (which includes DAC_OVERRIDE) would let the exec entry
+    # point ignore the file mode bits this topology relies on.
+    cap_drop: ["ALL"]
+    command: ["/bin/sleep", "infinity"]

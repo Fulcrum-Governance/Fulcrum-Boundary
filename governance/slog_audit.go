@@ -8,12 +8,17 @@ import (
 )
 
 // SlogAuditPublisher writes governance audit events to a slog.Logger as
-// structured records. Allow/warn decisions log at INFO; deny, escalate, and
-// require_approval decisions log at WARN. Caller-controlled identifiers and
-// free-form values are emitted only as deterministic SHA-256 digests so secrets
-// or personal data supplied through request headers cannot enter clear-text
-// logs. This is the recommended default AuditPublisher for development and for
-// production deployments that already ship logs to a structured backend.
+// structured records. Allow/warn decisions log at INFO; deny, escalate,
+// require_approval, and check_indeterminate decisions log at WARN.
+// Caller-controlled identifiers and free-form values are emitted only as
+// deterministic SHA-256 digests so secrets or personal data supplied through
+// request headers cannot enter clear-text logs. The one exception is
+// check_detail: the raw check-failure cause is operator-side infrastructure
+// diagnostics (the operator already owns the endpoints and credentials it
+// may name), emitted in clear because it never reaches the governed caller —
+// CheckFailure.Detail is excluded from JSON serialization. This is the
+// recommended default AuditPublisher for development and for production
+// deployments that already ship logs to a structured backend.
 type SlogAuditPublisher struct {
 	Logger *slog.Logger
 }
@@ -33,8 +38,19 @@ func (p *SlogAuditPublisher) Publish(ctx context.Context, event AuditEvent) {
 
 	level := slog.LevelInfo
 	switch event.Action {
-	case "deny", "escalate", "require_approval":
+	case "deny", "escalate", "require_approval", ActionCheckIndeterminate:
 		level = slog.LevelWarn
+	}
+	// Check context (ADR-047): machine-readable enums are emitted in clear;
+	// the fixed-vocabulary cause is digested like other caller-influenced
+	// values; the raw detail is operator-side diagnostics in clear.
+	checkStage, checkClass, failureCategory, causeHash, checkDetail := "", "", "", "", ""
+	if event.Check != nil {
+		checkStage = event.Check.Stage
+		checkClass = event.Check.Class
+		failureCategory = string(event.Check.Category)
+		causeHash = auditLogDigest(event.Check.Cause)
+		checkDetail = event.Check.Detail
 	}
 	record := BuildDecisionRecord(event)
 	msg := event.EventType
@@ -52,6 +68,11 @@ func (p *SlogAuditPublisher) Publish(ctx context.Context, event AuditEvent) {
 		slog.String("action", event.Action),
 		slog.String("reason_hash", auditLogDigest(event.Reason)),
 		slog.String("decision_mode", string(event.DecisionMode)),
+		slog.String("check_stage", checkStage),
+		slog.String("check_class", checkClass),
+		slog.String("failure_category", failureCategory),
+		slog.String("check_cause_hash", causeHash),
+		slog.String("check_detail", checkDetail),
 		slog.String("matched_rule", event.MatchedRule),
 		slog.String("policy_file", event.PolicyFile),
 		slog.String("policy_bundle_hash", event.PolicyBundleHash),

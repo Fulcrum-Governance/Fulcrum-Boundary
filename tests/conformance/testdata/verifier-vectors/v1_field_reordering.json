@@ -1,0 +1,16 @@
+{
+  "trust_state": "TRUSTED",
+  "trust_score": 0.75,
+  "decision_hash": "sha256:7904b94a258b9be6b9d2cfbf6c2d655e951f8e1c3eeb6865f2f75f5786b36693",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_mode": "deterministic",
+  "reason": "field order is not canonical input",
+  "action": "warn",
+  "tool": "query",
+  "agent_id": "agent-reorder",
+  "adapter": "mcp",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "record_id": "rec_7904b94a258b",
+  "event_type": "governance_decision",
+  "schema_version": "1"
+}
