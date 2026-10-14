@@ -349,7 +349,7 @@ func (d *lineDecomposer) appendRedirectSegment(target string, depth int) {
 }
 
 func (d *lineDecomposer) appendSegment(argv []string, depth int, origin string, piped bool) {
-	classification, err := Classify(argv)
+	classification, err := classifyOwn(argv)
 	if err != nil {
 		d.parseable = false
 		return
