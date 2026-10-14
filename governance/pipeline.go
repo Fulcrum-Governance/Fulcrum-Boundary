@@ -204,7 +204,17 @@ func NewPipeline(cfg PipelineConfig, trust TrustChecker, evaluator PolicyEvaluat
 		auditor = noopAuditPublisher{}
 	}
 	if evaluator == nil {
-		evaluator = policyeval.NewEvaluator(nil)
+		// No caller evaluator: use a strict evaluator with an empty policy
+		// set. An empty set has no rules to fault, so outcomes match the
+		// former non-strict fallback; strict mode guarantees that if the set
+		// is ever replaced with an invalid one, evaluation reports
+		// StrictValidationFailed (CHECK_INDETERMINATE below) instead of
+		// silently skipping rules (FUL-732, ADR-047).
+		strict, err := policyeval.NewEvaluatorStrict(nil)
+		if err != nil && configErr == nil {
+			configErr = fmt.Errorf("governance: default strict evaluator: %w", err)
+		}
+		evaluator = strict
 	}
 
 	// Every transport enforces by default; only the transports explicitly
@@ -543,6 +553,45 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 		})
 		return decision, nil
 	}
+	// A strict evaluator that refused an invalid policy set reports a
+	// deny-shaped result; it is a fault, not a substantive denial, so it is
+	// CHECK_INDETERMINATE (ADR-047). On a declared non-enforcing transport the
+	// would-have-blocked context is recorded and the default allow stands.
+	if evalDecision.StrictValidationFailed {
+		p.markCheckFailure(decision, req, &CheckFailure{
+			Stage:    CheckStagePolicyEval,
+			Class:    CheckClassPolicy,
+			Category: FailureMissingConfig,
+			Cause:    "policy set failed strict validation",
+			Detail:   evalDecision.Reason,
+		})
+		return decision, nil
+	}
+	// A policy or rule whose evaluation faulted was skipped, so a deny it
+	// carries never fired: the verdict cannot be trusted unless the evaluator
+	// still denied. Anything short of deny becomes CHECK_INDETERMINATE.
+	var deniedDespiteFault *CheckFailure
+	if len(evalDecision.EvaluationErrors) > 0 {
+		category := FailureInvalidResult
+		if evalDecision.EvaluationTimedOut {
+			category = FailureTimeout
+		}
+		cf := &CheckFailure{
+			Stage:    CheckStagePolicyEval,
+			Class:    CheckClassPolicy,
+			Category: category,
+			Cause:    "policy or rule evaluation faulted and was skipped",
+			Detail:   strings.Join(evalDecision.EvaluationErrors, "; "),
+		}
+		if evalDecision.Action != policyeval.ActionDeny {
+			p.markCheckFailure(decision, req, cf)
+			if !decision.Allowed() {
+				return decision, nil
+			}
+		} else {
+			deniedDespiteFault = cf
+		}
+	}
 	{
 		switch evalDecision.Action {
 		case policyeval.ActionDeny:
@@ -591,6 +640,11 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 			decision.PolicyID = evalDecision.MatchedPolicy.PolicyId
 		}
 	}
+	// The deny stands; the skipped faults are still recorded on Check.
+	p.markCheckFailure(decision, req, deniedDespiteFault)
+	// The deny stood on a rule that evaluated cleanly, so it is still a real
+	// policy outcome for trust scoring even though a sibling check faulted.
+	decision.trustCountableDespiteCheck = deniedDespiteFault != nil && decision.Action == "deny"
 
 	return decision, nil
 }
@@ -861,7 +915,7 @@ func (p *Pipeline) recordTrustDecision(ctx context.Context, req *GovernanceReque
 	if !ok {
 		return nil, nil
 	}
-	if decision == nil || decision.Check != nil || strings.HasPrefix(decision.Reason, "trust check failed") || strings.Contains(decision.Reason, " is ISOLATED") || strings.Contains(decision.Reason, " is TERMINATED") {
+	if decision == nil || (decision.Check != nil && !decision.trustCountableDespiteCheck) || strings.HasPrefix(decision.Reason, "trust check failed") || strings.Contains(decision.Reason, " is ISOLATED") || strings.Contains(decision.Reason, " is TERMINATED") {
 		return nil, nil
 	}
 	update, err := backend.RecordDecision(ctx, req, decision)

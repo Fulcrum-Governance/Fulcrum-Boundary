@@ -196,6 +196,11 @@ type GovernanceDecision struct {
 	// remains allow-compatible the transport is explicitly non-enforcing and
 	// Check is the recorded would-have-blocked result.
 	Check *CheckFailure `json:"check,omitempty"`
+
+	// trustCountableDespiteCheck marks a deny that stood on a cleanly evaluated
+	// rule while a sibling rule faulted (Check recorded). Such a deny still
+	// feeds the trust backend; other checked decisions do not.
+	trustCountableDespiteCheck bool
 }
 
 // Allowed returns true if the decision permits execution.

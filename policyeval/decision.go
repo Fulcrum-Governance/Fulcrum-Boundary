@@ -80,6 +80,24 @@ type Decision struct {
 
 	// EscalationReason explains why escalation is needed (only set when Action == ActionEscalate).
 	EscalationReason string
+
+	// StrictValidationFailed is true when a strict evaluator refused to
+	// evaluate because its loaded policy set failed validation. Action is
+	// ActionDeny for backward compatibility; callers that must tell a fault
+	// apart from a substantive policy denial (ADR-047 CHECK_INDETERMINATE)
+	// read this field.
+	StrictValidationFailed bool
+
+	// EvaluationErrors lists the policies and rules skipped because
+	// evaluating them faulted (default non-strict skip-with-Warn behavior).
+	// Non-empty means Action may be more permissive than the loaded policy
+	// set intends: a skipped deny rule never fired.
+	EvaluationErrors []string
+
+	// EvaluationTimedOut reports that at least one EvaluationErrors entry was
+	// caused by a context deadline (for example an external-call condition), so
+	// callers can classify the fault as a timeout rather than an invalid result.
+	EvaluationTimedOut bool
 }
 
 // RuleMatch represents a matched rule within a policy.
