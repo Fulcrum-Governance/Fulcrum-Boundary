@@ -207,9 +207,10 @@ func (e *Evaluator) Evaluate(ctx context.Context, req *EvaluationRequest) (*Deci
 		e.logger.Warn("denying request: strict policy validation failed",
 			Field{Key: "error", Value: strictErr.Error()})
 		return &Decision{
-			Action:               ActionDeny,
-			Reason:               fmt.Sprintf("strict policy validation failed: %v", strictErr),
-			EvaluationDurationMs: time.Since(startTime).Milliseconds(),
+			Action:                 ActionDeny,
+			Reason:                 fmt.Sprintf("strict policy validation failed: %v", strictErr),
+			EvaluationDurationMs:   time.Since(startTime).Milliseconds(),
+			StrictValidationFailed: true,
 		}, nil
 	}
 
@@ -218,6 +219,7 @@ func (e *Evaluator) Evaluate(ctx context.Context, req *EvaluationRequest) (*Deci
 	var matchedPolicy *Policy
 	finalAction := ActionAllow
 	var escalationReason string
+	var evaluationErrors []string
 
 policyLoop:
 	for _, policy := range policies {
@@ -241,8 +243,10 @@ policyLoop:
 			e.logger.Warn("policy evaluation error; policy skipped (request may be allowed by default)",
 				Field{Key: "policy_id", Value: policy.PolicyId},
 				Field{Key: "error", Value: err.Error()})
+			evaluationErrors = append(evaluationErrors, fmt.Sprintf("policy %s: %v", policy.PolicyId, err))
 			continue
 		}
+		evaluationErrors = append(evaluationErrors, decision.EvaluationErrors...)
 
 		// Collect matched rules and actions
 		matchedRules = append(matchedRules, decision.MatchedRules...)
@@ -303,6 +307,7 @@ policyLoop:
 		Reason:               reason,
 		EvaluationDurationMs: duration.Milliseconds(),
 		EscalationReason:     escalationReason,
+		EvaluationErrors:     evaluationErrors,
 	}, nil
 }
 
@@ -335,6 +340,7 @@ func (e *Evaluator) evaluatePolicy(ctx context.Context, policy *Policy, evalCtx 
 	var actions []*PolicyAction
 	finalAction := ActionAllow
 	var escalationReason string
+	var evaluationErrors []string
 
 	for _, rule := range policy.Rules {
 		if !rule.Enabled {
@@ -353,6 +359,7 @@ func (e *Evaluator) evaluatePolicy(ctx context.Context, policy *Policy, evalCtx 
 			e.logger.Warn("rule evaluation error; rule skipped (a deny rule may silently not fire)",
 				Field{Key: "rule_id", Value: rule.RuleId},
 				Field{Key: "error", Value: err.Error()})
+			evaluationErrors = append(evaluationErrors, fmt.Sprintf("policy %s rule %s: %v", policy.PolicyId, rule.RuleId, err))
 			continue
 		}
 
@@ -416,6 +423,7 @@ done:
 		Reason:               reason,
 		EvaluationDurationMs: duration.Milliseconds(),
 		EscalationReason:     escalationReason,
+		EvaluationErrors:     evaluationErrors,
 	}, nil
 }
 

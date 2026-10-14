@@ -204,7 +204,17 @@ func NewPipeline(cfg PipelineConfig, trust TrustChecker, evaluator PolicyEvaluat
 		auditor = noopAuditPublisher{}
 	}
 	if evaluator == nil {
-		evaluator = policyeval.NewEvaluator(nil)
+		// No caller evaluator: use a strict evaluator with an empty policy
+		// set. An empty set has no rules to fault, so outcomes match the
+		// former non-strict fallback; strict mode guarantees that if the set
+		// is ever replaced with an invalid one, evaluation reports
+		// StrictValidationFailed (CHECK_INDETERMINATE below) instead of
+		// silently skipping rules (FUL-732, ADR-047).
+		strict, err := policyeval.NewEvaluatorStrict(nil)
+		if err != nil && configErr == nil {
+			configErr = fmt.Errorf("governance: default strict evaluator: %w", err)
+		}
+		evaluator = strict
 	}
 
 	// Every transport enforces by default; only the transports explicitly
@@ -543,6 +553,41 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 		})
 		return decision, nil
 	}
+	// A strict evaluator that refused an invalid policy set reports a
+	// deny-shaped result; it is a fault, not a substantive denial, so it is
+	// CHECK_INDETERMINATE (ADR-047). On a declared non-enforcing transport the
+	// would-have-blocked context is recorded and the default allow stands.
+	if evalDecision.StrictValidationFailed {
+		p.markCheckFailure(decision, req, &CheckFailure{
+			Stage:    CheckStagePolicyEval,
+			Class:    CheckClassPolicy,
+			Category: FailureMissingConfig,
+			Cause:    "policy set failed strict validation",
+			Detail:   evalDecision.Reason,
+		})
+		return decision, nil
+	}
+	// A policy or rule whose evaluation faulted was skipped, so a deny it
+	// carries never fired: the verdict cannot be trusted unless the evaluator
+	// still denied. Anything short of deny becomes CHECK_INDETERMINATE.
+	var deniedDespiteFault *CheckFailure
+	if len(evalDecision.EvaluationErrors) > 0 {
+		cf := &CheckFailure{
+			Stage:    CheckStagePolicyEval,
+			Class:    CheckClassPolicy,
+			Category: FailureInvalidResult,
+			Cause:    "policy or rule evaluation faulted and was skipped",
+			Detail:   strings.Join(evalDecision.EvaluationErrors, "; "),
+		}
+		if evalDecision.Action != policyeval.ActionDeny {
+			p.markCheckFailure(decision, req, cf)
+			if !decision.Allowed() {
+				return decision, nil
+			}
+		} else {
+			deniedDespiteFault = cf
+		}
+	}
 	{
 		switch evalDecision.Action {
 		case policyeval.ActionDeny:
@@ -591,6 +636,8 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 			decision.PolicyID = evalDecision.MatchedPolicy.PolicyId
 		}
 	}
+	// The deny stands; the skipped faults are still recorded on Check.
+	p.markCheckFailure(decision, req, deniedDespiteFault)
 
 	return decision, nil
 }
