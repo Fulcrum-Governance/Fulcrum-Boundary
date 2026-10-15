@@ -247,12 +247,13 @@ func newHelpFlagSet(name string, stderr io.Writer, help commandHelp) *flag.FlagS
 func runServe(args []string, stdout, stderr io.Writer) int {
 	fs := newHelpFlagSet("boundary serve", stderr, commandHelp{
 		Purpose: "Start the Boundary gateway that governs routed tools before privileged execution.",
-		Usage:   "boundary serve [--config FILE] [--listen ADDR] [--policies DIR] [--upstream URL|DSN] [--trust-mode MODE] [--require-agent-id] [--receipt-seed FILE]",
+		Usage:   "boundary serve [--config FILE] [--listen ADDR] [--policies DIR] [--upstream URL|DSN] [--trust-mode MODE] [--require-agent-id] [--dry-run] [--receipt-seed FILE]",
 		Common: []string{
 			"boundary serve --policies ./policies/ --listen :8080",
 			"boundary serve --upstream http://localhost:9000/mcp",
 			"boundary serve --config boundary.yaml",
 			"boundary serve --policies ./policies/ --receipt-seed ./boundary-receipt.seed",
+			"boundary serve --policies ./policies/ --dry-run",
 		},
 		Notes: []string{
 			"Boundary governs only routes forced through it; direct access to the same tool is a bypass unless deployment topology removes that path.",
@@ -260,6 +261,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 			"--trust-mode kernel connects only the trust seam to Fulcrum services; the policy seam still loads the local policy dir.",
 			"Evaluator faults fail closed for the configured transports and otherwise fall through; a policy deny is a decision, a backend fault is not.",
 			"--receipt-seed signs every emitted decision record with the Ed25519 seed in FILE (64 hex chars); signing is off by default, and a startup error here fails closed (exit 1) rather than serving unsigned.",
+			"--dry-run (or security.dry_run in --config) records every deny and check_indeterminate with dry_run=true and lets the call proceed. Nothing is blocked.",
 			"A signature proves who signed the record, not the verdict or that execution happened; key custody is the operator's (see docs/SIGNING.md).",
 		},
 	})
@@ -270,6 +272,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	trustMode := fs.String("trust-mode", "disabled", "trust mode: disabled, standalone, or kernel")
 	trustRedisURL := fs.String("trust-redis-url", "redis://localhost:6379", "Redis URL for kernel trust mode")
 	requireAgentID := fs.Bool("require-agent-id", false, "deny protected adapter requests without agent identity")
+	dryRun := fs.Bool("dry-run", false, "record would-be denies with dry_run=true and let the call proceed (nothing is blocked)")
 	receiptSeed := fs.String("receipt-seed", "", "path to a 64-hex Ed25519 seed; when set, signs every emitted decision record (off by default)")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -301,6 +304,9 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		}
 		if cfg.Security.RequireAgentID {
 			*requireAgentID = true
+		}
+		if cfg.Security.DryRun {
+			*dryRun = true
 		}
 	}
 
@@ -351,6 +357,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		PolicyBundleHash: policyHash,
 		RequireAgentID:   *requireAgentID,
 		ReceiptSigner:    receiptSigner,
+		DryRun:           *dryRun,
 	}, trustBackend, nil, governance.NewSlogAuditPublisher(logger))
 	pipeline.RegisterInterceptor("query", sqlguard.NewPostgresInterceptor())
 
@@ -368,6 +375,9 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	}
 
 	fmt.Fprintf(stderr, "boundary serve listening on %s in %s mode with %d static policy rules\n", *listen, mode, len(policyResult.Rules))
+	if *dryRun {
+		fmt.Fprintln(stderr, "boundary serve: DRY-RUN: denies are recorded with dry_run=true and not enforced")
+	}
 	srv := &http.Server{
 		Addr:              *listen,
 		Handler:           handler,

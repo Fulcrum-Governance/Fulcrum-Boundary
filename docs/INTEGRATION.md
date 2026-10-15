@@ -52,7 +52,10 @@ kernel:
     subject: fulcrum.envelope
 security:
   require_agent_id: true
+  dry_run: false
 ```
+
+`security.dry_run: true` (or `boundary serve --dry-run`) lets every deny and `check_indeterminate` proceed. The audit line keeps the real verdict and adds `"dry_run": true`. The MCP response carries `_meta.governance.dry_run: true` and an `X-Governance-Dry-Run: true` header. Nothing is blocked in this mode.
 
 The schema shape is recorded in `config/schema.v1.yaml`.
 

@@ -46,3 +46,4 @@ kernel:
     subject: string
 security:
   require_agent_id: bool
+  dry_run: bool

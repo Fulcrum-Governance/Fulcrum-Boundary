@@ -66,6 +66,7 @@ func (p *SlogAuditPublisher) Publish(ctx context.Context, event AuditEvent) {
 		slog.String("transport", string(event.Transport)),
 		slog.String("tool_name_hash", auditLogDigest(event.ToolName)),
 		slog.String("action", event.Action),
+		slog.Bool("dry_run", event.DryRun),
 		slog.String("reason_hash", auditLogDigest(event.Reason)),
 		slog.String("decision_mode", string(event.DecisionMode)),
 		slog.String("check_stage", checkStage),

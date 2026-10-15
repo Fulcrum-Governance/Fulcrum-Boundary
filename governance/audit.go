@@ -24,6 +24,9 @@ type AuditEvent struct {
 	// Action is the final decision verdict (allow/deny/warn/escalate/
 	// require_approval). For a dry-run deny this still records the real deny.
 	Action string `json:"action"`
+	// DryRun is true when dry-run let this blocking verdict proceed: the
+	// call was not blocked.
+	DryRun bool `json:"dry_run,omitempty"`
 	// Reason is the human-readable explanation for the verdict.
 	Reason string `json:"reason,omitempty"`
 	// MatchedRule names the static policy or evaluator policy that decided.
