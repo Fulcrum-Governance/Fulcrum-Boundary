@@ -12,7 +12,7 @@ apply-wrapper, fixture redteam, and demo/docs surfaces landed.
 | Surface | Status | Truth |
 | --- | --- | --- |
 | MCP Firewall | Production | Unchanged. Production MCP protection still requires routed deployment isolation around the upstream tool server. |
-| Secure GitHub | Preview | Unchanged. Fixture and opt-in live conformance harnesses remain preview; production still requires deployment bypass proof. |
+| Secure GitHub | Preview | Unchanged. Fixture and opt-in live conformance harnesses remain preview; production still requires deployment bypass evidence. |
 | Command Boundary | Preview | Unchanged. It governs command paths only when routed through `boundary command run`, `boundary shell`, or project-local shims. |
 | Edit Boundary | Preview | Delivered preview for proposed file mutations routed through Boundary edit envelopes. |
 

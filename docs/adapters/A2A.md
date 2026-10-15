@@ -16,7 +16,7 @@ The A2A adapter governs Agent2Agent task/message envelopes before forwarding the
 | inspect | implemented | Downstream responses are inspected for policy-relevant output signals. |
 | metadata | implemented | Governance action, reason, request ID, envelope ID, rule, mode, trust score, and inspection concerns are attached where the response shape permits. |
 | record | delegated | The shared pipeline emits a structured decision record for every evaluation. |
-| bypass_proof | delegated | Deployment topology must make Boundary the path to the downstream A2A agent. |
+| bypass_evidence | delegated | Deployment topology must make Boundary the path to the downstream A2A agent. |
 | fail_closed | implemented | Malformed requests, unknown mandatory fields, and pipeline errors deny or return unsupported fail-closed responses. |
 
 ## Bypass Model

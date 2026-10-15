@@ -1,4 +1,4 @@
-# CodeExec Bypass Proofing
+# CodeExec Bypass Evidence
 
 The CodeExec adapter evaluates a governed code-execution request before it
 reaches a runtime, and the `container` sandbox executes allowed code inside a
@@ -46,12 +46,13 @@ with a clear message where no container runtime exists — except under
 These tests prove the governed route for the reference configuration. They do
 not prove that a given deployment has removed the bypass paths above — that
 evidence is deployment-specific and stays delegated to topology controls
-(`bypass_proof: delegated` in `readiness.yaml`).
+(`bypass_evidence: delegated` in `readiness.yaml`).
 
 ## Non-Claims
 
-This note does not claim the container boundary is bypass-proof, provably
-safe, or tamper-proof. It does not protect against kernel exploits,
+This note does not claim the container boundary is provably safe,
+tamper-proof, or resistant to bypass. Boundary decides before execution only for actions forced through a governed Boundary route.
+It does not protect against kernel exploits,
 container-runtime escapes, hardware or side-channel attacks, or
 vulnerabilities in the runtime itself — the host kernel is shared. It says
 nothing about code-execution paths that never cross Boundary: sessions,

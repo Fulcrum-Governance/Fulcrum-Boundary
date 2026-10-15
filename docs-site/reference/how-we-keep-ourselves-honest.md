@@ -22,7 +22,7 @@ Key mechanisms:
   allow `all adapters production`, and does not allow `fully secures GitHub`
   unless the line is negated or limitation-framed.
 - **Adapter readiness gate** (`tests/adapter_conformance/`): a `production`
-  label requires non-stub lifecycle steps, a `bypass_proof` step that is
+  label requires non-stub lifecycle steps, a `bypass_evidence` step that is
   `implemented` or formally delegated, at least one fail-closed transport, and
   test evidence on disk.
 

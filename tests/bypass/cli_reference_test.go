@@ -18,7 +18,7 @@ import (
 // subcommand, including `boundary shell`, is exec'd with the caller's real
 // gid. The agent container drops all capabilities so docker exec entry-point
 // checks cannot be bypassed by a bounding-set DAC_OVERRIDE. See
-// docs/deployment/cli-bypass-proofing.md.
+// docs/deployment/cli-bypass-evidence.md.
 const (
 	cliTopologyID = "cli-reference-v1"
 	cliToolPath   = "/opt/fulcrum/tools/fulcrum-demo-tool"

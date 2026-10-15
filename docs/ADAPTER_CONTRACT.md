@@ -9,7 +9,7 @@ The interface is defined in
 [`governance/adapter.go`](../governance/adapter.go) and intentionally has only
 five methods. The split between "real work" and "defensive glue" is deliberate
 — many adapters implement protocol parsing directly while delegating forwarding,
-recording, and bypass proof to the host runtime.
+recording, and bypass evidence to the host runtime.
 
 Interface conformance is necessary but not sufficient for production maturity.
 Readiness is tracked separately through the ten-step lifecycle in
@@ -117,7 +117,7 @@ steps:
 | `inspect` | Inspect tool responses where the protocol allows. |
 | `metadata` | Attach governance verdict metadata to the response. |
 | `record` | Emit a structured decision record. |
-| `bypass_proof` | Prove the deployment removes direct tool access around Boundary. |
+| `bypass_evidence` | Show evidence that the deployment removes direct tool access around Boundary. |
 | `fail_closed` | Deny rather than pass through on governance errors. |
 
 Step states are `implemented`, `delegated`, `not_applicable`, or `stub`.

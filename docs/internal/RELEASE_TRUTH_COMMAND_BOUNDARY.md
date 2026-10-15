@@ -70,7 +70,7 @@ MCP adapter maturity, MCP Firewall release truth, or `v0.3.0` release claims.
 
 Secure GitHub remains a preview Secure MCP profile. Command Boundary does not
 make Secure GitHub production, add live GitHub App conformance evidence, or add
-deployment bypass proof.
+deployment bypass evidence.
 
 ## Direct Shell Bypass Statement
 

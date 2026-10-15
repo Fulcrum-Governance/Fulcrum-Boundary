@@ -165,7 +165,7 @@ delivered preview claims. They do not upgrade those surfaces to production.
 
 | Adapter/Profile/Surface | Status | Release truth |
 | --- | --- | --- |
-| MCP | production | Production JSON-RPC MCP proxy path with lifecycle tests; deployment bypass proof remains an operator topology requirement. |
+| MCP | production | Production JSON-RPC MCP proxy path with lifecycle tests; deployment bypass evidence remains an operator topology requirement. |
 | CLI | preview | Governed wrapper execution works; production requires sole-wrapper deployment evidence. |
 | CodeExec | preview | Policy-gated execution works; secure sandboxing is not claimed without a real named boundary. |
 | gRPC | preview | Unary lifecycle works with governance trailers; streaming workloads remain preview. |
