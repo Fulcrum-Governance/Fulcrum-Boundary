@@ -1672,11 +1672,11 @@ func TestValidateExternalURL(t *testing.T) {
 	}{
 		// Valid URLs (public IPs will fail DNS lookup in test, but format is valid)
 		{
-			name: "valid https URL",
-			url:  "https://api.example.com/endpoint",
-			// Will fail DNS resolution in test env, but not SSRF blocked
-			expectErr:   true,
-			errContains: "failed to resolve hostname",
+			// An IP literal needs no DNS, so the row does not depend on the
+			// resolver of the machine running the test.
+			name:      "valid https URL",
+			url:       "https://8.8.8.8/endpoint",
+			expectErr: false,
 		},
 		// Blocked schemes
 		{
