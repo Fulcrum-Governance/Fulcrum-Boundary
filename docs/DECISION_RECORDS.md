@@ -289,15 +289,19 @@ boundary demo command-secret-exfil --out demo.txt
 # -> decision record log:  <dir>/command-secret-exfil-artifacts/decision-records.jsonl
 ```
 
-`boundary serve --record-dir DIR` (or `server.record_dir` in `--config`) writes
-one record per decision under `DIR/records/` and appends it to
-`DIR/decision-records.jsonl`. It prints the log path at startup. Each file under
+`boundary serve` writes one record per decision under `DIR/records/` and
+appends it to `DIR/decision-records.jsonl`. `DIR` defaults to `.boundary/serve`
+in the working directory, the same `.boundary/<surface>` layout the hook,
+command and edit surfaces use. `--record-dir` or `server.record_dir` in
+`--config` overrides it. The container image sets `--record-dir
+/var/lib/boundary/serve`. serve prints the log path at startup. Each file under
 `DIR/records/` is a `verify-record` input, and `--receipt-seed` signs them.
-Without `--record-dir`, serve writes only its stdout audit log, which
-`verify-record` does not accept.
+`--no-records` or `server.records: false` turns records off, leaving only the
+stdout audit log, which `verify-record` does not accept. Records are not
+rotated or pruned yet, so a long-running gateway needs its own retention.
 
 ```bash
-boundary serve --policies ./policies/ --record-dir ./.boundary/serve
+boundary serve --policies ./policies/
 # -> decision record log: .boundary/serve/decision-records.jsonl
 boundary verify-record .boundary/serve/records/<timestamp>-rec_....json
 ```

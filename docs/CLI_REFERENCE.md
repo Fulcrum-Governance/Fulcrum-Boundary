@@ -511,7 +511,8 @@ Flags (transcribed from `boundary serve --help`):
 | `--trust-redis-url` | `redis://localhost:6379` | Redis URL for kernel trust mode. |
 | `--require-agent-id` | `false` | Deny protected adapter requests without agent identity. |
 | `--receipt-seed` | _(unset)_ | Path to a 64-hex Ed25519 seed; when set, signs every emitted decision record (off by default). A missing/short/non-hex seed fails closed: error to stderr, exit 1, before the listener opens. See [docs/SIGNING.md](./SIGNING.md). |
-| `--record-dir` | _(unset)_ | Write every decision as a single-record JSON object under `DIR/records/` that `boundary verify-record` accepts, plus `DIR/decision-records.jsonl`. Also set by `server.record_dir` in `--config`. A directory that cannot be created exits 1 before the listener opens. A record that cannot be written counts as an audit delivery failure and does not change the decision. |
+| `--record-dir` | `.boundary/serve` | Directory for decision records. Every decision is written as a single-record JSON object under `DIR/records/` that `boundary verify-record` accepts, plus `DIR/decision-records.jsonl`. A relative path resolves against the working directory. Also set by `server.record_dir` in `--config`. A directory that cannot be created exits 1 before the listener opens. A record that cannot be written counts as an audit delivery failure and does not change the decision. Records have no retention or rotation yet. |
+| `--no-records` | `false` | Write no decision records; only the stdout audit log remains. Also set by `server.records: false` in `--config`. |
 
 `boundary serve` governs only requests that arrive through the served route.
 Direct access to the upstream MCP server is a deployment bypass unless network

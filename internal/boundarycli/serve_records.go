@@ -10,6 +10,11 @@ import (
 	"github.com/fulcrum-governance/fulcrum-boundary/internal/hookboundary"
 )
 
+// defaultServeRecordDir is where serve writes decision records unless
+// --record-dir or server.record_dir names another directory. It follows the
+// .boundary/<surface> layout the hook, command and edit surfaces use.
+const defaultServeRecordDir = ".boundary/serve"
+
 // serveRecordPublisher writes every serve decision as a decision record that
 // `boundary verify-record` accepts, then logs it. Each record lands as one JSON
 // object under <dir>/records/ and one line in <dir>/decision-records.jsonl.

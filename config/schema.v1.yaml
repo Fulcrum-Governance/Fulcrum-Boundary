@@ -9,6 +9,7 @@ server:
   listen: string
   upstream: string
   record_dir: string
+  records: bool
 standalone:
   required_when:
     mode: standalone

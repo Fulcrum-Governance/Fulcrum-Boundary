@@ -247,13 +247,13 @@ func newHelpFlagSet(name string, stderr io.Writer, help commandHelp) *flag.FlagS
 func runServe(args []string, stdout, stderr io.Writer) int {
 	fs := newHelpFlagSet("boundary serve", stderr, commandHelp{
 		Purpose: "Start the Boundary gateway that governs routed tools before privileged execution.",
-		Usage:   "boundary serve [--config FILE] [--listen ADDR] [--policies DIR] [--upstream URL|DSN] [--trust-mode MODE] [--require-agent-id] [--receipt-seed FILE] [--record-dir DIR]",
+		Usage:   "boundary serve [--config FILE] [--listen ADDR] [--policies DIR] [--upstream URL|DSN] [--trust-mode MODE] [--require-agent-id] [--receipt-seed FILE] [--record-dir DIR | --no-records]",
 		Common: []string{
 			"boundary serve --policies ./policies/ --listen :8080",
 			"boundary serve --upstream http://localhost:9000/mcp",
 			"boundary serve --config boundary.yaml",
 			"boundary serve --policies ./policies/ --receipt-seed ./boundary-receipt.seed",
-			"boundary serve --policies ./policies/ --record-dir ./.boundary/serve",
+			"boundary serve --policies ./policies/ --record-dir /var/lib/boundary/serve",
 		},
 		Notes: []string{
 			"Boundary governs only routes forced through it; direct access to the same tool is a bypass unless deployment topology removes that path.",
@@ -261,7 +261,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 			"--trust-mode kernel connects only the trust seam to Fulcrum services; the policy seam still loads the local policy dir.",
 			"Evaluator faults fail closed for the configured transports and otherwise fall through; a policy deny is a decision, a backend fault is not.",
 			"--receipt-seed signs every emitted decision record with the Ed25519 seed in FILE (64 hex chars); signing is off by default, and a startup error here fails closed (exit 1) rather than serving unsigned.",
-			"--record-dir (or server.record_dir in --config) writes every decision as a record `boundary verify-record` accepts, under DIR/records/, plus DIR/decision-records.jsonl. Without it, decisions only reach the stdout audit log, which verify-record does not accept.",
+			"Every decision is written as a record `boundary verify-record` accepts, under DIR/records/, plus DIR/decision-records.jsonl. DIR defaults to .boundary/serve in the working directory; --record-dir or server.record_dir overrides it. --no-records or server.records: false turns records off, leaving only the stdout audit log.",
 			"A signature proves who signed the record, not the verdict or that execution happened; key custody is the operator's (see docs/SIGNING.md).",
 		},
 	})
@@ -272,7 +272,8 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	trustMode := fs.String("trust-mode", "disabled", "trust mode: disabled, standalone, or kernel")
 	trustRedisURL := fs.String("trust-redis-url", "redis://localhost:6379", "Redis URL for kernel trust mode")
 	requireAgentID := fs.Bool("require-agent-id", false, "deny protected adapter requests without agent identity")
-	recordDir := fs.String("record-dir", "", "write every decision as a verify-record decision record under DIR (off by default)")
+	recordDir := fs.String("record-dir", defaultServeRecordDir, "directory for verify-record decision records, one per decision")
+	noRecords := fs.Bool("no-records", false, "do not write decision records; only the stdout audit log remains")
 	receiptSeed := fs.String("receipt-seed", "", "path to a 64-hex Ed25519 seed; when set, signs every emitted decision record (off by default)")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -294,6 +295,9 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		}
 		if cfg.Server.RecordDir != "" {
 			*recordDir = cfg.Server.RecordDir
+		}
+		if cfg.Server.Records != nil && !*cfg.Server.Records {
+			*noRecords = true
 		}
 		switch cfg.Mode {
 		case "standalone":
@@ -353,7 +357,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 
 	var auditor governance.AuditPublisher = governance.NewSlogAuditPublisher(logger)
 	recordLog := ""
-	if *recordDir != "" {
+	if !*noRecords {
 		recorder, err := newServeRecordPublisher(governance.NewSlogAuditPublisher(logger), *recordDir)
 		if err != nil {
 			fmt.Fprintf(stderr, "decision records: %v\n", err)
@@ -386,6 +390,9 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	}
 
 	fmt.Fprintf(stderr, "boundary serve listening on %s in %s mode with %d static policy rules\n", *listen, mode, len(policyResult.Rules))
+	if *noRecords {
+		fmt.Fprintln(stderr, "boundary serve: decision records off; only the stdout audit log is written")
+	}
 	printRecordLog(stderr, recordLog)
 	srv := &http.Server{
 		Addr:              *listen,

@@ -16,8 +16,13 @@ FROM alpine:3.20
 
 # musl runtime libs for the cgo binary.
 RUN apk add --no-cache libc6-compat \
-  && adduser -D -H boundary
+  && adduser -D -H boundary \
+  && mkdir -p /var/lib/boundary \
+  && chown boundary /var/lib/boundary
 COPY --from=build /out/boundary /usr/local/bin/boundary
 USER boundary
 
-ENTRYPOINT ["boundary", "serve"]
+# serve writes decision records by default; / is not writable by the boundary
+# user, so point them at a state directory it owns. Mount a volume there to
+# keep them, or pass --no-records.
+ENTRYPOINT ["boundary", "serve", "--record-dir", "/var/lib/boundary/serve"]
