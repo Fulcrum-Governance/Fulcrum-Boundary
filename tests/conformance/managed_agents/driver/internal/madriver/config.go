@@ -9,7 +9,7 @@
 // cmd/boundary does not expose a managed-agents listener, so embedding is the
 // only fronting mechanism the code provides. In live mode the driver holds the
 // upstream credential, matching the documented credential bypass model
-// (docs/deployment/managed-agents-bypass-proofing.md).
+// (docs/deployment/managed-agents-bypass-evidence.md).
 package madriver
 
 import (

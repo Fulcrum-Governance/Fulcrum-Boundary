@@ -241,7 +241,7 @@ behind the gateway."
 
 Forbidden use: "An adapter package is protected just because it compiles."
 
-Example: "Protected adapters need bypass proof."
+Example: "Protected adapters need bypass evidence."
 
 ## Preview Adapter
 
@@ -266,7 +266,7 @@ Gateway topology."
 
 Forbidden use: "All adapters are production."
 
-Example: "Production status requires tests, docs, bypass proof, and fail-closed
+Example: "Production status requires tests, docs, bypass evidence, and fail-closed
 behavior."
 
 ## Secure MCP Server

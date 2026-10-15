@@ -51,7 +51,7 @@ The release truth is consistent:
 
 | Adapter/Profile | Status | Release truth |
 |---|---|---|
-| MCP | production | Production JSON-RPC MCP proxy path with lifecycle tests. Deployment bypass proof remains an operator topology requirement. |
+| MCP | production | Production JSON-RPC MCP proxy path with lifecycle tests. Deployment bypass evidence remains an operator topology requirement. |
 | CLI | preview | Governed wrapper execution works. Production requires evidence that the wrapper is the sole command path. |
 | CodeExec | preview | Policy-gated execution works. Secure sandboxing is not claimed without a real named boundary. |
 | gRPC | preview | Unary interceptor lifecycle works with governance trailers. Streaming workloads remain preview. |
@@ -101,7 +101,7 @@ The release truth is consistent:
 - `docs/firewall/DASHBOARD.md`
 - `docs/secure-mcp/GITHUB.md`
 - `docs/secure-mcp/GITHUB_REDTEAM.md`
-- `docs/deployment/secure-github-bypass-proofing.md`
+- `docs/deployment/secure-github-bypass-evidence.md`
 
 ## Drift Found
 

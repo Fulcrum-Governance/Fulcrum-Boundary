@@ -1,4 +1,4 @@
-# CLI Bypass Proofing
+# CLI Bypass Evidence
 
 The CLI adapter governs command execution only for commands routed through
 the Boundary wrapper (`boundary command run`). A shell, an absolute path, an

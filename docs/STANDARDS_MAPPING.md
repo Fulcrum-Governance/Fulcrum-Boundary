@@ -306,7 +306,7 @@ prove live GitHub conformance or production bypass resistance
 is routed through it. An agent with a direct GitHub token or a direct
 connection to an unrouted GitHub MCP server is a bypass that deployment
 topology must remove — and Secure GitHub remains a preview profile until
-deployment bypass proof exists.
+deployment bypass evidence exists.
 
 ### Incident class: data exposure through MCP data access (2025)
 

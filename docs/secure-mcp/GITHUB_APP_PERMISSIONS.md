@@ -36,7 +36,7 @@ conformance path.
 ## Production Gate
 
 Permissions alone do not make Secure GitHub production. Production status still
-requires deployment bypass proof that agents cannot reach direct GitHub API
+requires deployment bypass evidence that agents cannot reach direct GitHub API
 credentials, direct upstream GitHub MCP servers, SSH keys, or other credentialed
 GitHub write paths outside Boundary.
 

@@ -353,7 +353,7 @@ Deliverables:
   - inspect
   - metadata
   - record
-  - bypass_proof
+  - bypass_evidence
   - fail_closed
 - Adapter test harness requirements.
 - Policy example contribution rules.

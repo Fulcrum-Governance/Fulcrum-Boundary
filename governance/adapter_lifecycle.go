@@ -4,16 +4,16 @@ package governance
 type AdapterLifecycleStep string
 
 const (
-	AdapterStepParse       AdapterLifecycleStep = "parse"
-	AdapterStepIdentify    AdapterLifecycleStep = "identify"
-	AdapterStepEvaluate    AdapterLifecycleStep = "evaluate"
-	AdapterStepDeny        AdapterLifecycleStep = "deny"
-	AdapterStepForward     AdapterLifecycleStep = "forward"
-	AdapterStepInspect     AdapterLifecycleStep = "inspect"
-	AdapterStepMetadata    AdapterLifecycleStep = "metadata"
-	AdapterStepRecord      AdapterLifecycleStep = "record"
-	AdapterStepBypassProof AdapterLifecycleStep = "bypass_proof"
-	AdapterStepFailClosed  AdapterLifecycleStep = "fail_closed"
+	AdapterStepParse          AdapterLifecycleStep = "parse"
+	AdapterStepIdentify       AdapterLifecycleStep = "identify"
+	AdapterStepEvaluate       AdapterLifecycleStep = "evaluate"
+	AdapterStepDeny           AdapterLifecycleStep = "deny"
+	AdapterStepForward        AdapterLifecycleStep = "forward"
+	AdapterStepInspect        AdapterLifecycleStep = "inspect"
+	AdapterStepMetadata       AdapterLifecycleStep = "metadata"
+	AdapterStepRecord         AdapterLifecycleStep = "record"
+	AdapterStepBypassEvidence AdapterLifecycleStep = "bypass_evidence"
+	AdapterStepFailClosed     AdapterLifecycleStep = "fail_closed"
 )
 
 // AdapterLifecycleSteps is the complete production-readiness checklist for an adapter.
@@ -26,7 +26,7 @@ var AdapterLifecycleSteps = []AdapterLifecycleStep{
 	AdapterStepInspect,
 	AdapterStepMetadata,
 	AdapterStepRecord,
-	AdapterStepBypassProof,
+	AdapterStepBypassEvidence,
 	AdapterStepFailClosed,
 }
 

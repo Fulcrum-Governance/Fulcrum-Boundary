@@ -143,7 +143,7 @@ claims:
       docs:
         - path: docs/adapters/MANAGED_AGENTS.md
           section: "Lifecycle"
-        - path: docs/deployment/managed-agents-bypass-proofing.md
+        - path: docs/deployment/managed-agents-bypass-evidence.md
           section: "Required Controls"
     public_language:
       allowed:
@@ -493,12 +493,12 @@ claims:
           section: "Secure GitHub Redteam Fixture"
         - path: docs/secure-mcp/GITHUB_LIVE_CONFORMANCE.md
           section: "Secure GitHub Live Conformance"
-        - path: docs/deployment/secure-github-bypass-proofing.md
+        - path: docs/deployment/secure-github-bypass-evidence.md
           section: "Release Gate"
     public_language:
       allowed:
         - "Boundary provides a preview Secure GitHub MCP profile for fixture write-after-taint denial before GitHub mutation."
-        - "Secure GitHub remains preview until deployment bypass proof exists."
+        - "Secure GitHub remains preview until deployment bypass evidence exists."
       forbidden:
         - "Secure GitHub is production"
         - "Boundary fully secures GitHub"
@@ -580,7 +580,7 @@ claims:
       allowed:
         - "Boundary provides an opt-in Secure GitHub live conformance harness for operator-owned GitHub App credentials."
         - "The denied-write conformance path records that a protected write-after-taint was denied before any GitHub mutation client call."
-        - "Secure GitHub remains preview until deployment bypass proof exists."
+        - "Secure GitHub remains preview until deployment bypass evidence exists."
       forbidden:
         - "Secure GitHub is production"
         - "Boundary fully secures GitHub"
@@ -618,7 +618,7 @@ claims:
       - BND-CLAIM-018
 
   - id: BND-CLAIM-GH-020
-    claim: "Boundary provides a Secure GitHub bypass-proof ladder (L0-L3) and a fail-closed deployment bypass-proof packet that records operator-owned live evidence and operator-attested deployment-topology denials"
+    claim: "Boundary provides a Secure GitHub bypass probe ladder (L0-L3) and a fail-closed deployment bypass evidence packet that records operator-owned live evidence and operator-attested deployment-topology denials"
     status: delivered
     adapter: securegithub
     evidence:
@@ -628,20 +628,20 @@ claims:
         - path: adapters/securegithub/live_evidence_test.go
           assertion: "The sanitized live-evidence index is hash-only, rejects unsanitized transcripts, and derives L1 facts only from a denied-write no-mutation transcript"
         - path: adapters/securegithub/bypass_packet_test.go
-          assertion: "The bypass-proof packet fails closed on missing attestations, absent live evidence, unsanitized index, or secret-like evidence, and only an L2 preview packet is a production-candidate"
+          assertion: "The bypass evidence packet fails closed on missing attestations, absent live evidence, unsanitized index, or secret-like evidence, and only an L2 preview packet is a production-candidate"
       docs:
         - path: docs/secure-mcp/GITHUB_BYPASS_LADDER.md
           section: "Levels"
-        - path: docs/deployment/secure-github-bypass-proof-packet.md
+        - path: docs/deployment/secure-github-bypass-evidence-packet.md
           section: "Fail-closed rules"
     public_language:
       allowed:
-        - "Boundary maps a Secure GitHub deployment onto an L0-L3 bypass-proof ladder and records an operator-attested bypass-proof packet."
-        - "A passing L2 bypass-proof packet is an internal production-candidate gate and does not change Secure GitHub's preview status."
-        - "Secure GitHub remains preview until deployment bypass proof exists."
+        - "Boundary maps a Secure GitHub deployment onto an L0-L3 bypass probe ladder and records an operator-attested bypass evidence packet."
+        - "A passing L2 bypass evidence packet is an internal production-candidate gate and does not change Secure GitHub's preview status."
+        - "Secure GitHub remains preview until deployment bypass evidence exists."
       forbidden:
         - "Secure GitHub is production"
-        - "The bypass-proof packet proves the deployment is bypass-proof"
+        - "The bypass evidence packet proves deployment bypass resistance"
         - "Live conformance proves deployment bypass resistance"
         - "Boundary fully secures GitHub"
     gaps: []

@@ -24,7 +24,7 @@ label reflects what has been verified in the repository today.
 **What it does not mean.** The label is not a bypass-resistance guarantee.
 Boundary governs only routes forced through it. An adapter can be `production`
 and still be bypassable if the deployment topology permits a direct path to the
-upstream tool. The `bypass_proof` step is `delegated` even for the MCP adapter
+upstream tool. The `bypass_evidence` step is `delegated` even for the MCP adapter
 — it is assigned to `deployment network topology` because code alone cannot
 prove that no direct path exists. `production` means the adapter is ready for
 deployment scenarios that close that path; it does not mean those scenarios are
@@ -61,7 +61,7 @@ lifecycle:
   inspect: implemented
   metadata: implemented
   record: delegated
-  bypass_proof: delegated
+  bypass_evidence: delegated
   fail_closed: implemented
 ```
 
@@ -83,16 +83,16 @@ The ten lifecycle step names are defined in `governance/adapter_lifecycle.go`
 and must all be present (checked by `requireDeclaration`). Their meanings are
 documented in `docs/ADAPTER_READINESS_MATRIX.md`.
 
-### `bypass_proof` is `implemented` or `delegated`
+### `bypass_evidence` is `implemented` or `delegated`
 
-`bypass_proof` must not be `stub` or absent. `delegated` is acceptable because
+`bypass_evidence` must not be `stub` or absent. `delegated` is acceptable because
 network-topology proof cannot be encoded in a Go source file. When delegated,
 the `delegated_steps` block must name an owner and a contract file that exists
 on disk:
 
 ```yaml
 delegated_steps:
-  - step: bypass_proof
+  - step: bypass_evidence
     owner: deployment network topology
     contract: docs/BOUNDARY_CONDITIONS.md
 ```
@@ -100,7 +100,7 @@ delegated_steps:
 The gate:
 
 ```go
-state := decl.Lifecycle[string(governance.AdapterStepBypassProof)]
+state := decl.Lifecycle[string(governance.AdapterStepBypassEvidence)]
 if state != string(governance.AdapterStepImplemented) &&
    state != string(governance.AdapterStepDelegated) {
     t.Fatalf(...)
@@ -239,7 +239,7 @@ values are taken directly from their `readiness.yaml` declarations.
 | `lifecycle.forward` | `implemented` | `delegated` |
 | `lifecycle.metadata` | `implemented` | `delegated` |
 | `lifecycle.record` | `delegated` (to `governance.AuditPublisher`) | `delegated` (to `governance.AuditPublisher`) |
-| `lifecycle.bypass_proof` | `delegated` (to deployment topology, contract `docs/BOUNDARY_CONDITIONS.md`) | `delegated` (to deployment topology, contract `docs/adapters/WEBHOOK.md`) |
+| `lifecycle.bypass_evidence` | `delegated` (to deployment topology, contract `docs/BOUNDARY_CONDITIONS.md`) | `delegated` (to deployment topology, contract `docs/adapters/WEBHOOK.md`) |
 | `lifecycle.fail_closed` | `implemented` | `delegated` (to `webhook.Handler execution mode`) |
 | `non_enforcing_transports` | `[]` (no non-enforcing surfaces) | `[webhook]` (informational mode is `can_deny=false`) |
 | `gaps` | `[]` (empty) | `[BND-WEB-001]` |
@@ -277,7 +277,7 @@ mechanically tested set of criteria. It does not mean:
   tool.
 - The adapter is free of bugs or edge-case failures. The test suite covers
   declared behavior; it does not exhaustively cover adversarial inputs.
-- The adapter's bypass proof is in place. `bypass_proof: delegated` means the
+- The adapter's bypass evidence is in place. `bypass_evidence: delegated` means the
   responsibility is acknowledged and documented, not that it has been enforced.
 
 The `production` label is accurate as far as it reaches: a complete lifecycle

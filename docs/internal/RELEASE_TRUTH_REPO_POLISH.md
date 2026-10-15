@@ -253,7 +253,7 @@ not private planning, session, or capture-instruction artifacts.
   presentation changes.
 - Keep Command Boundary preview-scoped until deployment evidence shows Boundary
   is the relevant command path for a protected project or workflow.
-- Keep Secure GitHub preview-scoped until deployment bypass proof and broader
+- Keep Secure GitHub preview-scoped until deployment bypass evidence and broader
   live coverage exist.
 - Keep Edit Boundary preview-scoped until deployment evidence shows edit
   proposals are routed through Boundary edit envelopes.

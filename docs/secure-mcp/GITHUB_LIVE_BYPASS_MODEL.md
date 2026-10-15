@@ -27,7 +27,7 @@ These remain outside Boundary unless the operator removes or controls them:
 
 ## Production Gate
 
-Do not mark Secure GitHub production until a deployment-specific bypass proof
+Do not mark Secure GitHub production until deployment-specific bypass evidence
 shows that protected GitHub writes can only reach GitHub through Boundary, and
 that the GitHub App credential is not available to the agent outside the
 governed route.

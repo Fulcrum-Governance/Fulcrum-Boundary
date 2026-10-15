@@ -21,7 +21,7 @@ denials before a blocked request reaches the upstream.
 7. Attach governance metadata under `result._meta.governance` when the response
    shape permits it, and always emit governance HTTP headers.
 8. Emit structured decision records through the configured `AuditPublisher`.
-9. Treat bypass proof as a deployment responsibility: the agent must be unable
+9. Treat bypass evidence as a deployment responsibility: the agent must be unable
    to reach the upstream MCP server directly.
 10. Fail closed for MCP pipeline evaluation errors.
 
