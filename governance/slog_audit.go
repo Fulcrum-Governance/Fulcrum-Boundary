@@ -74,6 +74,7 @@ func (p *SlogAuditPublisher) Publish(ctx context.Context, event AuditEvent) {
 		slog.String("check_cause_hash", causeHash),
 		slog.String("check_detail", checkDetail),
 		slog.String("matched_rule", event.MatchedRule),
+		slog.Any("matched_rules", event.MatchedRules),
 		slog.String("policy_file", event.PolicyFile),
 		slog.String("policy_bundle_hash", event.PolicyBundleHash),
 		slog.String("gateway_version", event.GatewayVersion),
