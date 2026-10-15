@@ -24,6 +24,7 @@ trust:
 - `standalone`: Boundary keeps an in-process Beta(alpha,beta) evaluator with
   the same update semantics as `fulcrum-trust`: success increments alpha,
   failure increments beta, and partial outcomes increment both by half weight.
+  A `warn` (policy `warn` or `audit`) leaves trust unchanged.
 - `kernel`: Boundary reads and writes the Redis IPC state used by
   `fulcrum-trust`: `agent:{agent_id}:circuit_state` with integer states
   `0=TRUSTED`, `1=EVALUATING`, `2=ISOLATED`, and `3=TERMINATED`.
