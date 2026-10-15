@@ -1,7 +1,7 @@
 name: boundary-cli-reference-v1
 
 # Single-service topology: the agent container the harness execs into as the
-# unprivileged "agent" user. See docs/deployment/cli-bypass-proofing.md.
+# unprivileged "agent" user. See docs/deployment/cli-bypass-evidence.md.
 services:
   agent:
     build:

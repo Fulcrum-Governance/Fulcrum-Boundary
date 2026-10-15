@@ -10,8 +10,9 @@ import (
 // StandaloneTrustBackend is the in-process trust backend for standalone mode.
 // It maintains a Beta(alpha,beta) trust model per agent entirely in memory,
 // with the same update semantics as fulcrum-trust: a success increments alpha,
-// a failure increments beta, and a partial outcome increments both by a half
-// weight; the score is alpha/(alpha+beta). State is derived from the score via
+// a failure increments beta, a partial outcome increments both by a half
+// weight, and a neutral outcome (warn) changes nothing; the score is
+// alpha/(alpha+beta). State is derived from the score via
 // TrustStateFromScore against the configured thresholds. It implements
 // TrustBackend. State is process-local and not persisted across restarts.
 type StandaloneTrustBackend struct {
@@ -73,17 +74,25 @@ func (b *StandaloneTrustBackend) GetAgentTrust(_ context.Context, agentID string
 
 // RecordDecision implements TrustBackend. It maps the decision to a trust
 // outcome, folds it into the agent's Beta parameters, recomputes the state from
-// the new score, and returns the before/after update. A terminated agent stays
+// the new score, and returns the before/after update. A neutral outcome returns
+// the current snapshot unchanged. A terminated agent stays
 // terminated. A nil request or empty AgentID returns an error.
-func (b *StandaloneTrustBackend) RecordDecision(_ context.Context, req *GovernanceRequest, decision *GovernanceDecision) (TrustDecisionUpdate, error) {
+func (b *StandaloneTrustBackend) RecordDecision(ctx context.Context, req *GovernanceRequest, decision *GovernanceDecision) (TrustDecisionUpdate, error) {
 	if req == nil || req.AgentID == "" {
 		return TrustDecisionUpdate{}, fmt.Errorf("agent_id is required")
+	}
+	outcome := TrustOutcomeFromDecision(decision)
+	if outcome == TrustOutcomeNeutral {
+		current, err := b.GetAgentTrust(ctx, req.AgentID)
+		if err != nil {
+			return TrustDecisionUpdate{}, err
+		}
+		return TrustDecisionUpdate{Before: current, After: current, Outcome: outcome}, nil
 	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	state := b.ensureLocked(req.AgentID)
 	before := state.snapshot(true)
-	outcome := TrustOutcomeFromDecision(decision)
 	switch outcome {
 	case TrustOutcomeSuccess:
 		state.Alpha += b.cfg.SuccessWeight

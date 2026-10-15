@@ -33,7 +33,7 @@ func TestCodeExecConformanceDeclaration(t *testing.T) {
 	for _, step := range []governance.AdapterLifecycleStep{
 		governance.AdapterStepEvaluate,
 		governance.AdapterStepRecord,
-		governance.AdapterStepBypassProof,
+		governance.AdapterStepBypassEvidence,
 	} {
 		if decl.Lifecycle[string(step)] != string(governance.AdapterStepDelegated) {
 			t.Fatalf("CodeExec lifecycle step %s = %q, want delegated", step, decl.Lifecycle[string(step)])

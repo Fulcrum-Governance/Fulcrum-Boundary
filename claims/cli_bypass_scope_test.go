@@ -32,13 +32,13 @@ func TestCLIBypassEvidenceScope(t *testing.T) {
 		t.Fatal("cli-reference Dockerfile lost its probed-route scoping for the execve claim")
 	}
 
-	doc := readFile(t, filepath.Join(repoRoot, "docs/deployment/cli-bypass-proofing.md"))
+	doc := readFile(t, filepath.Join(repoRoot, "docs/deployment/cli-bypass-evidence.md"))
 	if !strings.Contains(doc, "FUL-653") {
-		t.Fatal("cli-bypass-proofing.md must disclose that a governed `find -exec` can forward to a shell holding boundary_exec (tracked as FUL-653)")
+		t.Fatal("cli-bypass-evidence.md must disclose that a governed `find -exec` can forward to a shell holding boundary_exec (tracked as FUL-653)")
 	}
 	for i, line := range strings.Split(doc, "\n") {
 		if lower := strings.ToLower(line); strings.Contains(lower, "shell-free") && !negatedOrControlled(lower) {
-			t.Fatalf("cli-bypass-proofing.md:%d describes the governed route as shell-free: %s", i+1, strings.TrimSpace(line))
+			t.Fatalf("cli-bypass-evidence.md:%d describes the governed route as shell-free: %s", i+1, strings.TrimSpace(line))
 		}
 	}
 }

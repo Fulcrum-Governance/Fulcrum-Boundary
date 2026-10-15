@@ -16,7 +16,7 @@ The CLI adapter governs command execution when commands route through the Bounda
 | inspect | implemented | Command output is inspected for sensitive-data patterns. |
 | metadata | implemented | Governance action, request ID, envelope ID, and policy ID are attached to response metadata. |
 | record | delegated | The shared pipeline emits a structured decision record for every evaluation. |
-| bypass_proof | delegated | Deployment topology must make the Boundary wrapper the only path to command execution. |
+| bypass_evidence | delegated | Deployment topology must make the Boundary wrapper the only path to command execution. |
 | fail_closed | implemented | Pipeline errors deny before command execution. |
 
 ## Bypass Model

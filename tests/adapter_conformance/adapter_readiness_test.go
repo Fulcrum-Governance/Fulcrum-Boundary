@@ -74,9 +74,9 @@ func TestProductionAdaptersPassConformanceRules(t *testing.T) {
 				t.Fatalf("%s is production but lifecycle step %s is still stub", decl.Adapter, step)
 			}
 		}
-		state := decl.Lifecycle[string(governance.AdapterStepBypassProof)]
+		state := decl.Lifecycle[string(governance.AdapterStepBypassEvidence)]
 		if state != string(governance.AdapterStepImplemented) && state != string(governance.AdapterStepDelegated) {
-			t.Fatalf("%s is production but bypass_proof is %q", decl.Adapter, state)
+			t.Fatalf("%s is production but bypass_evidence is %q", decl.Adapter, state)
 		}
 		// non_enforcing_transports is declarative posture documentation
 		// (ADR-047), not a mechanical switch: a production adapter must

@@ -1,4 +1,4 @@
-# Managed Agents Bypass Proofing
+# Managed Agents Bypass Evidence
 
 Boundary protects Managed Agents sessions only when it is the sole route that
 can send upstream tool confirmations.
@@ -16,7 +16,7 @@ can send upstream tool confirmations.
 ## Verification
 
 Use `managedagents.VerifyBypassConfig` in deployment tests to assert the
-credential boundary. A deployment fails the bypass proof when either of these
+credential boundary. A deployment fails the bypass evidence check when either of these
 is true:
 
 - the customer app can access the upstream Managed Agents API key;
@@ -25,7 +25,7 @@ is true:
 
 ## Non-Claims
 
-This bypass proof does not claim that Boundary controls Managed Agents sessions
+This bypass evidence note does not claim that Boundary controls Managed Agents sessions
 created outside the protected deployment, sessions where another service owns
 the upstream API key, or custom tool execution paths that never emit governed
 tool-confirmation events.

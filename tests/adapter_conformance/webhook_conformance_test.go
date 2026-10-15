@@ -16,16 +16,16 @@ func TestWebhookConformanceDeclaration(t *testing.T) {
 		t.Fatalf("webhook status = %q, want preview", decl.Status)
 	}
 	want := map[string]string{
-		string(governance.AdapterStepParse):       string(governance.AdapterStepImplemented),
-		string(governance.AdapterStepIdentify):    string(governance.AdapterStepImplemented),
-		string(governance.AdapterStepEvaluate):    string(governance.AdapterStepImplemented),
-		string(governance.AdapterStepDeny):        string(governance.AdapterStepImplemented),
-		string(governance.AdapterStepForward):     string(governance.AdapterStepDelegated),
-		string(governance.AdapterStepInspect):     string(governance.AdapterStepImplemented),
-		string(governance.AdapterStepMetadata):    string(governance.AdapterStepDelegated),
-		string(governance.AdapterStepRecord):      string(governance.AdapterStepDelegated),
-		string(governance.AdapterStepBypassProof): string(governance.AdapterStepDelegated),
-		string(governance.AdapterStepFailClosed):  string(governance.AdapterStepImplemented),
+		string(governance.AdapterStepParse):          string(governance.AdapterStepImplemented),
+		string(governance.AdapterStepIdentify):       string(governance.AdapterStepImplemented),
+		string(governance.AdapterStepEvaluate):       string(governance.AdapterStepImplemented),
+		string(governance.AdapterStepDeny):           string(governance.AdapterStepImplemented),
+		string(governance.AdapterStepForward):        string(governance.AdapterStepDelegated),
+		string(governance.AdapterStepInspect):        string(governance.AdapterStepImplemented),
+		string(governance.AdapterStepMetadata):       string(governance.AdapterStepDelegated),
+		string(governance.AdapterStepRecord):         string(governance.AdapterStepDelegated),
+		string(governance.AdapterStepBypassEvidence): string(governance.AdapterStepDelegated),
+		string(governance.AdapterStepFailClosed):     string(governance.AdapterStepImplemented),
 	}
 	for step, state := range want {
 		if got := decl.Lifecycle[step]; got != state {

@@ -10,15 +10,15 @@ lifecycle:
   inspect: implemented
   metadata: implemented
   record: delegated
-  bypass_proof: delegated
+  bypass_evidence: delegated
   fail_closed: implemented
 delegated_steps:
   - step: record
     owner: governance.AuditPublisher
     contract: docs/DECISION_RECORDS.md
-  - step: bypass_proof
+  - step: bypass_evidence
     owner: deployment credential boundary
-    contract: docs/deployment/managed-agents-bypass-proofing.md
+    contract: docs/deployment/managed-agents-bypass-evidence.md
 bypass_model: credential
 non_enforcing_transports: []
 evidence:
@@ -27,7 +27,7 @@ evidence:
     - tests/integration/managed_agents_multiagent_test.go
   docs:
     - docs/adapters/MANAGED_AGENTS.md
-    - docs/deployment/managed-agents-bypass-proofing.md
+    - docs/deployment/managed-agents-bypass-evidence.md
     - docs/ADAPTER_READINESS_MATRIX.md
 gaps:
   - id: BND-MAPROD-001

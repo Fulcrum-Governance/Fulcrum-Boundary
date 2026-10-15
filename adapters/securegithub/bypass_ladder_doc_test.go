@@ -39,7 +39,7 @@ func TestBypassLadderDocIsLimitationFramed(t *testing.T) {
 }
 
 func TestBypassPacketDocIsOperatorTemplate(t *testing.T) {
-	doc := strings.ToLower(repoDoc(t, "docs/deployment/secure-github-bypass-proof-packet.md"))
+	doc := strings.ToLower(repoDoc(t, "docs/deployment/secure-github-bypass-evidence-packet.md"))
 	for _, want := range []string{"operator", "attest", "egress", "github app", "does not prove"} {
 		if !strings.Contains(doc, want) {
 			t.Fatalf("packet template missing %q", want)

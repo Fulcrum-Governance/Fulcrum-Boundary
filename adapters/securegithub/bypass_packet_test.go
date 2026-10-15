@@ -15,16 +15,16 @@ func fullAttestation() DeploymentAttestation {
 	}
 }
 
-func TestBuildBypassProofPacketL2(t *testing.T) {
+func TestBuildBypassEvidencePacketL2(t *testing.T) {
 	idx, err := BuildLiveEvidenceIndex([]LiveConformanceResult{deniedWriteResult(t)})
 	if err != nil {
 		t.Fatalf("index: %v", err)
 	}
-	p, err := BuildBypassProofPacket(idx, fullAttestation())
+	p, err := BuildBypassEvidencePacket(idx, fullAttestation())
 	if err != nil {
-		t.Fatalf("BuildBypassProofPacket: %v", err)
+		t.Fatalf("BuildBypassEvidencePacket: %v", err)
 	}
-	if p.SchemaVersion != BypassProofSchemaVersion {
+	if p.SchemaVersion != BypassEvidenceSchemaVersion {
 		t.Fatalf("schema = %q", p.SchemaVersion)
 	}
 	if p.ProfileStatus != StatusPreview {
@@ -45,7 +45,7 @@ func TestBypassPacketFailsClosedOnMissingDenial(t *testing.T) {
 	idx, _ := BuildLiveEvidenceIndex([]LiveConformanceResult{deniedWriteResult(t)})
 	att := fullAttestation()
 	att.EgressPolicyEnforced = AttestedDenial{Attested: false}
-	p, err := BuildBypassProofPacket(idx, att)
+	p, err := BuildBypassEvidencePacket(idx, att)
 	if err != nil {
 		t.Fatalf("packet build: %v", err)
 	}
@@ -63,7 +63,7 @@ func TestBypassPacketFailsClosedOnMissingDenial(t *testing.T) {
 func TestBypassPacketFailsClosedWithoutL1Evidence(t *testing.T) {
 	// Full topology attestation but no live evidence -> still L0 (no L1 floor).
 	idx := LiveEvidenceIndex{SchemaVersion: LiveEvidenceSchemaVersion, ProfileID: ProfileID, ProfileStatus: StatusPreview, Sanitized: true}
-	p, err := BuildBypassProofPacket(idx, fullAttestation())
+	p, err := BuildBypassEvidencePacket(idx, fullAttestation())
 	if err != nil {
 		t.Fatalf("packet build: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestBypassPacketRejectsAttestationEvidenceWithSecrets(t *testing.T) {
 	idx, _ := BuildLiveEvidenceIndex([]LiveConformanceResult{deniedWriteResult(t)})
 	att := fullAttestation()
 	att.AppCredentialRuntimeOnly = AttestedDenial{Attested: true, Evidence: "Authorization: Bearer ghp_exampleTokenMaterialThatMustNotBeStored"}
-	if _, err := BuildBypassProofPacket(idx, att); err == nil {
+	if _, err := BuildBypassEvidencePacket(idx, att); err == nil {
 		t.Fatal("expected fail-closed error when attestation evidence carries secret-like data")
 	}
 }
@@ -88,7 +88,7 @@ func TestBypassPacketRejectsAttestationEvidenceWithSecrets(t *testing.T) {
 // private-key body with no PEM BEGIN header and no token prefix (e.g.
 // "private key: MIIEv...") matches no credentialPattern regex but contains
 // the "private key" substring. The strict containsSecretLikeData scrubber must
-// catch it and BuildBypassProofPacket must fail closed.
+// catch it and BuildBypassEvidencePacket must fail closed.
 func TestBypassPacketRejectsRawKeyBodyEvidence(t *testing.T) {
 	idx, _ := BuildLiveEvidenceIndex([]LiveConformanceResult{deniedWriteResult(t)})
 	att := fullAttestation()
@@ -96,7 +96,7 @@ func TestBypassPacketRejectsRawKeyBodyEvidence(t *testing.T) {
 		Attested: true,
 		Evidence: "private key: MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQC7rawBodyNoHeader",
 	}
-	if _, err := BuildBypassProofPacket(idx, att); err == nil {
+	if _, err := BuildBypassEvidencePacket(idx, att); err == nil {
 		t.Fatal("expected fail-closed error: raw private-key body with no PEM header must be rejected by the strict scrubber")
 	}
 }
@@ -104,7 +104,7 @@ func TestBypassPacketRejectsRawKeyBodyEvidence(t *testing.T) {
 func TestBypassPacketUnsanitizedIndexRejected(t *testing.T) {
 	idx, _ := BuildLiveEvidenceIndex([]LiveConformanceResult{deniedWriteResult(t)})
 	idx.Sanitized = false
-	if _, err := BuildBypassProofPacket(idx, fullAttestation()); err == nil {
+	if _, err := BuildBypassEvidencePacket(idx, fullAttestation()); err == nil {
 		t.Fatal("expected fail-closed error for unsanitized live-evidence index")
 	}
 }

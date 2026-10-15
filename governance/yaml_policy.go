@@ -93,9 +93,6 @@ func LoadStaticPolicyFiles(dir string) (*StaticPolicyLoadResult, error) {
 			if rule.Tool == "" {
 				result.Warnings = append(result.Warnings, fmt.Sprintf("%s: rule %q has empty tool", path, rule.Name))
 			}
-			if rule.Action == "" {
-				result.Warnings = append(result.Warnings, fmt.Sprintf("%s: rule %q has empty action", path, rule.Name))
-			}
 			if rule.Match != nil && rule.Match.Field == "" && staticMatchRequiresField(*rule.Match) {
 				result.Warnings = append(result.Warnings, fmt.Sprintf("%s: rule %q has empty match field", path, rule.Name))
 			}
@@ -142,6 +139,13 @@ func parseStaticPolicyDocument(path string, body []byte) (*StaticPolicyDocument,
 	var doc StaticPolicyDocument
 	if err := yaml.Unmarshal(body, &doc); err != nil {
 		return nil, fmt.Errorf("parse policy file %s: %w", path, err)
+	}
+	for i := range doc.Rules {
+		rule := &doc.Rules[i]
+		if !policyeval.IsRuleAction(rule.Action) {
+			return nil, fmt.Errorf("%s: rules[%d] %q: %w", path, i, rule.Name, policyeval.UnsupportedActionError(rule.Action))
+		}
+		rule.Action = strings.ToLower(strings.TrimSpace(rule.Action))
 	}
 	return &doc, nil
 }
