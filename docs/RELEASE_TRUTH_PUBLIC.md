@@ -266,7 +266,7 @@ witnesses remain Fulcrum-operated on separate infrastructure; the verifier also
 does not prove upstream correctness, completeness, or immutability.
 
 The v0.12.0 release adds the relocated Apache-2.0 verifier; the Secure GitHub
-bypass-proof ladder and narrow stateful official-MCP route (both still preview);
+bypass probe ladder and narrow stateful official-MCP route (both still preview);
 the proof-receipt sidecar; the wired-witness vocabulary reconciliation; per-host
 install docs; the permanent Windows static-only stance; SBOM and provenance
 wiring; kernel escalation await mode and pipeline seam; and the Go 1.26.5
@@ -543,12 +543,12 @@ preview surface to production.
 Secure GitHub is preview. Production status still requires deployment bypass
 evidence and broader live coverage.
 
-Secure GitHub maps a deployment onto an L0-L3 bypass-proof ladder. Routed live
+Secure GitHub maps a deployment onto an L0-L3 bypass probe ladder. Routed live
 conformance earns L1 (the denied write-after-taint no-mutation proof). An
-operator-attested bypass-proof packet that denies every direct GitHub path earns
+operator-attested bypass evidence packet that denies every direct GitHub path earns
 L2, the internal production-candidate gate. L2 does not make Secure GitHub
-production and does not prove the deployment is bypass-proof; the packet records
-and classifies what the operator attested.
+production and does not prove deployment bypass resistance; the packet records
+and classifies what the operator attested. Boundary decides before execution only for actions forced through a governed Boundary route.
 
 Command Boundary remains preview. Direct shell access, CI jobs, and SSH
 sessions remain outside Command Boundary unless routed through Boundary command
@@ -589,8 +589,8 @@ Do not use these as public capability claims:
 - Do not claim live conformance proves deployment bypass resistance.
 - Do not use "production-candidate" as public copy; it is an internal planning
   word and Secure GitHub stays preview until release truth changes.
-- Do not claim the Secure GitHub bypass-proof packet proves the deployment is
-  bypass-proof; it records operator attestations and routed evidence and
+- Do not claim the Secure GitHub bypass evidence packet proves deployment
+  bypass resistance; it records operator attestations and routed evidence and
   classifies the ladder level.
 - Do not claim all adapters production.
 - Do not claim generated policies are production-complete.

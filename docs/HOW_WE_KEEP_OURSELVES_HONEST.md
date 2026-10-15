@@ -96,9 +96,9 @@ enforces the following rules for any adapter labeled `production`:
 
 - It must declare evidence tests (no empty evidence list).
 - No lifecycle step (`parse`, `identify`, `evaluate`, `deny`, `forward`,
-  `inspect`, `metadata`, `record`, `bypass_proof`, `fail_closed`) may be in
+  `inspect`, `metadata`, `record`, `bypass_evidence`, `fail_closed`) may be in
   `stub` state.
-- The `bypass_proof` step must be either `implemented` or formally `delegated`
+- The `bypass_evidence` step must be either `implemented` or formally `delegated`
   to a named owner with a named contract document that exists on disk.
 - It must declare at least one fail-closed transport.
 

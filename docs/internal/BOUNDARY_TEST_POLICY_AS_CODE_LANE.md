@@ -33,7 +33,7 @@ Non-goals (explicitly out of this lane):
   existing fixture redteam and demo paths.
 - No new governed action surface. `boundary test` only *evaluates* requests that
   already flow through the documented pipeline.
-- No deployment bypass proof. Passing tests prove policy verdicts for routed
+- No deployment bypass evidence. Passing tests prove policy verdicts for routed
   requests, not that a deployment removed every direct path to a tool.
 - No `proved` decisions. Boundary does not emit `proved` verdicts; this lane does
   not change that.

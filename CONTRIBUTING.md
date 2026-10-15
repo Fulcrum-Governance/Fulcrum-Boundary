@@ -36,7 +36,7 @@ diagnose a report.
 For larger changes, including new adapters, new extension points, release
 claim changes, or public positioning changes, open an issue first to discuss
 the shape before writing code. The bar an adapter must meet to carry the
-`production` label — lifecycle steps, bypass-proof delegation, fail-closed
+`production` label — lifecycle steps, bypass evidence delegation, fail-closed
 transports, test evidence paths, and the process — is documented in
 [`docs/ADAPTER_PRODUCTION_BAR.md`](./docs/ADAPTER_PRODUCTION_BAR.md).
 
