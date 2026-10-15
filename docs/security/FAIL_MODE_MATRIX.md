@@ -296,11 +296,11 @@ The ADR-047 failure matrix is covered by table-driven behavioral tests in
 | Area | Coverage |
 |---|---|
 | Every failure category × every transport | `TestPipeline_CheckIndeterminate_FailureMatrix` — unavailable, timeout, canceled, panic (evaluator/trust lookup/trust update), nil evaluator result, unknown evaluator action (`invalid_result`), stale snapshot (`CheckError`), missing identity, trust lookup/update errors — each across all seven transports, asserting blocked action, `Check` fields, recorded audit context, and zero downstream execution |
-| Webhook execution mode | `TestPipeline_CheckIndeterminate_WebhookExecutionBlocksByDefault`; handler level: `TestHandlerWithConfig_Execution_CheckIndeterminateDoesNotForward`, `TestHandlerWithConfig_Informational_CheckIndeterminateStillRecords` (`adapters/webhook/adapter_test.go`) |
-| Non-enforcing transport | `TestPipeline_CheckIndeterminate_NonEnforcingTransport_RecordsWouldHaveBlocked`, `TestPipeline_EvaluatorError_NonEnforcingTransport_Allows` |
+| Webhook execution mode | `TestPipeline_CheckIndeterminate_FailureMatrix` (webhook rows); handler level: `TestHandlerWithConfig_Execution_CheckIndeterminateDoesNotForward`, `TestHandlerWithConfig_Informational_CheckIndeterminateStillRecords` (`adapters/webhook/adapter_test.go`) |
+| Non-enforcing transport | `TestPipeline_CheckIndeterminate_NonEnforcingTransport_RecordsWouldHaveBlocked`, `TestPipeline_NonEnforcingTransports_BuildsMap` (two declared transports) |
 | Empty/unknown transport enforces | `TestPipeline_EvaluatorError_UndeclaredTransport_CheckIndeterminate` (`""`, `"bogus"`, custom `claude-code-hook`) |
 | Omission is not an opt-out | `TestPipeline_EvaluatorError_OmissionIsNotNonEnforcing` — declared webhook non-enforcing while `mcp`/`cli`/`grpc`/unknown still block |
-| Malformed non-enforcing declaration | `TestPipeline_Config_InvalidNonEnforcingDeclarationRejected`, `TestPipeline_NonEnforcingTransports_MalformedEntryIsConfigError` |
+| Malformed non-enforcing declaration | `TestPipeline_NonEnforcingTransports_MalformedEntryIsConfigError` (missing/blank reason, missing transport, every transport) |
 | Dry-run cannot launder a config error | `TestPipeline_DryRun_InvalidConfig_NotLaunderedToAllow` |
 | Configured transport combinations | `TestPipeline_Config_ValidateNonEnforcingListAccepted` plus the per-declaration rows in the failclosed/evaluator table tests |
 | Nil auditor + RequireAudit | `TestPipeline_RequireAudit_NilAuditorIsConfigError` |

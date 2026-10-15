@@ -163,74 +163,26 @@ func TestPipeline_InterceptorEmptyAction_DefaultsDeny(t *testing.T) {
 }
 
 func TestPipeline_NonEnforcingTransports_BuildsMap(t *testing.T) {
-	// Configure a pipeline with NonEnforcingTransports populated to exercise
-	// the map-building loop in NewPipeline. The set must contain exactly the
-	// declared transports — everything else, including transports never
-	// listed anywhere, stays enforcing.
-	cfg := PipelineConfig{
-		NonEnforcingTransports: []NonEnforcingTransport{
-			{Transport: TransportMCP, Reason: "observer-only deployment"},
-			{Transport: TransportCodeExec, Reason: "ephemeral sandbox; cannot block"},
-		},
-	}
-	p := NewPipeline(cfg, nil, nil, nil)
-	if p.nonEnforcing[TransportMCP] != "observer-only deployment" {
-		t.Error("expected TransportMCP declared non-enforcing with its reason")
-	}
-	if p.nonEnforcing[TransportCodeExec] == "" {
-		t.Error("expected TransportCodeExec declared non-enforcing with its reason")
-	}
-	if _, ok := p.nonEnforcing[TransportCLI]; ok {
-		t.Error("expected TransportCLI to remain enforcing (not declared)")
-	}
-	if _, ok := p.nonEnforcing[TransportGRPC]; ok {
-		t.Error("expected TransportGRPC to remain enforcing (not declared)")
-	}
-	if _, ok := p.nonEnforcing[""]; ok {
-		t.Error("the empty transport name must never appear in the non-enforcing set")
-	}
-
-	req := &GovernanceRequest{ToolName: "read_file", Transport: TransportMCP, TenantID: "t1"}
-	d, err := p.Evaluate(context.Background(), req)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if d.Action != "allow" {
-		t.Errorf("expected allow-by-default even with non-enforcing declarations, got %s", d.Action)
-	}
-}
-
-// TestPipeline_NonEnforcingTransports_UnsetMeansAllEnforcing verifies the
-// inverted default: with nil or empty NonEnforcingTransports the non-enforcing
-// set is empty, so every transport — known or not — enforces required checks
-// (ADR-047). Enforcement coverage can only shrink by explicit declaration.
-func TestPipeline_NonEnforcingTransports_UnsetMeansAllEnforcing(t *testing.T) {
-	for name, cfg := range map[string]PipelineConfig{
-		"nil":   {},
-		"empty": {NonEnforcingTransports: []NonEnforcingTransport{}},
+	// Every declared transport continues with the would-have-blocked check
+	// recorded; every undeclared transport, including the empty name, blocks.
+	cfg := PipelineConfig{NonEnforcingTransports: []NonEnforcingTransport{
+		{Transport: TransportMCP, Reason: "observer-only deployment"},
+		{Transport: TransportCodeExec, Reason: "ephemeral sandbox; cannot block"},
+	}}
+	p := NewPipeline(cfg, nil, &errorEvaluator{err: errors.New("evaluator unavailable")}, nil)
+	for transport, want := range map[TransportType]string{
+		TransportMCP:      "allow",
+		TransportCodeExec: "allow",
+		TransportCLI:      ActionCheckIndeterminate,
+		TransportGRPC:     ActionCheckIndeterminate,
+		"":                ActionCheckIndeterminate,
 	} {
-		p := NewPipeline(cfg, nil, nil, nil)
-		if len(p.nonEnforcing) != 0 {
-			t.Errorf("%s config: expected zero non-enforcing transports, got %v", name, p.nonEnforcing)
-		}
-	}
-
-	// Behavioral pin: every transport the pipeline serves (plus an unknown
-	// one) blocks on an evaluator failure under the default config.
-	ev := &errorEvaluator{err: errors.New("evaluator unavailable")}
-	p := NewPipeline(PipelineConfig{}, nil, ev, nil)
-	for _, tr := range []TransportType{
-		TransportMCP, TransportManagedAgents, TransportCLI, TransportCodeExec,
-		TransportGRPC, TransportA2A, TransportWebhook, "unregistered",
-	} {
-		d, err := p.Evaluate(context.Background(), &GovernanceRequest{
-			ToolName: "read_file", Transport: tr, TenantID: "t1",
-		})
+		d, err := p.Evaluate(context.Background(), &GovernanceRequest{ToolName: "read_file", Transport: transport, TenantID: "t1"})
 		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
+			t.Fatalf("%q: unexpected error: %v", transport, err)
 		}
-		if d.Action != ActionCheckIndeterminate {
-			t.Errorf("transport %s: action = %q, want %q under the all-enforcing default", tr, d.Action, ActionCheckIndeterminate)
+		if d.Action != want || d.Check == nil {
+			t.Errorf("%q: action = %q check = %+v, want %q with the check recorded", transport, d.Action, d.Check, want)
 		}
 	}
 }
@@ -256,17 +208,19 @@ func TestPipeline_NonEnforcingTransports_MalformedEntryIsConfigError(t *testing.
 			t.Fatalf("%s: ConfigError() = %v, want ErrInvalidNonEnforcingTransport", name, p.ConfigError())
 		}
 
-		d, err := p.Evaluate(context.Background(), &GovernanceRequest{
-			ToolName: "read_file", Transport: TransportMCP, AgentID: "agent-1",
-		})
-		if err != nil {
-			t.Fatalf("%s: unexpected error: %v", name, err)
-		}
-		if d.Action != ActionCheckIndeterminate {
-			t.Fatalf("%s: invalid config must return check_indeterminate, got %s", name, d.Action)
-		}
-		if d.Check == nil || d.Check.Category != FailureMissingConfig {
-			t.Fatalf("%s: check = %+v, want missing_config", name, d.Check)
+		for _, transport := range allTransports {
+			d, err := p.Evaluate(context.Background(), &GovernanceRequest{
+				ToolName: "read_file", Transport: transport, AgentID: "agent-1",
+			})
+			if err != nil {
+				t.Fatalf("%s/%s: unexpected error: %v", name, transport, err)
+			}
+			if d.Action != ActionCheckIndeterminate || d.Allowed() {
+				t.Fatalf("%s/%s: invalid config must return check_indeterminate, got %s", name, transport, d.Action)
+			}
+			if d.Check == nil || d.Check.Category != FailureMissingConfig {
+				t.Fatalf("%s/%s: check = %+v, want missing_config", name, transport, d.Check)
+			}
 		}
 	}
 }
