@@ -197,6 +197,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   operator-attested deployment-topology denials (L2). Reaching L2 is an internal
   production-candidate gate; it does not make Secure GitHub production or prove
   deployment bypass resistance, and Secure GitHub stays preview.
+  Boundary decides before execution only for actions forced through a governed Boundary route.
 
 - Add the `proof-receipt-v0.1` sidecar: checker-validated budget and
   static-privilege invariant lines bound to a decision record by `decision_hash`.
