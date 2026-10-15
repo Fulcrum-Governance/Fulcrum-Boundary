@@ -80,7 +80,7 @@ Canonical: [`docs/DECISION_RECORDS.md`](DECISION_RECORDS.md),
 ## Why is MCP the only "production" route, and what does "preview" mean?
 
 A route earns the `production` label only by passing the adapter-readiness gate:
-non-stub lifecycle steps, a `bypass_proof` step that is implemented or formally
+non-stub lifecycle steps, a `bypass_evidence` step that is implemented or formally
 delegated, at least one fail-closed transport, and test evidence on disk. Today
 exactly one adapter clears that bar: `adapters/mcp`. "Preview" means the surface
 is delivered and labeled but has not earned the production label — its gaps are

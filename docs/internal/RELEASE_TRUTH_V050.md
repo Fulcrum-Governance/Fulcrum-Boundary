@@ -28,7 +28,7 @@ Final v0.5.0 truth:
   call executes.
 - Sanitized transcripts include hashes and booleans, not raw issue content or
   credentials.
-- Production status still requires deployment bypass proof.
+- Production status still requires deployment bypass evidence.
 - Operator-owned live GitHub conformance was not run in this branch because no
   credentials were provided; the opt-in harness, skip path, missing-env
   fail-closed path, sanitized transcript path, and denied-write no-mutation path
@@ -81,7 +81,7 @@ GitHub live no-mutation conformance preview.
 | Live read conformance | delivered preview | Reads a configured real issue and records sanitized taint evidence. |
 | Live denied-write conformance | delivered preview | Denies protected write-after-taint before the GitHub mutation client is reached. |
 | Operator-owned live run evidence | partial | No sanitized transcript hash from an operator-owned live run is recorded in this release package. |
-| Live deployment bypass proof | not delivered | Still required before production. |
+| Live deployment bypass evidence | not delivered | Still required before production. |
 
 ## Claim Split
 
@@ -114,7 +114,7 @@ Supporting copy:
 - Live conformance is opt-in and skips by default.
 - The denied-write conformance path records `upstream_called=false` and
   `github_mutation_called=false`.
-- Secure GitHub remains preview until deployment bypass proof exists.
+- Secure GitHub remains preview until deployment bypass evidence exists.
 
 ## Forbidden Secure GitHub Copy
 

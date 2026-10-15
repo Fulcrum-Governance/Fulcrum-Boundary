@@ -41,7 +41,7 @@ The release truth is consistent:
 
 | Adapter | Current status | Release truth |
 |---|---|---|
-| MCP | production | Production JSON-RPC MCP proxy path with lifecycle tests; deployment bypass proof remains an operator topology contract. |
+| MCP | production | Production JSON-RPC MCP proxy path with lifecycle tests; deployment bypass evidence remains an operator topology contract. |
 | CLI | preview | Governed wrapper execution works, but production requires evidence that the wrapper is the sole command path. |
 | CodeExec | preview | Policy-gated execution lifecycle works; secure sandboxing is not claimed without a real named boundary. |
 | gRPC | preview | Unary interceptor lifecycle works with governance trailers; streaming workloads remain preview. |

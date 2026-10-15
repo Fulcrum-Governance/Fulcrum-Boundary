@@ -10,7 +10,7 @@ operator-owned credentials, Boundary can read real GitHub context, mark the
 session tainted, and deny a protected write-after-taint action before any
 upstream GitHub mutation client call executes.
 
-Secure GitHub remains preview until deployment bypass proof is recorded.
+Secure GitHub remains preview until deployment bypass evidence is recorded.
 
 ## Status
 
@@ -20,7 +20,7 @@ Secure GitHub remains preview until deployment bypass proof is recorded.
 | Maturity | `preview` |
 | Evidence mode | fixture by default; opt-in live conformance harness |
 | Live GitHub mutation | none by default; denied-write conformance must report `github_mutation_called=false` |
-| Production gate | deployment bypass proof plus operator deployment evidence |
+| Production gate | deployment bypass evidence plus operator deployment evidence |
 
 ## Commands
 
