@@ -1,4 +1,4 @@
-# Managed Agents Bypass Proofing
+# Managed Agents Bypass Evidence
 
 Boundary protects Managed Agents sessions only when it is the sole route that
 can send upstream tool confirmations.
@@ -25,7 +25,7 @@ is true:
 
 ## Non-Claims
 
-This bypass proof does not claim that Boundary controls Managed Agents sessions
+This bypass evidence does not claim that Boundary controls Managed Agents sessions
 created outside the protected deployment, sessions where another service owns
 the upstream API key, or custom tool execution paths that never emit governed
 tool-confirmation events.

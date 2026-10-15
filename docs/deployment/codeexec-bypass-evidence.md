@@ -1,4 +1,4 @@
-# CodeExec Bypass Proofing
+# CodeExec Bypass Evidence
 
 The CodeExec adapter evaluates a governed code-execution request before it
 reaches a runtime, and the `container` sandbox executes allowed code inside a
@@ -46,7 +46,7 @@ with a clear message where no container runtime exists — except under
 These tests prove the governed route for the reference configuration. They do
 not prove that a given deployment has removed the bypass paths above — that
 evidence is deployment-specific and stays delegated to topology controls
-(`bypass_proof: delegated` in `readiness.yaml`).
+(`bypass_evidence: delegated` in `readiness.yaml`).
 
 ## Non-Claims
 

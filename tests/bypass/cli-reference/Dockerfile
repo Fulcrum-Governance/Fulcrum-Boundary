@@ -1,5 +1,5 @@
 # cli-reference-v1: reference topology for CLI adapter bypass-resistance
-# evidence (docs/deployment/cli-bypass-proofing.md).
+# evidence (docs/deployment/cli-bypass-evidence.md).
 #
 # Protection model: the governed tool is executable only by group
 # boundary_exec and readable by no one but root. The sole `boundary` on the

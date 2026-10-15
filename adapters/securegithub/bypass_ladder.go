@@ -1,6 +1,6 @@
 package securegithub
 
-// BypassLadderLevel is the Secure GitHub bypass-proof ladder rung a deployment
+// BypassLadderLevel is the Secure GitHub bypass probe ladder rung a deployment
 // has earned. It encodes how much of the "agents can only reach GitHub through
 // Boundary" property is evidenced. Higher is stronger.
 //

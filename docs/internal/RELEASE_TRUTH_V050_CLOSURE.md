@@ -56,7 +56,7 @@ Current truth:
   `github_mutation_called=false`.
 - Operator-owned live conformance evidence has not been recorded unless a
   sanitized transcript evidence hash is present.
-- Production still requires deployment bypass proof and broader live coverage.
+- Production still requires deployment bypass evidence and broader live coverage.
 
 Claim split:
 
@@ -102,7 +102,7 @@ Commands run on 2026-05-28:
 
 ## Remaining Preview Gates
 
-- Secure GitHub production status requires deployment bypass proof.
+- Secure GitHub production status requires deployment bypass evidence.
 - Operator-owned Secure GitHub live conformance requires a sanitized transcript
   evidence hash before it can be claimed as recorded.
 - Command Boundary remains preview and routed-path-only.

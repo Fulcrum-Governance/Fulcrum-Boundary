@@ -10,7 +10,7 @@ lifecycle:
   inspect: implemented
   metadata: implemented
   record: delegated
-  bypass_proof: delegated
+  bypass_evidence: delegated
   fail_closed: implemented
 delegated_steps:
   - step: evaluate
@@ -19,9 +19,9 @@ delegated_steps:
   - step: record
     owner: governance.AuditPublisher
     contract: docs/DECISION_RECORDS.md
-  - step: bypass_proof
+  - step: bypass_evidence
     owner: deployment topology
-    contract: docs/deployment/secure-github-bypass-proofing.md
+    contract: docs/deployment/secure-github-bypass-evidence.md
 bypass_model: github-app-or-network-topology
 non_enforcing_transports: []
 evidence:
@@ -44,12 +44,12 @@ evidence:
     - docs/secure-mcp/GITHUB_LIVE_CONFORMANCE.md
     - docs/secure-mcp/GITHUB_LIVE_EVIDENCE.md
     - docs/secure-mcp/GITHUB_LIVE_BYPASS_MODEL.md
-    - docs/deployment/secure-github-bypass-proofing.md
+    - docs/deployment/secure-github-bypass-evidence.md
     - docs/secure-mcp/GITHUB_BYPASS_LADDER.md
-    - docs/deployment/secure-github-bypass-proof-packet.md
+    - docs/deployment/secure-github-bypass-evidence-packet.md
     - docs/secure-mcp/GITHUB.md
     - docs/ADAPTER_READINESS_MATRIX.md
 gaps:
   - id: BND-GH-002
-    description: "Secure GitHub remains preview until a deployment bypass-proof packet attests every direct GitHub path (direct API token, upstream GitHub MCP, SSH/git-write, unmanaged gh, ambient egress) is denied outside Boundary. The routed live conformance harness proves the configured read and denied-write no-mutation path (ladder L1), not bypass resistance. L2 (operator-attested topology denials) is the internal production-candidate gate and does not change preview status."
-    spec: "v0.5 Secure GitHub live conformance; WS-2 bypass-proof ladder (L0-L3)"
+    description: "Secure GitHub remains preview until a deployment bypass evidence packet attests every direct GitHub path (direct API token, upstream GitHub MCP, SSH/git-write, unmanaged gh, ambient egress) is denied outside Boundary. The routed live conformance harness proves the configured read and denied-write no-mutation path (ladder L1), not bypass resistance. L2 (operator-attested topology denials) is the internal production-candidate gate and does not change preview status."
+    spec: "v0.5 Secure GitHub live conformance; WS-2 bypass probe ladder (L0-L3)"

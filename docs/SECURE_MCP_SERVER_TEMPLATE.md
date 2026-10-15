@@ -178,7 +178,7 @@ Do not put secrets directly in example config.
 | Allow path forwards once | missing | tests/secure<system>/... |
 | Descriptor change behavior | missing | tests/secure<system>/... |
 | Decision record fields | missing | tests/secure<system>/... |
-| Bypass proof | missing | docs/deployment/... |
+| Bypass evidence | missing | docs/deployment/... |
 | Live upstream conformance | missing | docs/secure-mcp/... |
 ```
 
@@ -189,7 +189,7 @@ A Secure MCP profile can be called production only when all items are true:
 1. Supported tools have descriptor hashes or a documented reason descriptor
    locking is not applicable.
 2. Parse, identify, evaluate, deny, forward, inspect, metadata, record,
-   bypass-proof, and fail-closed lifecycle steps are implemented or formally
+   bypass evidence, and fail-closed lifecycle steps are implemented or formally
    delegated with tests.
 3. Denied calls are proven not to reach upstream execution.
 4. The bypass model is tested for the deployment posture being claimed.

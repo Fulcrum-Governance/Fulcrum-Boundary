@@ -6,8 +6,8 @@ import (
 	"time"
 )
 
-// BypassProofSchemaVersion identifies the deployment bypass-proof packet shape.
-const BypassProofSchemaVersion = "boundary.secure_github.bypass_proof_packet.v1"
+// BypassEvidenceSchemaVersion identifies the deployment bypass evidence packet shape.
+const BypassEvidenceSchemaVersion = "boundary.secure_github.bypass_evidence_packet.v1"
 
 // AttestedDenial is one operator-attested deployment-topology denial: whether the
 // operator attests the path is closed, and a short, non-secret reference to the
@@ -42,14 +42,14 @@ type DeploymentAttestation struct {
 	EgressPolicyEnforced     AttestedDenial `json:"egress_policy_enforced"`
 }
 
-// BypassProofPacket binds operator-owned live evidence (L1) to an operator
+// BypassEvidencePacket binds operator-owned live evidence (L1) to an operator
 // deployment-topology attestation (L2) and records the earned ladder level. The
 // packet is the product artifact for "here are the direct paths an agent could
 // have used and how this deployment denies them." It asserts only what the
 // evidence proves and what the operator attested. Boundary decides before
 // execution only for actions forced through a governed Boundary route, and
 // Secure GitHub stays preview at every level.
-type BypassProofPacket struct {
+type BypassEvidencePacket struct {
 	SchemaVersion string                `json:"schema_version"`
 	ProfileID     string                `json:"profile_id"`
 	ProfileStatus string                `json:"profile_status"`
@@ -61,7 +61,7 @@ type BypassProofPacket struct {
 	Reasons       []string              `json:"reasons"`
 }
 
-// BuildBypassProofPacket validates the inputs, composes the L1 routed facts with
+// BuildBypassEvidencePacket validates the inputs, composes the L1 routed facts with
 // the L2 attested facts, classifies the level, and returns the packet. It fails
 // closed: an unsanitized live-evidence index or secret-like attestation evidence
 // is rejected; any unattested L2 denial caps the level below L2; absent live
@@ -75,9 +75,9 @@ type BypassProofPacket struct {
 // content (see DeploymentAttestation docs). This does NOT prevent pasting of
 // non-credential sensitive content such as PR bodies or internal repo paths;
 // that is an operator-responsibility boundary at this preview stage.
-func BuildBypassProofPacket(idx LiveEvidenceIndex, att DeploymentAttestation) (BypassProofPacket, error) {
+func BuildBypassEvidencePacket(idx LiveEvidenceIndex, att DeploymentAttestation) (BypassEvidencePacket, error) {
 	if !idx.Sanitized {
-		return BypassProofPacket{}, fmt.Errorf("bypass-proof packet requires a sanitized live-evidence index")
+		return BypassEvidencePacket{}, fmt.Errorf("bypass evidence packet requires a sanitized live-evidence index")
 	}
 	for name, d := range map[string]AttestedDenial{
 		"agent_has_no_direct_token":   att.AgentHasNoDirectToken,
@@ -87,7 +87,7 @@ func BuildBypassProofPacket(idx LiveEvidenceIndex, att DeploymentAttestation) (B
 		"egress_policy_enforced":      att.EgressPolicyEnforced,
 	} {
 		if containsSecretLikeData(d.Evidence) {
-			return BypassProofPacket{}, fmt.Errorf("attestation %q evidence contains secret-like data; reference a manifest or policy id, not a credential", name)
+			return BypassEvidencePacket{}, fmt.Errorf("attestation %q evidence contains secret-like data; reference a manifest or policy id, not a credential", name)
 		}
 	}
 
@@ -99,8 +99,8 @@ func BuildBypassProofPacket(idx LiveEvidenceIndex, att DeploymentAttestation) (B
 	facts.EgressPolicyEnforced = att.EgressPolicyEnforced.Attested
 
 	level, reasons := ClassifyBypassLevel(facts)
-	packet := BypassProofPacket{
-		SchemaVersion: BypassProofSchemaVersion,
+	packet := BypassEvidencePacket{
+		SchemaVersion: BypassEvidenceSchemaVersion,
 		ProfileID:     ProfileID,
 		ProfileStatus: StatusPreview,
 		GeneratedAt:   time.Now().UTC(),
@@ -112,10 +112,10 @@ func BuildBypassProofPacket(idx LiveEvidenceIndex, att DeploymentAttestation) (B
 	}
 	body, err := json.Marshal(packet)
 	if err != nil {
-		return BypassProofPacket{}, err
+		return BypassEvidencePacket{}, err
 	}
 	if containsSecretLikeData(string(body)) {
-		return BypassProofPacket{}, fmt.Errorf("refusing to build Secure GitHub bypass-proof packet with secret-like data")
+		return BypassEvidencePacket{}, fmt.Errorf("refusing to build Secure GitHub bypass evidence packet with secret-like data")
 	}
 	return packet, nil
 }
@@ -124,6 +124,6 @@ func BuildBypassProofPacket(idx LiveEvidenceIndex, att DeploymentAttestation) (B
 // production-candidate gate (L2) while the adapter remains preview. It is never a
 // public production signal: Secure GitHub stays preview until Boundary release
 // truth changes.
-func (p BypassProofPacket) IsProductionCandidate() bool {
+func (p BypassEvidencePacket) IsProductionCandidate() bool {
 	return p.Level >= ProductionCandidateLevel && p.ProfileStatus == StatusPreview
 }

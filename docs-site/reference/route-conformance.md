@@ -7,7 +7,7 @@ A documented, per-route checklist for two questions:
 
 1. Does the route implement the ten governance lifecycle steps (`parse`,
    `identify`, `evaluate`, `deny`, `forward`, `inspect`, `metadata`, `record`,
-   `bypass_proof`, `fail_closed`), or formally delegate the steps it does not
+   `bypass_evidence`, `fail_closed`), or formally delegate the steps it does not
    own?
 2. Has the route earned the maturity label it carries (`experimental` /
    `preview` / `production`)?

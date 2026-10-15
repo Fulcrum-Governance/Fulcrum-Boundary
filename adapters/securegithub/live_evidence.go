@@ -30,7 +30,7 @@ type LiveEvidenceEntry struct {
 
 // LiveEvidenceIndex is the operator-owned, sanitized record that one or more
 // live-conformance runs happened, identified by transcript hashes. It is the
-// durable "live evidence recorded" artifact the bypass-proof packet and the
+// durable "live evidence recorded" artifact the bypass evidence packet and the
 // ladder consume. It is hash-only by construction and asserts nothing about
 // deployment bypass resistance.
 type LiveEvidenceIndex struct {
