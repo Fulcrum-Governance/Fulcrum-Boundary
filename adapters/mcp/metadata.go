@@ -10,14 +10,13 @@ import (
 // GovernanceMetadata is attached to MCP responses under result._meta.governance
 // when the response shape permits it.
 type GovernanceMetadata struct {
-	Action         string   `json:"action"`
-	Reason         string   `json:"reason,omitempty"`
-	RequestID      string   `json:"request_id,omitempty"`
-	EnvelopeID     string   `json:"envelope_id,omitempty"`
-	MatchedRule    string   `json:"matched_rule,omitempty"`
-	MatchedRules   []string `json:"matched_rules,omitempty"`
-	PolicyFile     string   `json:"policy_file,omitempty"`
-	GatewayVersion string   `json:"gateway_version,omitempty"`
+	Action         string `json:"action"`
+	Reason         string `json:"reason,omitempty"`
+	RequestID      string `json:"request_id,omitempty"`
+	EnvelopeID     string `json:"envelope_id,omitempty"`
+	MatchedRule    string `json:"matched_rule,omitempty"`
+	PolicyFile     string `json:"policy_file,omitempty"`
+	GatewayVersion string `json:"gateway_version,omitempty"`
 }
 
 func metadataFromDecision(decision *governance.GovernanceDecision) GovernanceMetadata {
@@ -30,7 +29,6 @@ func metadataFromDecision(decision *governance.GovernanceDecision) GovernanceMet
 		RequestID:      decision.RequestID,
 		EnvelopeID:     decision.EnvelopeID,
 		MatchedRule:    decision.MatchedRule,
-		MatchedRules:   decision.MatchedRules,
 		PolicyFile:     decision.PolicyFile,
 		GatewayVersion: decision.GatewayVersion,
 	}

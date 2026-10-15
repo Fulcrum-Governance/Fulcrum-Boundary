@@ -603,6 +603,7 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 		case policyeval.ActionDeny:
 			adopted = adoptStricter(decision, "deny", evalDecision.Reason)
 		case policyeval.ActionEscalate:
+			prior := *decision
 			if !adoptStricter(decision, "escalate", evalDecision.EscalationReason) {
 				break
 			}
@@ -621,6 +622,12 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 			// on a human).
 			if p.escalation != nil && !p.dryRun {
 				p.resolveEscalation(ctx, req, decision)
+				// An approval cannot lower an earlier warn: restore it and its
+				// attribution. A stricter resolution (deny) stands.
+				if verdictRank[decision.Action] < verdictRank[prior.Action] {
+					restoreVerdict(decision, &prior)
+					adopted = false
+				}
 			} else if p.escalation != nil && p.dryRun {
 				decision.Reason = decision.Reason + " (dry-run: escalation await skipped)"
 			}
@@ -695,6 +702,14 @@ func (p *Pipeline) markCheckFailureEnforced(decision *GovernanceDecision, req *G
 		decision.TrustState = TrustStateUnknown.String()
 	}
 	if enforcing {
+		if decision.Action == "warn" && decision.MatchedRule != "" {
+			// The failed check decided, not the earlier warn rule. MatchedRules
+			// still lists every static match.
+			decision.MatchedRule = ""
+			decision.PolicyFile = ""
+			decision.PolicyID = ""
+			decision.DecisionMode = DecisionModeDeterministic
+		}
 		decision.Action = ActionCheckIndeterminate
 		decision.Reason = fmt.Sprintf("check indeterminate (%s/%s): %s", cf.Stage, cf.Category, cf.Cause)
 		return
@@ -848,6 +863,16 @@ func adoptStricter(decision *GovernanceDecision, action, reason string) bool {
 		decision.DecisionMode = DecisionModeDeterministic
 	}
 	return true
+}
+
+// restoreVerdict puts back the verdict and attribution saved in prior.
+func restoreVerdict(decision, prior *GovernanceDecision) {
+	decision.Action = prior.Action
+	decision.Reason = prior.Reason
+	decision.MatchedRule = prior.MatchedRule
+	decision.PolicyFile = prior.PolicyFile
+	decision.PolicyID = prior.PolicyID
+	decision.DecisionMode = prior.DecisionMode
 }
 
 func isValidEscalatedAction(a string) bool {
