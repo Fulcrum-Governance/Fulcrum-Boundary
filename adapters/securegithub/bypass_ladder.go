@@ -54,7 +54,7 @@ func (l BypassLadderLevel) String() string {
 }
 
 // LadderFacts are the machine-checkable inputs a deployment supplies to classify
-// its bypass-proof level. Every field is a fact the operator or the routed
+// its bypass probe ladder level. Every field is a fact the operator or the routed
 // evidence can substantiate; the classifier never assumes a fact.
 //
 // L1 facts are produced by the routed live-conformance harness. L2 facts are

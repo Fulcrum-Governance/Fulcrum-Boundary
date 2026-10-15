@@ -641,7 +641,7 @@ claims:
         - "Secure GitHub remains preview until deployment bypass proof exists."
       forbidden:
         - "Secure GitHub is production"
-        - "The bypass-proof packet proves the deployment is bypass-proof"
+        - "The bypass evidence packet proves deployment bypass resistance"
         - "Live conformance proves deployment bypass resistance"
         - "Boundary fully secures GitHub"
     gaps: []

@@ -16,7 +16,7 @@ can send upstream tool confirmations.
 ## Verification
 
 Use `managedagents.VerifyBypassConfig` in deployment tests to assert the
-credential boundary. A deployment fails the bypass proof when either of these
+credential boundary. A deployment fails the bypass evidence check when either of these
 is true:
 
 - the customer app can access the upstream Managed Agents API key;
