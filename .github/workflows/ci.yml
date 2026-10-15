@@ -36,6 +36,8 @@ jobs:
       - run: go build ./...
       - run: go vet ./...
       - run: go test ./... -count=1 -race -cover
+        env:
+          GORACE: atexit_sleep_ms=0
 
   grpc-adapter:
     name: test grpc adapter
@@ -49,6 +51,8 @@ jobs:
       - name: test grpc adapter
         working-directory: adapters/grpc
         run: go test ./... -count=1 -race -cover
+        env:
+          GORACE: atexit_sleep_ms=0
 
   verify-witnessed:
     name: test verify-witnessed module
@@ -62,6 +66,8 @@ jobs:
       - name: test verify-witnessed module
         working-directory: verify-witnessed
         run: go test ./... -count=1 -race -cover
+        env:
+          GORACE: atexit_sleep_ms=0
 
   codeexec-sandbox:
     name: test codeexec container sandbox
