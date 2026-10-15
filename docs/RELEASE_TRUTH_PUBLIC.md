@@ -547,8 +547,8 @@ Secure GitHub maps a deployment onto an L0-L3 bypass probe ladder. Routed live
 conformance earns L1 (the denied write-after-taint no-mutation proof). An
 operator-attested bypass evidence packet that denies every direct GitHub path earns
 L2, the internal production-candidate gate. L2 does not make Secure GitHub
-production; the packet records and classifies what the operator attested.
-Boundary decides before execution only for actions forced through a governed Boundary route.
+production and does not prove deployment bypass resistance; the packet records
+and classifies what the operator attested.
 
 Command Boundary remains preview. Direct shell access, CI jobs, and SSH
 sessions remain outside Command Boundary unless routed through Boundary command

@@ -50,8 +50,9 @@ evidence is deployment-specific and stays delegated to topology controls
 
 ## Non-Claims
 
-This note does not claim the container boundary is provably safe or
-tamper-proof. Boundary decides before execution only for actions forced through a governed Boundary route. It does not protect against kernel exploits,
+This note does not claim the container boundary is provably safe,
+tamper-proof, or resistant to bypass. Boundary decides before execution only for actions forced through a governed Boundary route.
+It does not protect against kernel exploits,
 container-runtime escapes, hardware or side-channel attacks, or
 vulnerabilities in the runtime itself — the host kernel is shared. It says
 nothing about code-execution paths that never cross Boundary: sessions,

@@ -25,7 +25,7 @@ is true:
 
 ## Non-Claims
 
-This bypass evidence does not claim that Boundary controls Managed Agents sessions
+This bypass evidence note does not claim that Boundary controls Managed Agents sessions
 created outside the protected deployment, sessions where another service owns
 the upstream API key, or custom tool execution paths that never emit governed
 tool-confirmation events.

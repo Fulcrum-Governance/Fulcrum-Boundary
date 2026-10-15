@@ -117,7 +117,7 @@ steps:
 | `inspect` | Inspect tool responses where the protocol allows. |
 | `metadata` | Attach governance verdict metadata to the response. |
 | `record` | Emit a structured decision record. |
-| `bypass_evidence` | Prove the deployment removes direct tool access around Boundary. |
+| `bypass_evidence` | Show evidence that the deployment removes direct tool access around Boundary. |
 | `fail_closed` | Deny rather than pass through on governance errors. |
 
 Step states are `implemented`, `delegated`, `not_applicable`, or `stub`.

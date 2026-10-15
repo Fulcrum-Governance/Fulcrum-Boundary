@@ -195,8 +195,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Secure GitHub bypass probe ladder (L0-L3) and a fail-closed deployment
   bypass evidence packet that records operator-owned live evidence (L1) and
   operator-attested deployment-topology denials (L2). Reaching L2 is an internal
-  production-candidate gate; it does not make Secure GitHub production, and
-  Secure GitHub stays preview. Boundary decides before execution only for actions forced through a governed Boundary route.
+  production-candidate gate; it does not make Secure GitHub production or prove
+  deployment bypass resistance, and Secure GitHub stays preview.
 
 - Add the `proof-receipt-v0.1` sidecar: checker-validated budget and
   static-privilege invariant lines bound to a decision record by `decision_hash`.
@@ -695,7 +695,7 @@ train; no preview surface is upgraded to production.
 ### Added
 
 - `boundary` CLI with `serve`, `demo`, `verify`, `doctor`, and `audit` subcommands.
-- MCP Safety Gateway Docker demo with bypass-resistant network topology.
+- MCP Safety Gateway Docker demo with network topology that removes the direct path to the MCP server.
 - YAML policy loading from configuration files.
 - Structured decision records with `matched_rule`, `policy_file`, and `gateway_version` fields.
 - Six transport adapters: MCP, CLI, CodeExec, gRPC, Webhook, and A2A (experimental).

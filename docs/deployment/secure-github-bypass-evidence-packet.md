@@ -3,8 +3,8 @@
 This packet is **operator-authored** and **deployment-specific**. Boundary
 provides the packet shape (`boundary.secure_github.bypass_evidence_packet.v1`) and a
 fail-closed classifier; the operator supplies the attestations. The packet
-records and classifies what you attest. It does not upgrade Secure GitHub out
-of preview. Boundary decides before execution only for actions forced through a governed Boundary route.
+records and classifies what you attest. It does not prove deployment bypass
+resistance, and it does not upgrade Secure GitHub out of preview.
 
 ## What you bind together
 

@@ -46,9 +46,10 @@ type DeploymentAttestation struct {
 // deployment-topology attestation (L2) and records the earned ladder level. The
 // packet is the product artifact for "here are the direct paths an agent could
 // have used and how this deployment denies them." It asserts only what the
-// evidence proves and what the operator attested. Boundary decides before
-// execution only for actions forced through a governed Boundary route, and
-// Secure GitHub stays preview at every level.
+// evidence proves and what the operator attested; it never claims deployment
+// bypass resistance. Boundary decides before execution only for actions forced
+// through a governed Boundary route, and Secure GitHub stays preview at every
+// level.
 type BypassEvidencePacket struct {
 	SchemaVersion string                `json:"schema_version"`
 	ProfileID     string                `json:"profile_id"`
