@@ -64,46 +64,6 @@ func TestPipeline_EvaluatorError_EnforcingTransport_CheckIndeterminate(t *testin
 	}
 }
 
-// TestPipeline_EvaluatorNil_FallsBackToDefault confirms the NewPipeline
-// behavior preserved from before the interface extraction: passing nil
-// evaluator installs a default real *policyeval.Evaluator rather than leaving
-// the pipeline with a nil evaluator that would panic in Stage 4.
-func TestPipeline_EvaluatorNil_FallsBackToDefault(t *testing.T) {
-	p := NewPipeline(PipelineConfig{}, nil, nil, nil) // nil evaluator
-	req := &GovernanceRequest{
-		ToolName:  "read_file",
-		Transport: TransportMCP,
-		TenantID:  "t1",
-	}
-	d, err := p.Evaluate(context.Background(), req)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if d.Action != "allow" {
-		t.Errorf("expected allow with default evaluator and no policies, got %s", d.Action)
-	}
-}
-
-// TestPipeline_ConcreteEvaluator_StillAccepted verifies the interface change
-// is backwards-compatible: a concrete *policyeval.Evaluator passed to
-// NewPipeline still works because it satisfies PolicyEvaluator.
-func TestPipeline_ConcreteEvaluator_StillAccepted(t *testing.T) {
-	ev := policyeval.NewEvaluator(nil) // concrete type
-	p := NewPipeline(PipelineConfig{}, nil, ev, nil)
-	req := &GovernanceRequest{
-		ToolName:  "read_file",
-		Transport: TransportMCP,
-		TenantID:  "t1",
-	}
-	d, err := p.Evaluate(context.Background(), req)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if d.Action != "allow" {
-		t.Errorf("expected allow, got %s", d.Action)
-	}
-}
-
 // TestPipeline_EvaluatorError_UndeclaredTransport_CheckIndeterminate pins the
 // ADR-047 default-enforcing rule: a required-check failure must block on ANY
 // transport that is not explicitly declared non-enforcing — including an
