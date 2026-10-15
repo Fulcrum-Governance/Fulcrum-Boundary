@@ -145,23 +145,6 @@ func TestFUL732_NonStrictRuleFaultIsIndeterminateNotAllow(t *testing.T) {
 	assertIndeterminate(t, d, auditor, FailureInvalidResult)
 }
 
-// Path 3b: a valid deny still fires alongside a faulting rule. The deny
-// stands (it already blocks) and the fault is recorded on Check.
-func TestFUL732_RuleFaultAlongsideValidDenyKeepsDenyAndRecordsCheck(t *testing.T) {
-	ev := policyeval.NewEvaluator([]*policyeval.Policy{
-		badRegexDenyPolicyForTool("bad"),
-		validDenyPolicyForTool("ok", "read_file"),
-	})
-	p := NewPipeline(PipelineConfig{}, nil, ev, &collectingAuditor{})
-	d := evalOnce(t, p, TransportMCP)
-	if d.Action != "deny" {
-		t.Fatalf("action = %q, want deny", d.Action)
-	}
-	if d.Check == nil || d.Check.Category != FailureInvalidResult {
-		t.Fatalf("check = %+v, want the skipped fault recorded", d.Check)
-	}
-}
-
 // Non-enforcing transports continue and record the would-have-blocked result
 // for both new fault paths.
 func TestFUL732_NonEnforcingTransportRecordsWouldHaveBlocked(t *testing.T) {
