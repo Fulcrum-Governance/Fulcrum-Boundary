@@ -39,7 +39,7 @@ Required fields:
 | `policy.rules` | One or more rules. |
 | `rules[].name` | Required non-empty rule name. |
 | `rules[].tool` | Required tool name or glob. |
-| `rules[].action` | One of `allow`, `deny`, `warn`, `audit`, `escalate`, or `require_approval`. |
+| `rules[].action` | One of `allow`, `deny`, `warn`, `audit`, `escalate`, or `require_approval`, case-insensitive. Any other value, including an empty one, fails the load in both the v1 and the legacy shape, so `boundary serve` exits 1. |
 
 Optional rule fields:
 

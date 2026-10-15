@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -149,5 +150,50 @@ func TestStaticPolicyMatch_ArgumentsSQLCaseInsensitive(t *testing.T) {
 	}
 	if decision.GatewayVersion != "test-version" {
 		t.Fatalf("expected gateway version, got %q", decision.GatewayVersion)
+	}
+}
+
+func TestLoadStaticPolicyFiles_LegacyActionIsCaseInsensitive(t *testing.T) {
+	dir := t.TempDir()
+	policy := []byte(`name: mixed-case
+version: "1"
+rules:
+  - name: deny-drop
+    tool: query
+    action: " Deny "
+`)
+	if err := os.WriteFile(filepath.Join(dir, "deny.yaml"), policy, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	result, err := LoadStaticPolicyFiles(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := NewPipeline(PipelineConfig{StaticPolicies: result.Rules}, nil, nil, nil)
+
+	d, err := p.Evaluate(context.Background(), &GovernanceRequest{Transport: TransportMCP, ToolName: "query"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d.Action != "deny" || d.MatchedRule != "deny-drop" {
+		t.Fatalf("legacy action %q: decision action=%q rule=%q, want deny by deny-drop", " Deny ", d.Action, d.MatchedRule)
+	}
+}
+
+func TestLoadStaticPolicyFiles_LegacyEmptyActionIsRejected(t *testing.T) {
+	dir := t.TempDir()
+	policy := []byte(`name: no-action
+version: "1"
+rules:
+  - name: forgot-action
+    tool: query
+`)
+	if err := os.WriteFile(filepath.Join(dir, "empty.yaml"), policy, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := LoadStaticPolicyFiles(dir)
+	want := `empty.yaml: rules[0] "forgot-action": unsupported action "" (want one of: allow, deny, warn, audit, escalate, require_approval)`
+	if err == nil || !strings.HasSuffix(err.Error(), want) {
+		t.Fatalf("load error = %v, want suffix %q", err, want)
 	}
 }
