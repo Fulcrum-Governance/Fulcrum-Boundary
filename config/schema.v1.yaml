@@ -8,6 +8,7 @@ mode:
 server:
   listen: string
   upstream: string
+  record_dir: string
 standalone:
   required_when:
     mode: standalone

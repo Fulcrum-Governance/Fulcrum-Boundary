@@ -289,6 +289,19 @@ boundary demo command-secret-exfil --out demo.txt
 # -> decision record log:  <dir>/command-secret-exfil-artifacts/decision-records.jsonl
 ```
 
+`boundary serve --record-dir DIR` (or `server.record_dir` in `--config`) writes
+one record per decision under `DIR/records/` and appends it to
+`DIR/decision-records.jsonl`. It prints the log path at startup. Each file under
+`DIR/records/` is a `verify-record` input, and `--receipt-seed` signs them.
+Without `--record-dir`, serve writes only its stdout audit log, which
+`verify-record` does not accept.
+
+```bash
+boundary serve --policies ./policies/ --record-dir ./.boundary/serve
+# -> decision record log: .boundary/serve/decision-records.jsonl
+boundary verify-record .boundary/serve/records/<timestamp>-rec_....json
+```
+
 `boundary verify-record` takes the single-record JSON object named by
 `decision record path:`. The `.jsonl` stream named by `decision record log:` is
 for audit/log review. The printed paths are local-only: they name files Boundary

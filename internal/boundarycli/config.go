@@ -18,8 +18,9 @@ type RuntimeConfig struct {
 }
 
 type ServerConfig struct {
-	Listen   string `yaml:"listen"`
-	Upstream string `yaml:"upstream"`
+	Listen    string `yaml:"listen"`
+	Upstream  string `yaml:"upstream"`
+	RecordDir string `yaml:"record_dir"`
 }
 
 type StandaloneConfig struct {
