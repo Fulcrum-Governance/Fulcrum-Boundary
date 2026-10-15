@@ -2,11 +2,13 @@ package actions_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -37,13 +39,7 @@ func TestMCPAuditScriptAuditsRepoLocalConfigsOnly(t *testing.T) {
 		t.Skip("mcp-audit.sh is a bash action runner")
 	}
 	repoRoot := testRepoRoot(t)
-	bin := filepath.Join(t.TempDir(), "boundary")
-	build := exec.Command("go", "build", "-o", bin, "./cmd/boundary")
-	build.Dir = repoRoot
-	if output, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build boundary: %v\n%s", err, string(output))
-	}
-	unquarantineDarwinTestBinary(bin)
+	bin := sharedBoundary(t, repoRoot)
 
 	auditRoot := t.TempDir()
 	writeFile(t, filepath.Join(auditRoot, ".mcp.json"), `{
@@ -121,13 +117,7 @@ func TestMCPAuditScriptCanFailOnCritical(t *testing.T) {
 		t.Skip("mcp-audit.sh is a bash action runner")
 	}
 	repoRoot := testRepoRoot(t)
-	bin := filepath.Join(t.TempDir(), "boundary")
-	build := exec.Command("go", "build", "-o", bin, "./cmd/boundary")
-	build.Dir = repoRoot
-	if output, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build boundary: %v\n%s", err, string(output))
-	}
-	unquarantineDarwinTestBinary(bin)
+	bin := sharedBoundary(t, repoRoot)
 	auditRoot := t.TempDir()
 	writeFile(t, filepath.Join(auditRoot, ".mcp.json"), `{"mcpServers":{"github":{"command":"github-mcp-server","tools":[{"name":"merge_pull_request"}]}}}`)
 
@@ -201,4 +191,35 @@ func assertFileContains(t *testing.T, path string, want string) {
 	if !strings.Contains(body, want) {
 		t.Fatalf("%s missing %q:\n%s", path, want, body)
 	}
+}
+
+var (
+	sharedBoundaryOnce sync.Once
+	sharedBoundaryBin  string
+	sharedBoundaryErr  error
+)
+
+// sharedBoundary builds ./cmd/boundary once per test binary; each script test
+// used to run its own go build, which dominated this package's runtime.
+func sharedBoundary(t *testing.T, repoRoot string) string {
+	t.Helper()
+	sharedBoundaryOnce.Do(func() {
+		dir, err := os.MkdirTemp("", "boundary-actions-")
+		if err != nil {
+			sharedBoundaryErr = err
+			return
+		}
+		sharedBoundaryBin = filepath.Join(dir, "boundary")
+		build := exec.Command("go", "build", "-o", sharedBoundaryBin, "./cmd/boundary")
+		build.Dir = repoRoot
+		if out, err := build.CombinedOutput(); err != nil {
+			sharedBoundaryErr = fmt.Errorf("%w\n%s", err, out)
+			return
+		}
+		unquarantineDarwinTestBinary(sharedBoundaryBin)
+	})
+	if sharedBoundaryErr != nil {
+		t.Fatalf("build boundary: %v", sharedBoundaryErr)
+	}
+	return sharedBoundaryBin
 }
