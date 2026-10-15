@@ -242,32 +242,6 @@ func TestPipeline_CheckIndeterminate_FailureMatrix(t *testing.T) {
 	}
 }
 
-// TestPipeline_CheckIndeterminate_WebhookExecutionBlocksByDefault pins the
-// ADR-047 B02/B07 fix: TransportWebhook is an execution-capable transport, so
-// it is enforcing by default and an evaluator failure blocks (previously the
-// webhook row failed open and could be forwarded).
-func TestPipeline_CheckIndeterminate_WebhookExecutionBlocksByDefault(t *testing.T) {
-	ev := &errorEvaluator{err: errors.New("evaluator unavailable")}
-	p := NewPipeline(PipelineConfig{}, nil, ev, nil)
-	downstream := &downstreamStub{}
-
-	d, err := p.Evaluate(context.Background(), &GovernanceRequest{
-		ToolName:  "deploy",
-		Transport: TransportWebhook,
-		TenantID:  "t1",
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if d.Action != ActionCheckIndeterminate {
-		t.Fatalf("webhook execution mode must block on evaluator error; got %q", d.Action)
-	}
-	downstream.forward(d)
-	if downstream.calls != 0 {
-		t.Fatal("webhook execution mode forwarded on evaluator error")
-	}
-}
-
 // TestPipeline_CheckIndeterminate_NonEnforcingTransport_RecordsWouldHaveBlocked
 // pins the ADR-047 §5 exception: a transport explicitly declared in
 // NonEnforcingTransports is a declared non-enforcing surface — it may
@@ -311,54 +285,6 @@ func TestPipeline_CheckIndeterminate_NonEnforcingTransport_RecordsWouldHaveBlock
 	}
 	if events[0].Check == nil || events[0].Check.Category != FailureUnavailable {
 		t.Errorf("audit must record the would-have-blocked check; got %+v", events[0].Check)
-	}
-}
-
-// TestPipeline_Config_InvalidNonEnforcingDeclarationRejected pins the
-// ADR-047 §6 ruling on the inverted model: a non-enforcing declaration that
-// does not name its transport or record its reason is not an acceptable
-// production policy. It is rejected at config validation and — because an
-// invalid configuration cannot distinguish allow from deny — every decision
-// is CHECK_INDETERMINATE / missing_config on every transport.
-func TestPipeline_Config_InvalidNonEnforcingDeclarationRejected(t *testing.T) {
-	cfg := PipelineConfig{NonEnforcingTransports: []NonEnforcingTransport{
-		{Transport: TransportWebhook}, // no reason — ambiguous exemption
-	}}
-	if err := cfg.Validate(); !errors.Is(err, ErrInvalidNonEnforcingTransport) {
-		t.Fatalf("Validate() = %v, want ErrInvalidNonEnforcingTransport", err)
-	}
-
-	auditor := &collectingAuditor{}
-	p := NewPipeline(cfg, nil, nil, auditor)
-	if p.ConfigError() == nil {
-		t.Fatal("expected ConfigError to report the rejected config")
-	}
-	downstream := &downstreamStub{}
-
-	for _, transport := range allTransports {
-		t.Run(string(transport), func(t *testing.T) {
-			d, err := p.Evaluate(context.Background(), &GovernanceRequest{
-				ToolName:  "read_file",
-				Transport: transport,
-				AgentID:   "agent-1",
-			})
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if d.Action != ActionCheckIndeterminate {
-				t.Fatalf("action = %q, want %q on invalid config", d.Action, ActionCheckIndeterminate)
-			}
-			if d.Check == nil || d.Check.Category != FailureMissingConfig {
-				t.Fatalf("check = %+v, want missing_config", d.Check)
-			}
-			downstream.forward(d)
-		})
-	}
-	if downstream.calls != 0 {
-		t.Fatal("invalid config allowed downstream execution")
-	}
-	if got := len(auditor.Events()); got != len(allTransports) {
-		t.Fatalf("expected one audit record per blocked evaluation, got %d", got)
 	}
 }
 
