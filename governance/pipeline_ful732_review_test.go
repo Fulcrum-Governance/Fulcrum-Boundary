@@ -22,8 +22,8 @@ func TestFUL732_MixedFaultDenyStillUpdatesTrust(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Evaluate: %v", err)
 	}
-	if d.Action != "deny" || d.Check == nil {
-		t.Fatalf("action=%q check=%+v, want deny with check recorded", d.Action, d.Check)
+	if d.Action != "deny" || d.Check == nil || d.Check.Category != FailureInvalidResult {
+		t.Fatalf("action=%q check=%+v, want deny with the skipped fault recorded as invalid_result", d.Action, d.Check)
 	}
 	if trust.recordCalls != 1 {
 		t.Fatalf("trust RecordDecision calls = %d, want 1", trust.recordCalls)

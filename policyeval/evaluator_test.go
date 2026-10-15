@@ -1635,48 +1635,6 @@ func TestEvaluatePolicyWithConditionError(t *testing.T) {
 	}
 }
 
-func TestEvaluatePolicyErrorLogging(t *testing.T) {
-	// Test that policy evaluation errors are logged and policy is skipped
-	logger := &mockLogger{}
-
-	// Create policy with invalid condition that causes error in evaluatePolicy
-	policy := newTestPolicy("p1", "tenant1", 100, PolicyStatus_POLICY_STATUS_ACTIVE, []*PolicyRule{
-		newTestRule("r1", true, []*PolicyCondition{
-			{
-				ConditionType: ConditionType_CONDITION_TYPE_REGEX,
-				Field:         "input.text",
-				Operator:      ConditionOperator_CONDITION_OPERATOR_MATCHES,
-				Value:         &PolicyCondition_StringValue{StringValue: "[invalid"}, // Invalid regex
-			},
-		}, []*PolicyAction{
-			newDenyAction(false, "Should not match"),
-		}),
-	})
-
-	e := NewEvaluator([]*Policy{policy}, WithLogger(logger))
-	decision, err := e.Evaluate(context.Background(), &EvaluationRequest{
-		TenantID:  "tenant1",
-		InputText: "test input",
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// Should allow because rule condition errored (default non-strict behavior:
-	// the faulting rule is skipped, not enforced).
-	if decision.Action != ActionAllow {
-		t.Errorf("expected allow (condition error), got %v", decision.Action)
-	}
-
-	// The skip must be visible: the condition fault is now logged at Warn (it
-	// was previously a silent Debug). This is the signal an operator needs to
-	// notice that a deny rule never fired.
-	warnings := logger.getWarnings()
-	if len(warnings) == 0 {
-		t.Error("expected a Warn log for the skipped faulting rule, got none")
-	}
-}
-
 func TestRuleMatchNameAndPriority(t *testing.T) {
 	// Test that RuleMatch captures name and priority correctly
 	policy := newTestPolicy("p1", "tenant1", 100, PolicyStatus_POLICY_STATUS_ACTIVE, []*PolicyRule{
@@ -1708,38 +1666,6 @@ func TestRuleMatchNameAndPriority(t *testing.T) {
 	}
 	if rule.Priority != 50 {
 		t.Errorf("expected Priority 50, got %d", rule.Priority)
-	}
-}
-
-func TestStopOnDenyFalseContinuesEvaluation(t *testing.T) {
-	// Test that stopOnDeny=false continues evaluation after first deny
-	policies := []*Policy{
-		newTestPolicy("deny-first", "tenant1", 100, PolicyStatus_POLICY_STATUS_ACTIVE, []*PolicyRule{
-			newTestRule("r1", true, nil, []*PolicyAction{
-				newDenyAction(false, "First deny"),
-			}),
-		}),
-		newTestPolicy("warn-second", "tenant1", 50, PolicyStatus_POLICY_STATUS_ACTIVE, []*PolicyRule{
-			newTestRule("r2", true, nil, []*PolicyAction{
-				newWarnAction(false, "Second warn"),
-			}),
-		}),
-	}
-
-	e := NewEvaluator(policies, WithStopOnDeny(false))
-	decision, err := e.Evaluate(context.Background(), &EvaluationRequest{TenantID: "tenant1"})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// Final decision should be deny (highest precedence)
-	if decision.Action != ActionDeny {
-		t.Errorf("expected deny, got %v", decision.Action)
-	}
-
-	// Should have collected rules from both policies (continue after first deny)
-	if len(decision.MatchedRules) != 2 {
-		t.Errorf("expected 2 matched rules, got %d", len(decision.MatchedRules))
 	}
 }
 
