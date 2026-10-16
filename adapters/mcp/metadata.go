@@ -17,6 +17,7 @@ type GovernanceMetadata struct {
 	MatchedRule    string `json:"matched_rule,omitempty"`
 	PolicyFile     string `json:"policy_file,omitempty"`
 	GatewayVersion string `json:"gateway_version,omitempty"`
+	DryRun         bool   `json:"dry_run,omitempty"`
 }
 
 func metadataFromDecision(decision *governance.GovernanceDecision) GovernanceMetadata {
@@ -31,6 +32,7 @@ func metadataFromDecision(decision *governance.GovernanceDecision) GovernanceMet
 		MatchedRule:    decision.MatchedRule,
 		PolicyFile:     decision.PolicyFile,
 		GatewayVersion: decision.GatewayVersion,
+		DryRun:         decision.DryRun,
 	}
 }
 
@@ -50,6 +52,9 @@ func writeHTTPGovernanceHeaders(w http.ResponseWriter, decision *governance.Gove
 	}
 	if decision.MatchedRule != "" {
 		w.Header().Set(governance.HeaderGovernanceMatchedRule, decision.MatchedRule)
+	}
+	if decision.DryRun {
+		w.Header().Set(governance.HeaderGovernanceDryRun, "true")
 	}
 }
 
