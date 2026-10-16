@@ -155,6 +155,7 @@ func (a *Adapter) GovernToolCall(ctx context.Context, raw any) (*GovernedResult,
 			TenantID:       req.TenantID,
 			RequestHash:    governance.ComputeRequestHash(req),
 			DecisionMode:   decision.DecisionMode,
+			Check:          decision.Check,
 			GatewayVersion: decision.GatewayVersion,
 			TraceID:        req.TraceID,
 		})
