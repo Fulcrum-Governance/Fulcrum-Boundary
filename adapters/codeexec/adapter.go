@@ -282,15 +282,6 @@ func (a *Adapter) GovernCode(ctx context.Context, raw any, pipeline *governance.
 	if err != nil {
 		return nil, err
 	}
-	if pipeline == nil {
-		decision := &governance.GovernanceDecision{
-			RequestID:  req.RequestID,
-			Action:     "deny",
-			Reason:     "governance pipeline is required",
-			EnvelopeID: req.EnvelopeID,
-		}
-		return a.ForwardGoverned(ctx, req, decision)
-	}
 	decision, err := pipeline.Evaluate(ctx, req)
 	if err != nil {
 		decision = &governance.GovernanceDecision{

@@ -8,9 +8,6 @@ import (
 )
 
 func filterToolsList(ctx context.Context, body []byte, pipeline *governance.Pipeline, identity Identity) []byte {
-	if pipeline == nil {
-		return body
-	}
 	var resp map[string]any
 	if err := json.Unmarshal(body, &resp); err != nil {
 		return body

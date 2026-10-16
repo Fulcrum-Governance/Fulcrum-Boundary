@@ -97,15 +97,6 @@ func (a *Adapter) GovernTask(ctx context.Context, raw any, pipeline *governance.
 	if err != nil {
 		return UnsupportedTaskResponse(envelope.TaskID, err), nil
 	}
-	if pipeline == nil {
-		decision := &governance.GovernanceDecision{
-			RequestID:  req.RequestID,
-			Action:     "deny",
-			Reason:     "governance pipeline is required",
-			EnvelopeID: req.EnvelopeID,
-		}
-		return DeniedTaskResponse(*envelope, decision), nil
-	}
 	decision, err := pipeline.Evaluate(ctx, req)
 	if err != nil {
 		decision = &governance.GovernanceDecision{

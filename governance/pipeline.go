@@ -323,6 +323,9 @@ func toolMatches(pattern, toolName string) bool {
 // trust_transition event when the trust state changes). Dry-run conversion
 // happens AFTER audit so logs always reflect the real decision.
 func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*GovernanceDecision, error) {
+	if p == nil {
+		return unconfiguredDecision(req), nil
+	}
 	start := time.Now()
 
 	if req.EnvelopeID == "" {

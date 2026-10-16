@@ -183,15 +183,6 @@ func HandlerWithConfig(pipeline *governance.Pipeline, cfg HandlerConfig) http.Ha
 		}
 		writeModeHeaders(w, cfg.Mode)
 
-		if pipeline == nil {
-			if cfg.Mode == ModeInformational {
-				writeJSONError(w, http.StatusInternalServerError, "governance: pipeline is required")
-				return
-			}
-			writeJSONError(w, http.StatusServiceUnavailable, "governance: pipeline is required; execution webhook not forwarded")
-			return
-		}
-
 		decision, err := pipeline.Evaluate(r.Context(), req)
 		if err != nil {
 			if cfg.Mode == ModeInformational {
