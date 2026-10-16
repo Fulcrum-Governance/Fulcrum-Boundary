@@ -3,14 +3,10 @@ package adapterparity
 // KnownGaps lists rows that fail on main, keyed "adapter/case". Each entry is
 // deleted by the change that fixes it.
 var KnownGaps = gaps(
-	group("blocked responses always report x-fulcrum-action=deny",
-		blockedRows("cli")...,
-	),
-	group("blocked responses always report x-fulcrum-action=deny",
-		blockedRows("codeexec")...,
-	),
 	group("a missing pipeline is reported as a policy deny, not check_indeterminate",
 		"a2a/nil_pipeline",
+		"cli/nil_pipeline",
+		"codeexec/nil_pipeline",
 		"grpc/nil_pipeline",
 	),
 	group("a missing pipeline panics the handler and the caller sees no verdict",
@@ -24,16 +20,6 @@ var KnownGaps = gaps(
 		"managedagents/nil_pipeline",
 	),
 )
-
-func blockedRows(adapter string) []string {
-	var rows []string
-	for _, c := range Cases() {
-		if c.Want != "" && c.Want != "allow" && c.Want != "warn" && c.Want != "deny" {
-			rows = append(rows, adapter+"/"+c.Name)
-		}
-	}
-	return rows
-}
 
 type gapGroup struct {
 	reason string
