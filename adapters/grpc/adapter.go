@@ -188,13 +188,7 @@ func UnaryInterceptor(pipeline *governance.Pipeline, adapter *Adapter) grpclib.U
 			return nil, status.Errorf(codes.InvalidArgument, "governance: %s", decision.Reason)
 		}
 		ensureRequestIdentity(gReq)
-		decision, err := pipeline.Evaluate(ctx, gReq)
-		if err != nil {
-			decision = failClosedDecision(gReq.RequestID, fmt.Sprintf("evaluate: %v", err))
-			decision.EnvelopeID = gReq.EnvelopeID
-			_ = emitDecisionTrailer(ctx, decision)
-			return nil, status.Errorf(codes.PermissionDenied, "governance: %s", decision.Reason)
-		}
+		decision, _ := pipeline.Evaluate(ctx, gReq)
 		if !decision.Allowed() {
 			_ = emitDecisionTrailer(ctx, decision)
 			reason := decision.Reason

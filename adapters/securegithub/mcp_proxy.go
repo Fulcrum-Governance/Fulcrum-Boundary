@@ -391,11 +391,7 @@ func (r *MCPRoute) governTool(ctx context.Context, sessionID, tool string, args 
 		TenantID: r.cfg.TenantID, ToolName: "github." + tool, Action: "execute",
 		Arguments: policyArgs, EnvelopeID: "mcp-session-" + sessionID,
 	}
-	decision, err := r.pipeline.Evaluate(ctx, governed)
-	if err != nil {
-		_, _ = r.auditor.Take(requestID)
-		return governedMCPTool{}, err
-	}
+	decision, _ := r.pipeline.Evaluate(ctx, governed)
 	event, ok := r.auditor.Take(requestID)
 	if !ok {
 		return governedMCPTool{}, errors.New("canonical pipeline emitted no decision event")

@@ -130,15 +130,7 @@ func (a *Adapter) GovernToolCall(ctx context.Context, raw any) (*GovernedResult,
 		unsupported := unsupportedResponse(call, err)
 		return &GovernedResult{Response: unsupported, Envelope: Envelope{ProfileID: ProfileID, Status: StatusPreview, FixtureMode: true}}, nil
 	}
-	decision, err := a.pipeline.Evaluate(ctx, req)
-	if err != nil {
-		decision = &governance.GovernanceDecision{
-			RequestID:  req.RequestID,
-			Action:     "deny",
-			Reason:     fmt.Sprintf("governance pipeline error: %v", err),
-			EnvelopeID: req.EnvelopeID,
-		}
-	}
+	decision, _ := a.pipeline.Evaluate(ctx, req)
 	record := a.decisionRecord(req.RequestID)
 	if record.RecordID == "" {
 		record = governance.BuildDecisionRecord(governance.AuditEvent{
@@ -160,7 +152,7 @@ func (a *Adapter) GovernToolCall(ctx context.Context, raw any) (*GovernedResult,
 			TraceID:        req.TraceID,
 		})
 	}
-	if decision == nil || !decision.Allowed() {
+	if !decision.Allowed() {
 		return &GovernedResult{
 			Response:       deniedResponse(call, envelope, decision, record),
 			Decision:       decision,

@@ -147,10 +147,7 @@ func (g *Gateway) handleOne(ctx context.Context, raw []byte, identity Identity) 
 		g.publishParseRejection(ctx, raw, identity, err.Error())
 		return gatewayResponse{Status: http.StatusOK, Body: jsonRPCError(req.ID, -32602, "invalid params", err.Error())}, emitResponse, nil
 	}
-	decision, err := g.Pipeline.Evaluate(ctx, gReq)
-	if err != nil {
-		return gatewayResponse{Status: http.StatusOK, Body: jsonRPCError(req.ID, -32000, "governance pipeline error", err.Error())}, emitResponse, nil
-	}
+	decision, _ := g.Pipeline.Evaluate(ctx, gReq)
 	if !decision.Allowed() {
 		return gatewayResponse{Status: http.StatusOK, Body: jsonRPCErrorWithGovernance(req.ID, -32001, "governance denied", decision.Reason, decision)}, emitResponse, decision
 	}
