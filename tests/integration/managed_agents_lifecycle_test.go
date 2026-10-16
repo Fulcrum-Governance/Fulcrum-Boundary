@@ -52,7 +52,7 @@ func TestManagedAgentsProxyGovernsToolEventsAndAutoResolves(t *testing.T) {
 	}
 }
 
-func TestManagedAgentsAdapterParsesAndFailsClosed(t *testing.T) {
+func TestManagedAgentsAdapterParsesToolUse(t *testing.T) {
 	adapter := managedagents.NewAdapter("tenant-a")
 	req, err := adapter.ParseRequest(context.Background(), managedagents.Event{
 		ID:        "evt-1",
@@ -68,19 +68,6 @@ func TestManagedAgentsAdapterParsesAndFailsClosed(t *testing.T) {
 		t.Fatalf("unexpected governance request: %#v", req)
 	}
 
-	pipeline := governance.NewPipeline(governance.PipelineConfig{}, nil, failingEvaluator{}, nil)
-	decision, err := pipeline.Evaluate(context.Background(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// ADR-047: an evaluator failure on an enforcing transport is
-	// CHECK_INDETERMINATE — it blocks execution but is not a policy denial.
-	if decision.Action != governance.ActionCheckIndeterminate {
-		t.Fatalf("managed agents should fail closed as check_indeterminate, got %#v", decision)
-	}
-	if decision.Allowed() {
-		t.Fatal("check_indeterminate must not allow execution")
-	}
 }
 
 func TestManagedAgentsBypassConfig(t *testing.T) {

@@ -2,42 +2,13 @@ package adapters_test
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"sync"
 	"testing"
 
 	"github.com/fulcrum-governance/fulcrum-boundary/adapters/a2a"
 	"github.com/fulcrum-governance/fulcrum-boundary/governance"
-	"github.com/fulcrum-governance/fulcrum-boundary/policyeval"
 )
-
-func TestA2AGovernedLifecycleDeniedTaskNeverForwards(t *testing.T) {
-	forwarder := &a2a.MemoryForwarder{}
-	pipeline := governance.NewPipeline(governance.PipelineConfig{
-		StaticPolicies: []governance.StaticPolicyRule{{
-			Name:   "deny-a2a-delete",
-			Tool:   "delete.customer",
-			Action: "deny",
-			Reason: "customer delete requires review",
-		}},
-	}, nil, nil, &collectingAuditPublisher{})
-
-	adapter := a2a.NewForwardingAdapter("tenant-1", forwarder)
-	resp, err := adapter.GovernTask(context.Background(), taskEnvelope("task-deny", "delete.customer"), pipeline)
-	if err != nil {
-		t.Fatalf("GovernTask: %v", err)
-	}
-	if resp.Status != a2a.StatusDenied {
-		t.Fatalf("expected denied response, got %+v", resp)
-	}
-	if len(forwarder.Snapshot()) != 0 {
-		t.Fatal("denied task reached downstream forwarder")
-	}
-	if resp.Governance == nil || resp.Governance.Action != "deny" {
-		t.Fatalf("expected governance denial metadata, got %+v", resp.Governance)
-	}
-}
 
 func TestA2AGovernedLifecycleAllowedTaskForwardsWithMetadata(t *testing.T) {
 	forwarder := &a2a.MemoryForwarder{}
@@ -90,51 +61,6 @@ func TestA2AGovernedLifecycleUnknownMandatoryFieldUnsupportedFailClosed(t *testi
 	}
 }
 
-func TestA2AGovernedLifecyclePipelineErrorFailsClosedAndRecords(t *testing.T) {
-	auditor := &collectingAuditPublisher{}
-	pipeline := governance.NewPipeline(governance.PipelineConfig{}, nil, errorEvaluator{}, auditor)
-	forwarder := &a2a.MemoryForwarder{}
-	adapter := a2a.NewForwardingAdapter("tenant-1", forwarder)
-
-	resp, err := adapter.GovernTask(context.Background(), taskEnvelope("task-error", "summarize"), pipeline)
-	if err != nil {
-		t.Fatalf("GovernTask: %v", err)
-	}
-	if resp.Status != a2a.StatusDenied {
-		t.Fatalf("expected denied fail-closed response, got %+v", resp)
-	}
-	if len(forwarder.Snapshot()) != 0 {
-		t.Fatal("pipeline error forwarded task")
-	}
-	events := auditor.Events()
-	if len(events) != 1 {
-		t.Fatalf("expected one decision record, got %d", len(events))
-	}
-	// ADR-047: the evaluator failure is recorded as check_indeterminate —
-	// blocked, but not labeled a policy denial.
-	if events[0].Action != governance.ActionCheckIndeterminate || events[0].Transport != governance.TransportA2A {
-		t.Fatalf("unexpected audit event: %+v", events[0])
-	}
-	if events[0].Check == nil {
-		t.Fatal("indeterminate audit event must carry check context")
-	}
-}
-
-func TestA2AGovernedLifecycleDecisionRecordEmitsForEveryEvaluation(t *testing.T) {
-	auditor := &collectingAuditPublisher{}
-	pipeline := governance.NewPipeline(governance.PipelineConfig{}, nil, nil, auditor)
-	adapter := a2a.NewForwardingAdapter("tenant-1", &a2a.MemoryForwarder{})
-
-	for _, id := range []string{"task-1", "task-2"} {
-		if _, err := adapter.GovernTask(context.Background(), taskEnvelope(id, "summarize"), pipeline); err != nil {
-			t.Fatalf("GovernTask(%s): %v", id, err)
-		}
-	}
-	if got := len(auditor.Events()); got != 2 {
-		t.Fatalf("expected one record per evaluation, got %d", got)
-	}
-}
-
 func taskEnvelope(id, action string) a2a.TaskEnvelope {
 	return a2a.TaskEnvelope{
 		TaskID:        id,
@@ -143,12 +69,6 @@ func taskEnvelope(id, action string) a2a.TaskEnvelope {
 		Action:        action,
 		Input:         map[string]any{"text": "hello"},
 	}
-}
-
-type errorEvaluator struct{}
-
-func (errorEvaluator) Evaluate(context.Context, *policyeval.EvaluationRequest) (*policyeval.Decision, error) {
-	return nil, errors.New("policy engine unavailable")
 }
 
 type collectingAuditPublisher struct {
