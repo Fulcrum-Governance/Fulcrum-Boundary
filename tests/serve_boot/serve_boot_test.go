@@ -141,6 +141,7 @@ func TestServeBoot_DenyBeforeUpstream(t *testing.T) {
 		"--policies", policyDir,
 		"--upstream", upstream.URL,
 	)
+	cmd.Dir = t.TempDir() // serve writes decision records under its working directory
 	var stderrBuf syncBuffer
 	cmd.Stderr = &stderrBuf
 
