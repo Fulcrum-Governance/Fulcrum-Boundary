@@ -75,7 +75,7 @@ func prepareServeRecordDir(dir string) (string, error) {
 	if perm&0o077 == 0 {
 		return "", nil
 	}
-	if err := os.Chmod(dir, 0o700); err != nil {
+	if err := os.Chmod(dir, 0o700); err != nil { // #nosec G302 -- a directory needs its execute bit; 0700 is owner-only.
 		return "", fmt.Errorf("restrict record dir %s to 0700: %w", dir, err)
 	}
 	return fmt.Sprintf("boundary serve: tightened record dir %s permissions from %#o to 0700", dir, perm), nil
