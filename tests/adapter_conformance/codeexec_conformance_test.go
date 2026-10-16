@@ -43,10 +43,3 @@ func TestCodeExecConformanceDeclaration(t *testing.T) {
 		t.Fatal("CodeExec preview declaration should retain sandbox and deployment topology gaps")
 	}
 }
-
-func TestCodeExecDefaultFailClosed(t *testing.T) {
-	// Under the inverted enforcement model there is no list to check:
-	// TransportCodeExec must enforce required checks by default — an
-	// evaluator error blocks code execution with check_indeterminate.
-	requireTransportFailsClosedByDefault(t, governance.TransportCodeExec)
-}

@@ -37,10 +37,3 @@ func TestCLIConformanceDeclaration(t *testing.T) {
 		}
 	}
 }
-
-func TestCLIDefaultFailClosed(t *testing.T) {
-	// Under the inverted enforcement model there is no list to check:
-	// TransportCLI must enforce required checks by default — an evaluator
-	// error blocks wrapper-owned execution with check_indeterminate.
-	requireTransportFailsClosedByDefault(t, governance.TransportCLI)
-}

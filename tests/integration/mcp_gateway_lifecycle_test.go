@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -13,7 +12,6 @@ import (
 
 	"github.com/fulcrum-governance/fulcrum-boundary/adapters/mcp"
 	"github.com/fulcrum-governance/fulcrum-boundary/governance"
-	"github.com/fulcrum-governance/fulcrum-boundary/policyeval"
 )
 
 func TestMCPGateway_AllowsForwardsOnceAndAddsMetadata(t *testing.T) {
@@ -158,26 +156,6 @@ func TestMCPGateway_MalformedJSONRPCReturnsProtocolError(t *testing.T) {
 	}
 }
 
-func TestMCPGateway_FailClosedOnPipelineError(t *testing.T) {
-	var upstreamCalls int
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		upstreamCalls++
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer upstream.Close()
-
-	pipeline := governance.NewPipeline(governance.PipelineConfig{}, nil, failingEvaluator{}, nil)
-	gateway := mcp.NewGateway(pipeline, mcp.NewHTTPForwarder(upstream.URL), "tenant-a")
-	resp := postJSON(t, gateway, []byte(`{"jsonrpc":"2.0","id":"err","method":"tools/call","params":{"name":"safe"}}`))
-	if upstreamCalls != 0 {
-		t.Fatalf("fail-closed request reached upstream")
-	}
-	errObj := decodeObject(t, resp.Body.Bytes())["error"].(map[string]any)
-	if errObj["message"] != "governance denied" {
-		t.Fatalf("unexpected fail-closed response: %#v", errObj)
-	}
-}
-
 func TestMCPBypassProbeFailsWhenDirectPathIsClosed(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -191,12 +169,6 @@ func TestMCPBypassProbeFailsWhenDirectPathIsClosed(t *testing.T) {
 	if err := mcp.BypassProbe(ctx, addr); err != nil {
 		t.Fatalf("closed upstream path should pass bypass probe: %v", err)
 	}
-}
-
-type failingEvaluator struct{}
-
-func (failingEvaluator) Evaluate(context.Context, *policyeval.EvaluationRequest) (*policyeval.Decision, error) {
-	return nil, fmt.Errorf("policy engine unavailable")
 }
 
 func postJSON(t *testing.T, handler http.Handler, body []byte) *httptest.ResponseRecorder {

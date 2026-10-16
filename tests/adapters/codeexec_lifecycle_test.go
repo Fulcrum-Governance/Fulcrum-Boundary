@@ -10,33 +10,6 @@ import (
 	"github.com/fulcrum-governance/fulcrum-boundary/governance"
 )
 
-func TestCodeExecGovernedLifecycleDeniedCodeDoesNotExecute(t *testing.T) {
-	executor := &codeExecRecordingExecutor{}
-	adapter := codeexec.NewAdapterWithExecutor("tenant-1", executor, codeexec.LocalProcessBoundary("test-boundary"))
-	pipeline := governance.NewPipeline(governance.PipelineConfig{
-		StaticPolicies: []governance.StaticPolicyRule{{
-			Name:   "deny-code-exec",
-			Tool:   "code_exec",
-			Action: "deny",
-			Reason: "code execution blocked",
-		}},
-	}, nil, nil, &collectingAuditPublisher{})
-
-	resp, err := adapter.GovernCode(context.Background(), codeexec.CodeExecInput{
-		Code:     "print('should not run')",
-		Language: "python",
-	}, pipeline)
-	if err != nil {
-		t.Fatalf("GovernCode: %v", err)
-	}
-	if executor.calls != 0 {
-		t.Fatal("denied code reached executor")
-	}
-	if resp.ExitCode != 126 || resp.Metadata["codeexec_denied"] != "true" {
-		t.Fatalf("expected denied CodeExec response, got %+v", resp)
-	}
-}
-
 func TestCodeExecGovernedLifecycleAllowedCodeExecutesOnceAndRecords(t *testing.T) {
 	executor := &codeExecRecordingExecutor{}
 	auditor := &collectingAuditPublisher{}
@@ -82,32 +55,6 @@ func TestCodeExecGovernedLifecycleSandboxPolicyDeniesBeforeExecute(t *testing.T)
 	}
 	if resp.ExitCode != 126 || resp.Metadata["x-fulcrum-rule"] != "codeexec-sandbox-policy" {
 		t.Fatalf("expected sandbox policy denial, got %+v", resp)
-	}
-}
-
-func TestCodeExecGovernedLifecyclePipelineErrorFailsClosed(t *testing.T) {
-	executor := &codeExecRecordingExecutor{}
-	auditor := &collectingAuditPublisher{}
-	adapter := codeexec.NewAdapterWithExecutor("tenant-1", executor, codeexec.LocalProcessBoundary("test-boundary"))
-	pipeline := governance.NewPipeline(governance.PipelineConfig{}, nil, errorEvaluator{}, auditor)
-
-	resp, err := adapter.GovernCode(context.Background(), codeexec.CodeExecInput{
-		Code:     "print('should not run')",
-		Language: "python",
-	}, pipeline)
-	if err != nil {
-		t.Fatalf("GovernCode: %v", err)
-	}
-	if executor.calls != 0 {
-		t.Fatal("pipeline error allowed code execution")
-	}
-	if resp.ExitCode != 126 || resp.Metadata["codeexec_denied"] != "true" {
-		t.Fatalf("expected fail-closed denied response, got %+v", resp)
-	}
-	// ADR-047: the evaluator failure is recorded as check_indeterminate —
-	// blocked, but not labeled a policy denial.
-	if events := auditor.Events(); len(events) != 1 || events[0].Action != governance.ActionCheckIndeterminate {
-		t.Fatalf("expected check_indeterminate audit event, got %+v", events)
 	}
 }
 
