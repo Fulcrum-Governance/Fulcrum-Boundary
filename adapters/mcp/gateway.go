@@ -103,7 +103,10 @@ func (g *Gateway) serveBatch(w http.ResponseWriter, ctx context.Context, body []
 	}
 	responses := make([]json.RawMessage, 0, len(raws))
 	for _, raw := range raws {
-		resp, emit, _ := g.handleOne(ctx, raw, identity)
+		resp, emit, decision := g.handleOne(ctx, raw, identity)
+		if decision != nil && decision.DryRun {
+			w.Header().Set(governance.HeaderGovernanceDryRun, "true")
+		}
 		if emit {
 			responses = append(responses, json.RawMessage(resp.Body))
 		}

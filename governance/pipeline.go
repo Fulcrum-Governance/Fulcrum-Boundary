@@ -375,7 +375,7 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 		// A configuration-error outcome is never laundered through dry-run:
 		// an invalid enforcement posture cannot distinguish allow from deny,
 		// so its check_indeterminate stands even in audit-only mode.
-		if p.dryRun && p.configErr == nil && (decision.Action == "deny" || decision.Action == ActionCheckIndeterminate) {
+		if p.dryRunConverts(decision) {
 			original := decision.Reason
 			if original == "" {
 				original = "(no reason)"
@@ -767,6 +767,11 @@ func (p *Pipeline) evaluatePolicy(ctx context.Context, evalReq *policyeval.Evalu
 // the trust backend at the pipeline boundary as a panic-category check
 // failure.
 func (p *Pipeline) recordTrustDecisionSafe(ctx context.Context, req *GovernanceRequest, decision *GovernanceDecision) (update *TrustDecisionUpdate, err error) {
+	// A verdict dry-run will let through was never enforced, so it must not
+	// change the agent's live trust.
+	if p.dryRunConverts(decision) {
+		return nil, nil
+	}
 	defer func() {
 		if r := recover(); r != nil {
 			update = nil
@@ -917,8 +922,15 @@ func routeID(req *GovernanceRequest) string {
 	return string(req.Transport) + ":" + req.ToolName
 }
 
+// dryRunConverts reports whether dry-run turns this blocking decision into
+// an allow. A configuration-error outcome is never converted.
+func (p *Pipeline) dryRunConverts(decision *GovernanceDecision) bool {
+	return p.dryRun && p.configErr == nil && (decision.Action == "deny" || decision.Action == ActionCheckIndeterminate)
+}
+
 func (p *Pipeline) emitAudit(ctx context.Context, req *GovernanceRequest, decision *GovernanceDecision) {
 	event := AuditEvent{
+		DryRun:              p.dryRunConverts(decision),
 		RequestID:           req.RequestID,
 		Transport:           req.Transport,
 		ToolName:            req.ToolName,
