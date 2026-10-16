@@ -300,7 +300,7 @@ The three-beat story Boundary already ships and the launch leads with.
 
 > The `Evaluate` doc comment notes standalone vs Redis-backed trust modes for Stage 1 (`governance/pipeline.go`, `Evaluate`); for the OSS dev-tool spec, **trust is opt-in and defaults to absent** — Stage 1 is a no-op unless the developer enables `--trust-mode`. Treat the kernel/Redis framing as an internal implementation note. (C3)
 
-**Audit-once guarantee.** Audit emits **exactly once** per call via a deferred hook, **after** the real decision is computed but **before** dry-run conversion — so logs always reflect the true verdict (`governance/pipeline.go`, `Evaluate` deferred hook; `emitAudit`). An adaptive-trust transition emits a second `trust_transition` event.
+**Audit on every decision.** The pipeline emits one decision audit event per evaluated call from a deferred hook, after the real decision is computed and before dry-run conversion, so the logged verdict is the true one (`governance/pipeline.go`, `Evaluate`; `emitAudit`). An adaptive-trust transition adds a separate `trust_transition` event. Delivery is best effort and depends on the configured publisher; some publish failures are not yet surfaced (FUL-656).
 
 **Dry-run / shadow mode** (`PipelineConfig.DryRun`): runs all four stages, audits the *real* decision, then converts a `deny` to `allow` with reason prefixed `DRY-RUN would deny:` — the canonical audit-only rollout before enforcing (`governance/pipeline.go`, `Evaluate` dry-run conversion).
 
