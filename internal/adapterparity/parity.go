@@ -49,7 +49,10 @@ type Adapter struct {
 	// NotApplicable maps a case name to the reason the case cannot be
 	// expressed for this adapter.
 	NotApplicable map[string]string
-	Call          func(ctx context.Context, t *testing.T, p *governance.Pipeline, in Input) Outcome
+	// Audit, when set, wraps the publisher the case pipeline writes to. An
+	// adapter that reads its own decision event back hooks in here.
+	Audit func(governance.AuditPublisher) governance.AuditPublisher
+	Call  func(ctx context.Context, t *testing.T, p *governance.Pipeline, in Input) Outcome
 }
 
 // Case is one policy or fault scenario.
@@ -120,7 +123,11 @@ func Run(t *testing.T, adapters ...Adapter) {
 				}
 				defer cancel()
 				audit := &recorder{}
-				p := c.Pipeline(a.Tool, audit)
+				var publisher governance.AuditPublisher = audit
+				if a.Audit != nil {
+					publisher = a.Audit(audit)
+				}
+				p := c.Pipeline(a.Tool, publisher)
 				problems := check(a, c, a.Call(ctx, t, p, c.Input))
 				if p != nil && c.Input == Valid {
 					problems = append(problems, checkRecord(c, audit.events())...)

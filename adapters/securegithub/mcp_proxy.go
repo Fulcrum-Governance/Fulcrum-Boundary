@@ -418,7 +418,7 @@ func (r *MCPRoute) emitDenial(w http.ResponseWriter, ctx context.Context, id jso
 		return
 	}
 	r.writeProtocolError(w, id, -32001, governed.decision.Reason, map[string]any{
-		"action": "deny", "matched_rule": governed.decision.MatchedRule, "request_id": governed.requestID,
+		"action": governed.decision.Action, "matched_rule": governed.decision.MatchedRule, "request_id": governed.requestID,
 		"session_id": sessionID, "upstream_called": false, "decision_record": governed.record,
 	})
 }
