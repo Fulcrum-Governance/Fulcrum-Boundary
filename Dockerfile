@@ -16,8 +16,16 @@ FROM alpine:3.20
 
 # musl runtime libs for the cgo binary.
 RUN apk add --no-cache libc6-compat \
-  && adduser -D -H boundary
+  && adduser -D -H boundary \
+  && mkdir -p /var/lib/boundary/serve \
+  && chown -R boundary /var/lib/boundary \
+  && chmod 0700 /var/lib/boundary/serve
 COPY --from=build /out/boundary /usr/local/bin/boundary
 USER boundary
 
-ENTRYPOINT ["boundary", "serve"]
+# serve writes decision records by default; / is not writable by the boundary
+# user, so point them at an owner-only state directory it owns. serve refuses a
+# record dir owned by another user, so a named volume mounted at
+# /var/lib/boundary/serve inherits this ownership; a bind mount must be owned by
+# the image's boundary user. Or pass --no-records.
+ENTRYPOINT ["boundary", "serve", "--record-dir", "/var/lib/boundary/serve"]

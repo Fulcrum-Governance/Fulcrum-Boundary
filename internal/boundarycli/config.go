@@ -18,8 +18,11 @@ type RuntimeConfig struct {
 }
 
 type ServerConfig struct {
-	Listen   string `yaml:"listen"`
-	Upstream string `yaml:"upstream"`
+	Listen    string `yaml:"listen"`
+	Upstream  string `yaml:"upstream"`
+	RecordDir string `yaml:"record_dir"`
+	// Records turns decision records off when set to false. Unset means on.
+	Records *bool `yaml:"records"`
 }
 
 type StandaloneConfig struct {

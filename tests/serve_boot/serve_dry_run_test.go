@@ -53,6 +53,7 @@ func TestServe_DryRunRecordsTheDenyAndLetsTheCallProceed(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 			defer cancel()
 			cmd := exec.CommandContext(ctx, bin, tc.args(t, policyDir, addr, upstream.URL)...)
+			cmd.Dir = t.TempDir() // serve writes decision records under its working directory
 			var stdout, stderr syncBuffer
 			cmd.Stdout, cmd.Stderr = &stdout, &stderr
 			if err := cmd.Start(); err != nil {

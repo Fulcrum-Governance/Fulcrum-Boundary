@@ -47,6 +47,7 @@ func startRankedServe(t *testing.T, bin string, files map[string]string) rankedS
 	addr := freePort(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	cmd := exec.CommandContext(ctx, bin, "serve", "--listen", addr, "--policies", dir, "--upstream", upstream.URL)
+	cmd.Dir = t.TempDir() // serve writes decision records under its working directory
 	var stdout, stderr syncBuffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	if err := cmd.Start(); err != nil {
