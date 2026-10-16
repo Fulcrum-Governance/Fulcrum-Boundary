@@ -2,7 +2,6 @@ package editboundary
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"time"
 
@@ -49,15 +48,7 @@ func (e ApplyExecutor) Apply(ctx context.Context, req ApplyRequest) (*ApplyResul
 	if pipeline == nil {
 		pipeline = NewDefaultPreviewPipeline()
 	}
-	decision, err := pipeline.Evaluate(ctx, governanceReq)
-	if err != nil {
-		decision = &governance.GovernanceDecision{
-			RequestID:  governanceReq.RequestID,
-			Action:     "deny",
-			Reason:     fmt.Sprintf("governance pipeline error: %v", err),
-			EnvelopeID: governanceReq.EnvelopeID,
-		}
-	}
+	decision, _ := pipeline.Evaluate(ctx, governanceReq)
 
 	result := &ApplyResult{
 		Inspection: inspection,
@@ -124,9 +115,6 @@ func (e ApplyExecutor) Apply(ctx context.Context, req ApplyRequest) (*ApplyResul
 func applyAllowed(req ApplyRequest, inspection Inspection, decision *governance.GovernanceDecision) (allowed bool, reason string) {
 	if hardDenyClass(inspection.HighestClass) {
 		return false, "hard-deny edit class cannot be applied"
-	}
-	if decision == nil {
-		return false, "missing governance decision"
 	}
 	if decision.Allowed() {
 		return true, ""

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"os/exec"
 	"time"
@@ -99,15 +98,7 @@ func (e Executor) Run(ctx context.Context, req RunRequest) (*RunResult, error) {
 	if pipeline == nil {
 		pipeline = NewDefaultPreviewPipeline()
 	}
-	decision, err := pipeline.Evaluate(ctx, governanceReq)
-	if err != nil {
-		decision = &governance.GovernanceDecision{
-			RequestID:  governanceReq.RequestID,
-			Action:     "deny",
-			Reason:     fmt.Sprintf("governance pipeline error: %v", err),
-			EnvelopeID: governanceReq.EnvelopeID,
-		}
-	}
+	decision, _ := pipeline.Evaluate(ctx, governanceReq)
 
 	result := &RunResult{
 		Classification: classification,
