@@ -409,6 +409,7 @@ func codeExecDeniedResponse(decision *governance.GovernanceDecision) *governance
 		},
 	}
 	if decision != nil {
+		resp.Metadata["x-fulcrum-action"] = decision.Action
 		resp.Metadata["x-fulcrum-request-id"] = decision.RequestID
 		resp.Metadata["x-fulcrum-envelope-id"] = decision.EnvelopeID
 		if decision.MatchedRule != "" {
