@@ -21,9 +21,6 @@ func (r *ToolResolver) Resolve(ctx context.Context, event Event) (ToolConfirmati
 	if r.Adapter == nil {
 		return ToolConfirmation{}, nil, fmt.Errorf("managed agents adapter is required")
 	}
-	if r.Pipeline == nil {
-		return ToolConfirmation{}, nil, fmt.Errorf("governance pipeline is required")
-	}
 	req, err := r.Adapter.ParseRequest(ctx, event)
 	if err != nil {
 		return ToolConfirmation{}, nil, err

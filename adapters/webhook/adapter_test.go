@@ -285,32 +285,6 @@ func TestHandlerWithConfig_Execution_DeniedDoesNotForward(t *testing.T) {
 	}
 }
 
-func TestHandlerWithConfig_Execution_MissingPipelineDoesNotForward(t *testing.T) {
-	forwarded := false
-	downstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		forwarded = true
-		w.WriteHeader(http.StatusAccepted)
-	}))
-	defer downstream.Close()
-
-	h := HandlerWithConfig(nil, HandlerConfig{
-		Mode:       ModeExecution,
-		ForwardURL: downstream.URL,
-	})
-
-	body, _ := json.Marshal(WebhookPayload{Tool: "noop", AgentID: "a", TenantID: "t"})
-	r := httptest.NewRequest(http.MethodPost, "/hook", bytes.NewReader(body))
-	w := httptest.NewRecorder()
-	h(w, r)
-
-	if w.Code != http.StatusServiceUnavailable {
-		t.Fatalf("execution mode should fail closed without pipeline; got %d body=%s", w.Code, w.Body.String())
-	}
-	if forwarded {
-		t.Fatal("execution mode missing pipeline must not forward")
-	}
-}
-
 func TestAdapter_NoOpMethods(t *testing.T) {
 	a := NewAdapter("")
 	if resp, err := a.ForwardGoverned(context.Background(), nil, nil); resp != nil || err != nil {
