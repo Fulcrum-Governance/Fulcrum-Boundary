@@ -22,7 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   host-path reads, pids containment, and timeout kill; they run in a new
   `codeexec-sandbox` CI job on ubuntu-latest. Adapter status stays
   `preview`; deployment bypass controls are documented in
-  `docs/deployment/codeexec-bypass-proofing.md`.
+  `docs/deployment/codeexec-bypass-evidence.md`.
 
 ## [0.13.1] - 2026-09-02
 
@@ -192,11 +192,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   Fulcrum — today's witnesses remain Fulcrum-operated, on separate
   infrastructure. See `verify-witnessed/README.md`.
 
-- Secure GitHub bypass-proof ladder (L0-L3) and a fail-closed deployment
-  bypass-proof packet that records operator-owned live evidence (L1) and
+- Secure GitHub bypass probe ladder (L0-L3) and a fail-closed deployment
+  bypass evidence packet that records operator-owned live evidence (L1) and
   operator-attested deployment-topology denials (L2). Reaching L2 is an internal
-  production-candidate gate; it does not make Secure GitHub production, does not
-  prove the deployment is bypass-proof, and Secure GitHub stays preview.
+  production-candidate gate; it does not make Secure GitHub production or prove
+  deployment bypass resistance, and Secure GitHub stays preview.
+  Boundary decides before execution only for actions forced through a governed Boundary route.
 
 - Add the `proof-receipt-v0.1` sidecar: checker-validated budget and
   static-privilege invariant lines bound to a decision record by `decision_hash`.
@@ -327,7 +328,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   protocol (`governance/trust_redis_codec_test.go`), covering encode/decode
   edges, partial-read boundaries, and malformed-input error paths.
 - `docs/ADAPTER_PRODUCTION_BAR.md`: contributor-facing guide explaining the
-  mechanical bar (lifecycle steps, bypass-proof delegation, fail-closed
+  mechanical bar (lifecycle steps, bypass evidence delegation, fail-closed
   transports, on-disk test evidence) and the process for advancing an adapter
   from `preview` to `production`, with a worked `mcp`-vs-`webhook` example.
 - Standalone TypeScript (`verifiers/typescript/`) and Rust (`verifiers/rust/`)
@@ -667,7 +668,7 @@ train; no preview surface is upgraded to production.
 - Release truth reconciliation report tying claims, adapter maturity, changelog, README, and launch truth freeze to current repo evidence.
 - Adapter readiness matrix and release checklist linking claims and readiness gates.
 - Production MCP JSON-RPC proxy path with governed forwarding, response metadata, tools/list filtering, batch handling, and lifecycle tests.
-- Preview Managed Agents adapter with policy-driven tool confirmations, per-thread budget and trust tracking, and credential-bound bypass proofing docs.
+- Preview Managed Agents adapter with policy-driven tool confirmations, per-thread budget and trust tracking, and credential-bound bypass evidence docs.
 - Preview A2A governed lifecycle adapter with protocol snapshot, denial shaping, governed forwarding, response inspection, governance metadata, and fail-closed handling for malformed or unsupported mandatory fields.
 - Preview CLI governed command execution lifecycle with deny-before-execute behavior, `os/exec` forwarding, decision records, metadata, and direct-shell bypass limitation coverage.
 - Preview CodeExec governed execution lifecycle with policy-gated forwarding, explicit execution-boundary metadata, sandbox-policy denials, output inspection, and direct-execution bypass limitation coverage.
@@ -695,7 +696,7 @@ train; no preview surface is upgraded to production.
 ### Added
 
 - `boundary` CLI with `serve`, `demo`, `verify`, `doctor`, and `audit` subcommands.
-- MCP Safety Gateway Docker demo with bypass-resistant network topology.
+- MCP Safety Gateway Docker demo with network topology that removes the direct path to the MCP server.
 - YAML policy loading from configuration files.
 - Structured decision records with `matched_rule`, `policy_file`, and `gateway_version` fields.
 - Six transport adapters: MCP, CLI, CodeExec, gRPC, Webhook, and A2A (experimental).

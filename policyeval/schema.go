@@ -106,8 +106,8 @@ func validatePolicyV1Rule(rule PolicyV1Rule) error {
 	if strings.TrimSpace(rule.Tool) == "" {
 		return fmt.Errorf("tool is required")
 	}
-	if !allowedPolicyV1Action(rule.Action) {
-		return fmt.Errorf("unsupported action %q", rule.Action)
+	if !IsRuleAction(rule.Action) {
+		return UnsupportedActionError(rule.Action)
 	}
 	if rule.Match != nil {
 		if err := validatePolicyV1Condition(*rule.Match); err != nil {
@@ -162,11 +162,23 @@ func validatePolicyV1Condition(condition PolicyV1Condition) error {
 	return nil
 }
 
-func allowedPolicyV1Action(action string) bool {
+// RuleActions lists the actions a policy rule may declare, in both the v1
+// schema and the legacy static shape.
+const RuleActions = "allow, deny, warn, audit, escalate, require_approval"
+
+// IsRuleAction reports whether action (case- and space-insensitive) is one of
+// RuleActions.
+func IsRuleAction(action string) bool {
 	switch strings.ToLower(strings.TrimSpace(action)) {
 	case "allow", "deny", "warn", "audit", "escalate", "require_approval":
 		return true
 	default:
 		return false
 	}
+}
+
+// UnsupportedActionError is the load error for a rule action outside
+// RuleActions.
+func UnsupportedActionError(action string) error {
+	return fmt.Errorf("unsupported action %q (want one of: %s)", action, RuleActions)
 }

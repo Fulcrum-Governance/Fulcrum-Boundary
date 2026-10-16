@@ -63,7 +63,7 @@ Step states (from the matrix): `implemented`, `delegated`, `not_applicable`,
 | 6 | `inspect` | Tool responses are examined where the protocol allows it. | `implemented`, or `not_applicable` for fire-and-forget protocols that return nothing inspectable. |
 | 7 | `metadata` | Governance verdict metadata is attached to the response where the protocol allows it. | `implemented`, or `not_applicable` / `delegated` when the protocol cannot carry response metadata. |
 | 8 | `record` | A structured decision record is emitted for the verdict. | `implemented`, or `delegated` to `governance.AuditPublisher` under [DECISION_RECORDS.md](DECISION_RECORDS.md). |
-| 9 | `bypass_proof` | The deployment is shown to have no direct tool path around Boundary. | `delegated` to deployment topology under a named contract — this is a deployment property, not adapter code (see Section 4). |
+| 9 | `bypass_evidence` | The deployment is shown to have no direct tool path around Boundary. | `delegated` to deployment topology under a named contract — this is a deployment property, not adapter code (see Section 4). |
 | 10 | `fail_closed` | On governance errors the route denies rather than passing through. | `implemented` — a fault (crashed backend, unreachable interceptor) MUST default to deny, distinct from a policy that decides allow. |
 
 ### Fill-in block for one route
@@ -82,7 +82,7 @@ Status: <experimental | preview | production>   Target: <…>
   6 inspect       : …
   7 metadata      : …
   8 record        : …   (owner if delegated — governance.AuditPublisher)
-  9 bypass_proof  : …   (owner if delegated — deployment topology)
+  9 bypass_evidence  : …   (owner if delegated — deployment topology)
  10 fail_closed   : …
 Key gap (blocking higher maturity): <BND-…-NNN + one line>
 ```
@@ -93,7 +93,7 @@ Derived from [ADAPTER_READINESS_MATRIX.md](ADAPTER_READINESS_MATRIX.md) and the
 eight `adapters/*/readiness.yaml` declarations. `impl` = `implemented`,
 `deleg` = `delegated`.
 
-| Route | Status | Target | parse | identify | evaluate | deny | forward | inspect | metadata | record | bypass_proof | fail_closed |
+| Route | Status | Target | parse | identify | evaluate | deny | forward | inspect | metadata | record | bypass_evidence | fail_closed |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | mcp | production | production | impl | impl | impl | impl | impl | impl | impl | deleg | deleg | impl |
 | cli | preview | preview | impl | impl | deleg | impl | impl | impl | impl | deleg | deleg | impl |
@@ -104,8 +104,8 @@ eight `adapters/*/readiness.yaml` declarations. `impl` = `implemented`,
 | a2a | preview | preview | impl | impl | deleg | impl | impl | impl | impl | deleg | deleg | impl |
 | securegithub | preview | preview | impl | impl | deleg | impl | impl | impl | impl | deleg | deleg | impl |
 
-`record` and `bypass_proof` are delegated on every route by design: records are
-owned by `governance.AuditPublisher`, and bypass proof is owned by deployment
+`record` and `bypass_evidence` are delegated on every route by design: records are
+owned by `governance.AuditPublisher`, and bypass evidence is owned by deployment
 topology. Neither delegation is a defect; both are named contracts.
 
 ---
@@ -120,7 +120,7 @@ exists. Per the matrix maturity taxonomy:
 - `preview` — `parse`, `evaluate`, `deny`, and `record` are implemented or
   explicitly delegated; forwarding may be host-delegated.
 - `production` — all ten steps implemented or formally delegated, **with
-  integration tests, bypass proof, and fail-mode tests.**
+  integration tests, bypass evidence, and fail-mode tests.**
 
 ### Production graduation checklist (every route)
 
@@ -134,7 +134,7 @@ A preview route reaches production only when ALL of the following hold:
 3. **Fail-mode tests** prove the route denies on governance faults (the
    `fail_closed` step is `implemented` and tested), distinct from a
    policy-driven allow.
-4. **Bypass proof** for the deployment exists under a named contract: evidence
+4. **Bypass evidence** for the deployment exists under a named contract: evidence
    that the governed path is the **sole** path to the tool in the target
    topology. This is the gate that keeps most previews below production — a
    deployment artifact, not adapter code.
@@ -156,12 +156,12 @@ From each route's `readiness.yaml` `gaps` and the matrix `Key gap` column:
 | Route | Blocking gap ID | What production is waiting on |
 |---|---|---|
 | cli | BND-CLI-002 | Deployment evidence that the Boundary wrapper is the sole path to command execution. |
-| codeexec | BND-CODE-001 | A real, named, tested execution boundary with integration tests and bypass proof. The current path is not a named execution boundary until that evidence exists. |
+| codeexec | BND-CODE-001 | A real, named, tested execution boundary with integration tests and bypass evidence. The current path is not a named execution boundary until that evidence exists. |
 | grpc | BND-GRPC-001 | Deployment bypass evidence; streaming workloads need per-message governance lifecycle tests. |
 | managedagents | BND-MAPROD-001 | A live upstream Managed Agents conformance run with operator-owned credentials. Target is `production`; status stays `preview` until this exists. |
 | webhook | BND-WEB-001 | Deployment evidence that execution webhooks are the sole downstream action path; informational webhooks remain post-execution audit only. |
 | a2a | BND-A2A-002 | Live protocol conformance and deployment bypass evidence. |
-| securegithub | BND-GH-002 | Deployment bypass proof that agents cannot reach the direct GitHub API, direct upstream GitHub MCP, SSH, or other credentialed write paths outside Boundary. The opt-in live conformance harness proves the configured read and denied-write no-mutation path; it does not prove deployment bypass resistance. Secure GitHub is not production. |
+| securegithub | BND-GH-002 | Deployment bypass evidence that agents cannot reach the direct GitHub API, direct upstream GitHub MCP, SSH, or other credentialed write paths outside Boundary. The opt-in live conformance harness proves the configured read and denied-write no-mutation path; it does not prove deployment bypass resistance. Secure GitHub is not production. |
 
 ### Command Boundary graduation plan (routed command paths only)
 
@@ -228,16 +228,16 @@ path so the governed route is the only way to reach the tool.
 | SSH / remote session execution | No | No | Boundary does not control remote SSH by default. Commands run over SSH are outside Boundary unless the remote environment routes them through Boundary. |
 | Editor-embedded terminal | No | No | A terminal embedded in an editor executes commands directly. It is a bypass unless that terminal is configured to route through Boundary. |
 | Direct editor write / direct filesystem write | No | No | Edit Boundary governs only mutations routed through a Boundary edit envelope. Direct editor writes and direct filesystem writes are outside the envelope; filesystem sandboxing is not claimed. |
-| Direct GitHub API / direct upstream GitHub MCP / credentialed write outside Boundary | No | No | Secure GitHub is preview and governs supported GitHub actions routed through Boundary. It does not fully secure GitHub; a direct GitHub API call, a direct upstream GitHub MCP path, or another credentialed write path is a bypass until deployment bypass proof exists. |
+| Direct GitHub API / direct upstream GitHub MCP / credentialed write outside Boundary | No | No | Secure GitHub is preview and governs supported GitHub actions routed through Boundary. It does not fully secure GitHub; a direct GitHub API call, a direct upstream GitHub MCP path, or another credentialed write path is a bypass until deployment bypass evidence exists. |
 
 ### Reading the table
 
 - **"Route-governed: Yes"** means Boundary evaluated and decided for that path.
   It is necessary, not sufficient, for system-wide control.
 - **"Globally controlled"** is true only when the deployment removes every direct
-  path to the tool — the `bypass_proof` step, owned by deployment topology, not
+  path to the tool — the `bypass_evidence` step, owned by deployment topology, not
   by adapter code.
-- A passing lifecycle checklist plus a missing `bypass_proof` means: the route is
+- A passing lifecycle checklist plus a missing `bypass_evidence` means: the route is
   governed, the system is not globally controlled. State both.
 
 ---
@@ -263,7 +263,7 @@ path so the governed route is the only way to reach the tool.
 ## What this checklist does not prove
 
 - It does not prove a deployment removed every bypass path; that is a topology
-  property you must enforce and audit yourself (`bypass_proof`).
+  property you must enforce and audit yourself (`bypass_evidence`).
 - It does not prove live upstream conformance for preview surfaces.
 - It does not prove the verdict was *correct* — only that the route decided and
   recorded. A record proves Boundary decided, not that execution was

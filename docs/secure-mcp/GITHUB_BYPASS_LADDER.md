@@ -1,12 +1,12 @@
-# Secure GitHub Bypass-Proof Ladder
+# Secure GitHub Bypass Probe Ladder
 
 Secure GitHub governs a GitHub action only when the route is forced through the
 Boundary profile. Direct access to the same repository — a personal token, an
 SSH key, the upstream GitHub MCP server, an unmanaged `gh`/`git`, or any
 ambient-credential path — is a bypass unless deployment topology removes it.
-This page is the operator-facing form of the bypass-proof ladder; the
-machine-readable level lives in the bypass-proof packet
-(`boundary.secure_github.bypass_proof_packet.v1`).
+This page is the operator-facing form of the bypass probe ladder; the
+machine-readable level lives in the bypass evidence packet
+(`boundary.secure_github.bypass_evidence_packet.v1`).
 
 This ladder records what evidence a deployment has earned. It **does not prove**
 that no other path to the same repository exists; that is a property of your
@@ -35,12 +35,12 @@ remains forbidden.
 The L1 facts are derived from the routed live-evidence index — the sanitized
 denied-write transcript proving the protected mutation was denied before the
 GitHub mutation client was reached. The L2 facts are **operator-attested**
-deployment-topology denials recorded in the bypass-proof packet; Boundary
+deployment-topology denials recorded in the bypass evidence packet; Boundary
 records and classifies them but does not verify your deployment. The classifier
 fails closed: any unattested denial caps the level at L1, and no live evidence
 caps it at L0.
 
 See [GITHUB_LIVE_BYPASS_MODEL.md](GITHUB_LIVE_BYPASS_MODEL.md) for the in-scope
 vs bypass-path list, and
-[../deployment/secure-github-bypass-proof-packet.md](../deployment/secure-github-bypass-proof-packet.md)
+[../deployment/secure-github-bypass-evidence-packet.md](../deployment/secure-github-bypass-evidence-packet.md)
 for the operator packet template.

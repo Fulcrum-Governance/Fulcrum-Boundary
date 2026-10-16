@@ -26,7 +26,7 @@ fixture-based and implemented in `adapters/securegithub`:
    reason.
 
 Secure GitHub MCP now includes an opt-in live conformance preview harness, but
-remains preview until deployment bypass proof exists.
+remains preview until deployment bypass evidence exists.
 
 Profile docs:
 
@@ -37,7 +37,7 @@ Profile docs:
 - [`GITHUB_LIVE_CONFORMANCE.md`](./GITHUB_LIVE_CONFORMANCE.md)
 - [`GITHUB_LIVE_EVIDENCE.md`](./GITHUB_LIVE_EVIDENCE.md)
 - [`GITHUB_LIVE_BYPASS_MODEL.md`](./GITHUB_LIVE_BYPASS_MODEL.md)
-- [`docs/deployment/secure-github-bypass-proofing.md`](../deployment/secure-github-bypass-proofing.md)
+- [`docs/deployment/secure-github-bypass-evidence.md`](../deployment/secure-github-bypass-evidence.md)
 
 ## Profile Checklist
 

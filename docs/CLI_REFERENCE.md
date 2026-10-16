@@ -209,7 +209,7 @@ boundary mcp secure-github \
 The denied-write path must report `actual action: DENY`,
 `reason: lethal_trifecta_detected`, `upstream_called=false`, and
 `github_mutation_called=false`. Secure GitHub remains preview until deployment
-bypass proof exists.
+bypass evidence exists.
 
 `boundary mcp secure-github` listens only on loopback, reads the upstream token
 from the named environment variable, and exposes only `issue_read` and

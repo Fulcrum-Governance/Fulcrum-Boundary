@@ -75,6 +75,7 @@ func (p *SlogAuditPublisher) Publish(ctx context.Context, event AuditEvent) {
 		slog.String("check_cause_hash", causeHash),
 		slog.String("check_detail", checkDetail),
 		slog.String("matched_rule", event.MatchedRule),
+		slog.Any("matched_rules_hash", auditLogDigests(event.MatchedRules)),
 		slog.String("policy_file", event.PolicyFile),
 		slog.String("policy_bundle_hash", event.PolicyBundleHash),
 		slog.String("gateway_version", event.GatewayVersion),
@@ -100,6 +101,18 @@ func (p *SlogAuditPublisher) Publish(ctx context.Context, event AuditEvent) {
 		slog.String("topology_profile", record.TopologyProfile),
 		slog.Bool("execution_claim_present", record.ExecutionClaim != nil),
 	)
+}
+
+// auditLogDigests digests each value with auditLogDigest.
+func auditLogDigests(values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
+	out := make([]string, len(values))
+	for i, v := range values {
+		out[i] = auditLogDigest(v)
+	}
+	return out
 }
 
 func auditLogDigest(value string) string {
