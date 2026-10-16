@@ -136,6 +136,11 @@ func (cfg PipelineConfig) Validate() error {
 			return fmt.Errorf("%w: entry %d (transport %q) carries no reason", ErrInvalidNonEnforcingTransport, i, d.Transport)
 		}
 	}
+	for i, rule := range cfg.StaticPolicies {
+		if rule.Action != strings.ToLower(strings.TrimSpace(rule.Action)) || !policyeval.IsRuleAction(rule.Action) {
+			return fmt.Errorf("%w: rule %d (%q) has action %q", ErrInvalidStaticRuleAction, i, rule.Name, rule.Action)
+		}
+	}
 	return nil
 }
 

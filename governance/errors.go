@@ -21,6 +21,12 @@ var ErrInvalidNonEnforcingTransport = errors.New("governance: NonEnforcingTransp
 // auditor cannot satisfy the evidence contract.
 var ErrMissingAuditPublisher = errors.New("governance: RequireAudit is set but no AuditPublisher was provided")
 
+// ErrInvalidStaticRuleAction is returned by PipelineConfig.Validate when a
+// static rule's action is not one of the lower-case rule actions the pipeline
+// acts on (policyeval.RuleActions). The pipeline would otherwise match the
+// rule and skip it, so a "Deny" typo would let the request run.
+var ErrInvalidStaticRuleAction = errors.New("governance: static rule action is not a supported rule action")
+
 // CheckError marks a check failure with an explicit ADR-047 FailureCategory.
 // A TrustChecker, TrustBackend, or PolicyEvaluator may return it (wrapping
 // the underlying cause) to report a precise category — for example

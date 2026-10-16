@@ -28,9 +28,6 @@ var KnownGaps = gaps(
 func blockedRows(adapter string) []string {
 	var rows []string
 	for _, c := range Cases() {
-		if c.Name == "unknown_static_rule_action" {
-			continue
-		}
 		if c.Want != "" && c.Want != "allow" && c.Want != "warn" && c.Want != "deny" {
 			rows = append(rows, adapter+"/"+c.Name)
 		}
