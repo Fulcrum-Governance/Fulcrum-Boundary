@@ -206,8 +206,8 @@ includes Claude Desktop, Claude Code, Cursor, and VS Code.
 flowchart LR
   A[Agent intent] --> B[Proposed action]
   B --> C{Boundary}
-  C -->|allow| D[Execute routed action]
-  C -->|deny / warn / escalate / require approval| E[No execution or approval path]
+  C -->|allow / warn| D[Execute routed action]
+  C -->|deny / escalate / require approval| E[No execution or approval path]
   C --> F[Decision record]
 ```
 
