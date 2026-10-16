@@ -261,7 +261,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 			"--trust-mode kernel connects only the trust seam to Fulcrum services; the policy seam still loads the local policy dir.",
 			"Evaluator faults fail closed for the configured transports and otherwise fall through; a policy deny is a decision, a backend fault is not.",
 			"--receipt-seed signs every emitted decision record with the Ed25519 seed in FILE (64 hex chars); signing is off by default, and a startup error here fails closed (exit 1) rather than serving unsigned.",
-			"--dry-run (or security.dry_run in --config) records every deny and check_indeterminate with dry_run=true and lets the call proceed. Nothing is blocked.",
+			"--dry-run (or security.dry_run in --config) records every deny and check_indeterminate with dry_run=true and lets the call proceed, without changing the agent's trust. escalate and require_approval still hold the call: they route to approval, not to a deny.",
 			"A signature proves who signed the record, not the verdict or that execution happened; key custody is the operator's (see docs/SIGNING.md).",
 		},
 	})
@@ -272,7 +272,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	trustMode := fs.String("trust-mode", "disabled", "trust mode: disabled, standalone, or kernel")
 	trustRedisURL := fs.String("trust-redis-url", "redis://localhost:6379", "Redis URL for kernel trust mode")
 	requireAgentID := fs.Bool("require-agent-id", false, "deny protected adapter requests without agent identity")
-	dryRun := fs.Bool("dry-run", false, "record would-be denies with dry_run=true and let the call proceed (nothing is blocked)")
+	dryRun := fs.Bool("dry-run", false, "record would-be denies with dry_run=true and let the call proceed")
 	receiptSeed := fs.String("receipt-seed", "", "path to a 64-hex Ed25519 seed; when set, signs every emitted decision record (off by default)")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {

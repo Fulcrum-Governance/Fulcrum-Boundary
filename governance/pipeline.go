@@ -767,6 +767,11 @@ func (p *Pipeline) evaluatePolicy(ctx context.Context, evalReq *policyeval.Evalu
 // the trust backend at the pipeline boundary as a panic-category check
 // failure.
 func (p *Pipeline) recordTrustDecisionSafe(ctx context.Context, req *GovernanceRequest, decision *GovernanceDecision) (update *TrustDecisionUpdate, err error) {
+	// A verdict dry-run will let through was never enforced, so it must not
+	// change the agent's live trust.
+	if p.dryRunConverts(decision) {
+		return nil, nil
+	}
 	defer func() {
 		if r := recover(); r != nil {
 			update = nil

@@ -85,6 +85,15 @@ func TestServe_DryRunRecordsTheDenyAndLetsTheCallProceed(t *testing.T) {
 				t.Fatalf("_meta.governance = %+v, want allow with dry_run=true; response=%s", g, resp)
 			}
 
+			batch, err := http.Post("http://"+addr, "application/json", strings.NewReader(`[{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"blocked_tool","arguments":{}}}]`))
+			if err != nil {
+				t.Fatal(err)
+			}
+			_ = batch.Body.Close()
+			if got := batch.Header.Get("X-Governance-Dry-Run"); got != "true" {
+				t.Fatalf("batch X-Governance-Dry-Run = %q, want true", got)
+			}
+
 			if !auditHas(stdout.String(), "deny", true) {
 				t.Fatalf("no audit line with action=deny dry_run=true; stdout=%s", stdout.String())
 			}

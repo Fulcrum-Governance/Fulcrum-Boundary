@@ -510,7 +510,7 @@ Flags (transcribed from `boundary serve --help`):
 | `--trust-mode` | `disabled` | Trust mode: `disabled`, `standalone`, or `kernel`. |
 | `--trust-redis-url` | `redis://localhost:6379` | Redis URL for kernel trust mode. |
 | `--require-agent-id` | `false` | Deny protected adapter requests without agent identity. |
-| `--dry-run` | `false` | Record every deny and `check_indeterminate` with `dry_run: true` and let the call proceed. Nothing is blocked. Also set by `security.dry_run` in `--config`. |
+| `--dry-run` | `false` | Record every deny and `check_indeterminate` with `dry_run: true` and let the call proceed. These calls do not change the agent's trust. `escalate` and `require_approval` still hold the call. Also set by `security.dry_run` in `--config`. |
 | `--receipt-seed` | _(unset)_ | Path to a 64-hex Ed25519 seed; when set, signs every emitted decision record (off by default). A missing/short/non-hex seed fails closed: error to stderr, exit 1, before the listener opens. See [docs/SIGNING.md](./SIGNING.md). |
 
 `boundary serve` governs only requests that arrive through the served route.
