@@ -28,6 +28,8 @@ type AuditEvent struct {
 	Reason string `json:"reason,omitempty"`
 	// MatchedRule names the static policy or evaluator policy that decided.
 	MatchedRule string `json:"matched_rule,omitempty"`
+	// MatchedRules names every static rule that matched, in policy order.
+	MatchedRules []string `json:"matched_rules,omitempty"`
 	// PolicyFile is the source file of the matched policy, when known.
 	PolicyFile string `json:"policy_file,omitempty"`
 	// PolicyBundleHash identifies the active policy bundle.
