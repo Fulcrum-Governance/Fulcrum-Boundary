@@ -41,10 +41,11 @@ func TestMCPRouteParity(t *testing.T) {
 			}))
 			defer upstream.Close()
 
+			decisions := &captureDecisionSink{}
 			route, err := NewMCPRoute(MCPRouteConfig{
 				UpstreamURL: upstream.URL, Token: "fake", SourceOwner: "public-org", SourceRepo: "untrusted-issues", SourceIssue: 17,
 				TargetOwner: "private-org", TargetRepo: "protected-repo", TargetBranch: "main",
-				DecisionSink: &captureDecisionSink{}, ForwardSink: &captureForwardSink{},
+				DecisionSink: decisions, ForwardSink: &captureForwardSink{},
 			})
 			if err != nil {
 				t.Fatal(err)
@@ -71,6 +72,9 @@ func TestMCPRouteParity(t *testing.T) {
 				t.Fatalf("route response %q: %v", rec.Body.String(), err)
 			}
 			out := adapterparity.Outcome{Executed: int(toolCalls.Load())}
+			if len(decisions.records) == 1 {
+				out.Record = &decisions.records[0]
+			}
 			switch {
 			case resp.Error != nil:
 				out.Action, _ = resp.Error.Data["action"].(string)

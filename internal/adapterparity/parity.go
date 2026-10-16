@@ -35,6 +35,9 @@ type Outcome struct {
 	// Executed counts calls that reached the governed downstream: the tool,
 	// command, code, upstream server or allow confirmation.
 	Executed int
+	// Record is the decision record the adapter handed its caller, for
+	// adapters that return one. Nil when the adapter returns none.
+	Record *governance.DecisionRecordV1
 }
 
 // Adapter drives one transport through its governed entry point.
@@ -163,6 +166,14 @@ func check(a Adapter, c Case, got Outcome) []string {
 	}
 	if got.Executed != wantExecuted {
 		problems = append(problems, fmt.Sprintf("executed = %d, want %d", got.Executed, wantExecuted))
+	}
+	if got.Record != nil && c.Want != "" {
+		if got.Record.Action != c.Want {
+			problems = append(problems, fmt.Sprintf("returned record action = %q, want %q", got.Record.Action, c.Want))
+		}
+		if c.Want == indeterminate && got.Record.Check == nil {
+			problems = append(problems, "returned check_indeterminate record carries no check context")
+		}
 	}
 	return problems
 }

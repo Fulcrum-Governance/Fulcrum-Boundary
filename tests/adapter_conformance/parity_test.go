@@ -69,6 +69,9 @@ func secureGitHubParity() adapterparity.Adapter {
 		}
 		res, err := securegithub.NewAdapter(securegithub.Config{}, p, upstream).GovernToolCall(ctx, raw)
 		out := adapterparity.Outcome{Executed: int(upstream.calls.Load())}
+		if err == nil && res != nil && res.DecisionRecord.RecordID != "" {
+			out.Record = &res.DecisionRecord
+		}
 		switch {
 		case err != nil || res == nil:
 		case res.Response.Error != nil:
