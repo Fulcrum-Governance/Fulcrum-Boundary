@@ -27,7 +27,7 @@ func filterToolsList(ctx context.Context, body []byte, pipeline *governance.Pipe
 		if name == "" {
 			continue
 		}
-		decision, err := pipeline.Evaluate(ctx, &governance.GovernanceRequest{
+		decision, _ := pipeline.Evaluate(ctx, &governance.GovernanceRequest{
 			Transport: governance.TransportMCP,
 			ToolName:  name,
 			Action:    "tools/call",
@@ -35,7 +35,7 @@ func filterToolsList(ctx context.Context, body []byte, pipeline *governance.Pipe
 			TenantID:  identity.TenantID,
 			TraceID:   identity.TraceID,
 		})
-		if err == nil && decision.Allowed() {
+		if decision.Allowed() {
 			filtered = append(filtered, item)
 		}
 	}

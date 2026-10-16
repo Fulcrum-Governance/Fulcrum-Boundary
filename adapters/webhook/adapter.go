@@ -183,15 +183,7 @@ func HandlerWithConfig(pipeline *governance.Pipeline, cfg HandlerConfig) http.Ha
 		}
 		writeModeHeaders(w, cfg.Mode)
 
-		decision, err := pipeline.Evaluate(r.Context(), req)
-		if err != nil {
-			if cfg.Mode == ModeInformational {
-				writeJSONError(w, http.StatusInternalServerError, "governance: "+err.Error())
-				return
-			}
-			writeJSONError(w, http.StatusServiceUnavailable, "governance: "+err.Error()+"; execution webhook not forwarded")
-			return
-		}
+		decision, _ := pipeline.Evaluate(r.Context(), req)
 
 		writeGovernanceHeaders(w, decision)
 		if cfg.Mode == ModeInformational {

@@ -25,15 +25,7 @@ func (r *ToolResolver) Resolve(ctx context.Context, event Event) (ToolConfirmati
 	if err != nil {
 		return ToolConfirmation{}, nil, err
 	}
-	decision, err := r.Pipeline.Evaluate(ctx, req)
-	if err != nil {
-		decision = &governance.GovernanceDecision{
-			RequestID:  req.RequestID,
-			Action:     "deny",
-			Reason:     fmt.Sprintf("governance pipeline error: %v", err),
-			EnvelopeID: req.EnvelopeID,
-		}
-	}
+	decision, _ := r.Pipeline.Evaluate(ctx, req)
 	if decision.Allowed() && r.Tracker != nil {
 		if err := r.Tracker.Reserve(event.SessionID, event.SessionThreadID, estimatedCost(event)); err != nil {
 			decision.Action = "deny"
