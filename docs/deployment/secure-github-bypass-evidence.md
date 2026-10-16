@@ -1,4 +1,4 @@
-# Secure GitHub Bypass Proofing
+# Secure GitHub Bypass Evidence
 
 Secure GitHub only governs GitHub actions that route through the Boundary
 profile. Direct access to GitHub's API, a direct upstream GitHub MCP server, or

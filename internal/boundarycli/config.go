@@ -57,6 +57,7 @@ type NATSConfig struct {
 
 type SecurityConfig struct {
 	RequireAgentID bool `yaml:"require_agent_id"`
+	DryRun         bool `yaml:"dry_run"`
 }
 
 func LoadRuntimeConfig(path string) (*RuntimeConfig, error) {

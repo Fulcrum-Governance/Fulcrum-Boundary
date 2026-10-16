@@ -286,15 +286,17 @@ func toolMatches(pattern, toolName string) bool {
 }
 
 // Evaluate runs the full governance pipeline for a request. It executes four
-// stages in order; each may return a terminal decision, otherwise control
-// falls through to the next stage:
+// stages in order. The most restrictive verdict wins (deny > require_approval
+// > escalate > warn > allow): a deny or CHECK_INDETERMINATE ends evaluation,
+// and any other verdict is kept while later stages run and may raise it.
 //
 //  1. Trust Check — the configured TrustChecker (in-process Beta evaluator in
 //     standalone mode, or the Redis-backed backend in kernel mode). Skipped
 //     when no checker is set or AgentID is empty. Isolated/Terminated → deny;
 //     Evaluating → score 0.5; a checker error or panic is a required-check
 //     failure (ADR-047 CHECK_INDETERMINATE, category from the error kind).
-//  2. Static Policy Rules — linear scan; the first matching deny terminates.
+//  2. Static Policy Rules — every rule is matched; the most restrictive
+//     matching rule decides and every match is listed in MatchedRules.
 //  3. Domain Interceptors — per-tool hooks; an interceptor error, panic, or
 //     invalid blocking result is a required-check failure.
 //  4. PolicyEval Engine — the portable evaluator. An evaluator error, panic,
@@ -373,7 +375,7 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 		// A configuration-error outcome is never laundered through dry-run:
 		// an invalid enforcement posture cannot distinguish allow from deny,
 		// so its check_indeterminate stands even in audit-only mode.
-		if p.dryRun && p.configErr == nil && (decision.Action == "deny" || decision.Action == ActionCheckIndeterminate) {
+		if p.dryRunConverts(decision) {
 			original := decision.Reason
 			if original == "" {
 				original = "(no reason)"
@@ -453,43 +455,48 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 		}
 	}
 
-	// Stage 2: Static Policy Rules (glob-aware tool and launch-grade field matches)
-	for _, rule := range p.staticPolicies {
+	// Stage 2: Static Policy Rules. Every rule is checked against the request;
+	// the most restrictive match decides, so rule order and file order never
+	// let a warn hide a deny.
+	var winner *StaticPolicyRule
+	for i := range p.staticPolicies {
+		rule := &p.staticPolicies[i]
 		if !rule.matchesRequest(req) {
 			continue
 		}
-		decision.PolicyID = rule.Name
-		decision.MatchedRule = rule.Name
-		decision.PolicyFile = rule.PolicyFile
+		decision.MatchedRules = append(decision.MatchedRules, rule.Name)
+		if winner == nil || staticRuleRank(rule.Action) > staticRuleRank(winner.Action) {
+			winner = rule
+		}
+	}
+	if winner != nil {
+		decision.PolicyID = winner.Name
+		decision.MatchedRule = winner.Name
+		decision.PolicyFile = winner.PolicyFile
 		// Use the same adoptable-mode allow-set as the escalation seam so a
 		// mis-set or hostile policy mode (e.g. "proved") cannot make the
 		// standalone pipeline emit a non-deterministic or proof-grade decision.
-		if isAdoptableEscalationMode(rule.DecisionMode) {
-			decision.DecisionMode = rule.DecisionMode
+		if isAdoptableEscalationMode(winner.DecisionMode) {
+			decision.DecisionMode = winner.DecisionMode
 		}
-		if rule.Action == "deny" {
+		switch winner.Action {
+		case "deny":
 			decision.Action = "deny"
-			decision.Reason = rule.Reason
+			decision.Reason = winner.Reason
 			if decision.Reason == "" {
-				decision.Reason = fmt.Sprintf("denied by policy %q", rule.Name)
+				decision.Reason = fmt.Sprintf("denied by policy %q", winner.Name)
 			}
 			return decision, nil
-		}
-		if rule.Action == "warn" || rule.Action == "audit" {
+		case "warn", "audit":
 			decision.Action = "warn"
-			decision.Reason = rule.Reason
-			return decision, nil
-		}
-		if rule.Action == "escalate" {
+			decision.Reason = winner.Reason
+		case "escalate":
 			decision.Action = "escalate"
-			decision.Reason = rule.Reason
+			decision.Reason = winner.Reason
 			decision.DecisionMode = DecisionModeClassified
-			return decision, nil
-		}
-		if rule.Action == "require_approval" {
+		case "require_approval":
 			decision.Action = "require_approval"
-			decision.Reason = rule.Reason
-			return decision, nil
+			decision.Reason = winner.Reason
 		}
 	}
 
@@ -524,9 +531,7 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 			if !decision.Allowed() {
 				return decision, nil
 			}
-		} else {
-			decision.Action = action
-			decision.Reason = interceptResult.Reason
+		} else if adoptStricter(decision, action, interceptResult.Reason) && decision.Action == "deny" {
 			return decision, nil
 		}
 	}
@@ -593,13 +598,16 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 		}
 	}
 	{
+		adopted := false
 		switch evalDecision.Action {
 		case policyeval.ActionDeny:
-			decision.Action = "deny"
-			decision.Reason = evalDecision.Reason
+			adopted = adoptStricter(decision, "deny", evalDecision.Reason)
 		case policyeval.ActionEscalate:
-			decision.Action = "escalate"
-			decision.Reason = evalDecision.EscalationReason
+			prior := *decision
+			if !adoptStricter(decision, "escalate", evalDecision.EscalationReason) {
+				break
+			}
+			adopted = true
 			// Escalation implies a semantic condition the evaluator could not
 			// resolve deterministically (see pipeline_coverage_test.go
 			// newSemanticEscalatePolicy). Relabel the decision so downstream
@@ -614,15 +622,19 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 			// on a human).
 			if p.escalation != nil && !p.dryRun {
 				p.resolveEscalation(ctx, req, decision)
+				// An approval cannot lower an earlier warn: restore it and its
+				// attribution. A stricter resolution (deny) stands.
+				if verdictRank[decision.Action] < verdictRank[prior.Action] {
+					restoreVerdict(decision, &prior)
+					adopted = false
+				}
 			} else if p.escalation != nil && p.dryRun {
 				decision.Reason = decision.Reason + " (dry-run: escalation await skipped)"
 			}
 		case policyeval.ActionRequireApproval:
-			decision.Action = "require_approval"
-			decision.Reason = evalDecision.Reason
+			adopted = adoptStricter(decision, "require_approval", evalDecision.Reason)
 		case policyeval.ActionWarn:
-			decision.Action = "warn"
-			decision.Reason = evalDecision.Reason
+			adopted = adoptStricter(decision, "warn", evalDecision.Reason)
 		case policyeval.ActionAllow:
 			// Explicit allow: the decision keeps its allow default.
 		default:
@@ -636,7 +648,7 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 				Detail:   fmt.Sprintf("policy evaluation returned unknown action %q", evalDecision.Action.String()),
 			})
 		}
-		if evalDecision.MatchedPolicy != nil {
+		if evalDecision.MatchedPolicy != nil && (adopted || decision.MatchedRule == "") {
 			decision.PolicyID = evalDecision.MatchedPolicy.PolicyId
 		}
 	}
@@ -690,6 +702,14 @@ func (p *Pipeline) markCheckFailureEnforced(decision *GovernanceDecision, req *G
 		decision.TrustState = TrustStateUnknown.String()
 	}
 	if enforcing {
+		if decision.Action == "warn" && decision.MatchedRule != "" {
+			// The failed check decided, not the earlier warn rule. MatchedRules
+			// still lists every static match.
+			decision.MatchedRule = ""
+			decision.PolicyFile = ""
+			decision.PolicyID = ""
+			decision.DecisionMode = DecisionModeDeterministic
+		}
 		decision.Action = ActionCheckIndeterminate
 		decision.Reason = fmt.Sprintf("check indeterminate (%s/%s): %s", cf.Stage, cf.Category, cf.Cause)
 		return
@@ -747,6 +767,11 @@ func (p *Pipeline) evaluatePolicy(ctx context.Context, evalReq *policyeval.Evalu
 // the trust backend at the pipeline boundary as a panic-category check
 // failure.
 func (p *Pipeline) recordTrustDecisionSafe(ctx context.Context, req *GovernanceRequest, decision *GovernanceDecision) (update *TrustDecisionUpdate, err error) {
+	// A verdict dry-run will let through was never enforced, so it must not
+	// change the agent's live trust.
+	if p.dryRunConverts(decision) {
+		return nil, nil
+	}
 	defer func() {
 		if r := recover(); r != nil {
 			update = nil
@@ -804,6 +829,57 @@ func (p *Pipeline) resolveEscalation(ctx context.Context, req *GovernanceRequest
 // Anything else — including an empty action — is treated as a handler fault so
 // a buggy or hostile handler cannot inject an out-of-vocabulary action into a
 // decision record.
+// verdictRank orders pipeline verdicts by restrictiveness. A verdict outside
+// the table ranks as allow.
+var verdictRank = map[string]int{"allow": 0, "warn": 1, "escalate": 2, "require_approval": 3, "deny": 4}
+
+// staticRuleRank orders static rule actions; audit ranks just below warn so a
+// warn rule names the decision when both match.
+func staticRuleRank(action string) int {
+	switch action {
+	case "audit":
+		return 1
+	case "warn":
+		return 2
+	case "escalate":
+		return 3
+	case "require_approval":
+		return 4
+	case "deny":
+		return 5
+	}
+	return 0
+}
+
+// adoptStricter replaces the decision's verdict with action when action is
+// more restrictive, and reports whether it did. A verdict that replaces a
+// static rule's verdict did not come from that rule, so the rule attribution
+// and its decision mode are cleared; MatchedRules keeps every static match.
+func adoptStricter(decision *GovernanceDecision, action, reason string) bool {
+	if verdictRank[action] <= verdictRank[decision.Action] {
+		return false
+	}
+	decision.Action = action
+	decision.Reason = reason
+	if decision.MatchedRule != "" {
+		decision.MatchedRule = ""
+		decision.PolicyFile = ""
+		decision.PolicyID = ""
+		decision.DecisionMode = DecisionModeDeterministic
+	}
+	return true
+}
+
+// restoreVerdict puts back the verdict and attribution saved in prior.
+func restoreVerdict(decision, prior *GovernanceDecision) {
+	decision.Action = prior.Action
+	decision.Reason = prior.Reason
+	decision.MatchedRule = prior.MatchedRule
+	decision.PolicyFile = prior.PolicyFile
+	decision.PolicyID = prior.PolicyID
+	decision.DecisionMode = prior.DecisionMode
+}
+
 func isValidEscalatedAction(a string) bool {
 	switch a {
 	case "allow", "deny", "warn", "escalate", "require_approval":
@@ -846,8 +922,15 @@ func routeID(req *GovernanceRequest) string {
 	return string(req.Transport) + ":" + req.ToolName
 }
 
+// dryRunConverts reports whether dry-run turns this blocking decision into
+// an allow. A configuration-error outcome is never converted.
+func (p *Pipeline) dryRunConverts(decision *GovernanceDecision) bool {
+	return p.dryRun && p.configErr == nil && (decision.Action == "deny" || decision.Action == ActionCheckIndeterminate)
+}
+
 func (p *Pipeline) emitAudit(ctx context.Context, req *GovernanceRequest, decision *GovernanceDecision) {
 	event := AuditEvent{
+		DryRun:              p.dryRunConverts(decision),
 		RequestID:           req.RequestID,
 		Transport:           req.Transport,
 		ToolName:            req.ToolName,
@@ -865,6 +948,7 @@ func (p *Pipeline) emitAudit(ctx context.Context, req *GovernanceRequest, decisi
 		DecisionMode:        decision.DecisionMode,
 		Check:               decision.Check,
 		MatchedRule:         decision.MatchedRule,
+		MatchedRules:        decision.MatchedRules,
 		PolicyFile:          decision.PolicyFile,
 		GatewayVersion:      decision.GatewayVersion,
 		TraceID:             req.TraceID,
@@ -944,6 +1028,7 @@ func (p *Pipeline) emitTrustTransition(ctx context.Context, req *GovernanceReque
 		TrustState:          update.After.State.String(),
 		DecisionMode:        DecisionModeDeterministic,
 		MatchedRule:         decision.MatchedRule,
+		MatchedRules:        decision.MatchedRules,
 		PolicyFile:          decision.PolicyFile,
 		GatewayVersion:      decision.GatewayVersion,
 		TraceID:             req.TraceID,

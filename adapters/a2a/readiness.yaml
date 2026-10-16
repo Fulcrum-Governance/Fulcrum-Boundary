@@ -10,7 +10,7 @@ lifecycle:
   inspect: implemented
   metadata: implemented
   record: delegated
-  bypass_proof: delegated
+  bypass_evidence: delegated
   fail_closed: implemented
 delegated_steps:
   - step: evaluate
@@ -19,7 +19,7 @@ delegated_steps:
   - step: record
     owner: governance.AuditPublisher
     contract: docs/DECISION_RECORDS.md
-  - step: bypass_proof
+  - step: bypass_evidence
     owner: deployment topology
     contract: docs/adapters/A2A.md
 bypass_model: runtime

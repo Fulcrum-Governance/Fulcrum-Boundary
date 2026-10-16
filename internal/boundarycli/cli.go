@@ -247,12 +247,13 @@ func newHelpFlagSet(name string, stderr io.Writer, help commandHelp) *flag.FlagS
 func runServe(args []string, stdout, stderr io.Writer) int {
 	fs := newHelpFlagSet("boundary serve", stderr, commandHelp{
 		Purpose: "Start the Boundary gateway that governs routed tools before privileged execution.",
-		Usage:   "boundary serve [--config FILE] [--listen ADDR] [--policies DIR] [--upstream URL|DSN] [--trust-mode MODE] [--require-agent-id] [--receipt-seed FILE] [--record-dir DIR | --no-records]",
+		Usage:   "boundary serve [--config FILE] [--listen ADDR] [--policies DIR] [--upstream URL|DSN] [--trust-mode MODE] [--require-agent-id] [--dry-run] [--receipt-seed FILE] [--record-dir DIR | --no-records]",
 		Common: []string{
 			"boundary serve --policies ./policies/ --listen :8080",
 			"boundary serve --upstream http://localhost:9000/mcp",
 			"boundary serve --config boundary.yaml",
 			"boundary serve --policies ./policies/ --receipt-seed ./boundary-receipt.seed",
+			"boundary serve --policies ./policies/ --dry-run",
 			"boundary serve --policies ./policies/ --record-dir /var/lib/boundary/serve",
 		},
 		Notes: []string{
@@ -261,6 +262,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 			"--trust-mode kernel connects only the trust seam to Fulcrum services; the policy seam still loads the local policy dir.",
 			"Evaluator faults fail closed for the configured transports and otherwise fall through; a policy deny is a decision, a backend fault is not.",
 			"--receipt-seed signs every emitted decision record with the Ed25519 seed in FILE (64 hex chars); signing is off by default, and a startup error here fails closed (exit 1) rather than serving unsigned.",
+			"--dry-run (or security.dry_run in --config) records every deny and check_indeterminate with dry_run=true and lets the call proceed, without changing the agent's trust. escalate and require_approval still hold the call: they route to approval, not to a deny.",
 			"Every decision is written as a record `boundary verify-record` accepts, under DIR/records/, plus DIR/decision-records.jsonl. DIR defaults to .boundary/serve in the working directory; --record-dir or server.record_dir overrides it. --no-records or server.records: false turns records off, leaving only the stdout audit log.",
 			"A signature proves who signed the record, not the verdict or that execution happened; key custody is the operator's (see docs/SIGNING.md).",
 		},
@@ -274,6 +276,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	requireAgentID := fs.Bool("require-agent-id", false, "deny protected adapter requests without agent identity")
 	recordDir := fs.String("record-dir", defaultServeRecordDir, "directory for verify-record decision records, one per decision")
 	noRecords := fs.Bool("no-records", false, "do not write decision records; only the stdout audit log remains")
+	dryRun := fs.Bool("dry-run", false, "record would-be denies with dry_run=true and let the call proceed")
 	receiptSeed := fs.String("receipt-seed", "", "path to a 64-hex Ed25519 seed; when set, signs every emitted decision record (off by default)")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -311,6 +314,9 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		}
 		if cfg.Security.RequireAgentID {
 			*requireAgentID = true
+		}
+		if cfg.Security.DryRun {
+			*dryRun = true
 		}
 	}
 
@@ -373,6 +379,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		PolicyBundleHash: policyHash,
 		RequireAgentID:   *requireAgentID,
 		ReceiptSigner:    receiptSigner,
+		DryRun:           *dryRun,
 	}, trustBackend, nil, auditor)
 	pipeline.RegisterInterceptor("query", sqlguard.NewPostgresInterceptor())
 
@@ -390,6 +397,9 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	}
 
 	fmt.Fprintf(stderr, "boundary serve listening on %s in %s mode with %d static policy rules\n", *listen, mode, len(policyResult.Rules))
+	if *dryRun {
+		fmt.Fprintln(stderr, "boundary serve: DRY-RUN: denies are recorded with dry_run=true and not enforced")
+	}
 	if *noRecords {
 		fmt.Fprintln(stderr, "boundary serve: decision records off; only the stdout audit log is written")
 	}

@@ -1,6 +1,6 @@
 package securegithub
 
-// BypassLadderLevel is the Secure GitHub bypass-proof ladder rung a deployment
+// BypassLadderLevel is the Secure GitHub bypass probe ladder rung a deployment
 // has earned. It encodes how much of the "agents can only reach GitHub through
 // Boundary" property is evidenced. Higher is stronger.
 //
@@ -54,7 +54,7 @@ func (l BypassLadderLevel) String() string {
 }
 
 // LadderFacts are the machine-checkable inputs a deployment supplies to classify
-// its bypass-proof level. Every field is a fact the operator or the routed
+// its bypass probe ladder level. Every field is a fact the operator or the routed
 // evidence can substantiate; the classifier never assumes a fact.
 //
 // L1 facts are produced by the routed live-conformance harness. L2 facts are

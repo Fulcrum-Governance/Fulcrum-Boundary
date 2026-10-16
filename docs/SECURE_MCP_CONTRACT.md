@@ -44,7 +44,7 @@ profile:
   evidence:
     tests: []
     docs: []
-  bypass_model: docs/deployment/secure-github-bypass-proofing.md
+  bypass_model: docs/deployment/secure-github-bypass-evidence.md
 
 descriptor_lock:
   mode: warn
@@ -295,7 +295,7 @@ Secure MCP is a pattern. Individual profiles own their maturity.
 |---|---|
 | `planned` | Contract or roadmap only. |
 | `preview` | Core fixture, local lifecycle, or scoped live conformance works, but production bypass evidence or broader live coverage is incomplete. |
-| `production` | Full lifecycle, live conformance where needed, descriptor behavior, bypass proof, fail-mode tests, and claims ledger evidence exist. |
+| `production` | Full lifecycle, live conformance where needed, descriptor behavior, bypass evidence, fail-mode tests, and claims ledger evidence exist. |
 
-Secure GitHub MCP remains preview until deployment bypass proof and broader
+Secure GitHub MCP remains preview until deployment bypass evidence and broader
 live coverage exist.

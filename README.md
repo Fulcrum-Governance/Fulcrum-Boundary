@@ -206,8 +206,8 @@ includes Claude Desktop, Claude Code, Cursor, and VS Code.
 flowchart LR
   A[Agent intent] --> B[Proposed action]
   B --> C{Boundary}
-  C -->|allow| D[Execute routed action]
-  C -->|deny / warn / escalate / require approval| E[No execution or approval path]
+  C -->|allow / warn| D[Execute routed action]
+  C -->|deny / escalate / require approval| E[No execution or approval path]
   C --> F[Decision record]
 ```
 
@@ -309,12 +309,12 @@ against the [Adapter Readiness Matrix](./docs/ADAPTER_READINESS_MATRIX.md).
 
 ### Preview
 
-- `adapters/a2a`: A2A lifecycle adapter with deployment bypass proof still required.
+- `adapters/a2a`: A2A lifecycle adapter with deployment bypass evidence still required.
 - `adapters/cli`: CLI wrapper path with sole-execution-path evidence still required.
-- `adapters/codeexec`: Code execution adapter with named sandbox and bypass proof still required.
+- `adapters/codeexec`: Code execution adapter with named sandbox and bypass evidence still required.
 - `adapters/grpc`: gRPC adapter with deployment and streaming evidence still required.
 - `adapters/managedagents`: Managed Agents lifecycle surface pending live upstream conformance.
-- `adapters/securegithub`: Secure GitHub preview pending deployment bypass proof.
+- `adapters/securegithub`: Secure GitHub preview pending deployment bypass evidence.
 - `adapters/webhook`: Webhook adapter with downstream sole-action-path evidence still required.
 
 ## Documentation

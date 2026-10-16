@@ -51,7 +51,7 @@ events send endpoint directly. Boundary is the sole component allowed to send
 tool confirmations upstream.
 
 See
-[`docs/deployment/managed-agents-bypass-proofing.md`](../deployment/managed-agents-bypass-proofing.md).
+[`docs/deployment/managed-agents-bypass-evidence.md`](../deployment/managed-agents-bypass-evidence.md).
 
 ## Live Conformance
 

@@ -41,7 +41,7 @@ spec statuses map onto the ledger's three machine values (`delivered` / `partial
 |---|---|---|
 | `production` | `delivered` | **The one production route: MCP**, and only MCP. Full lifecycle proven incl. integration + fail-mode tests; production gap is deployment topology only. |
 | `delivered` | `delivered` | Real, tested code that is the genuine article on its own terms but is **not the production route** — the Go SDK core, the CLI command mechanics, the GitHub Action (CI-local). |
-| `delivered-preview` | `delivered` | Real, tested code that governs **routed paths only** and ships a fixture demo (Command / Edit Boundary); production gated on deployment-bypass proof. |
+| `delivered-preview` | `delivered` | Real, tested code that governs **routed paths only** and ships a fixture demo (Command / Edit Boundary); production gated on deployment bypass evidence. |
 | `preview` | `partial` | Core lifecycle works; gated on deployment-bypass (and sometimes live-conformance) evidence. |
 | `starter` | `delivered` | Deliberately incomplete output requiring operator review (generated policies). |
 | `local-only` | `delivered` | Reads local artifacts, not hosted (dashboard, doctor, evidence, version). |
@@ -263,9 +263,9 @@ if !decision.Allowed() { /* block before the tool runs */ }
 
 `boundary serve` stands up an `http.Server` that is a governed **MCP JSON-RPC proxy** (`mcp.NewGateway` forwarding to an upstream MCP HTTP URL). It **governs every request before forwarding**, **filters `tools/list`**, **preserves request IDs**, and **fails closed**. In deployment this is the surface that sits in front of an MCP server — and it is **the project's one `production` adapter**.
 
-*Evidence:* `adapters/mcp/gateway.go` (`ServeHTTP` governs single + batch JSON-RPC, writes governance headers, `204 No Content` on suppressed emit); `adapters/mcp/readiness.yaml` (`status: production`; `parse/identify/evaluate/deny/forward/inspect/metadata/fail_closed = implemented`; `record`, `bypass_proof = delegated`). Status: **production**.
+*Evidence:* `adapters/mcp/gateway.go` (`ServeHTTP` governs single + batch JSON-RPC, writes governance headers, `204 No Content` on suppressed emit); `adapters/mcp/readiness.yaml` (`status: production`; `parse/identify/evaluate/deny/forward/inspect/metadata/fail_closed = implemented`; `record`, `bypass_evidence = delegated`). Status: **production**.
 
-> **Routed-only caveat (load-bearing).** `bypass_proof` is **delegated to deployment network topology**. The gateway governs the route; proving it is the *sole* path to the MCP server is a deployment guarantee, not a code guarantee. See §10.0–§10.1.
+> **Routed-only caveat (load-bearing).** `bypass_evidence` is **delegated to deployment network topology**. The gateway governs the route; proving it is the *sole* path to the MCP server is a deployment guarantee, not a code guarantee. See §10.0–§10.1.
 
 ## 2.5 Surface D — the GitHub Action (`actions/mcp-audit`)
 
@@ -289,12 +289,12 @@ The three-beat story Boundary already ships and the launch leads with.
 
 ## 3.2 The four-stage pipeline (`governance/pipeline.go`)
 
-`Pipeline.Evaluate(ctx, req)` runs **four ordered stages**. Each stage is a **silent no-op, not an error**, when it has no data (nil `TrustChecker`, empty `AgentID`, no interceptor, no static rules). The first stage to reach a terminal verdict returns; otherwise control falls through, defaulting to `allow`.
+`Pipeline.Evaluate(ctx, req)` runs **four ordered stages**. Each stage is a **silent no-op, not an error**, when it has no data (nil `TrustChecker`, empty `AgentID`, no interceptor, no static rules). The most restrictive verdict wins: `deny` > `require_approval` > `escalate` > `warn` > `allow`. A `deny` or `check_indeterminate` ends evaluation. Any other verdict is kept while later stages run, and a later stage can only raise it. With no verdict from any stage the result is `allow`.
 
 | Stage | Name | What it does | Terminal behavior | Evidence (`pipeline.go`) |
 |-------|------|--------------|-------------------|--------------------------|
 | **1** | **Trust check** (`TrustChecker`) | Skipped when checker `nil` or `AgentID==""`. Isolated/Terminated → `deny`; Evaluating → score 0.5; enforces `RequireAgentID` for protected transports. | checker **error → `check_indeterminate` (fail-closed, blocks)** | `Evaluate`, stage 1 trust check |
-| **2** | **Static policies** | Linear scan of `StaticPolicyRule`s. Tool matches by exact name, `*`/`""`, or `path.Match` glob (malformed → silent non-match). Supports field matches (e.g. `arguments.sql contains "DROP TABLE"`). | first matching `deny`/`warn`/`escalate`/`require_approval` is terminal | `Evaluate`, stage 2 static policies; `toolMatches` |
+| **2** | **Static policies** | Linear scan of `StaticPolicyRule`s. Tool matches by exact name, `*`/`""`, or `path.Match` glob (malformed → silent non-match). Supports field matches (e.g. `arguments.sql contains "DROP TABLE"`). | every rule is matched across all policy files; the most restrictive match decides (`deny` > `require_approval` > `escalate` > `warn` > `audit` > `allow`), so file and rule order never matter. Only `deny` ends evaluation; `warn`/`audit` never skip the interceptors or the evaluator. Every match is listed in the decision's `matched_rules`; the audit log carries their digests as `matched_rules_hash`, and MCP responses name only the winner | `Evaluate`, stage 2 static policies; `toolMatches` |
 | **3** | **Domain interceptors** (`Interceptor` registry, one fn/tool) | Where SQL parsing, path allow-lists, rate limits live. `nil,nil` declines; `Allowed=false` blocks. | interceptor **error → `check_indeterminate` (fail-closed, blocks)** | `Evaluate`, stage 3 domain interceptors |
 | **4** | **PolicyEval engine** (`policyeval.Evaluator`) | Full policy evaluation. Maps `ActionDeny/Escalate/RequireApproval/Warn`. | evaluator **error → `check_indeterminate` (fail-closed, blocks) on every transport unless declared non-enforcing** | `Evaluate`, stage 4 PolicyEval engine |
 
@@ -426,9 +426,9 @@ no-live-mutation demo*, and nothing more. **This is the one canonical spine tabl
 
 Status values are defined by the in-repo readiness gate (`docs/ADAPTER_READINESS_MATRIX.md`, enforced by `tests/adapter_conformance`). The gate is itself a differentiator: it **fails the build** when an adapter is missing a `readiness.yaml`, omits one of the ten lifecycle steps, or is listed `production` without conformance evidence. (Spec-status ↔ ledger mapping is the canonical legend in §0.)
 
-The ten lifecycle steps: `parse`, `identify`, `evaluate`, `deny`, `forward`, `inspect`, `metadata`, `record`, **`bypass_proof`**, `fail_closed`. Step states: `implemented`, `delegated`, `not_applicable`, `stub`.
+The ten lifecycle steps: `parse`, `identify`, `evaluate`, `deny`, `forward`, `inspect`, `metadata`, `record`, **`bypass_evidence`**, `fail_closed`. Step states: `implemented`, `delegated`, `not_applicable`, `stub`.
 
-**The uniform gap to production is `bypass_proof`.** Across *every* preview adapter, the single step holding it below production is `bypass_proof: delegated` (owner = deployment topology / credential boundary). Boundary's pipeline, deny, and fail-closed logic are real and tested; what is **not** proven in-repo is that the deployment has no direct tool path around Boundary. That is a deployment-topology guarantee, not a code defect — it is exactly the routed-only doctrine (§10.0).
+**The uniform gap to production is `bypass_evidence`.** Across *every* preview adapter, the single step holding it below production is `bypass_evidence: delegated` (owner = deployment topology / credential boundary). Boundary's pipeline, deny, and fail-closed logic are real and tested; what is **not** proven in-repo is that the deployment has no direct tool path around Boundary. That is a deployment-topology guarantee, not a code defect — it is exactly the routed-only doctrine (§10.0).
 
 ## 4.2 The honest preview matrix (every adapter except MCP)
 
@@ -436,12 +436,12 @@ The authoritative per-surface status table — the union of the eight `adapters/
 
 | Surface | Status | Lifecycle gap holding it below production | Key gap ID | Evidence (readiness.yaml + claim) |
 |---|---|---|---|---|
-| **MCP** *(spine — production)* | `production` | `bypass_proof: delegated`, `record: delegated` — only deployment topology remains | — | `adapters/mcp/readiness.yaml`; BND-CLAIM-006 (`delivered`) |
+| **MCP** *(spine — production)* | `production` | `bypass_evidence: delegated`, `record: delegated` — only deployment topology remains | — | `adapters/mcp/readiness.yaml`; BND-CLAIM-006 (`delivered`) |
 | **Command Boundary** *(spine — delivered-preview, routed-only)* | `delivered-preview` | Deployment evidence the Boundary wrapper is the **sole** command path | BND-CLI-002 | `adapters/cli/readiness.yaml`; BND-CLAIM-CMD-001/002 (`delivered`) |
 | **Edit Boundary** | `delivered-preview` | Deployment evidence edit proposals route only through Boundary edit envelopes | — | `docs/RELEASE_TRUTH_PUBLIC.md`; BND-CLAIM-EDIT-001/002 (`delivered`) |
 | **Secure GitHub** *(Secure MCP profile, not a transport)* | `preview` | Deployment bypass evidence + broader live coverage; opt-in live conformance proves the denied-write no-mutation path, **not** bypass resistance | BND-GH-002 | `adapters/securegithub/readiness.yaml`; BND-CLAIM-015/018 (`delivered`), BND-CLAIM-019 (`partial`) |
 | **CLI (transport adapter)** | `preview` | Sole-wrapper deployment evidence | BND-CLI-002 | `adapters/cli/readiness.yaml` |
-| **CodeExec** | `preview` | A **real named sandbox boundary** (container / WASM / microVM / OS sandbox) with integration tests + bypass proof; **no secure sandboxing claimed** | BND-CODE-001 | `adapters/codeexec/readiness.yaml` |
+| **CodeExec** | `preview` | A **real named sandbox boundary** (container / WASM / microVM / OS sandbox) with integration tests + bypass evidence; **no secure sandboxing claimed** | BND-CODE-001 | `adapters/codeexec/readiness.yaml` |
 | **gRPC** | `preview` | Unary lifecycle works with governance trailers; **streaming** needs per-message lifecycle tests + deployment bypass evidence | BND-GRPC-001 | `adapters/grpc/readiness.yaml` |
 | **A2A** | `preview` | Governed against a documented protocol snapshot; production needs **live** protocol conformance + deployment bypass evidence | BND-A2A-002 | `adapters/a2a/readiness.yaml` |
 | **Managed Agents** | `preview` (`target_status: production`) | A **live upstream Managed Agents conformance run with operator-owned credentials** | BND-MAPROD-001 | `adapters/managedagents/readiness.yaml`; BND-CLAIM-007 (`partial`) |
@@ -463,7 +463,7 @@ Supporting capabilities (not adapters, included for scope completeness):
 
 ## 4.3 Routed-only scope for the matrix (pointer to §10.0)
 
-Every preview row above is held below `production` by the same thing: **deployment-bypass proof**. The doctrine and the FORBIDDEN public-capability list ("global shell control" / "all CLI activity protected" / "governs every way an agent can mutate") are stated canonically in **§10.0** and the replacement table in **§12.3**; this matrix does not restate them. (C9)
+Every preview row above is held below `production` by the same thing: **deployment bypass evidence**. The doctrine and the FORBIDDEN public-capability list ("global shell control" / "all CLI activity protected" / "governs every way an agent can mutate") are stated canonically in **§10.0** and the replacement table in **§12.3**; this matrix does not restate them. (C9)
 
 ---
 
@@ -675,7 +675,7 @@ Claim-safe by construction (every line is negated/limitation framing, which the 
 | Discovery does **not protect** discovered servers or mutate configs | Inventory is read-only; protection begins only after install/routing | `BND-CLAIM-011` |
 | The version command does **not prove supply-chain / binary integrity** | Local metadata output only | `BND-CLAIM-UTIL-001` |
 | Dashboard / doctor / evidence bundle do **not prove** every route is protected | `local-only` visibility, not runtime enforcement | `BND-CLAIM-016/UTIL-003/UTIL-004` |
-| Secure GitHub is **preview, not production** | Preview fixture proof ≠ live conformance; bypass proof still required | `BND-CLAIM-015/018`, `BND-CLAIM-019` (`partial`) |
+| Secure GitHub is **preview, not production** | Preview fixture proof ≠ live conformance; bypass evidence still required | `BND-CLAIM-015/018`, `BND-CLAIM-019` (`partial`) |
 | Managed Agents is **preview** | Production needs a recorded live upstream conformance run | `BND-CLAIM-007` (`partial`) |
 
 ## 7.6 R1 — "Boundary decides," never "Fulcrum decides" (truth-discipline record)
@@ -942,13 +942,13 @@ The C6/C7 mechanics are canonical in §6; the threat-model-facing summary: **(C6
 
 ## 10.5 Per-surface maturity (the honest preview matrix — pointer to §4.2)
 
-Only the MCP route is `production`; everything else is honestly labeled. **The spine is the two demoed lanes (§10.3); the per-surface rows are NOT headline features.** The authoritative per-surface table (every adapter, its status, the lifecycle gap, and the ledger anchor) is canonical in **§4.2** and is not restated here; promotion to `production` is uniformly gated on **deployment-bypass proof** (§11.1).
+Only the MCP route is `production`; everything else is honestly labeled. **The spine is the two demoed lanes (§10.3); the per-surface rows are NOT headline features.** The authoritative per-surface table (every adapter, its status, the lifecycle gap, and the ledger anchor) is canonical in **§4.2** and is not restated here; promotion to `production` is uniformly gated on **deployment bypass evidence** (§11.1).
 
 - **Distribution (C10):** prebuilt channels (Homebrew tap, container image, archives + SHA256 manifests) ship from the tag-gated pipeline for `v0.10.1`+, plus `go install …/cmd/boundary@v0.13.1` from source (`BND-CLAIM-DIST-001`). **No hosted-monitoring**; the dashboard reads local artifacts only.
 
 ## 10.6 Out of scope for this release (stated plainly)
 
-Boundary does **not** claim, and public copy must not imply: **global shell / system control**, "all CLI activity protected", or "governs every way an agent can mutate" (C9); a **general SQL firewall** or semantic SQL analysis (`BND-CLAIM-004` = `false`); a **universal prompt-injection / "blocks every attack"** defense (fixtures cover *tested* paths only); a **formal-verification product** (proofs are correspondence-only, never the hook — C7); **hosted monitoring or cloud analysis** (local-first; C10); **production status for any non-MCP adapter** (all others preview/starter/local-only pending deployment-bypass proof); **cryptographic receipts / signed proof of verdict** (records are hash-verifiable logs — C6); **the standalone↔kernel contract as a shipped integration** (kernel mode is a documented contract surface only — C3, §10.7).
+Boundary does **not** claim, and public copy must not imply: **global shell / system control**, "all CLI activity protected", or "governs every way an agent can mutate" (C9); a **general SQL firewall** or semantic SQL analysis (`BND-CLAIM-004` = `false`); a **universal prompt-injection / "blocks every attack"** defense (fixtures cover *tested* paths only); a **formal-verification product** (proofs are correspondence-only, never the hook — C7); **hosted monitoring or cloud analysis** (local-first; C10); **production status for any non-MCP adapter** (all others preview/starter/local-only pending deployment bypass evidence); **cryptographic receipts / signed proof of verdict** (records are hash-verifiable logs — C6); **the standalone↔kernel contract as a shipped integration** (kernel mode is a documented contract surface only — C3, §10.7).
 
 ## 10.7 Standalone posture & the kernel contract surface (locks C3 — proof in §5)
 
@@ -962,8 +962,8 @@ Boundary does **not** claim, and public copy must not imply: **global shell / sy
 > a current capability, and none of it carries a `delivered`/`production` status. The honest preview
 > matrix (§4.2/§10.5) is the present tense; this is the future tense.
 
-## 11.1 Adapter promotion to `production` — via deployment-bypass proof
-Every preview adapter (Secure GitHub, Command, Edit, gRPC, A2A, CodeExec, Webhook, Managed Agents) has the **same uniform gate: deployment-bypass proof** — evidence that the Boundary route is the *only* relevant route for the protected workflow. Per `docs/command-boundary/BYPASS_MODEL.md` and each `readiness.yaml`: operators intentionally route protected actions through Boundary; shell/shim (or topology) setup is reproducible and reversible; direct bypass paths are blocked by environment policy or documented out of scope; decision records exist for routed attempts; tests prove denied actions do not execute **and** allowed actions execute exactly once; bypass limitations are documented in release truth. Promotion order is demand-led — **not a dated roadmap.**
+## 11.1 Adapter promotion to `production` — via deployment bypass evidence
+Every preview adapter (Secure GitHub, Command, Edit, gRPC, A2A, CodeExec, Webhook, Managed Agents) has the **same uniform gate: deployment bypass evidence** — evidence that the Boundary route is the *only* relevant route for the protected workflow. Per `docs/command-boundary/BYPASS_MODEL.md` and each `readiness.yaml`: operators intentionally route protected actions through Boundary; shell/shim (or topology) setup is reproducible and reversible; direct bypass paths are blocked by environment policy or documented out of scope; decision records exist for routed attempts; tests prove denied actions do not execute **and** allowed actions execute exactly once; bypass limitations are documented in release truth. Promotion order is demand-led — **not a dated roadmap.**
 
 ## 11.2 Maintenance — `policyeval` de-fork
 Boundary's `policyeval/` and the private control plane's copy are independent and have drifted. For a standalone OSS tool this divergence is *correct posture today* but a standing **maintenance liability** (a policy-semantics fix in one tree does not propagate). The de-fork (a shared, public, contract-tested core, or a documented one-way sync) is a **future maintenance item — not a release blocker**, and explicitly **not** to be resolved by coupling the OSS repo to the private repo.
