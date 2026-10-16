@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -167,4 +168,148 @@ func TestServe_RecordsCanBeTurnedOff(t *testing.T) {
 			}
 		})
 	}
+}
+
+// serve keeps its record dir owner-only, for the default dir and --record-dir:
+// a missing dir is created 0700, an owned dir with group or other bits is
+// tightened to 0700 with one startup line, and a symlink or non-directory stops
+// serve before the listener opens. Record files are written 0600.
+func TestServe_RecordDirIsOwnerOnly(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permission bits")
+	}
+	bin := buildBoundary(t)
+
+	perm := func(t *testing.T, path string) os.FileMode {
+		t.Helper()
+		info, err := os.Lstat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return info.Mode().Perm()
+	}
+	start := func(t *testing.T, workDir string, extra ...string) (*exec.Cmd, *syncBuffer, string) {
+		t.Helper()
+		policyDir := t.TempDir()
+		writeDenyPolicy(t, policyDir)
+		addr := freePort(t)
+		upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":1,"result":{}}`))
+		}))
+		t.Cleanup(upstream.Close)
+		args := append([]string{"serve", "--listen", addr, "--policies", policyDir, "--upstream", upstream.URL}, extra...)
+		cmd := exec.Command(bin, args...)
+		cmd.Dir = workDir
+		stderr := &syncBuffer{}
+		cmd.Stderr = stderr
+		return cmd, stderr, addr
+	}
+	runAndCheck := func(t *testing.T, workDir, recordDir string, wantTighten bool, extra ...string) {
+		t.Helper()
+		cmd, stderr, addr := start(t, workDir, extra...)
+		if err := cmd.Start(); err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = cmd.Process.Kill(); _ = cmd.Wait() }()
+		if err := pollTCP(addr, time.Now().Add(10*time.Second)); err != nil {
+			t.Fatalf("serve did not start: %v; stderr=%s", err, stderr.String())
+		}
+		postMCP(t, "http://"+addr, `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"blocked_tool","arguments":{}}}`)
+		if got := perm(t, recordDir); got != 0o700 {
+			t.Fatalf("record dir perm = %o, want 700", got)
+		}
+		lines := strings.Count(stderr.String(), "tightened record dir")
+		if wantTighten && lines != 1 {
+			t.Fatalf("want one tightening line, got %d; stderr=%s", lines, stderr.String())
+		}
+		if !wantTighten && lines != 0 {
+			t.Fatalf("unexpected tightening line; stderr=%s", stderr.String())
+		}
+		files, _ := filepath.Glob(filepath.Join(recordDir, "records", "*.json"))
+		files = append(files, filepath.Join(recordDir, "decision-records.jsonl"))
+		for _, f := range files {
+			if got := perm(t, f); got != 0o600 {
+				t.Fatalf("%s perm = %o, want 600", f, got)
+			}
+		}
+	}
+	refused := func(t *testing.T, workDir, want string, extra ...string) {
+		t.Helper()
+		cmd, stderr, _ := start(t, workDir, extra...)
+		done := make(chan error, 1)
+		if err := cmd.Start(); err != nil {
+			t.Fatal(err)
+		}
+		go func() { done <- cmd.Wait() }()
+		select {
+		case err := <-done:
+			if err == nil {
+				t.Fatalf("serve exited 0; stderr=%s", stderr.String())
+			}
+		case <-time.After(15 * time.Second):
+			_ = cmd.Process.Kill()
+			t.Fatalf("serve started instead of refusing; stderr=%s", stderr.String())
+		}
+		if !strings.Contains(stderr.String(), want) {
+			t.Fatalf("stderr does not say %q: %s", want, stderr.String())
+		}
+	}
+
+	t.Run("default dir missing is created 0700", func(t *testing.T) {
+		workDir := t.TempDir()
+		runAndCheck(t, workDir, filepath.Join(workDir, ".boundary", "serve"), false)
+	})
+	t.Run("default dir 0755 is tightened", func(t *testing.T) {
+		workDir := t.TempDir()
+		dir := filepath.Join(workDir, ".boundary", "serve")
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		runAndCheck(t, workDir, dir, true)
+	})
+	t.Run("record-dir 0750 is tightened", func(t *testing.T) {
+		dir := filepath.Join(t.TempDir(), "records")
+		if err := os.Mkdir(dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(dir, 0o750); err != nil {
+			t.Fatal(err)
+		}
+		runAndCheck(t, t.TempDir(), dir, true, "--record-dir", dir)
+	})
+	t.Run("record-dir pre-created 0700 like the image is used as is", func(t *testing.T) {
+		dir := filepath.Join(t.TempDir(), "var", "lib", "boundary", "serve")
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		runAndCheck(t, t.TempDir(), dir, false, "--record-dir", dir)
+	})
+	t.Run("record-dir symlink is refused", func(t *testing.T) {
+		link := filepath.Join(t.TempDir(), "records")
+		if err := os.Symlink(t.TempDir(), link); err != nil {
+			t.Fatal(err)
+		}
+		refused(t, t.TempDir(), "symlink", "--record-dir", link)
+	})
+	t.Run("default dir symlink is refused", func(t *testing.T) {
+		workDir := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(workDir, ".boundary"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(t.TempDir(), filepath.Join(workDir, ".boundary", "serve")); err != nil {
+			t.Fatal(err)
+		}
+		refused(t, workDir, "symlink")
+	})
+	t.Run("record-dir file is refused", func(t *testing.T) {
+		file := filepath.Join(t.TempDir(), "records")
+		if err := os.WriteFile(file, nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		refused(t, t.TempDir(), "not a directory", "--record-dir", file)
+	})
 }

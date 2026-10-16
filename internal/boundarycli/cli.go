@@ -363,6 +363,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 
 	var auditor governance.AuditPublisher = governance.NewSlogAuditPublisher(logger)
 	recordLog := ""
+	recordDirNote := ""
 	if !*noRecords {
 		recorder, err := newServeRecordPublisher(governance.NewSlogAuditPublisher(logger), *recordDir)
 		if err != nil {
@@ -371,6 +372,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		}
 		auditor = recorder
 		recordLog = recorder.logPath()
+		recordDirNote = recorder.startupNote
 	}
 
 	pipeline := governance.NewPipeline(governance.PipelineConfig{
@@ -402,6 +404,9 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	}
 	if *noRecords {
 		fmt.Fprintln(stderr, "boundary serve: decision records off; only the stdout audit log is written")
+	}
+	if recordDirNote != "" {
+		fmt.Fprintln(stderr, recordDirNote)
 	}
 	printRecordLog(stderr, recordLog)
 	srv := &http.Server{

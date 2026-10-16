@@ -294,7 +294,12 @@ appends it to `DIR/decision-records.jsonl`. `DIR` defaults to `.boundary/serve`
 in the working directory, the same `.boundary/<surface>` layout the hook,
 command and edit surfaces use. `--record-dir` or `server.record_dir` in
 `--config` overrides it. The container image sets `--record-dir
-/var/lib/boundary/serve`. serve prints the log path at startup. Each file under
+/var/lib/boundary/serve`, which the image creates `0700` and owned by its
+`boundary` user. serve keeps `DIR` owner-only: it creates a missing `DIR`
+`0700`, changes an owned `DIR` with group or other access to `0700` and says so
+at startup, and refuses to start on a symlink, a non-directory, or a `DIR`
+owned by another user. Record files are `0600`. serve prints the log path at
+startup. Each file under
 `DIR/records/` is a `verify-record` input, and `--receipt-seed` signs them.
 `--no-records` or `server.records: false` turns records off, leaving only the
 stdout audit log, which `verify-record` does not accept. Records are not
