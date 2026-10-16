@@ -172,11 +172,15 @@ type CheckFailure struct {
 
 // GovernanceDecision is the canonical output of the governance pipeline.
 type GovernanceDecision struct {
-	RequestID      string        `json:"request_id"`
-	Action         string        `json:"action"` // allow, deny, warn, escalate, require_approval, check_indeterminate
-	Reason         string        `json:"reason"`
-	PolicyID       string        `json:"policy_id,omitempty"`
-	MatchedRule    string        `json:"matched_rule,omitempty"`
+	RequestID   string `json:"request_id"`
+	Action      string `json:"action"` // allow, deny, warn, escalate, require_approval, check_indeterminate
+	Reason      string `json:"reason"`
+	PolicyID    string `json:"policy_id,omitempty"`
+	MatchedRule string `json:"matched_rule,omitempty"`
+	// MatchedRules names every static rule that matched the request, in
+	// policy order. MatchedRule is the one that decided, when a static rule
+	// decided.
+	MatchedRules   []string      `json:"matched_rules,omitempty"`
 	PolicyFile     string        `json:"policy_file,omitempty"`
 	GatewayVersion string        `json:"gateway_version,omitempty"`
 	TrustScore     float64       `json:"trust_score"`

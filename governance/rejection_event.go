@@ -46,5 +46,7 @@ func (p *Pipeline) PublishParseRejection(ctx context.Context, event ParseRejecti
 	// Parse rejections are decision records too: sign them under the same
 	// configured signer so a signing deployment never emits an unsigned record.
 	p.signAuditEvent(&auditEvent)
-	p.auditor.Publish(ctx, auditEvent)
+	// Route through publishAudit so a checked publisher's delivery failure
+	// counts in AuditFailures and Degraded, as it does for evaluated decisions.
+	p.publishAudit(ctx, auditEvent)
 }
