@@ -574,7 +574,7 @@ decision_hash; attaching it does not change decision_hash and does not add a `pr
 decision mode. The proof-receipt sidecar is checker-validated: it carries the
 wired witness for the budget and static-privilege invariants. Boundary's runtime
 behavior corresponds to a machine-checked equilibrium analysis (a Nash equilibrium
-and an exact price-of-anarchy bound) upstream in Fulcrum-Proofs; that
+and an exact price-of-anarchy bound) with Lean sources in `docs/proofs/`; that
 correspondence is a design constraint, not a runtime certificate, and trust
 termination is a circuit-transition consistency check, not a per-decision
 termination proof.

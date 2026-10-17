@@ -136,23 +136,26 @@ func StaticProofCorrespondence() ProofMap {
 		"budget_safety": {
 			Invariant:      "budget_safety",
 			Theorem:        "Fulcrum.budget_safety_guarantee",
-			Repo:           "Fulcrum-Proofs",
-			Path:           "proofs/lean/Proofs/BasicInvariants.lean",
+			Repo:           "Fulcrum-Boundary",
+			Path:           "docs/proofs/lean/Proofs/BasicInvariants.lean",
 			Correspondence: "design",
+			Notes:          "reference copy of Fulcrum-Proofs proofs/lean/Proofs/BasicInvariants.lean at 30e40ff",
 		},
 		"trust_termination": {
 			Invariant:      "trust_termination",
 			Theorem:        "Fulcrum.trust_guaranteed_termination",
-			Repo:           "Fulcrum-Proofs",
-			Path:           "proofs/lean/Proofs/TrustTermination.lean",
+			Repo:           "Fulcrum-Boundary",
+			Path:           "docs/proofs/lean/Proofs/TrustTermination.lean",
 			Correspondence: "design",
+			Notes:          "reference copy of Fulcrum-Proofs proofs/lean/Proofs/TrustTermination.lean at 30e40ff",
 		},
 		"privilege_subset": {
 			Invariant:      "privilege_subset",
 			Theorem:        "Fulcrum.thm_privilege_static",
-			Repo:           "Fulcrum-Proofs",
-			Path:           "proofs/lean/Proofs/BasicInvariants.lean",
+			Repo:           "Fulcrum-Boundary",
+			Path:           "docs/proofs/lean/Proofs/BasicInvariants.lean",
 			Correspondence: "design",
+			Notes:          "reference copy of Fulcrum-Proofs proofs/lean/Proofs/BasicInvariants.lean at 30e40ff",
 		},
 	}
 }

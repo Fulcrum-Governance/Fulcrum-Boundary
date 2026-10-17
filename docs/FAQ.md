@@ -141,8 +141,7 @@ No. Boundary uses proof correspondence as a design constraint, not as a runtime
 certificate, and does not emit `proved` decisions. Correspondence type
 `design` means the runtime behavior was designed to satisfy a proved invariant;
 it does not mean the Go implementation was mechanically extracted from Lean.
-Runtime proof-backed decisions belong to upstream Fulcrum components that
-actually discharge or attach formal evidence. The proof lineage does not
+Boundary has no runtime proof-backed decisions. The Lean sources cited below are a reference copy in `docs/proofs/`, taken from Fulcrum-Proofs at `30e40ff`, where they were machine-checked. The proof lineage does not
 prove that every deployment is safe.
 
 Canonical: [`docs/PROOF_BOUNDARY.md`](PROOF_BOUNDARY.md).

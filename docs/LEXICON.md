@@ -320,8 +320,7 @@ Isolated or Terminated only when the checker condition is met — it is a
 state-machine consistency check, not a per-decision termination proof.
 
 Allowed use: "Trust termination is a circuit-transition consistency check."
-"Boundary's trust termination is expressed as a circuit transition checked by the
-Lean verifier upstream."
+"Boundary's trust termination is expressed as a circuit transition that corresponds by design to a Lean theorem in `docs/proofs/`."
 
 Forbidden use: "Boundary proves per-decision trust termination." "Boundary
 emits a termination proof for every decision."
@@ -330,12 +329,10 @@ Example: "The circuit-transition checker validates circuit_open iff (alpha+1)*q 
 
 ## Machine-Checked Equilibrium Analysis
 
-Definition: The Nash/PoA design correspondence verified upstream in Fulcrum-Proofs
-is machine-checked equilibrium analysis — it is a design constraint held in the
-proof artifacts, never a runtime certificate attached to individual decisions.
+Definition: The Nash/PoA design correspondence is machine-checked equilibrium analysis (Lean sources in `docs/proofs/`). It is a design constraint held in the proof artifacts, never a runtime certificate attached to individual decisions.
 
 Allowed use: "The Nash/PoA correspondence is machine-checked equilibrium analysis
-held upstream in Fulcrum-Proofs — a design constraint, never a runtime certificate."
+with Lean sources in `docs/proofs/` — a design constraint, never a runtime certificate."
 "Boundary's runtime behavior corresponds to a machine-checked equilibrium analysis
 of its trust-circuit and budget-enforcement design."
 
@@ -344,7 +341,7 @@ an equilibrium certificate per decision." "coupled to enforcement as a runtime
 certificate."
 
 Example: "Machine-checked equilibrium analysis (Nash/PoA design correspondence)
-is held upstream; Boundary's runtime decisions do not carry equilibrium certificates."
+is held in the Lean proof artifacts (`docs/proofs/`); Boundary's runtime decisions do not carry equilibrium certificates."
 
 ## Formally Verified Checker
 

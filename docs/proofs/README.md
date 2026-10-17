@@ -12,6 +12,7 @@ This folder is a verbatim copy of the Lean files and theorem inventory that
 | `lean/Proofs/BasicInvariants.lean` | `proofs/lean/Proofs/BasicInvariants.lean` |
 | `lean/Proofs/TrustTermination.lean` | `proofs/lean/Proofs/TrustTermination.lean` |
 | `lean/Proofs/GameTheory/CoordinationEfficiency.lean` | `proofs/lean/Proofs/GameTheory/CoordinationEfficiency.lean` |
+| `lean/Proofs/GameTheory/CoordinationEfficiencyExact.lean` | `proofs/lean/Proofs/GameTheory/CoordinationEfficiencyExact.lean` |
 | `lean/Proofs/GameTheory/NashExistence.lean` | `proofs/lean/Proofs/GameTheory/NashExistence.lean` |
 | `lean/Proofs/GameTheory/MixedNashExistence.lean` | `proofs/lean/Proofs/GameTheory/MixedNashExistence.lean` |
 | `theorem_inventory.yaml` | `claims/theorem_inventory.yaml` |
