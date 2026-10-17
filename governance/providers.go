@@ -122,8 +122,8 @@ type EnvelopeManager interface {
 	TransitionEnvelope(ctx context.Context, id EnvelopeID, state EnvelopeState) error
 }
 
-// ProofRef is documentation metadata linking a Boundary behavior to a formal
-// proof in the Fulcrum-Proofs repo. It is descriptive provenance, not a runtime
+// ProofRef is documentation metadata linking a Boundary behavior to a Lean
+// theorem in the reference copy under docs/proofs/. It is descriptive provenance, not a runtime
 // certificate: it records which theorem a behavior was designed to satisfy, not
 // proof that the running code discharges it. See docs/PROOF_BOUNDARY.md.
 type ProofRef struct {
@@ -132,7 +132,8 @@ type ProofRef struct {
 	// Theorem is the fully qualified Lean 4 theorem name (e.g.
 	// Fulcrum.budget_safety_guarantee).
 	Theorem string
-	// Repo is the repository holding the proof (Fulcrum-Proofs).
+	// Repo is the repository holding the cited Lean source (Fulcrum-Boundary,
+	// whose docs/proofs/ is a reference copy from Fulcrum-Proofs).
 	Repo string
 	// Path is the proof's source file path within Repo.
 	Path string

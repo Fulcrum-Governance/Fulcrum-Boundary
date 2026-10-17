@@ -149,7 +149,7 @@ the upstream `user.tool_confirmation` event with `allow` or `deny`.
 
 ### `fulcrum-trust` LangGraph adapter
 
-Repo: [`fulcrum-trust`](https://github.com/Fulcrum-Governance/fulcrum-trust)
+Package: `fulcrum-trust` on PyPI
 (`/fulcrum_trust/adapters/langgraph.py`).
 
 LangGraph runs in-process with the agent. The Python adapter does not

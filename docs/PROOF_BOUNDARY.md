@@ -1,9 +1,7 @@
 # Proof Boundary
 
 Boundary uses proof correspondence as a design constraint, not as a runtime
-certificate. Boundary does not emit `proved` decisions. Runtime proof-backed
-decisions belong to upstream Fulcrum components that actually discharge or
-attach formal evidence.
+certificate. Boundary does not emit `proved` decisions. Boundary has no runtime proof-backed decisions. The Lean sources cited below are a reference copy in `docs/proofs/`, taken from Fulcrum-Proofs at `30e40ff`, where they were machine-checked.
 
 Correspondence type `design` means the runtime behavior was designed to satisfy
 the proved invariant. It does not mean the Go implementation was mechanically
@@ -11,16 +9,18 @@ extracted from Lean.
 
 | Boundary behavior | Lean 4 theorem | Repo path | Correspondence |
 |---|---|---|---|
-| Budget check denies when remaining budget is below requested cost | `Fulcrum.budget_safety_guarantee` | `Fulcrum-Proofs/proofs/lean/Proofs/BasicInvariants.lean` | design |
-| Local budget invariant wrapper | `Fulcrum.thm_budget_local` | `Fulcrum-Proofs/proofs/lean/Proofs/BasicInvariants.lean` | design |
-| Trust below theta triggers isolation or termination behavior | `Fulcrum.trust_termination_invariant` | `Fulcrum-Proofs/proofs/lean/Proofs/TrustTermination.lean` | design |
-| Repeated failures eventually cross the trust threshold | `Fulcrum.trust_guaranteed_termination` | `Fulcrum-Proofs/proofs/lean/Proofs/TrustTermination.lean` | design |
-| Failure accumulation monotonically degrades trust | `Fulcrum.trust_failure_degrades` | `Fulcrum-Proofs/proofs/lean/Proofs/TrustTermination.lean` | design |
-| Terminated circuit state is absorbing | `Fulcrum.terminated_is_absorbing` | `Fulcrum-Proofs/proofs/lean/Proofs/TrustTermination.lean` | design |
-| Child or requested privileges remain a subset of available privileges | `Fulcrum.thm_privilege_static` | `Fulcrum-Proofs/proofs/lean/Proofs/BasicInvariants.lean` | design |
-| Constrained budget game has exact PoA 1 under theorem assumptions | `Fulcrum.GameTheory.constrained_poa_exact` | `Fulcrum-Proofs/proofs/lean/Proofs/GameTheory/CoordinationEfficiency.lean` | design |
-| Fulcrum coordination game has a pure Nash equilibrium under theorem assumptions | `Fulcrum.GameTheory.fulcrum_pure_nash_exists` | `Fulcrum-Proofs/proofs/lean/Proofs/GameTheory/NashExistence.lean` | design |
-| Finite normal-form game has a mixed Nash equilibrium | `Fulcrum.GameTheory.mixed_nash_exists` | `Fulcrum-Proofs/proofs/lean/Proofs/GameTheory/MixedNashExistence.lean` | design |
+| Budget check denies when remaining budget is below requested cost | `Fulcrum.budget_safety_guarantee` | `docs/proofs/lean/Proofs/BasicInvariants.lean` | design |
+| Local budget invariant wrapper | `Fulcrum.thm_budget_local` | `docs/proofs/lean/Proofs/BasicInvariants.lean` | design |
+| Trust below theta triggers isolation or termination behavior | `Fulcrum.trust_termination_invariant` | `docs/proofs/lean/Proofs/TrustTermination.lean` | design |
+| Repeated failures eventually cross the trust threshold | `Fulcrum.trust_guaranteed_termination` | `docs/proofs/lean/Proofs/TrustTermination.lean` | design |
+| Failure accumulation monotonically degrades trust | `Fulcrum.trust_failure_degrades` | `docs/proofs/lean/Proofs/TrustTermination.lean` | design |
+| Terminated circuit state is absorbing | `Fulcrum.terminated_is_absorbing` | `docs/proofs/lean/Proofs/TrustTermination.lean` | design |
+| Child or requested privileges remain a subset of available privileges | `Fulcrum.thm_privilege_static` | `docs/proofs/lean/Proofs/BasicInvariants.lean` | design |
+| Constrained budget game has exact PoA 1 under theorem assumptions | `Fulcrum.GameTheory.constrained_poa_exact` | `docs/proofs/lean/Proofs/GameTheory/CoordinationEfficiencyExact.lean` | design |
+| Fulcrum coordination game has a pure Nash equilibrium under theorem assumptions | `Fulcrum.GameTheory.fulcrum_pure_nash_exists` | `docs/proofs/lean/Proofs/GameTheory/NashExistence.lean` | design |
+| Finite normal-form game has a mixed Nash equilibrium | `Fulcrum.GameTheory.mixed_nash_exists` | `docs/proofs/lean/Proofs/GameTheory/MixedNashExistence.lean` | design |
+
+The copy is for reading and citation. It is not built or checked in this repo's CI.
 
 ## Proof-receipt sidecar (proof-receipt-v0.1)
 

@@ -22,7 +22,7 @@ const (
 )
 
 // Invariant is one checker-validated invariant line in a proof receipt. It
-// names the upstream Lean theorem, the predicate that was checked, the
+// names the Lean theorem, the predicate that was checked, the
 // canonical hash of the witness inputs the checker consumed, and the result.
 type Invariant struct {
 	TheoremID  string `json:"theorem_id"`
