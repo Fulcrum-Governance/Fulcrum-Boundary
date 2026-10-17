@@ -1,9 +1,9 @@
 # Decisions — where they live
 
 **Cross-repo architecture and strategy decisions for the Fulcrum four-repo
-system live in one canonical series: fulcrum-io
-[`.claude/decisions/`](https://github.com/Fulcrum-Governance/Fulcrum-IO/tree/main/.claude/decisions)
-— see its `INDEX.md` for the full numbered table (ADR-001…).** This repo's
+system live in one canonical series: fulcrum-io `.claude/decisions/`
+(a private repository) — see its `INDEX.md` for the full numbered table
+(ADR-001…).** This repo's
 local decision surfaces are frozen.
 
 ## Freeze rule (FUL-353, program parent FUL-266)
