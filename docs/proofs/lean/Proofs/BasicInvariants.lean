@@ -1,0 +1,87 @@
+import Mathlib.Data.Set.Basic
+
+namespace Fulcrum
+
+structure AgentBudget where
+  currentSpent : Nat
+  aggregateLimit : Nat
+
+structure FinancialAction where
+  delta : Nat
+
+/-- Generic guarded resource update: a monotone counter may increase by
+    `delta` only when the post-state remains within `limit`. -/
+def applyGuardedResource (current limit delta : Nat) : Option Nat :=
+  let spent' := current + delta
+  if _h : spent' <= limit then
+    some spent'
+  else
+    none
+
+/-- Guarded monotone resource lemma: every successful guarded update
+    preserves the configured resource bound. -/
+theorem guarded_monotone_resource
+  (current limit delta next : Nat)
+  (hExec : applyGuardedResource current limit delta = some next) :
+  next <= limit := by
+  unfold applyGuardedResource at hExec
+  by_cases h : current + delta <= limit
+  case pos =>
+    simp [h] at hExec
+    rcases hExec with rfl
+    simpa using h
+  case neg =>
+    simp [h] at hExec
+
+def applyAction (b : AgentBudget) (a : FinancialAction) : Option AgentBudget :=
+  let spent' := b.currentSpent + a.delta
+  if h : spent' <= b.aggregateLimit then
+    some { currentSpent := spent', aggregateLimit := b.aggregateLimit }
+  else
+    none
+
+theorem budget_safety_guarantee
+  (b : AgentBudget) (a : FinancialAction) (newB : AgentBudget)
+  (hExec : applyAction b a = some newB) :
+  newB.currentSpent <= newB.aggregateLimit := by
+  unfold applyAction at hExec
+  by_cases h : b.currentSpent + a.delta <= b.aggregateLimit
+  case pos =>
+    simp [h] at hExec
+    rcases hExec with rfl
+    simpa using h
+  case neg =>
+    simp [h] at hExec
+
+abbrev Cap := String
+abbrev Caps := Set Cap
+
+theorem subset_iff_diff_empty (cReq cA : Caps) :
+  cReq ⊆ cA ↔ cReq \ cA = (∅ : Caps) := by
+  constructor
+  · intro h
+    ext x
+    constructor
+    · intro hx
+      exact (hx.2 (h hx.1)).elim
+    · intro hx
+      exact False.elim (by simpa using hx)
+  · intro h
+    intro x
+    intro hxReq
+    by_contra hxNotInA
+    have hxDiff : x ∈ cReq \ cA := And.intro hxReq hxNotInA
+    have : x ∈ (∅ : Caps) := by simpa [h] using hxDiff
+    simpa using this
+
+theorem thm_budget_local
+  (b : AgentBudget) (a : FinancialAction) (newB : AgentBudget)
+  (hExec : applyAction b a = some newB) :
+  newB.currentSpent <= newB.aggregateLimit := by
+  exact budget_safety_guarantee b a newB hExec
+
+theorem thm_privilege_static (cReq cA : Caps) :
+  cReq ⊆ cA ↔ cReq \ cA = (∅ : Caps) := by
+  exact subset_iff_diff_empty cReq cA
+
+end Fulcrum
