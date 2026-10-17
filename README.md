@@ -367,7 +367,7 @@ security reports follow [SECURITY.md](./SECURITY.md).
 Boundary is the open action boundary in the Fulcrum repo family. The hosted operator surfaces, the trust-modeling work and the Lean proof work are private during build. The Lean sources Boundary cites are copied into `docs/proofs/`.
 
 Boundary's runtime behavior corresponds by design to a machine-checked equilibrium analysis
-in machine-checked Lean 4 theorems (reference copy in `docs/proofs/`, from Fulcrum-Proofs at `30e40ff`). That analysis is a design
+in Lean 4 theorems (reference copy in `docs/proofs/`, from Fulcrum-Proofs at `30e40ff`). That analysis is a design
 constraint, not a runtime certificate. Boundary itself does not emit `proved`
 decisions. See [Proof Boundary](./docs/PROOF_BOUNDARY.md).
 
