@@ -50,3 +50,11 @@ rules:
 	require.NoError(t, err)
 	require.Equal(t, "design", ref.Correspondence)
 }
+
+func TestStandaloneProofRefsResolveInRepo(t *testing.T) {
+	for name, ref := range standalone.StaticProofCorrespondence() {
+		require.Equal(t, "Fulcrum-Boundary", ref.Repo, name)
+		_, err := os.Stat(filepath.Join("..", "..", filepath.FromSlash(ref.Path)))
+		require.NoError(t, err, "%s: %s", name, ref.Path)
+	}
+}

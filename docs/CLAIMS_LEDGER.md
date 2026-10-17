@@ -110,8 +110,7 @@ sidecar and its associated invariants:
 - **`BND-CLAIM-PROOF-001`** (design correspondence) backs the phrase
   "machine-checked equilibrium analysis (Nash/PoA design correspondence)":
   Boundary's runtime behavior corresponds to a machine-checked equilibrium
-  analysis of its trust-circuit and budget-enforcement design, held upstream in
-  Fulcrum-Proofs. This is a design constraint, not a runtime certificate.
+  analysis of its trust-circuit and budget-enforcement design, whose Lean sources are copied in `docs/proofs/` (from Fulcrum-Proofs at `30e40ff`). This is a design constraint, not a runtime certificate.
 
 - **`BND-CLAIM-PROOF-002`** (wired sidecar) backs the phrase
   "wired witness (budget/static-privilege)": the proof-receipt sidecar, when

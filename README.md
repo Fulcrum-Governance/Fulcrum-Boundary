@@ -364,13 +364,10 @@ security reports follow [SECURITY.md](./SECURITY.md).
 
 ## Part of the Fulcrum architecture
 
-Boundary is the open action boundary in the Fulcrum repo family. The hosted
-operator surfaces remain private during build; [`fulcrum-trust`](https://github.com/Fulcrum-Governance/fulcrum-trust)
-supplies public trust-modeling work, and [Fulcrum-Proofs](https://github.com/Fulcrum-Governance/Fulcrum-Proofs)
-holds the Lean proof work used through documented correspondence.
+Boundary is the open action boundary in the Fulcrum repo family. The hosted operator surfaces, the trust-modeling work and the Lean proof work are private during build. The Lean sources Boundary cites are copied into `docs/proofs/`.
 
 Boundary's runtime behavior corresponds by design to a machine-checked equilibrium analysis
-upstream in Fulcrum-Proofs. That analysis is a design
+in Lean 4 theorems (reference copy in `docs/proofs/`, from Fulcrum-Proofs at `30e40ff`). That analysis is a design
 constraint, not a runtime certificate. Boundary itself does not emit `proved`
 decisions. See [Proof Boundary](./docs/PROOF_BOUNDARY.md).
 
@@ -387,7 +384,4 @@ decisions. See [Proof Boundary](./docs/PROOF_BOUNDARY.md).
 
 ---
 
-Boundary is the open edge of Fulcrum. Join the waitlist for the hosted
-operator surfaces at [fulcrumlayer.io](https://fulcrumlayer.io); the trust
-modeling behind Boundary's Stage-1 trust checks is public in
-[`fulcrum-trust`](https://github.com/Fulcrum-Governance/fulcrum-trust).
+Boundary is the open edge of Fulcrum. Join the waitlist for the hosted operator surfaces at [fulcrumlayer.io](https://fulcrumlayer.io).

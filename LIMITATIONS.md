@@ -96,7 +96,7 @@ invariants. It is a checker-validated artifact, bound to the decision record by
 decision_hash. The trust-termination behavior is expressed as a circuit-transition
 consistency check (not a per-decision termination proof). The equilibrium
 correspondence — a machine-checked equilibrium analysis (Nash equilibrium and
-price-of-anarchy bound) — is a design constraint held upstream in Fulcrum-Proofs,
+price-of-anarchy bound) — is a design constraint whose Lean sources are copied in `docs/proofs/`,
 not a runtime certificate emitted by this repo. This repo emits structured and
 receipt-grade decision records verified by recomputation (`boundary verify-record`);
 attaching the proof-receipt sidecar does not change the decision mode. See
