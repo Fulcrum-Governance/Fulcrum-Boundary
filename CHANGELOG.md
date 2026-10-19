@@ -6,9 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.14.0] - Unreleased (candidate, target 2026-10-22)
+
+Release notes: `docs/releases/v0.14.0.md`. Boundary decides before execution
+only for actions forced through a governed Boundary route; every entry below
+applies only to those routed actions. MCP remains the only production adapter.
+Each entry is labeled implemented (behavior change, with tests) or tested
+(test, CI, or evidence coverage only).
+
 ### Added
 
-- **CodeExec named sandbox boundary (preview adapter gap BND-CODE-001).**
+- implemented: `boundary serve` writes a verify-record decision record for
+  every decision, on by default; `--record-dir`, `server.record_dir`,
+  `--no-records`, `server.records` (#266).
+- implemented: `boundary serve --dry-run` and `security.dry_run` (#265).
+- implemented: required-check failures classified `check_indeterminate`
+  (ADR-047) in the shared pipeline (#226).
+- implemented: strict, identical ingest across all four decision-record
+  verifiers (#228).
+
+- implemented: **CodeExec named sandbox boundary (preview adapter gap BND-CODE-001).**
   `adapters/codeexec` gains a `Sandbox` interface with a hardened OCI
   `container` implementation (`--network none`, read-only rootfs,
   size-limited tmpfs `/tmp`, non-root UID, dropped capabilities,
@@ -23,6 +40,51 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `codeexec-sandbox` CI job on ubuntu-latest. Adapter status stays
   `preview`; deployment bypass controls are documented in
   `docs/deployment/codeexec-bypass-evidence.md`.
+
+### Changed
+
+- implemented: the most restrictive matching static rule decides, so a warn
+  no longer masks a deny (#264).
+- implemented: CLI, CodeExec, and the Secure GitHub MCP route report the
+  verdict that blocked the call (#271, #273).
+- implemented: `find -exec`/`xargs` forwarding classified on the
+  `command run` argv path (FUL-653, #250).
+
+### Fixed
+
+- implemented: policy-evaluation faults and the nil-evaluator fallback return
+  `check_indeterminate` (FUL-732, #252); a nil pipeline returns
+  `check_indeterminate` (#272); a static rule action the pipeline would skip
+  fails closed (#270).
+- implemented: a warn no longer lowers an agent's trust score (#261).
+- implemented: unknown rule actions rejected at load in the legacy shape
+  (#263).
+- implemented: Secure GitHub fallback decision record carries the check
+  context (#274).
+- implemented: hook classifies absolute-path commands by trusted bin dirs
+  (#224, #232).
+- implemented: live evidence index recomputes the transcript digest from disk
+  (FUL-708, #240).
+- implemented: unreachable adapter `Evaluate` error branches removed (#275).
+
+### Tests and CI
+
+- tested: one ADR-047 parity table for every adapter and both executors
+  (#268, #269, #276).
+- tested: `cli-reference-v1` bypass reference topology and CI evidence job
+  (#227).
+- tested: Managed Agents conformance driver, stub mode only; adapter stays
+  preview (#231).
+- tested: A2A mock-upstream tests (#223); test-suite cleanup (#253-#260);
+  CI and dependency pins (#209, #214, #215, #220, #221, #225, #230, #233,
+  #235, #236, #239).
+
+### Documentation
+
+- implemented: audit delivery wording (#277); Claims Lock wording passes
+  (#234, #237, #238, #241, #242, #243, #262); warn shown executing in the
+  README diagram (#267); `docs/proofs/` reference copy (#279); links
+  repointed away from repos going private (#278).
 
 ## [0.13.1] - 2026-09-02
 
@@ -733,6 +795,7 @@ Initial public release of the project now known as Fulcrum Boundary.
 ---
 
 [Unreleased]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.13.1...HEAD
+[0.14.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.13.1...v0.14.0
 [0.13.1]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.11.0...v0.12.0
