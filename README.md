@@ -56,7 +56,7 @@ Then, inside Claude Code:
 ```
 
 > **Availability.** The hook first shipped in `v0.13.0` and remains included in
-> the current `v0.13.1` release: the
+> the published `v0.13.1` release: the
 > one-line installer's default mode fetches the latest published release
 > binary, which now includes `boundary hook`. The public
 > [`boundary-plugins`](https://github.com/Fulcrum-Governance/boundary-plugins)
@@ -138,10 +138,11 @@ writes a decision record that `verify-record` recomputes independently.
 
 On Linux or Windows, use a [release archive](./docs/INSTALL.md) (SHA256SUMS is
 published, and the release files carry GitHub build-provenance attestations) or
-the published `v0.13.1` container image:
+the container image (`v0.14.0` is the release-stamp target; until it
+publishes, the published image tag remains the `v0.13.1` release):
 
 ```bash
-docker run --rm ghcr.io/fulcrum-governance/boundary:v0.13.1 selftest
+docker run --rm ghcr.io/fulcrum-governance/boundary:v0.14.0 selftest
 ```
 
 To inspect the MCP servers your agents can already reach without modifying
@@ -295,7 +296,8 @@ above first shipped in `v0.13.0` and remains included; see the
 | Dashboard | Local artifact visibility | Not hosted monitoring. |
 | Witnessed-log verifier | Delivered, air-gapped | Checks bundle integrity and cosignatures against supplied keys; it does not establish independent witness operation. |
 
-Current published release: **v0.13.1**. See the [release notes](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/releases/tag/v0.13.1),
+Current published release: **v0.13.1**. The `v0.14.0` release stamp on `main`
+is a candidate, not a published release. See the [release notes](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/releases/tag/v0.13.1),
 [changelog](./CHANGELOG.md), and [public release-truth record](./docs/RELEASE_TRUTH_PUBLIC.md).
 
 ## Adapter readiness
@@ -342,11 +344,11 @@ Requires Go 1.25+. The default source build links the full Postgres classifier
 through cgo and requires a C toolchain:
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.13.1
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.14.0
 ```
 
-`v0.13.1` is the current public release. The root and nested-module tags both
-resolve to the same release commit; see the release-truth record.
+`v0.14.0` is the release-stamp target, not a published install yet. Until both
+approved tags publish, use the current public `v0.13.1` release.
 
 Before submitting a change:
 
