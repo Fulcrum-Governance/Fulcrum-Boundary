@@ -17,16 +17,17 @@ Each entry is labeled implemented (behavior change, with tests) or tested
 ### Added
 
 - implemented: `boundary serve` writes a verify-record decision record for
-  every decision, on by default; `--record-dir`, `server.record_dir`,
+  each routed decision, on by default; `--record-dir`, `server.record_dir`,
   `--no-records`, `server.records` (#266).
-- implemented: `boundary serve --dry-run` and `security.dry_run` (#265).
+- implemented: `boundary serve --dry-run` and `security.dry_run` (#265);
+  dry-run lets a would-be `deny` or `check_indeterminate` through, so it is
+  not for routes where enforcement is required.
 - implemented: required-check failures classified `check_indeterminate`
   (ADR-047) in the shared pipeline (#226).
 - implemented: strict, identical ingest across all four decision-record
   verifiers (#228).
-
 - implemented: **CodeExec named sandbox boundary (preview adapter gap BND-CODE-001).**
-  `adapters/codeexec` gains a `Sandbox` interface with a hardened OCI
+  `adapters/codeexec` gains a `Sandbox` interface with a restricted OCI
   `container` implementation (`--network none`, read-only rootfs,
   size-limited tmpfs `/tmp`, non-root UID, dropped capabilities,
   `no-new-privileges`, pids/memory/CPU limits, wall-clock timeout, optional
