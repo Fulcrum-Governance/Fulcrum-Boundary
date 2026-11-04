@@ -143,10 +143,11 @@ package and no other Fulcrum private code (see "Tests" below for the command
 that checks this directly). The versioned nested-module install target is:
 
 ```bash
-go install github.com/Fulcrum-Governance/Fulcrum-Boundary/verify-witnessed@v0.13.1
+go install github.com/Fulcrum-Governance/Fulcrum-Boundary/verify-witnessed@v0.14.0
 ```
 
-Use that exact case-sensitive module path. The published root `v0.13.1` and
+Use that exact case-sensitive module path. `@v0.14.0` resolves only after the
+`verify-witnessed/v0.14.0` tag publishes; the published root `v0.13.1` and
 matching `verify-witnessed/v0.13.1` tags both resolve to
 `8a5762888be8404f8a4a0e64a2ad6206667b71b6`. Pin the module or clone to that
 matching release to align with your bundle's `exporter.boundary_wire_contract_version`

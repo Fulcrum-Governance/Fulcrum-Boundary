@@ -39,6 +39,28 @@ type marketplaceManifest struct {
 	Plugins []marketplacePlugin `json:"plugins"`
 }
 
+var publishedBaselineHeading = regexp.MustCompile(`(?m)^## Published baseline before this release stamp: (v[0-9]+\.[0-9]+\.[0-9]+)$`)
+
+// marketplacePinnedVersion returns the release the marketplace package must be
+// pinned to. Normally that is the plugin manifest's own version. While a
+// release-stamp window is open (docs/RELEASE_TRUTH_PUBLIC.md carries the
+// "not published" stamp anchor) the manifest already names the unpublished
+// target, whose tag and commit do not exist, so the marketplace stays pinned
+// to the published baseline release; the post-tag reconciliation removes the
+// stamp anchor, which re-arms the strict manifest-version pin.
+func marketplacePinnedVersion(t *testing.T, root, pluginVersion string) string {
+	t.Helper()
+	releaseTruth := read(t, root, "docs/RELEASE_TRUTH_PUBLIC.md")
+	if !releaseStampAnchor.MatchString(releaseTruth) {
+		return "v" + pluginVersion
+	}
+	stamp := oneAnchor(t, "not-published release-stamp target", releaseStampAnchor, releaseTruth)
+	if stamp != "v"+pluginVersion {
+		t.Fatalf("plugin manifest version v%s must match the release-stamp target %s", pluginVersion, stamp)
+	}
+	return oneAnchor(t, "published baseline before the release stamp", publishedBaselineHeading, releaseTruth)
+}
+
 func TestMarketplaceScaffoldTracksPluginManifest(t *testing.T) {
 	root := repoRoot(t)
 	plugin := decodeJSON[pluginManifest](t, root, ".claude-plugin/plugin.json")
@@ -71,13 +93,14 @@ func TestMarketplaceScaffoldTracksPluginManifest(t *testing.T) {
 	if entry.Version != "" {
 		t.Errorf("marketplace entry duplicates plugin.json version %q; omit it so plugin.json remains the single version authority", entry.Version)
 	}
-	if entry.Source.Ref != "v"+plugin.Version {
-		t.Errorf("marketplace source ref = %q, want v%s from the canonical plugin manifest", entry.Source.Ref, plugin.Version)
+	pinned := marketplacePinnedVersion(t, root, plugin.Version)
+	if entry.Source.Ref != pinned {
+		t.Errorf("marketplace source ref = %q, want %s (the plugin manifest version, or the published baseline while a release stamp is open)", entry.Source.Ref, pinned)
 	}
 
 	releaseTruth := read(t, root, "docs/RELEASE_TRUTH_PUBLIC.md")
-	publishedStart := strings.Index(releaseTruth, "## Published v"+plugin.Version+" release")
-	baselineStart := strings.Index(releaseTruth, "## Published baseline before v"+plugin.Version+":")
+	publishedStart := strings.Index(releaseTruth, "## Published "+pinned+" release")
+	baselineStart := strings.Index(releaseTruth, "## Published baseline before "+pinned+":")
 	if publishedStart == -1 || baselineStart == -1 || publishedStart >= baselineStart {
 		t.Fatal("docs/RELEASE_TRUTH_PUBLIC.md does not contain the current published-release section before its historical baseline")
 	}
@@ -95,17 +118,18 @@ func TestMarketplaceScaffoldTracksPluginManifest(t *testing.T) {
 func TestMarketplaceScaffoldIsReadyForStandalonePublication(t *testing.T) {
 	root := repoRoot(t)
 	plugin := decodeJSON[pluginManifest](t, root, ".claude-plugin/plugin.json")
+	pinned := marketplacePinnedVersion(t, root, plugin.Version)
 	readme := read(t, root, "integrations/claude-code/marketplace/README.md")
 	normalizedREADME := strings.Join(strings.Fields(readme), " ")
 
 	wants := []string{
 		"/plugin marketplace add fulcrum-governance/boundary-plugins",
 		"/plugin install boundary@boundary-plugins",
-		"The plugin source is pinned to the immutable v" + plugin.Version + " release commit.",
+		"The plugin source is pinned to the immutable " + pinned + " release commit.",
 		"Boundary governs only routed calls",
 		"not authenticity, correctness, execution, or total coverage",
-		"https://github.com/Fulcrum-Governance/Fulcrum-Boundary/blob/v" + plugin.Version + "/docs/integrations/CLAUDE_CODE_HOOK.md",
-		"https://github.com/Fulcrum-Governance/Fulcrum-Boundary/blob/v" + plugin.Version + "/scripts/install-claude-code.sh",
+		"https://github.com/Fulcrum-Governance/Fulcrum-Boundary/blob/" + pinned + "/docs/integrations/CLAUDE_CODE_HOOK.md",
+		"https://github.com/Fulcrum-Governance/Fulcrum-Boundary/blob/" + pinned + "/scripts/install-claude-code.sh",
 	}
 	for _, want := range wants {
 		if !strings.Contains(normalizedREADME, want) {

@@ -1,14 +1,60 @@
 # Final Public Release Truth
 
-Date: 2026-09-02
+Date: 2026-11-04
 
 Branch: `main`
 
-Current release: `v0.13.1`
+Current release target: `v0.14.0`
 
-Current release date: `2026-09-02`
+Current release date: `2026-11-04`
 
-Published release: `v0.13.1`
+Release-stamp target: `v0.14.0` — **not published**
+
+## Release-stamp status — not published
+
+This branch contains the prospective `v0.14.0` release stamp, not a published
+release. The public release remains `v0.13.1` until both approved tags publish.
+Neither `v0.14.0` nor `verify-witnessed/v0.14.0` exists yet — as tag, release,
+or draft. Every command targeting `v0.14.0` is unavailable until then. No
+GitHub release, container, Homebrew cask update, plugin repository update,
+marketplace submission, or public-release status change is authorized by this
+release-stamp candidate.
+
+`v0.14.0` is a minor pre-1.0 release; `docs/releases/v0.14.0.md` carries the
+full item list. It turns on decision records by default for routed calls on
+the production MCP route (`boundary serve`), makes every adapter fail closed
+the same way when a required check cannot run, and fixes several cases where
+a `warn` or a malformed rule let a routed call run that should have been held.
+Boundary decides before execution only for actions forced through a governed
+Boundary route; paths that bypass Boundary remain outside its control. MCP
+remains the only production adapter; Command Boundary, Edit Boundary, Secure
+GitHub, CLI, CodeExec, gRPC, Managed Agents, Webhook, and A2A remain preview.
+Decision records remain hash-verifiable for covered-field integrity only —
+not authenticity, correctness, or execution proof — and Boundary does not
+emit `proved` decisions. The Lean files under `docs/proofs/` are a reference
+copy covering only the scoped invariants `docs/PROOF_BOUNDARY.md` names, not
+runtime decisions.
+
+Both proposed annotated tags must resolve to the same exact commit, after the
+candidate PR is merged and an operator gives explicit exact-commit and dual-tag
+approval. This document records no annotated-tag object IDs, release asset
+counts, checksums, image digests, Homebrew tap commits, attestations, module
+sums, or marketplace status for `v0.14.0`, because none of those artifacts
+exist yet. The `boundary-plugins` marketplace package remains pinned to the
+published `v0.13.1` release commit recorded below.
+
+The prospective `v0.14.0` install commands, unavailable until publication:
+
+```bash
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.14.0
+go install github.com/Fulcrum-Governance/Fulcrum-Boundary/verify-witnessed@v0.14.0
+docker run --rm ghcr.io/fulcrum-governance/boundary:v0.14.0 selftest
+```
+
+## Published baseline before this release stamp: v0.13.1
+
+The published release surface is `v0.13.1`, reconciled below exactly as
+published. Nothing in the stamp section above changes it.
 
 ## Published v0.13.1 release
 

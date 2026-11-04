@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-## [0.14.0] - Unreleased (candidate, target 2026-10-22)
+## [0.14.0] - 2026-11-04
 
 Release notes: `docs/releases/v0.14.0.md`. Boundary decides before execution
 only for actions forced through a governed Boundary route; every entry below
@@ -795,7 +795,7 @@ Initial public release of the project now known as Fulcrum Boundary.
 
 ---
 
-[Unreleased]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.13.1...HEAD
+[Unreleased]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.14.0...HEAD
 [0.14.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.13.1...v0.14.0
 [0.13.1]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.12.0...v0.13.0
