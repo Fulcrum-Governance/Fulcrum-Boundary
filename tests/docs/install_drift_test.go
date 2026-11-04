@@ -146,7 +146,9 @@ func TestNoPrePublicationConditionals(t *testing.T) {
 	if releaseStampAnchor.MatchString(read(t, root, "docs/RELEASE_TRUTH_PUBLIC.md")) {
 		// A release-stamp window is open: maintained docs legitimately carry
 		// pre-publication conditionals for the stamped target. The post-tag
-		// reconciliation removes the stamp anchor, which re-arms this guard.
+		// reconciliation must remove the stamp anchor AND rewrite the
+		// v0.13.1-pinned baseline tests in this file (as 7577872 did for
+		// v0.13.1); removing the anchor alone makes this suite fail, by design.
 		t.Skip("release-stamp window open (Release-stamp target anchor present); pre-publication conditionals are expected until the reconciliation lands")
 	}
 	tracked, trackedErr := trackedMarkdownSurfaces(root)

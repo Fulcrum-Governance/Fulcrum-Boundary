@@ -316,7 +316,7 @@ bundle.
 > **Availability:** `boundary verify-record` and `schema_version "1"` records are
 > baseline. The `schema_version "2"` route-context path described below, along
 > with `boundary explain` / `boundary replay` in sections 10–11, shipped in
-> `v0.8.0` and remains included in the published `v0.13.1` release; `go install …@v0.14.0` includes them.
+> `v0.8.0` and remains included in the published `v0.13.1` release.
 
 ```bash
 boundary verify-record record.json
@@ -377,8 +377,7 @@ that actually ran. See [docs/DECISION_RECORDS.md](./DECISION_RECORDS.md) and
 ## 10. Decision-Record Explanation Commands
 
 > **Availability:** `boundary explain` (this section) and `boundary replay`
-> (section 11) shipped in `v0.9.0` and remain in the published `v0.13.1` release, so `go install …@v0.14.0` includes
-> them. They join the rest of the current first-run path — `selftest`, `doctor`,
+> (section 11) shipped in `v0.9.0` and remain in the published `v0.13.1` release. They join the rest of the current first-run path — `selftest`, `doctor`,
 > the two proof demos, `evidence bundle`/`verify`, and `verify-record` on a
 > `schema_version "1"` or `"2"` record.
 
@@ -414,7 +413,7 @@ bypass a record cannot see. `topology_profile` is asserted, not attested, and
 ## 11. Decision-Record Replay Commands
 
 > **Availability:** like `boundary explain` (section 10), `boundary replay` is
-> in the `v0.9.0` release and the published `v0.13.1` release; `go install …@v0.14.0` includes it.
+> in the `v0.9.0` release and the published `v0.13.1` release.
 
 ```bash
 boundary replay record.json --request request.json --policies ./policies/

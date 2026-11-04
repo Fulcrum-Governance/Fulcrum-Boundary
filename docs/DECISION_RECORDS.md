@@ -293,7 +293,7 @@ boundary demo command-secret-exfil --out demo.txt
 appends it to `DIR/decision-records.jsonl`. `DIR` defaults to `.boundary/serve`
 in the working directory, the same `.boundary/<surface>` layout the hook,
 command and edit surfaces use. `--record-dir` or `server.record_dir` in
-`--config` overrides it. The container image sets `--record-dir
+`--config` overrides it. The source-built image (`Dockerfile`) sets `--record-dir
 /var/lib/boundary/serve`, which the image creates `0700` and owned by its
 `boundary` user. serve keeps `DIR` owner-only: it creates a missing `DIR`
 `0700`, changes an owned `DIR` with group or other access to `0700` and says so

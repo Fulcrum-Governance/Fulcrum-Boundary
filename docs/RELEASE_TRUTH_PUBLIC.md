@@ -18,20 +18,21 @@ Neither `v0.14.0` nor `verify-witnessed/v0.14.0` exists yet — as tag, release,
 or draft. Every command targeting `v0.14.0` is unavailable until then. No
 GitHub release, container, Homebrew cask update, plugin repository update,
 marketplace submission, or public-release status change is authorized by this
-release-stamp candidate.
+release-stamp candidate. The `2026-11-04` date above is provisional and must
+be reconciled to the actual tag date at publication.
 
 `v0.14.0` is a minor pre-1.0 release; `docs/releases/v0.14.0.md` carries the
 full item list. It turns on decision records by default for routed calls on
 the production MCP route (`boundary serve`), makes every adapter fail closed
-the same way when a required check cannot run, and fixes several cases where
+the same way on enforcing routes when a required check cannot run, and fixes several cases where
 a `warn` or a malformed rule let a routed call run that should have been held.
 Boundary decides before execution only for actions forced through a governed
 Boundary route; paths that bypass Boundary remain outside its control. MCP
 remains the only production adapter; Command Boundary, Edit Boundary, Secure
 GitHub, CLI, CodeExec, gRPC, Managed Agents, Webhook, and A2A remain preview.
 Decision records remain hash-verifiable for covered-field integrity only —
-not authenticity, correctness, or execution proof — and Boundary does not
-emit `proved` decisions. The Lean files under `docs/proofs/` are a reference
+not authenticity, signing, verdict correctness, enforcement, or completeness —
+and Boundary does not emit `proved` decisions. The Lean files under `docs/proofs/` are a reference
 copy covering only the scoped invariants `docs/PROOF_BOUNDARY.md` names, not
 runtime decisions.
 

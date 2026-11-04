@@ -11,8 +11,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Release notes: `docs/releases/v0.14.0.md`. Boundary decides before execution
 only for actions forced through a governed Boundary route; every entry below
 applies only to those routed actions. MCP remains the only production adapter.
-Each entry is labeled implemented (behavior change, with tests) or tested
-(test, CI, or evidence coverage only).
+Each entry is labeled implemented (behavior change, with tests), tested
+(test, CI, or evidence coverage only), refactor (no behavior change), or docs.
 
 ### Added
 
@@ -66,7 +66,7 @@ Each entry is labeled implemented (behavior change, with tests) or tested
   (#224, #232).
 - implemented: live evidence index recomputes the transcript digest from disk
   (FUL-708, #240).
-- implemented: unreachable adapter `Evaluate` error branches removed (#275).
+- refactor: unreachable adapter `Evaluate` error branches removed (#275).
 
 ### Tests and CI
 
@@ -82,7 +82,7 @@ Each entry is labeled implemented (behavior change, with tests) or tested
 
 ### Documentation
 
-- implemented: audit delivery wording (#277); Claims Lock wording passes
+- docs: audit delivery wording (#277); Claims Lock wording passes
   (#234, #237, #238, #241, #242, #243, #262); warn shown executing in the
   README diagram (#267); `docs/proofs/` reference copy (#279); links
   repointed away from repos going private (#278).
