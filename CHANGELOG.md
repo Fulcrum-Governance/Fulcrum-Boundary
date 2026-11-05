@@ -53,6 +53,8 @@ Each entry is labeled implemented (behavior change, with tests), tested
 
 ### Fixed
 
+- implemented: release builds and CI use Go 1.26.10 for stdlib advisory
+  GO-2026-6809 (`crypto/x509`); `verify-witnessed` requires Go 1.26.10.
 - implemented: policy-evaluation faults and the nil-evaluator fallback return
   `check_indeterminate` (FUL-732, #252); a nil pipeline returns
   `check_indeterminate` (#272); a static rule action the pipeline would skip
