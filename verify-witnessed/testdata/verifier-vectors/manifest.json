@@ -74,6 +74,24 @@
       "why": "ECMAScript number formatting: non-trivial float64 trust_score (1.0/3.0) must serialize as 0.3333333333333333"
     },
     {
+      "file": "v1_mode_classified.json",
+      "decision_hash": "sha256:6a4b25a77a7b88e319b7f56185731cd0a864e8c5680cc03928cefe47130710cd",
+      "expect": "verify",
+      "why": "schema_version 1; decision_mode=classified is a recognized mode value (verifier mode enum member); integrity-only fixture, not a claim that Boundary emits such decisions"
+    },
+    {
+      "file": "v1_mode_human_approved.json",
+      "decision_hash": "sha256:08294b3b73b8fdb0c73b0254763dcb11f29a8faa4107fc36d163fe38609bf77b",
+      "expect": "verify",
+      "why": "schema_version 1; decision_mode=human_approved is a recognized mode value (verifier mode enum member); integrity-only fixture, not a claim that Boundary emits such decisions"
+    },
+    {
+      "file": "v1_mode_proved.json",
+      "decision_hash": "sha256:40816630a42fa95c0150d178086212b26bd046af17568fc0f8fb9a476526d984",
+      "expect": "verify",
+      "why": "schema_version 1; decision_mode=proved is a recognized mode value (verifier mode enum member); integrity-only fixture, not a claim that Boundary emits such decisions"
+    },
+    {
       "file": "v1_number_infinity.json",
       "decision_hash": "sha256:bd4c384273bd70c8807a70aa97749bff2909e107637494118836a8acf690b0de",
       "expect": "reject:parse-error",
@@ -140,6 +158,12 @@
       "why": "schema_version 1; action=require_approval"
     },
     {
+      "file": "v1_signed_record.json",
+      "decision_hash": "sha256:c77253a2e5cf0efa6ef52cf25b7cc84d2d3786cfe9c95ae3ecd029808df304dd",
+      "expect": "verify",
+      "why": "schema_version 1; signature and signature_key_id present and excluded from decision_hash (fixture bytes, not a valid signature)"
+    },
+    {
       "file": "v1_tampered_decision_unchanged_hash.json",
       "decision_hash": "sha256:56ad9c402a3271beeb04ea39abfa273234ea4c7dd7f4b2859d745e63c7b327e8",
       "expect": "reject:hash-mismatch",
@@ -180,6 +204,12 @@
       "decision_hash": "sha256:da32782017ae39dd2813b21f3be1072a42cd3b3b6af39bcae289dd50de12e46b",
       "expect": "verify",
       "why": "schema_version 1; action=warn"
+    },
+    {
+      "file": "v2_all_members.json",
+      "decision_hash": "sha256:574d6b403ecf5438caad2ca188c4315b889a4239bdf5fc91204a4b3f41ffd8d5",
+      "expect": "verify",
+      "why": "schema_version 2; request_id, check, every route-context member, and signature members together; only the signature members are excluded from decision_hash"
     },
     {
       "file": "v2_case_variant_execution_claim.json",

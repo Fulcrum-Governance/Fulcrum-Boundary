@@ -26,6 +26,7 @@ package conformance
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -44,6 +45,11 @@ const vectorsDir = "testdata/verifier-vectors"
 // corpus is deterministic (no time.Now()) and the committed decision_hash
 // values are stable across regenerations.
 const fixedTimestamp = "2026-06-01T04:36:39.787222Z"
+
+// fixtureSignature is a well-formed but meaningless ed25519 signature value
+// (64 bytes of 0x07) for vectors that exercise signature-member blanking. It
+// does not verify under any key.
+var fixtureSignature = "ed25519:" + base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{0x07}, 64))
 
 // vectorExpect names the machine-readable outcome every verifier must produce
 // for a corpus vector. "verify" exits 0; "reject:<reason>" exits non-zero with
@@ -1353,6 +1359,121 @@ func buildVectors(t *testing.T) []vector {
   }
 }
 `,
+		},
+		{
+			name: "v1_mode_classified",
+			why:  "schema_version 1; decision_mode=classified is a recognized mode value (verifier mode enum member); integrity-only fixture, not a claim that Boundary emits such decisions",
+			record: governance.DecisionRecordV1{
+				SchemaVersion: governance.DecisionRecordSchemaVersion,
+				EventType:     "governance_decision",
+				Timestamp:     ts,
+				Adapter:       governance.TransportMCP,
+				AgentID:       "agent-mode-classified",
+				Tool:          "query",
+				Action:        "allow",
+				Reason:        "decision_mode value is covered by decision_hash",
+				DecisionMode:  governance.DecisionModeClassified,
+				RequestHash:   "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:    1,
+				TrustState:    "TRUSTED",
+			},
+		},
+		{
+			name: "v1_mode_proved",
+			why:  "schema_version 1; decision_mode=proved is a recognized mode value (verifier mode enum member); integrity-only fixture, not a claim that Boundary emits such decisions",
+			record: governance.DecisionRecordV1{
+				SchemaVersion: governance.DecisionRecordSchemaVersion,
+				EventType:     "governance_decision",
+				Timestamp:     ts,
+				Adapter:       governance.TransportMCP,
+				AgentID:       "agent-mode-proved",
+				Tool:          "query",
+				Action:        "allow",
+				Reason:        "decision_mode value is covered by decision_hash",
+				DecisionMode:  governance.DecisionModeProved,
+				RequestHash:   "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:    1,
+				TrustState:    "TRUSTED",
+			},
+		},
+		{
+			name: "v1_mode_human_approved",
+			why:  "schema_version 1; decision_mode=human_approved is a recognized mode value (verifier mode enum member); integrity-only fixture, not a claim that Boundary emits such decisions",
+			record: governance.DecisionRecordV1{
+				SchemaVersion: governance.DecisionRecordSchemaVersion,
+				EventType:     "governance_decision",
+				Timestamp:     ts,
+				Adapter:       governance.TransportMCP,
+				AgentID:       "agent-mode-human_approved",
+				Tool:          "query",
+				Action:        "allow",
+				Reason:        "decision_mode value is covered by decision_hash",
+				DecisionMode:  governance.DecisionModeHumanApproved,
+				RequestHash:   "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:    1,
+				TrustState:    "TRUSTED",
+			},
+		},
+		{
+			// signature and signature_key_id are blanked before hashing, so a
+			// signed record's decision_hash equals its unsigned hash. The
+			// signature bytes are a fixed fixture value, not a valid signature:
+			// this vector pins hash-blanking and the signature/key-id pairing
+			// shape, not signature verification.
+			name: "v1_signed_record",
+			why:  "schema_version 1; signature and signature_key_id present and excluded from decision_hash (fixture bytes, not a valid signature)",
+			record: governance.DecisionRecordV1{
+				SchemaVersion:  governance.DecisionRecordSchemaVersion,
+				EventType:      "governance_decision",
+				Timestamp:      ts,
+				Adapter:        governance.TransportMCP,
+				AgentID:        "agent-signed",
+				Tool:           "query",
+				Action:         "allow",
+				Reason:         "signature members are excluded from the hashed form",
+				DecisionMode:   governance.DecisionModeDeterministic,
+				RequestHash:    "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:     1,
+				TrustState:     "TRUSTED",
+				Signature:      fixtureSignature,
+				SignatureKeyID: "ed25519:fixture-signer-v1",
+			},
+		},
+		{
+			name: "v2_all_members",
+			why:  "schema_version 2; request_id, check, every route-context member, and signature members together; only the signature members are excluded from decision_hash",
+			record: governance.DecisionRecordV1{
+				SchemaVersion:   governance.DecisionRecordSchemaV2,
+				EventType:       "governance_decision",
+				Timestamp:       ts,
+				Adapter:         governance.TransportMCP,
+				AgentID:         "agent-all-members",
+				RequestID:       "req-a11b0c",
+				Tool:            "github.create_or_update_file",
+				Action:          governance.ActionCheckIndeterminate,
+				Reason:          "required policy evaluation could not produce a valid result",
+				DecisionMode:    governance.DecisionModeDeterministic,
+				MatchedRule:     "deny-github-write-after-taint-fixture",
+				RequestHash:     "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+				TrustScore:      0,
+				TrustState:      "TRUSTED",
+				Signature:       fixtureSignature,
+				SignatureKeyID:  "ed25519:fixture-signer-v1",
+				AdapterID:       "mcp-primary",
+				RouteID:         "route-github-write",
+				TopologyProfile: "single-route-forced",
+				ExecutionClaim: &governance.ExecutionClaim{
+					UpstreamCalled: false,
+					Executed:       false,
+					Source:         "mcp-adapter",
+				},
+				Check: &governance.CheckFailure{
+					Stage:    governance.CheckStagePolicyEval,
+					Class:    governance.CheckClassPolicy,
+					Category: governance.FailureUnavailable,
+					Cause:    "policy evaluation failed",
+				},
+			},
 		},
 	}
 

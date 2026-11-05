@@ -1,0 +1,18 @@
+{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "rec_c77253a2e5cf",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-signed",
+  "tool": "query",
+  "action": "allow",
+  "reason": "signature members are excluded from the hashed form",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "sha256:c77253a2e5cf0efa6ef52cf25b7cc84d2d3786cfe9c95ae3ecd029808df304dd",
+  "trust_score": 1,
+  "trust_state": "TRUSTED",
+  "signature": "ed25519:BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBw==",
+  "signature_key_id": "ed25519:fixture-signer-v1"
+}

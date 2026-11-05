@@ -1,0 +1,34 @@
+{
+  "schema_version": "2",
+  "event_type": "governance_decision",
+  "record_id": "rec_574d6b403ecf",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-all-members",
+  "request_id": "req-a11b0c",
+  "tool": "github.create_or_update_file",
+  "action": "check_indeterminate",
+  "reason": "required policy evaluation could not produce a valid result",
+  "decision_mode": "deterministic",
+  "matched_rule": "deny-github-write-after-taint-fixture",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "sha256:574d6b403ecf5438caad2ca188c4315b889a4239bdf5fc91204a4b3f41ffd8d5",
+  "trust_score": 0,
+  "trust_state": "TRUSTED",
+  "signature": "ed25519:BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBw==",
+  "signature_key_id": "ed25519:fixture-signer-v1",
+  "check": {
+    "stage": "policy_eval",
+    "class": "policy",
+    "category": "unavailable",
+    "cause": "policy evaluation failed"
+  },
+  "adapter_id": "mcp-primary",
+  "route_id": "route-github-write",
+  "topology_profile": "single-route-forced",
+  "execution_claim": {
+    "upstream_called": false,
+    "executed": false,
+    "source": "mcp-adapter"
+  }
+}
