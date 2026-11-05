@@ -75,7 +75,15 @@ with 10 passed and 0 failed; `go install` of the nested module
 `ghcr.io/fulcrum-governance/boundary:v0.14.0 selftest` passed; the
 `darwin_arm64` static archive verified against `SHA256SUMS`; and
 `gh attestation verify` of that archive against this repository exited 0. That smoke validates only those commands on
-that host. It did not run `brew install`, so Homebrew installation is not
+that host.
+
+A follow-up sweep on 2026-11-05 downloaded all 23 release assets: every
+`SHA256SUMS` (12) and `SHA256SUMS-cgo` (4) entry verified, and 22 of the 23
+assets verified with `gh attestation verify` against
+`release.yml@refs/tags/v0.14.0` at `a64f4f6`. `SHA256SUMS-cgo` carries no
+attestation of its own: it is assembled by a later job without an attestation
+step. Build-provenance attestations establish which workflow built an asset;
+they do not sign the tags, which are unsigned annotated tags. It did not run `brew install`, so Homebrew installation is not
 validated beyond the cask's published version and checksums above; it does not
 validate the plugin or marketplace, routed deployment coverage, authenticity,
 execution proof, or protection of bypass paths.
