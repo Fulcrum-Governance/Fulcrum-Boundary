@@ -20,8 +20,8 @@
       "source": {
         "source": "github",
         "repo": "fulcrum-governance/fulcrum-boundary",
-        "ref": "v0.14.0",
-        "sha": "a64f4f67c22e1416a4a20fdeb4b3c2d54af44379"
+        "ref": "v0.14.1",
+        "sha": "487082d7c39bb8a81f19e758ee5c853321c5e1e3"
       }
     }
   ]
