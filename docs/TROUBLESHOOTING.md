@@ -14,7 +14,7 @@ Run these in order. This is the single canonical sequence; the README and the
 rest of the docs match it.
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.14.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.14.1
 boundary selftest
 boundary doctor --json
 boundary demo github-lethal-trifecta      # Lane 1: MCP, the first production route
@@ -65,7 +65,7 @@ Fixes, in order of preference:
    environment or CI, set it back on for Boundary builds:
 
    ```bash
-   CGO_ENABLED=1 go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.14.0
+   CGO_ENABLED=1 go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.14.1
    ```
 
 2. **Install a C compiler** so cgo can find one:

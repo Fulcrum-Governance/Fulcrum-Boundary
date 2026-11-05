@@ -6,6 +6,53 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-11-05
+
+Release notes: `docs/releases/v0.14.1.md`. Release-stamp candidate: not
+published; neither `v0.14.1` nor `verify-witnessed/v0.14.1` exists yet. This
+patch fixes one defect in the offline witnessed-log verifier and changes no
+enforcement behavior. Boundary decides before execution only for actions
+forced through a governed Boundary route; every entry below applies only to
+the offline verification of records those routed decisions produced. MCP
+remains the only production adapter. Decision records remain integrity-only
+evidence: hash-verifiable, not signed receipts, and Boundary does not emit
+`proved` decisions.
+
+### Fixed
+
+- implemented: `verify-witnessed` accepts every member of the decision-record
+  schema. At `v0.14.0` its record type omitted `request_id`, `check`
+  (`stage`, `class`, `category`, `cause`), and the schema_version "2"
+  route-context members `adapter_id`, `route_id`, `topology_profile`, and
+  `execution_claim` (`upstream_called`, `executed`, `source`), so its strict
+  decoder rejected a witnessed-bundle record carrying any of them and the
+  bundle failed `decision_record_integrity` offline. The record type now
+  mirrors `governance.DecisionRecordV1` exactly, `decision_hash` is recomputed
+  over all members, and `schema_version` "1" and "2" are accepted.
+- implemented: the `verify-witnessed` record decoder enforces the same strict
+  ingest as `governance.DecodeDecisionRecord`: case-folded duplicate-member
+  rejection at every depth, closed exact-case member sets for the record,
+  `check`, and `execution_claim`, and trailing-data rejection, with a
+  rejection class for each (`duplicate-key`, `unknown-field`, `trailing-data`,
+  `not-object`, `parse-error`).
+
+### Tested
+
+- tested: `verify-witnessed` pins a byte-for-byte copy of the decision-record
+  conformance corpus (`verify-witnessed/testdata/verifier-vectors`) and
+  `TestConformanceVectors` runs every vector against its manifest verdict.
+- tested: new root-module tests fail when the pinned corpus differs from
+  `tests/conformance/testdata/verifier-vectors`, or when the member set,
+  `omitempty` flags, or nested objects of the `verify-witnessed` record type
+  differ from `governance.DecisionRecordV1`, so a record field added without a
+  verifier update turns CI red.
+
+### Docs
+
+- docs: release-stamp candidate for `v0.14.1`; `docs/releases/v0.14.1.md`
+  records the known issue in `v0.14.0`. `boundary verify-record` and the Go,
+  Python, TypeScript, and Rust record verifiers are unaffected.
+
 ## [0.14.0] - 2026-11-05
 
 Release notes: `docs/releases/v0.14.0.md`. Boundary decides before execution
@@ -797,7 +844,8 @@ Initial public release of the project now known as Fulcrum Boundary.
 
 ---
 
-[Unreleased]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.14.1...HEAD
+[0.14.1]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.13.1...v0.14.0
 [0.13.1]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/v0.12.0...v0.13.0

@@ -64,7 +64,7 @@ matches the [README](../README.md) quickstart; the demos appear in the same
 order there.
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.14.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.14.1
 boundary selftest                                            # Local-only smoke test
 boundary doctor --json                                       # Local-only diagnostics + bypass caveats
 boundary doctor --report                                     # Redacted local report (published v0.14.0 release)

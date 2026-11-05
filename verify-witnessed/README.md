@@ -143,11 +143,15 @@ package and no other Fulcrum private code (see "Tests" below for the command
 that checks this directly). The versioned nested-module install target is:
 
 ```bash
-go install github.com/Fulcrum-Governance/Fulcrum-Boundary/verify-witnessed@v0.14.0
+go install github.com/Fulcrum-Governance/Fulcrum-Boundary/verify-witnessed@v0.14.1
 ```
 
-Use that exact case-sensitive module path. `@v0.14.0` resolves through the
-published `verify-witnessed/v0.14.0` tag; the published root `v0.14.0` and
+Use that exact case-sensitive module path. `@v0.14.1` resolves only after the
+`verify-witnessed/v0.14.1` tag publishes. The published `verify-witnessed/v0.14.0`
+has a known issue: it rejects any decision record that carries `request_id`,
+`check`, or a schema_version "2" route-context member (`adapter_id`,
+`route_id`, `topology_profile`, `execution_claim`); see
+`docs/releases/v0.14.1.md`. The published root `v0.14.0` and
 matching `verify-witnessed/v0.14.0` tags both resolve to
 `a64f4f67c22e1416a4a20fdeb4b3c2d54af44379`. Pin the module or clone to that
 matching release to align with your bundle's `exporter.boundary_wire_contract_version`
@@ -206,3 +210,13 @@ service, credential, or outbound network configuration. Run
 `go test ./... -run TestSourceAndDependencyIndependence -v` on its own to
 check, directly, that this module imports nothing beyond the standard
 library, itself, and `golang.org/x/mod/sumdb/tlog`.
+
+This module keeps its own mirror of the decision-record type (it cannot import
+Boundary's `governance` package). Two guards keep that mirror from drifting:
+`testdata/verifier-vectors/` is a byte-for-byte pinned copy of Boundary's
+decision-record conformance corpus, and `TestConformanceVectors` runs every
+vector and asserts the corpus's expected verdict (verify, hash-mismatch, or the
+named rejection class). The root module's `tests/conformance` tests fail if the
+pinned copy diverges from the corpus or if the mirrored record type's member
+set, `omitempty` flags, or nested objects differ from
+`governance.DecisionRecordV1`.
