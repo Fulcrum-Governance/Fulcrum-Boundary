@@ -148,9 +148,10 @@ go install github.com/Fulcrum-Governance/Fulcrum-Boundary/verify-witnessed@v0.14
 
 Use that exact case-sensitive module path. `@v0.14.1` resolves only after the
 `verify-witnessed/v0.14.1` tag publishes. The published `verify-witnessed/v0.14.0`
-has a known issue: it rejects any decision record that carries `request_id`,
-`check`, or a schema_version "2" route-context member (`adapter_id`,
-`route_id`, `topology_profile`, `execution_claim`); see
+has a known issue: it rejects any decision record that carries `request_id`
+(every record from the production MCP route does), `check`, or a schema_version
+"2" route-context member (`adapter_id`, `route_id`, `topology_profile`,
+`execution_claim`); see
 `docs/releases/v0.14.1.md`. The published root `v0.14.0` and
 matching `verify-witnessed/v0.14.0` tags both resolve to
 `a64f4f67c22e1416a4a20fdeb4b3c2d54af44379`. Pin the module or clone to that
