@@ -204,11 +204,12 @@ func TestPublishedMarketplaceTruthIsCurrent(t *testing.T) {
 	}
 	currentSection := releaseTruth[publishedStart:baselineStart]
 
-	// The public boundary-plugins repository was validated at this earlier
-	// release and is not updated for the current one. Its validation facts live
-	// in that release's own section and must stay intact; the current section
-	// must say plainly that the public package was not updated.
+	// The public boundary-plugins repository was updated and validated for the
+	// current release; the current section and README must carry those executed
+	// facts. The earlier release's own validation record must stay intact.
 	const (
+		currentCommit     = "a64f4f67c22e1416a4a20fdeb4b3c2d54af44379"
+		currentClaude     = "Claude Code `2.1.318`"
 		validatedRelease  = "v0.13.1"
 		validatedCommit   = "8a5762888be8404f8a4a0e64a2ad6206667b71b6"
 		publicRepo        = "https://github.com/Fulcrum-Governance/boundary-plugins"
@@ -225,10 +226,10 @@ func TestPublishedMarketplaceTruthIsCurrent(t *testing.T) {
 	}
 	validatedSection := releaseTruth[validatedStart:validatedEnd]
 
-	if !strings.Contains(currentSection, publicRepo) ||
-		!strings.Contains(currentSection, "marketplace repository is not updated for `"+current+"`") ||
-		!strings.Contains(currentSection, validatedCommit) {
-		t.Errorf("docs/RELEASE_TRUTH_PUBLIC.md current release section must link %s and state that it is not updated for %s and remains pinned to %s", publicRepo, current, validatedCommit)
+	for _, want := range []string{publicRepo, "marketplace repository was updated for `" + current + "`", currentClaude, currentCommit, marketplaceAddCLI, pluginInstallCLI, "installed plugin reported version `" + strings.TrimPrefix(current, "v") + "`"} {
+		if !strings.Contains(currentSection, want) {
+			t.Errorf("docs/RELEASE_TRUTH_PUBLIC.md current release section is missing executed marketplace validation fact %q", want)
+		}
 	}
 	activeSurfaces := map[string]string{
 		"README.md": read(t, root, "README.md"),
@@ -247,7 +248,7 @@ func TestPublishedMarketplaceTruthIsCurrent(t *testing.T) {
 		}
 	}
 	readme := activeSurfaces["README.md"]
-	for _, want := range []string{marketplaceAdd, pluginInstall, claudeVersion, validatedCommit, "has not been updated for `" + current + "`"} {
+	for _, want := range []string{marketplaceAdd, pluginInstall, currentClaude, currentCommit, "pinned to `" + current + "`"} {
 		if !strings.Contains(readme, want) {
 			t.Errorf("README.md is missing marketplace fact %q", want)
 		}
