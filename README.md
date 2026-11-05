@@ -60,12 +60,10 @@ Then, inside Claude Code:
 > one-line installer's default mode fetches the latest published release
 > binary, which now includes `boundary hook`. The public
 > [`boundary-plugins`](https://github.com/Fulcrum-Governance/boundary-plugins)
-> repository publishes the two-file marketplace package as of `v0.13.1`; it
-> has not been updated for `v0.14.0`, and the copy retained in this repository
-> is pinned to `v0.14.0`. On 2026-09-02, Claude Code `2.1.258` added that public
-> repository, installed `boundary@boundary-plugins` `v0.13.1`, resolved the
-> plugin to release commit
-> `8a5762888be8404f8a4a0e64a2ad6206667b71b6`, and validated the installed
+> repository publishes the two-file marketplace package pinned to `v0.14.0`.
+> On 2026-11-05, Claude Code `2.1.318` added that public repository, installed
+> `boundary@boundary-plugins` `v0.14.0`, resolved the plugin to release commit
+> `a64f4f67c22e1416a4a20fdeb4b3c2d54af44379`, and validated the installed
 > manifest. A checkout remains an alternative: `git clone` this repo, then
 > `sh scripts/install-claude-code.sh --plugin-drop`. Either installation is
 > personal — see

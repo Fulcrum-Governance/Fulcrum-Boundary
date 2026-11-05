@@ -75,7 +75,10 @@ with 10 passed and 0 failed; `go install` of the nested module
 `ghcr.io/fulcrum-governance/boundary:v0.14.0 selftest` passed; the
 `darwin_arm64` static archive verified against `SHA256SUMS`; and
 `gh attestation verify` of that archive against this repository exited 0. That smoke validates only those commands on
-that host.
+that host. It did not run `brew install`, so Homebrew installation is not
+validated beyond the cask's published version and checksums above; it does not
+validate the plugin or marketplace, routed deployment coverage, authenticity,
+execution proof, or protection of bypass paths.
 
 A follow-up sweep on 2026-11-05 downloaded all 23 release assets: every
 `SHA256SUMS` (12) and `SHA256SUMS-cgo` (4) entry verified, and 22 of the 23
@@ -83,20 +86,28 @@ assets verified with `gh attestation verify` against
 `release.yml@refs/tags/v0.14.0` at `a64f4f6`. `SHA256SUMS-cgo` carries no
 attestation of its own: it is assembled by a later job without an attestation
 step. Build-provenance attestations establish which workflow built an asset;
-they do not sign the tags, which are unsigned annotated tags. It did not run `brew install`, so Homebrew installation is not
-validated beyond the cask's published version and checksums above; it does not
-validate the plugin or marketplace, routed deployment coverage, authenticity,
-execution proof, or protection of bypass paths.
+they do not sign the tags, which are unsigned annotated tags.
 
 The public [`boundary-plugins`](https://github.com/Fulcrum-Governance/boundary-plugins)
-marketplace repository is not updated for `v0.14.0`. It still serves the
-`v0.13.1` package pinned to release commit
-`8a5762888be8404f8a4a0e64a2ad6206667b71b6`, validated as recorded in the
-`v0.13.1` section below. The two-file package retained in this repository
-(`integrations/claude-code/marketplace/`) is repinned to `v0.14.0` at
-`a64f4f67c22e1416a4a20fdeb4b3c2d54af44379` and becomes public only when
-that repository is separately updated; no `v0.14.0` marketplace installation
-has been validated.
+marketplace repository was updated for `v0.14.0` on 2026-11-05 at commit
+`47947d83f748ca4b58e577719b9f15482c9eaa42`, with `README.md` and
+`.claude-plugin/marketplace.json` copied byte-for-byte from
+`integrations/claude-code/marketplace/` in this repository. Their SHA-256
+values are
+`134ae7ae5f3a5583b1af4fa6abe91b64ea46be8512aeabd7e000911d8965c037`
+and `f25ad324d197f7a5510464d986dc1f4b69614d71a30a8380e3a22ed5b257d230`.
+In a fresh isolated `CLAUDE_CONFIG_DIR`, Claude Code `2.1.318` validated the
+marketplace manifest, added the public repository with
+`claude plugin marketplace add Fulcrum-Governance/boundary-plugins --scope user`,
+and installed it with
+`claude plugin install boundary@boundary-plugins --scope user --yes`. The
+installed plugin reported version `0.14.0`, four skills, two hook events, and
+source commit `a64f4f67c22e1416a4a20fdeb4b3c2d54af44379`; its installed
+manifest also validated. This proves the standalone repository's public
+discovery, resolution, installation, and manifest shape. It does not prove
+hook routing coverage, protection of bypass paths, receipt authenticity or
+correctness, execution, Homebrew installation, or acceptance by a community
+marketplace.
 
 Install from the published versioned surfaces:
 
@@ -109,8 +120,8 @@ docker run --rm ghcr.io/fulcrum-governance/boundary:v0.14.0 selftest
 ## Published baseline before v0.14.0: v0.13.1
 
 The published `v0.13.1` record is preserved below as reconciled at its own
-publication. It remains the baseline for the public `boundary-plugins`
-marketplace package, which was not updated for `v0.14.0`.
+publication, including the original `boundary-plugins` marketplace
+validation.
 
 ## Published v0.13.1 release
 
