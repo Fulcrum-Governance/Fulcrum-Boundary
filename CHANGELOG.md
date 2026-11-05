@@ -26,15 +26,22 @@ evidence: hash-verifiable, not signed receipts, and Boundary does not emit
   route-context members `adapter_id`, `route_id`, `topology_profile`, and
   `execution_claim` (`upstream_called`, `executed`, `source`), so its strict
   decoder rejected a witnessed-bundle record carrying any of them and the
-  bundle failed `decision_record_integrity` offline. The record type now
+  bundle failed `decision_record_integrity` and `manifest:decisions.jsonl`
+  offline. Every decision record from the production MCP route carries
+  `request_id` (`adapters/mcp/adapter.go` sets it on every request), so this
+  affected effectively every real witnessed bundle. The record type now
   mirrors `governance.DecisionRecordV1` exactly, `decision_hash` is recomputed
   over all members, and `schema_version` "1" and "2" are accepted.
-- implemented: the `verify-witnessed` record decoder enforces the same strict
-  ingest as `governance.DecodeDecisionRecord`: case-folded duplicate-member
-  rejection at every depth, closed exact-case member sets for the record,
-  `check`, and `execution_claim`, and trailing-data rejection, with a
-  rejection class for each (`duplicate-key`, `unknown-field`, `trailing-data`,
-  `not-object`, `parse-error`).
+- implemented: the `verify-witnessed` record decoder applies the same
+  member-level ingest rules as `governance.DecodeDecisionRecord`: case-folded
+  duplicate-member rejection at every depth, closed exact-case member sets for
+  the record, `check`, and `execution_claim`, and trailing-data rejection.
+  It remains stricter than that decoder on inputs Boundary never emits (JSON
+  `null` members, missing nested required members, invalid UTF-8, non-canonical
+  timestamps, malformed hashes, unknown decision modes, unpaired signature
+  members); see `docs/releases/v0.14.1.md`. Most of those rules predate this
+  release. Rejection classes are used by the tests; the CLI reports pass or
+  fail per check.
 
 ### Tested
 
@@ -42,10 +49,20 @@ evidence: hash-verifiable, not signed receipts, and Boundary does not emit
   conformance corpus (`verify-witnessed/testdata/verifier-vectors`) and
   `TestConformanceVectors` runs every vector against its manifest verdict.
 - tested: new root-module tests fail when the pinned corpus differs from
-  `tests/conformance/testdata/verifier-vectors`, or when the member set,
+  `tests/conformance/testdata/verifier-vectors`, when the member set,
   `omitempty` flags, or nested objects of the `verify-witnessed` record type
-  differ from `governance.DecisionRecordV1`, so a record field added without a
+  differ from `governance.DecisionRecordV1`, or when its accepted
+  `decision_mode` and `schema_version` values differ from the `governance`
+  constants, so a record field, mode, or schema version added without a
   verifier update turns CI red.
+- tested: the conformance corpus gains vectors for every `decision_mode`
+  value, a signed record, and a record carrying every optional member
+  (`v1_mode_classified`, `v1_mode_proved`, `v1_mode_human_approved`,
+  `v1_signed_record`, `v2_all_members`); integrity-only fixtures.
+- tested: `TestWitnessedBundleWithEveryRecordMember` runs a complete witnessed
+  bundle holding `request_id`, `check`, route-context, and signature records
+  through `verify-witnessed` and requires every check to pass; it fails on the
+  `v0.14.0` verifier code.
 
 ### Docs
 

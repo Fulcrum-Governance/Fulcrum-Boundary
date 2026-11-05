@@ -25,14 +25,21 @@ verifier. The nested `verify-witnessed` module at `v0.14.0` rejects a decision
 record that carries `request_id`, a `check` object, or any schema_version "2"
 route-context member (`adapter_id`, `route_id`, `topology_profile`,
 `execution_claim`): its record type omitted those members and its strict decoder
-treats every member it does not know as unknown. Records produced by Boundary
-at `v0.14.0` carry them, so a witnessed bundle holding such a record failed
-`decision_record_integrity` offline. `boundary verify-record` and the four
+treats every member it does not know as unknown. Every decision record from the
+production MCP route at `v0.14.0` carries `request_id` (the adapter sets it on
+every request and `BuildDecisionRecord` copies it), so a witnessed bundle holding
+such a record failed `decision_record_integrity` and `manifest:decisions.jsonl`
+offline; effectively every real witnessed bundle was affected. `boundary verify-record` and the four
 cross-language record verifiers (Go, Python, TypeScript, Rust) are unaffected,
 and nothing about enforcement changes. `v0.14.1` makes the verifier accept
 every member of the decision-record schema, recompute `decision_hash` over all
-of them, and adds a parity gate so a record field cannot be added without a
-verifier update again; `docs/releases/v0.14.1.md` carries the detail.
+of them, and adds a parity gate so a record field, decision mode, or schema
+version cannot be added without a verifier update again. The verifier remains
+stricter than `boundary verify-record` on inputs Boundary never emits (JSON
+`null` members, missing nested required members, invalid UTF-8, non-canonical
+timestamps, malformed hashes, unknown decision modes, unpaired signature
+members); most of those rules predate this release.
+`docs/releases/v0.14.1.md` carries the detail and the list.
 
 Boundary decides before execution only for actions forced through a governed
 Boundary route; paths that bypass Boundary remain outside its control. MCP
@@ -50,8 +57,10 @@ candidate PR is merged and an operator gives explicit exact-commit and dual-tag
 approval. This document records no annotated-tag object IDs, release asset
 counts, checksums, image digests, Homebrew tap commits, attestations, module
 sums, or marketplace status for `v0.14.1`, because none of those artifacts
-exist yet. The `boundary-plugins` marketplace package remains pinned to the
-published `v0.14.0` release commit recorded below.
+exist yet. The release date, `CITATION.cff` date, and `CHANGELOG.md` heading date
+in this stamp are provisional and are reconciled to the actual publication
+date at publication. The `boundary-plugins` marketplace package remains pinned
+to the published `v0.14.0` release commit recorded below.
 
 The prospective `v0.14.1` install commands, unavailable until publication:
 
