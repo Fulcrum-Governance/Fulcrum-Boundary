@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-## [0.14.0] - 2026-11-04
+## [0.14.0] - 2026-11-05
 
 Release notes: `docs/releases/v0.14.0.md`. Boundary decides before execution
 only for actions forced through a governed Boundary route; every entry below

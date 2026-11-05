@@ -2,7 +2,7 @@
 
 > **This is the single authoritative public-surface spec** for the current public release surface of
 > **Fulcrum Boundary** (Apache-2.0, Go developer tool,
-> `github.com/fulcrum-governance/fulcrum-boundary`, CLI binary `boundary`, target tag `v0.14.0`).
+> `github.com/fulcrum-governance/fulcrum-boundary`, CLI binary `boundary`, current release tag `v0.14.0`).
 > It defines what is published and what it is called. It is a language-control document:
 > §12 enumerates the approved and forbidden public language, so it intentionally quotes the
 > forbidden phrases in order to govern them.
@@ -25,8 +25,8 @@
 ## How to read this spec
 
 **Authority order (tie-breaker for any claim; highest wins).**
-`docs/RELEASE_TRUTH_PUBLIC.md` (published v0.13.1 release) → `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md`
-(**CI-enforced**, the binding floor) → `README.md` (published v0.13.1 release) → most-recent intent
+`docs/RELEASE_TRUTH_PUBLIC.md` (published v0.14.0 release) → `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md`
+(**CI-enforced**, the binding floor) → `README.md` (published v0.14.0 release) → most-recent intent
 (`conductor/2026-05-29-*-reset-{design,plan}.md`, polish only) → the language stack
 (`docs/LANGUAGE_SYSTEM.md` / `docs/COPY_RULES.md` / `docs/LEXICON.md` /
 `docs/BOUNDARY_PRODUCT_PRIMITIVES.md`) → `docs/LAUNCH_TRUTH_FREEZE.md` →
@@ -399,7 +399,7 @@ flowchart TB
 # 4. Scope & Maturity Matrix
 
 > **Authority order for every claim below** (highest first): `docs/RELEASE_TRUTH_PUBLIC.md`
-> (published v0.13.1 release) → `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md` (CI-enforced) →
+> (published v0.14.0 release) → `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md` (CI-enforced) →
 > `docs/ADAPTER_READINESS_MATRIX.md` + `adapters/<x>/readiness.yaml` → `README.md`. Current
 > published-release verification is recorded in `docs/RELEASE_TRUTH_PUBLIC.md`
 > and the release gates; older HEAD-specific audits are provenance only.
@@ -627,7 +627,7 @@ Controlled rules (verified): generic platform lead (`AI governance platform`, he
 
 ## 7.2 Authority order (the tie-breaker)
 
-When two documents disagree about what may be claimed, resolve highest-wins (the canonical chain from the briefing): (1) `docs/RELEASE_TRUTH_PUBLIC.md` (published v0.13.1 release); (2) `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md` (**CI-enforced**; the binding floor); (3) `README.md` (published v0.13.1 release); (4) `conductor/2026-05-29-…-reset-{design,plan}.md` (intent, polish only); (5) the language stack; (6) `docs/LAUNCH_TRUTH_FREEZE.md`; (7) `Fulcrum_Boundary_Vision.md` (direction only).
+When two documents disagree about what may be claimed, resolve highest-wins (the canonical chain from the briefing): (1) `docs/RELEASE_TRUTH_PUBLIC.md` (published v0.14.0 release); (2) `claims/boundary_claims.yaml` + `docs/CLAIMS_LEDGER.md` (**CI-enforced**; the binding floor); (3) `README.md` (published v0.14.0 release); (4) `conductor/2026-05-29-…-reset-{design,plan}.md` (intent, polish only); (5) the language stack; (6) `docs/LAUNCH_TRUTH_FREEZE.md`; (7) `Fulcrum_Boundary_Vision.md` (direction only).
 
 **Demote / do not cite as authority:** `BOUNDARY_SPEC_SERIES.md`, the "governance kernel / kernel-connected" framing, all GIL-named material, the per-version `RELEASE_TRUTH_V0xx` history.
 
@@ -1098,7 +1098,7 @@ These may appear ONLY in claim-control, language-control, historical, or explici
 - No "proved" runtime claim; no "cryptographic proof of verdict"; no "global shell control / all CLI activity protected / governs every way an agent can mutate." (C6/C7/C9)
 - Subject is **Boundary**, never Fulcrum, in every capability sentence. (R1)
 - Vendor-neutral: no named third parties; the only named external concept is the public "lethal trifecta" mental model, scoped to the tested path. (C8)
-- Distribution copy reflects the release-target channels (Homebrew, container, archives, and `go install …@v0.14.0`) for `v0.10.1`+ and a `local-only` dashboard with no hosted monitoring. (C10)
+- Distribution copy reflects the published release channels (Homebrew, container, archives, and `go install …@v0.14.0`) for `v0.10.1`+ and a `local-only` dashboard with no hosted monitoring. (C10)
 - The routed-only doctrine and the two-lane spine are each stated **once canonically** (§10.0 and §4.0); every other reference cross-points to them. Each conflict-resolving section states its chosen side explicitly + exclusively with a `superseded:` predecessor (C1–C10, R1).
 
 **This is the authoritative in-repo public-surface spec. It is a language-control document (§12 governs public language by quoting the forbidden phrases) and is exempt from the public-surface guard and language lint for that reason, alongside the lexicon and copy-rules docs.**

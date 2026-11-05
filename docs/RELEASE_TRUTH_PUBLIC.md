@@ -1,50 +1,96 @@
 # Final Public Release Truth
 
-Date: 2026-11-04
+Date: 2026-11-05
 
 Branch: `main`
 
-Current release target: `v0.14.0`
+Current release: `v0.14.0`
 
-Current release date: `2026-11-04`
+Current release date: `2026-11-05`
 
-Release-stamp target: `v0.14.0` — **not published**
+Published release: `v0.14.0`
 
-## Release-stamp status — not published
+## Published v0.14.0 release
 
-This branch contains the prospective `v0.14.0` release stamp, not a published
-release. The public release remains `v0.13.1` until both approved tags publish.
-Neither `v0.14.0` nor `verify-witnessed/v0.14.0` exists yet — as tag, release,
-or draft. Every command targeting `v0.14.0` is unavailable until then. No
-GitHub release, container, Homebrew cask update, plugin repository update,
-marketplace submission, or public-release status change is authorized by this
-release-stamp candidate. The `2026-11-04` date above is provisional and must
-be reconciled to the actual tag date at publication.
+The annotated root tag object `347a739d7b531ec27a7187f7c3866998512a4e0b`
+(`refs/tags/v0.14.0`) and annotated nested-module tag object
+`e0b76c4e54d1eccf18cd2e5437882e7a7efc460e`
+(`refs/tags/verify-witnessed/v0.14.0`) both peel to the approved release commit
+`a64f4f67c22e1416a4a20fdeb4b3c2d54af44379`.
+
+The [GitHub release](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/releases/tag/v0.14.0)
+is published (not draft or prerelease) with 23 assets: six static archives,
+six static SPDX SBOMs, four native-cgo archives, four native-cgo SPDX SBOMs,
+`SHA256SUMS`, `SHA256SUMS-cgo`, and the fixture-safe
+`boundary-evidence.tar.gz`. It was published at `2026-11-05T02:04:50Z` by
+[release workflow run 41952234192](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/actions/runs/41952234192),
+which concluded successfully. `SHA256SUMS` lists the twelve static archive and
+static SPDX SBOM files.
+
+`ghcr.io/fulcrum-governance/boundary:v0.14.0` and `:latest` resolve to the same
+multi-architecture index,
+`sha256:cf4f5371c1953951990902e8eb508aa00437b9ffd55ee861579a46cc1dd8aca4`.
+The Homebrew cask advanced to tap commit
+`09e160ffae6caf2388bd219459485f066306a945` (`Casks/boundary.rb`, version
+0.14.0). Its four SHA-256 values equal the corresponding `SHA256SUMS` entries:
+`darwin_arm64` `f8bed819e462a18877380e1cea2cf450384d8bb9a93c0d88ff89ffeb5d9cc69f`,
+`darwin_amd64` `5ed272537af0627e3955a18a13cb36fef5b873b095bf53109238861593b7a4ac`,
+`linux_arm64` `71c878703ad8b6e367b4889c92f0828a8d8f47c90fdc7fa5faf83bb2dbcde1e6`,
+and `linux_amd64` `8270256ec931c1b8c47d0542f99a3c91d32f4cc7f574aee1645f8f376587b316`.
+
+The published Go modules resolve through their actual tag refs. The root module
+`github.com/fulcrum-governance/fulcrum-boundary@v0.14.0` resolves through
+`refs/tags/v0.14.0` with module sum
+`h1:vCgePTMWpw7KLFOHPJEoEyH/lHp2k3Adc+sLkaU0QGQ=` and `go.mod` sum
+`h1:pkdRNhiKdrKA9MraIEzhPpXduUoDyQKw5xXMmN8RrbE=`. The exact case-sensitive
+nested module
+`github.com/Fulcrum-Governance/Fulcrum-Boundary/verify-witnessed@v0.14.0`
+resolves through `refs/tags/verify-witnessed/v0.14.0` with module sum
+`h1:7rxcBHVL0LfdNZmHcK/MySzJUFeNspRIUnP4qgty2ug=` and `go.mod` sum
+`h1:HmZ/KHzVXI/EJ3Z3z2W95AIoBmO9DTW1cK2aoeo97QU=`. The release commit pins
+the Go `1.26.10` toolchain for GO-2026-6809 (`crypto/x509`).
 
 `v0.14.0` is a minor pre-1.0 release; `docs/releases/v0.14.0.md` carries the
 full item list. It turns on decision records by default for routed calls on
 the production MCP route (`boundary serve`), makes every adapter fail closed
-the same way on enforcing routes when a required check cannot run, and fixes several cases where
-a `warn` or a malformed rule let a routed call run that should have been held.
-Boundary decides before execution only for actions forced through a governed
-Boundary route; paths that bypass Boundary remain outside its control. MCP
-remains the only production adapter; Command Boundary, Edit Boundary, Secure
-GitHub, CLI, CodeExec, gRPC, Managed Agents, Webhook, and A2A remain preview.
-Decision records remain hash-verifiable for covered-field integrity only —
-not authenticity, signing, verdict correctness, enforcement, or completeness —
-and Boundary does not emit `proved` decisions. The Lean files under `docs/proofs/` are a reference
-copy covering only the scoped invariants `docs/PROOF_BOUNDARY.md` names, not
-runtime decisions.
+the same way on enforcing routes when a required check cannot run, and fixes
+several cases where a `warn` or a malformed rule let a routed call run that
+should have been held. Boundary decides before execution only for actions
+forced through a governed Boundary route; paths that bypass Boundary remain
+outside its control. MCP remains the only production adapter; Command
+Boundary, Edit Boundary, Secure GitHub, CLI, CodeExec, gRPC, Managed Agents,
+Webhook, and A2A remain preview. Decision records remain hash-verifiable for
+covered-field integrity only — not authenticity, signing, verdict correctness,
+enforcement, or completeness — and Boundary does not emit `proved` decisions.
+The Lean files under `docs/proofs/` are a reference copy covering only the
+scoped invariants `docs/PROOF_BOUNDARY.md` names, not runtime decisions.
+Publication upgrades no claim.
 
-Both proposed annotated tags must resolve to the same exact commit, after the
-candidate PR is merged and an operator gives explicit exact-commit and dual-tag
-approval. This document records no annotated-tag object IDs, release asset
-counts, checksums, image digests, Homebrew tap commits, attestations, module
-sums, or marketplace status for `v0.14.0`, because none of those artifacts
-exist yet. The `boundary-plugins` marketplace package remains pinned to the
-published `v0.13.1` release commit recorded below.
+The public install smoke passed on 2026-11-05 (UTC, Apple M2 macOS).
+`go install` of the root module produced a binary that
+reported `boundary version v0.14.0 go1.26.10` and whose `selftest` finished
+with 10 passed and 0 failed; `go install` of the nested module
+`verify-witnessed@v0.14.0` succeeded; the module proxy origin record
+reported ref `refs/tags/v0.14.0` at hash `a64f4f6`; `docker run` of
+`ghcr.io/fulcrum-governance/boundary:v0.14.0 selftest` passed; the
+`darwin_arm64` static archive verified against `SHA256SUMS`; and
+`gh attestation verify` exited 0. That smoke validates only those commands on
+that host. It did not run `brew install`, so Homebrew installation is not
+validated beyond the cask's published version and checksums above; it does not
+validate the plugin or marketplace, routed deployment coverage, authenticity,
+execution proof, or protection of bypass paths.
 
-The prospective `v0.14.0` install commands, unavailable until publication:
+The public [`boundary-plugins`](https://github.com/Fulcrum-Governance/boundary-plugins)
+marketplace repository is not updated for `v0.14.0`. It still serves the
+`v0.13.1` package pinned to release commit
+`8a5762888be8404f8a4a0e64a2ad6206667b71b6`, validated as recorded in the
+`v0.13.1` section below. The two-file package retained in this repository
+(`integrations/claude-code/marketplace/`) is repinned to `v0.14.0` at
+`a64f4f67c22e1416a4a20fdeb4b3c2d54af44379` and becomes public only when
+that repository is separately updated; no `v0.14.0` marketplace installation
+has been validated.
+
+Install from the published versioned surfaces:
 
 ```bash
 go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.14.0
@@ -52,10 +98,11 @@ go install github.com/Fulcrum-Governance/Fulcrum-Boundary/verify-witnessed@v0.14
 docker run --rm ghcr.io/fulcrum-governance/boundary:v0.14.0 selftest
 ```
 
-## Published baseline before this release stamp: v0.13.1
+## Published baseline before v0.14.0: v0.13.1
 
-The published release surface is `v0.13.1`, reconciled below exactly as
-published. Nothing in the stamp section above changes it.
+The published `v0.13.1` record is preserved below as reconciled at its own
+publication. It remains the baseline for the public `boundary-plugins`
+marketplace package, which was not updated for `v0.14.0`.
 
 ## Published v0.13.1 release
 
