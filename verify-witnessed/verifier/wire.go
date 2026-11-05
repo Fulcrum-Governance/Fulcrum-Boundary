@@ -566,7 +566,7 @@ func decodeDecisionRecord(data []byte) (decisionRecordV1, error) {
 }
 
 func (r decisionRecordV1) validate() error {
-	if r.SchemaVersion != "1" && r.SchemaVersion != "2" {
+	if !supportedRecordSchemaVersion(r.SchemaVersion) {
 		return fmt.Errorf("decision record schema_version = %q, only pinned versions %q and %q are supported", r.SchemaVersion, "1", "2")
 	}
 	if r.RecordID == "" || r.Timestamp == "" || r.Action == "" {
@@ -654,6 +654,21 @@ func validateSortedUnique(label string, values []string, nonempty bool) error {
 	return nil
 }
 
+// supportedRecordSchemaVersion mirrors governance.SupportedDecisionRecordSchemaVersion.
+// The root module's parity test reads these case literals from source and
+// fails if they differ from the governance constants.
+func supportedRecordSchemaVersion(value string) bool {
+	switch value {
+	case "1", "2":
+		return true
+	default:
+		return false
+	}
+}
+
+// validDecisionMode mirrors governance.DecisionMode.Valid. The root module's
+// parity test reads these case literals from source and fails if they differ
+// from the governance DecisionMode constants.
 func validDecisionMode(value string) bool {
 	switch value {
 	case "proved", "deterministic", "classified", "human_approved":

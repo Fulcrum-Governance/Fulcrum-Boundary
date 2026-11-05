@@ -298,3 +298,117 @@ func TestVerifyWitnessedNestedRecordTypesMatch(t *testing.T) {
 		compareWireStructs(t, nested.label, governanceWireStruct(nested.gov), got)
 	}
 }
+
+// caseLiterals returns the string literals in every case clause of the first
+// switch statement in the named function of verify-witnessed's wire.go.
+func caseLiterals(t *testing.T, funcName string) map[string]bool {
+	t.Helper()
+	file, err := parser.ParseFile(token.NewFileSet(), verifyWitnessedWireFile, nil, 0)
+	if err != nil {
+		t.Fatalf("parse %s: %v", verifyWitnessedWireFile, err)
+	}
+	out := map[string]bool{}
+	for _, decl := range file.Decls {
+		fn, ok := decl.(*ast.FuncDecl)
+		if !ok || fn.Name.Name != funcName || fn.Recv != nil {
+			continue
+		}
+		ast.Inspect(fn.Body, func(n ast.Node) bool {
+			clause, ok := n.(*ast.CaseClause)
+			if !ok {
+				return true
+			}
+			for _, expr := range clause.List {
+				lit, ok := expr.(*ast.BasicLit)
+				if !ok || lit.Kind != token.STRING {
+					t.Fatalf("%s has a non-literal case expression; the parity test cannot read it", funcName)
+				}
+				value, err := strconv.Unquote(lit.Value)
+				if err != nil {
+					t.Fatal(err)
+				}
+				out[value] = true
+			}
+			return true
+		})
+		if len(out) == 0 {
+			t.Fatalf("%s has no string case literals", funcName)
+		}
+		return out
+	}
+	t.Fatalf("verify-witnessed wire.go has no function %s", funcName)
+	return nil
+}
+
+// TestVerifyWitnessedDecisionModesMatchGovernance pins the verifier's accepted
+// decision_mode values to the governance.DecisionMode constants: every
+// constant declared in governance/decision_mode.go must be accepted by the
+// verifier, the verifier must accept nothing else, and each accepted value
+// must satisfy governance.DecisionMode.Valid.
+func TestVerifyWitnessedDecisionModesMatchGovernance(t *testing.T) {
+	got := caseLiterals(t, "validDecisionMode")
+
+	file, err := parser.ParseFile(token.NewFileSet(), "../../governance/decision_mode.go", nil, 0)
+	if err != nil {
+		t.Fatalf("parse governance/decision_mode.go: %v", err)
+	}
+	want := map[string]bool{}
+	for _, decl := range file.Decls {
+		gen, ok := decl.(*ast.GenDecl)
+		if !ok || gen.Tok != token.CONST {
+			continue
+		}
+		for _, spec := range gen.Specs {
+			valueSpec := spec.(*ast.ValueSpec)
+			ident, ok := valueSpec.Type.(*ast.Ident)
+			if !ok || ident.Name != "DecisionMode" {
+				continue
+			}
+			for _, expr := range valueSpec.Values {
+				value, err := strconv.Unquote(expr.(*ast.BasicLit).Value)
+				if err != nil {
+					t.Fatal(err)
+				}
+				want[value] = true
+			}
+		}
+	}
+	if len(want) == 0 {
+		t.Fatal("found no DecisionMode constants in governance/decision_mode.go")
+	}
+	for mode := range want {
+		if !governance.DecisionMode(mode).Valid() {
+			t.Errorf("governance constant %q is not Valid(); update this parity test", mode)
+		}
+		if !got[mode] {
+			t.Errorf("governance defines decision_mode %q that verify-witnessed does not accept", mode)
+		}
+	}
+	for mode := range got {
+		if !want[mode] || !governance.DecisionMode(mode).Valid() {
+			t.Errorf("verify-witnessed accepts decision_mode %q that governance does not define as valid", mode)
+		}
+	}
+}
+
+// TestVerifyWitnessedSchemaVersionsMatchGovernance pins the verifier's
+// accepted schema_version values to
+// governance.SupportedDecisionRecordSchemaVersion.
+func TestVerifyWitnessedSchemaVersionsMatchGovernance(t *testing.T) {
+	got := caseLiterals(t, "supportedRecordSchemaVersion")
+	for _, version := range []string{governance.DecisionRecordSchemaVersion, governance.DecisionRecordSchemaV2} {
+		if !got[version] {
+			t.Errorf("governance supports schema_version %q that verify-witnessed does not accept", version)
+		}
+	}
+	for version := range got {
+		if !governance.SupportedDecisionRecordSchemaVersion(version) {
+			t.Errorf("verify-witnessed accepts schema_version %q that governance does not support", version)
+		}
+	}
+	for _, unsupported := range []string{"", "0", "3", "v1"} {
+		if governance.SupportedDecisionRecordSchemaVersion(unsupported) && !got[unsupported] {
+			t.Errorf("governance supports schema_version %q that verify-witnessed does not accept", unsupported)
+		}
+	}
+}

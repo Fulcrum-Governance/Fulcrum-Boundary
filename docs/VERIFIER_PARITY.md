@@ -101,6 +101,9 @@ stack) are likewise classified `parse-error` rather than crashing.
 | v1_escalate.json | ok | ok | ok | ok | ok |
 | v1_field_reordering.json | ok | ok | ok | ok | ok |
 | v1_float_trust_score.json | ok | ok | ok | ok | ok |
+| v1_mode_classified.json | ok | ok | ok | ok | ok |
+| v1_mode_human_approved.json | ok | ok | ok | ok | ok |
+| v1_mode_proved.json | ok | ok | ok | ok | ok |
 | v1_number_infinity.json | parse-error | parse-error | parse-error | parse-error | parse-error |
 | v1_number_int_overflow.json | parse-error | parse-error | parse-error | parse-error | parse-error |
 | v1_number_nan.json | parse-error | parse-error | parse-error | parse-error | parse-error |
@@ -112,6 +115,7 @@ stack) are likewise classified `parse-error` rather than crashing.
 | v1_reason_html_chars.json | ok | ok | ok | ok | ok |
 | v1_request_id.json | ok | ok | ok | ok | ok |
 | v1_require_approval.json | ok | ok | ok | ok | ok |
+| v1_signed_record.json | ok | ok | ok | ok | ok |
 | v1_tampered_decision_unchanged_hash.json | hash-mismatch | hash-mismatch | hash-mismatch | hash-mismatch | hash-mismatch |
 | v1_trailing_data.json | trailing-data | trailing-data | trailing-data | trailing-data | trailing-data |
 | v1_unicode_escape_differs.json | hash-mismatch | hash-mismatch | hash-mismatch | hash-mismatch | hash-mismatch |
@@ -119,6 +123,7 @@ stack) are likewise classified `parse-error` rather than crashing.
 | v1_unknown_field_nested_object.json | unknown-field | unknown-field | unknown-field | unknown-field | unknown-field |
 | v1_unknown_field_toplevel.json | unknown-field | unknown-field | unknown-field | unknown-field | unknown-field |
 | v1_warn.json | ok | ok | ok | ok | ok |
+| v2_all_members.json | ok | ok | ok | ok | ok |
 | v2_case_variant_execution_claim.json | unknown-field | unknown-field | unknown-field | unknown-field | unknown-field |
 | v2_duplicate_keys_nested.json | duplicate-key | duplicate-key | duplicate-key | duplicate-key | duplicate-key |
 | v2_execution_claim_number_overflow.json | parse-error | parse-error | parse-error | parse-error | parse-error |
