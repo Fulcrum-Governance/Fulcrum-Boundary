@@ -145,10 +145,9 @@ go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.14.0
 boundary selftest
 ```
 
-`@v0.14.0` is the release-stamp target, not a published install yet. Until
-both approved release tags (`v0.14.0` and `verify-witnessed/v0.14.0`) publish,
-the currently published install target remains `@v0.13.1`; `@latest` resolves
-to the latest published release after the Go proxy refreshes.
+`@v0.14.0` is the current published install target (root tag `v0.14.0`);
+`@latest` resolves to the latest published release after the Go proxy
+refreshes.
 
 ### Offline witnessed-log verifier
 
@@ -160,9 +159,8 @@ go install github.com/Fulcrum-Governance/Fulcrum-Boundary/verify-witnessed@v0.14
 ```
 
 Use the exact case-sensitive path above. Go resolves the verifier from
-`verify-witnessed/v0.14.0` once that tag publishes — until then the published
-nested tag remains `verify-witnessed/v0.13.1`. You can also build it from a
-public source checkout:
+the published nested tag `verify-witnessed/v0.14.0`. You can also build it from
+a public source checkout:
 
 ```bash
 git clone https://github.com/Fulcrum-Governance/Fulcrum-Boundary.git
@@ -170,9 +168,8 @@ cd Fulcrum-Boundary/verify-witnessed
 go build -o fulcrum-verify-witnessed .
 ```
 
-The published `v0.13.1` root and nested tags both peel to
-`8a5762888be8404f8a4a0e64a2ad6206667b71b6`; the `v0.14.0` tags do not exist
-yet. The verifier does not ship as a
+The published `v0.14.0` root and nested tags both peel to
+`a64f4f67c22e1416a4a20fdeb4b3c2d54af44379`. The verifier does not ship as a
 separate archive, container, Homebrew package, or versioned binary surface. See [`verify-witnessed/README.md`](../verify-witnessed/README.md)
 for the offline bundle and keyring contract.
 

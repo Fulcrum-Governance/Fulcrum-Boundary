@@ -3,7 +3,7 @@ message: "If you use Fulcrum Boundary, please cite the software."
 type: software
 title: "Fulcrum Boundary"
 version: "0.14.0"
-date-released: "2026-11-04"
+date-released: "2026-11-05"
 license: "Apache-2.0"
 repository-code: "https://github.com/Fulcrum-Governance/Fulcrum-Boundary"
 url: "https://github.com/Fulcrum-Governance/Fulcrum-Boundary"

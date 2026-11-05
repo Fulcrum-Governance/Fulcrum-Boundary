@@ -21,13 +21,13 @@ Add this marketplace and install the plugin from Claude Code:
 /plugin install boundary@boundary-plugins
 ```
 
-The plugin source is pinned to the immutable v0.13.1 release commit.
+The plugin source is pinned to the immutable v0.14.0 release commit.
 
-For setup, behavior, and limitations, use the immutable v0.13.1 source
+For setup, behavior, and limitations, use the immutable v0.14.0 source
 documentation:
 
-- [Claude Code hook guide](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/blob/v0.13.1/docs/integrations/CLAUDE_CODE_HOOK.md)
-- [Direct-install script](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/blob/v0.13.1/scripts/install-claude-code.sh)
+- [Claude Code hook guide](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/blob/v0.14.0/docs/integrations/CLAUDE_CODE_HOOK.md)
+- [Direct-install script](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/blob/v0.14.0/scripts/install-claude-code.sh)
 
 ## Contents
 
