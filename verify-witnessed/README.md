@@ -146,15 +146,15 @@ that checks this directly). The versioned nested-module install target is:
 go install github.com/Fulcrum-Governance/Fulcrum-Boundary/verify-witnessed@v0.14.1
 ```
 
-Use that exact case-sensitive module path. `@v0.14.1` resolves only after the
-`verify-witnessed/v0.14.1` tag publishes. The published `verify-witnessed/v0.14.0`
+Use that exact case-sensitive module path. `@v0.14.1` resolves through the
+published `verify-witnessed/v0.14.1` tag. The earlier `verify-witnessed/v0.14.0`
 has a known issue: it rejects any decision record that carries `request_id`
 (every record from the production MCP route does), `check`, or a schema_version
 "2" route-context member (`adapter_id`, `route_id`, `topology_profile`,
 `execution_claim`); see
-`docs/releases/v0.14.1.md`. The published root `v0.14.0` and
-matching `verify-witnessed/v0.14.0` tags both resolve to
-`a64f4f67c22e1416a4a20fdeb4b3c2d54af44379`. Pin the module or clone to that
+`docs/releases/v0.14.1.md`. The published root `v0.14.1` and
+matching `verify-witnessed/v0.14.1` tags both resolve to
+`487082d7c39bb8a81f19e758ee5c853321c5e1e3`. Pin the module or clone to that
 matching release to align with your bundle's `exporter.boundary_wire_contract_version`
 — the same convention used for the existing decision-record verifiers.
 

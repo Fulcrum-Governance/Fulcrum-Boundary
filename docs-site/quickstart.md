@@ -14,12 +14,11 @@ boundary demo command-secret-exfil
 boundary test --path tests/fixtures/policy-test/cases
 ```
 
-`v0.14.1` is the release-stamp target, not a published release; the current
-published release is `v0.14.0`. Prebuilt channels publish from the tag-gated
+`v0.14.1` is the current published release. Prebuilt channels publish from the tag-gated
 release pipeline: the Homebrew cask
 (`brew install fulcrum-governance/tap/boundary`, macOS only), release archives
 verified against `SHA256SUMS`, and the container image
-(`ghcr.io/fulcrum-governance/boundary:v0.14.1` after the tag publishes). On
+(`ghcr.io/fulcrum-governance/boundary:v0.14.1`). On
 Linux and Windows, use a release archive or the container image — Homebrew
 casks install only on macOS.
 See the canonical
@@ -49,7 +48,7 @@ Boundary governs actions only when the route is forced through Boundary.
 
 `boundary test` is the local developer-trust step: it evaluates local policy
 bundles against routed request fixtures and exits non-zero on unexpected
-verdicts. It is included in the published `v0.14.0` release. See
+verdicts. It is included in the published `v0.14.1` release. See
 [Policy Testing](reference/policy-testing.md).
 
 ## From Source

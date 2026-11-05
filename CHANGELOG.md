@@ -8,8 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [0.14.1] - 2026-11-05
 
-Release notes: `docs/releases/v0.14.1.md`. Release-stamp candidate: not
-published; neither `v0.14.1` nor `verify-witnessed/v0.14.1` exists yet. This
+Release notes: `docs/releases/v0.14.1.md`. This
 patch fixes one defect in the offline witnessed-log verifier and changes no
 enforcement behavior. Boundary decides before execution only for actions
 forced through a governed Boundary route; every entry below applies only to
@@ -66,8 +65,7 @@ evidence: hash-verifiable, not signed receipts, and Boundary does not emit
 
 ### Docs
 
-- docs: release-stamp candidate for `v0.14.1`; `docs/releases/v0.14.1.md`
-  records the known issue in `v0.14.0`. `boundary verify-record` and the Go,
+- docs: `docs/releases/v0.14.1.md` records the known issue in `v0.14.0`. `boundary verify-record` and the Go,
   Python, TypeScript, and Rust record verifiers are unaffected.
 
 ## [0.14.0] - 2026-11-05

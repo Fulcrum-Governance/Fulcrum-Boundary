@@ -145,10 +145,9 @@ go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.14.1
 boundary selftest
 ```
 
-`@v0.14.1` is the release-stamp target, not a published install yet. Until
-both approved release tags (`v0.14.1` and `verify-witnessed/v0.14.1`) publish,
-the currently published install target remains `@v0.14.0`; `@latest` resolves
-to the latest published release after the Go proxy refreshes.
+`@v0.14.1` is the current published install target (root tag `v0.14.1`);
+`@latest` resolves to the latest published release after the Go proxy
+refreshes.
 
 ### Offline witnessed-log verifier
 
@@ -160,12 +159,11 @@ go install github.com/Fulcrum-Governance/Fulcrum-Boundary/verify-witnessed@v0.14
 ```
 
 Use the exact case-sensitive path above. Go resolves the verifier from
-`verify-witnessed/v0.14.1` once that tag publishes — until then the published
-nested tag remains `verify-witnessed/v0.14.0`, which rejects witnessed-bundle
-records that carry `request_id`, `check`, or schema_version "2" route-context
-members (see `docs/releases/v0.14.1.md`); build from a source checkout at the
-release-stamp commit in the meantime. You can also build it from a public
-source checkout:
+the published nested tag `verify-witnessed/v0.14.1`. The earlier nested tag
+`verify-witnessed/v0.14.0` rejects witnessed-bundle records that carry
+`request_id`, `check`, or schema_version "2" route-context members (see
+`docs/releases/v0.14.1.md`); use `v0.14.1` or later. You can also build it from
+a public source checkout:
 
 ```bash
 git clone https://github.com/Fulcrum-Governance/Fulcrum-Boundary.git
@@ -173,9 +171,8 @@ cd Fulcrum-Boundary/verify-witnessed
 go build -o fulcrum-verify-witnessed .
 ```
 
-The published `v0.14.0` root and nested tags both peel to
-`a64f4f67c22e1416a4a20fdeb4b3c2d54af44379`; the `v0.14.1` tags do not exist
-yet. The verifier does not ship as a
+The published `v0.14.1` root and nested tags both peel to
+`487082d7c39bb8a81f19e758ee5c853321c5e1e3`. The verifier does not ship as a
 separate archive, container, Homebrew package, or versioned binary surface. See [`verify-witnessed/README.md`](../verify-witnessed/README.md)
 for the offline bundle and keyring contract.
 

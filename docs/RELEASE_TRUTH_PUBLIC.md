@@ -4,21 +4,54 @@ Date: 2026-11-05
 
 Branch: `main`
 
-Current release target: `v0.14.1`
+Current release: `v0.14.1`
 
 Current release date: `2026-11-05`
 
-Release-stamp target: `v0.14.1` — **not published**
+Published release: `v0.14.1`
 
-## Release-stamp status — not published
+## Published v0.14.1 release
 
-This branch contains the prospective `v0.14.1` release stamp, not a published
-release. The public release remains `v0.14.0` until both approved tags publish.
-Neither `v0.14.1` nor `verify-witnessed/v0.14.1` exists yet — as tag, release,
-or draft. Every command targeting `v0.14.1` is unavailable until then. No
-GitHub release, container, Homebrew cask update, plugin repository update,
-marketplace submission, or public-release status change is authorized by this
-release-stamp candidate.
+The annotated root tag object `2c8a7218194c8ba5459e7615eca8d5cdfe31fed6`
+(`refs/tags/v0.14.1`) and annotated nested-module tag object
+`1b91d1fc814f7cb28ff773a780966aa58125b23b`
+(`refs/tags/verify-witnessed/v0.14.1`) both peel to the approved release commit
+`487082d7c39bb8a81f19e758ee5c853321c5e1e3`. Both tags are annotated and
+unsigned. The release commit is the `main` commit created when pull request
+#283 was rebase-merged; its tree is identical to the CI-green pull request head
+`1a4bab6`, and the `main` CI run on `487082d` succeeded.
+
+The [GitHub release](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/releases/tag/v0.14.1)
+is published (not draft or prerelease) with 23 assets: six static archives,
+six static SPDX SBOMs, four native-cgo archives, four native-cgo SPDX SBOMs,
+`SHA256SUMS`, `SHA256SUMS-cgo`, and the fixture-safe
+`boundary-evidence.tar.gz`. It was published at `2026-11-05T04:35:03Z` by
+[release workflow run 41968113510](https://github.com/Fulcrum-Governance/Fulcrum-Boundary/actions/runs/41968113510),
+which concluded successfully. `SHA256SUMS` lists the twelve static archive and
+static SPDX SBOM files.
+
+`ghcr.io/fulcrum-governance/boundary:v0.14.1` and `:latest` resolve to the same
+multi-architecture index,
+`sha256:1dbeba5d4ca8281bf5002b68406d240fbad65ddb298778c3c5f58da49e215b80`.
+The Homebrew cask advanced to tap commit
+`cb50c6ef981278a639c9dcc9f72450abb04e1781` (`Casks/boundary.rb`, version
+0.14.1). Its four SHA-256 values equal the corresponding `SHA256SUMS` entries:
+`darwin_arm64` `abd115b464a417b61c460d5ec541c5c925125bf258a6e625c4d6344ee4c8d9ab`,
+`darwin_amd64` `312d7d7996527dcd73bb93ea50b5bdeb08da720d8c98c9d32ef2a03cde31e37a`,
+`linux_arm64` `7f6bf937985065ab674044cc0980c6496d545ef192ad17234b3de9f26b86e203`,
+and `linux_amd64` `d24252a2f431b085ee801758dd87326321e00aa218e40f7c0f81f889debb643c`.
+
+The published Go modules resolve through their actual tag refs. The root module
+`github.com/fulcrum-governance/fulcrum-boundary@v0.14.1` resolves through
+`refs/tags/v0.14.1` with module sum
+`h1:8VXInMPrGVIk7YvTPuFdKDOPIXvsUxp+zigYqfuBTcg=` and `go.mod` sum
+`h1:pkdRNhiKdrKA9MraIEzhPpXduUoDyQKw5xXMmN8RrbE=`. The exact case-sensitive
+nested module
+`github.com/Fulcrum-Governance/Fulcrum-Boundary/verify-witnessed@v0.14.1`
+resolves through `refs/tags/verify-witnessed/v0.14.1` with module sum
+`h1:yNrbrIvNm9kC8EzebmMZhjeWu81aO2K4zkJuGWxfphc=` and `go.mod` sum
+`h1:HmZ/KHzVXI/EJ3Z3z2W95AIoBmO9DTW1cK2aoeo97QU=`. The release commit pins
+the Go `1.26.10` toolchain.
 
 `v0.14.1` is a patch release for one defect in the offline witnessed-log
 verifier. The nested `verify-witnessed` module at `v0.14.0` rejects a decision
@@ -49,20 +82,51 @@ Decision records remain hash-verifiable for covered-field integrity only — not
 authenticity, signing, verdict correctness, enforcement, or completeness — and
 Boundary does not emit `proved` decisions. The Lean files under `docs/proofs/`
 are a reference copy covering only the scoped invariants
-`docs/PROOF_BOUNDARY.md` names, not runtime decisions. This patch upgrades no
+`docs/PROOF_BOUNDARY.md` names, not runtime decisions. Publication upgrades no
 claim.
 
-Both proposed annotated tags must resolve to the same exact commit, after the
-candidate PR is merged and an operator gives explicit exact-commit and dual-tag
-approval. This document records no annotated-tag object IDs, release asset
-counts, checksums, image digests, Homebrew tap commits, attestations, module
-sums, or marketplace status for `v0.14.1`, because none of those artifacts
-exist yet. The release date, `CITATION.cff` date, and `CHANGELOG.md` heading date
-in this stamp are provisional and are reconciled to the actual publication
-date at publication. The `boundary-plugins` marketplace package remains pinned
-to the published `v0.14.0` release commit recorded below.
+The public install smoke passed on 2026-11-05 (UTC, Apple M2 macOS).
+`go install` of the root module produced a binary that reported
+`boundary version v0.14.1 go1.26.10` and whose `selftest` finished with 10
+passed and 0 failed; `go install` of the nested module
+`verify-witnessed@v0.14.1` succeeded; the module proxy origin record for
+`github.com/fulcrum-governance/fulcrum-boundary@v0.14.1` reported ref
+`refs/tags/v0.14.1` at hash `487082d`; and `docker run` of
+`ghcr.io/fulcrum-governance/boundary:v0.14.1 selftest` exited 0 with 10 passed.
+That smoke validates only those commands on that host. It did not run
+`brew install`, so Homebrew installation is not validated beyond the cask's
+published version and checksums above; it does not validate routed deployment
+coverage, authenticity, execution proof, or protection of bypass paths.
 
-The prospective `v0.14.1` install commands, unavailable until publication:
+A follow-up sweep on 2026-11-05 downloaded all 23 release assets: every
+`SHA256SUMS` (12) and `SHA256SUMS-cgo` (4) entry verified, and 22 of the 23
+assets verified with `gh attestation verify`. `SHA256SUMS-cgo` carries no
+attestation of its own: it is assembled by a later job without an attestation
+step, by design. Build-provenance attestations establish which workflow built
+an asset; they do not sign the tags, which are unsigned annotated tags.
+
+The public [`boundary-plugins`](https://github.com/Fulcrum-Governance/boundary-plugins)
+marketplace repository was updated for `v0.14.1` on 2026-11-05 at commit
+`a310e88129fee7e7d19c87644fa0cdfa24948710`, with `README.md` and
+`.claude-plugin/marketplace.json` copied byte-for-byte from
+`integrations/claude-code/marketplace/` in this repository. Their SHA-256
+values are
+`f0c81eabf143b059f50fbb760c56e11e0b7b574eebf347528220e1078d722369`
+and `a732ef42cb5ba0f057936f31a87e1b35d8e67b1bab2a5470e30553cf21fe6d05`.
+In a fresh isolated `CLAUDE_CONFIG_DIR`, Claude Code `2.1.318` added the public
+repository with
+`claude plugin marketplace add Fulcrum-Governance/boundary-plugins --scope user`
+and installed it with
+`claude plugin install boundary@boundary-plugins --scope user --yes`. The
+installed plugin reported version `0.14.1`, four skills, two hook events, and
+source commit `487082d7c39bb8a81f19e758ee5c853321c5e1e3`; the installed
+manifest also passed `claude plugin validate`. This proves the standalone
+repository's public discovery, resolution, installation, and manifest shape. It
+does not prove hook routing coverage, protection of bypass paths, receipt
+authenticity or correctness, execution, Homebrew installation, or acceptance by
+a community marketplace.
+
+Install from the published versioned surfaces:
 
 ```bash
 go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.14.1
@@ -70,12 +134,12 @@ go install github.com/Fulcrum-Governance/Fulcrum-Boundary/verify-witnessed@v0.14
 docker run --rm ghcr.io/fulcrum-governance/boundary:v0.14.1 selftest
 ```
 
-## Published baseline before this release stamp: v0.14.0
+## Published baseline before v0.14.1: v0.14.0
 
-The published release surface is `v0.14.0`, reconciled below exactly as
-published. Nothing in the stamp section above changes it. Until `v0.14.1`
-publishes, `verify-witnessed` at `v0.14.0` is the published offline witnessed
-verifier and carries the known issue described in the stamp section above.
+The published `v0.14.0` record is preserved below as reconciled at its own
+publication. Its `verify-witnessed` module carries the known issue that
+`v0.14.1` fixes (described in the section above); the `v0.14.0` tags are
+unchanged.
 
 ## Published v0.14.0 release
 
