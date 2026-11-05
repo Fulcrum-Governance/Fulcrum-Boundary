@@ -12,13 +12,21 @@ import (
 )
 
 func decodeStrict(data []byte, dst any) error {
+	return decodeStrictWithScan(data, dst, rejectDuplicateMembersAndTrailingValues)
+}
+
+// decodeStrictWithScan is decodeStrict with a caller-chosen pre-flight scan.
+// The scan must consume exactly one JSON value and reject duplicate members and
+// trailing data; the decision-record scan additionally enforces the record's
+// closed member sets.
+func decodeStrictWithScan(data []byte, dst any, scan func([]byte) error) error {
 	if !utf8.Valid(data) {
 		return fmt.Errorf("JSON is not valid UTF-8")
 	}
 	if err := rejectLoneUnicodeSurrogates(data); err != nil {
 		return err
 	}
-	if err := rejectDuplicateMembersAndTrailingValues(data); err != nil {
+	if err := scan(data); err != nil {
 		return err
 	}
 
@@ -96,7 +104,11 @@ func decodeHexCodeUnit(data []byte, start int) (uint16, bool) {
 }
 
 func decodeStrictRequired(data []byte, dst any, required ...string) error {
-	if err := decodeStrict(data, dst); err != nil {
+	return decodeStrictRequiredWithScan(data, dst, rejectDuplicateMembersAndTrailingValues, required...)
+}
+
+func decodeStrictRequiredWithScan(data []byte, dst any, scan func([]byte) error, required ...string) error {
+	if err := decodeStrictWithScan(data, dst, scan); err != nil {
 		return err
 	}
 	if err := validateRequiredJSONShape(data, dst); err != nil {

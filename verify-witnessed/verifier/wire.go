@@ -163,6 +163,14 @@ type witnessCosignature struct {
 	Cosignature   string `json:"cosignature"`
 }
 
+// decisionRecordV1 is the verifier's independent mirror of Boundary's
+// governance.DecisionRecordV1 (schema_version "1" and "2"). The JSON member
+// names and omitempty semantics must match the Boundary type exactly: the
+// member set is closed at every level (a member the verifier does not know is
+// rejected, never dropped) and decision_hash is recomputed over this struct's
+// canonical form. The root module's parity tests fail when the two types
+// drift. This module must not import Boundary, so the mirror is maintained by
+// hand and enforced by test.
 type decisionRecordV1 struct {
 	SchemaVersion       string  `json:"schema_version"`
 	EventType           string  `json:"event_type,omitempty"`
@@ -174,6 +182,7 @@ type decisionRecordV1 struct {
 	AgentID             string  `json:"agent_id,omitempty"`
 	TenantID            string  `json:"tenant_id,omitempty"`
 	TraceID             string  `json:"trace_id,omitempty"`
+	RequestID           string  `json:"request_id,omitempty"`
 	Tool                string  `json:"tool,omitempty"`
 	Action              string  `json:"action"`
 	Reason              string  `json:"reason,omitempty"`
@@ -188,6 +197,33 @@ type decisionRecordV1 struct {
 	TrustState          string  `json:"trust_state,omitempty"`
 	Signature           string  `json:"signature,omitempty"`
 	SignatureKeyID      string  `json:"signature_key_id,omitempty"`
+
+	// Check mirrors governance.DecisionRecordV1.Check (ADR-047
+	// CHECK_INDETERMINATE context); nil when absent.
+	Check *checkFailure `json:"check,omitempty"`
+
+	// Route-context fields (schema_version "2", strictly additive).
+	AdapterID       string          `json:"adapter_id,omitempty"`
+	RouteID         string          `json:"route_id,omitempty"`
+	TopologyProfile string          `json:"topology_profile,omitempty"`
+	ExecutionClaim  *executionClaim `json:"execution_claim,omitempty"`
+}
+
+// checkFailure mirrors governance.CheckFailure as serialized into a record
+// (its Detail field is json:"-" and never appears on the wire).
+type checkFailure struct {
+	Stage    string `json:"stage"`
+	Class    string `json:"class"`
+	Category string `json:"category"`
+	Cause    string `json:"cause,omitempty"`
+}
+
+// executionClaim mirrors governance.ExecutionClaim: an adapter's execution
+// self-report, recorded but not corroborated.
+type executionClaim struct {
+	UpstreamCalled bool   `json:"upstream_called"`
+	Executed       bool   `json:"executed"`
+	Source         string `json:"source,omitempty"`
 }
 
 func decodeManifest(data []byte) (manifest, error) {
@@ -517,7 +553,7 @@ func (w witnessCosignature) validate() error {
 
 func decodeDecisionRecord(data []byte) (decisionRecordV1, error) {
 	var record decisionRecordV1
-	err := decodeStrictRequired(data, &record,
+	err := decodeStrictRecordRequired(data, &record,
 		"schema_version", "record_id", "timestamp", "action", "decision_hash", "trust_score",
 	)
 	if err != nil {
@@ -530,8 +566,8 @@ func decodeDecisionRecord(data []byte) (decisionRecordV1, error) {
 }
 
 func (r decisionRecordV1) validate() error {
-	if r.SchemaVersion != "1" {
-		return fmt.Errorf("decision record schema_version = %q, only pinned version %q is supported", r.SchemaVersion, "1")
+	if r.SchemaVersion != "1" && r.SchemaVersion != "2" {
+		return fmt.Errorf("decision record schema_version = %q, only pinned versions %q and %q are supported", r.SchemaVersion, "1", "2")
 	}
 	if r.RecordID == "" || r.Timestamp == "" || r.Action == "" {
 		return fmt.Errorf("decision record required strings must be non-empty")

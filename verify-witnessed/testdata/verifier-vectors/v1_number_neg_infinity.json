@@ -1,0 +1,16 @@
+{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "rec_f1f6c7b18a3f",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-neginf",
+  "tool": "query",
+  "action": "warn",
+  "reason": "-Infinity trust_score is unrepresentable in JCS",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "sha256:f1f6c7b18a3fdd06b6c468004f346768b9f55f27398c1d2230d00fca36ed5176",
+  "trust_score": -Infinity,
+  "trust_state": "TRUSTED"
+}

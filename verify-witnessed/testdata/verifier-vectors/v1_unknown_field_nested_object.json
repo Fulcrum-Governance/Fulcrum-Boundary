@@ -1,0 +1,17 @@
+{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "rec_741367bd849c",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-unknown-obj",
+  "tool": "query",
+  "action": "allow",
+  "reason": "extra member holding an object must be rejected, not dropped before hashing",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "sha256:741367bd849c0b6ffad4e05480ab4eff556e6f031938ec9b7376eb2828fd373d",
+  "trust_score": 1,
+  "trust_state": "TRUSTED",
+  "extra_obj": {"injected": true, "nested": {"deep": 1}}
+}

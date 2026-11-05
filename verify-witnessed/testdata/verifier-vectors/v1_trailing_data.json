@@ -1,0 +1,17 @@
+{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "rec_a7daff3bb1f3",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-trailing",
+  "tool": "query",
+  "action": "allow",
+  "reason": "trailing bytes after the record must not be ignored",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "sha256:a7daff3bb1f37f2812e214b3ef08f46e4566422f5cbc07f1d025cf80f68b85b3",
+  "trust_score": 1,
+  "trust_state": "TRUSTED"
+}
+{"smuggled": true}
