@@ -4,11 +4,69 @@ Date: 2026-11-05
 
 Branch: `main`
 
-Current release: `v0.14.0`
+Current release target: `v0.14.1`
 
 Current release date: `2026-11-05`
 
-Published release: `v0.14.0`
+Release-stamp target: `v0.14.1` — **not published**
+
+## Release-stamp status — not published
+
+This branch contains the prospective `v0.14.1` release stamp, not a published
+release. The public release remains `v0.14.0` until both approved tags publish.
+Neither `v0.14.1` nor `verify-witnessed/v0.14.1` exists yet — as tag, release,
+or draft. Every command targeting `v0.14.1` is unavailable until then. No
+GitHub release, container, Homebrew cask update, plugin repository update,
+marketplace submission, or public-release status change is authorized by this
+release-stamp candidate.
+
+`v0.14.1` is a patch release for one defect in the offline witnessed-log
+verifier. The nested `verify-witnessed` module at `v0.14.0` rejects a decision
+record that carries `request_id`, a `check` object, or any schema_version "2"
+route-context member (`adapter_id`, `route_id`, `topology_profile`,
+`execution_claim`): its record type omitted those members and its strict decoder
+treats every member it does not know as unknown. Records produced by Boundary
+at `v0.14.0` carry them, so a witnessed bundle holding such a record failed
+`decision_record_integrity` offline. `boundary verify-record` and the four
+cross-language record verifiers (Go, Python, TypeScript, Rust) are unaffected,
+and nothing about enforcement changes. `v0.14.1` makes the verifier accept
+every member of the decision-record schema, recompute `decision_hash` over all
+of them, and adds a parity gate so a record field cannot be added without a
+verifier update again; `docs/releases/v0.14.1.md` carries the detail.
+
+Boundary decides before execution only for actions forced through a governed
+Boundary route; paths that bypass Boundary remain outside its control. MCP
+remains the only production adapter; Command Boundary, Edit Boundary, Secure
+GitHub, CLI, CodeExec, gRPC, Managed Agents, Webhook, and A2A remain preview.
+Decision records remain hash-verifiable for covered-field integrity only — not
+authenticity, signing, verdict correctness, enforcement, or completeness — and
+Boundary does not emit `proved` decisions. The Lean files under `docs/proofs/`
+are a reference copy covering only the scoped invariants
+`docs/PROOF_BOUNDARY.md` names, not runtime decisions. This patch upgrades no
+claim.
+
+Both proposed annotated tags must resolve to the same exact commit, after the
+candidate PR is merged and an operator gives explicit exact-commit and dual-tag
+approval. This document records no annotated-tag object IDs, release asset
+counts, checksums, image digests, Homebrew tap commits, attestations, module
+sums, or marketplace status for `v0.14.1`, because none of those artifacts
+exist yet. The `boundary-plugins` marketplace package remains pinned to the
+published `v0.14.0` release commit recorded below.
+
+The prospective `v0.14.1` install commands, unavailable until publication:
+
+```bash
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.14.1
+go install github.com/Fulcrum-Governance/Fulcrum-Boundary/verify-witnessed@v0.14.1
+docker run --rm ghcr.io/fulcrum-governance/boundary:v0.14.1 selftest
+```
+
+## Published baseline before this release stamp: v0.14.0
+
+The published release surface is `v0.14.0`, reconciled below exactly as
+published. Nothing in the stamp section above changes it. Until `v0.14.1`
+publishes, `verify-witnessed` at `v0.14.0` is the published offline witnessed
+verifier and carries the known issue described in the stamp section above.
 
 ## Published v0.14.0 release
 

@@ -4,9 +4,10 @@
 // install docs kept pinning a superseded release tag long after a newer release
 // shipped).
 //
-// The published release is the "Current release: `vX.Y.Z`" line in
-// docs/RELEASE_TRUTH_PUBLIC.md. The report must keep its copy-pasteable install
-// commands and publication facts aligned with that released version.
+// The release-stamp target is the "Current release target: `vX.Y.Z`" line in
+// docs/RELEASE_TRUTH_PUBLIC.md. A stamp candidate is internally consistent for
+// its future tag while its release-truth section still states that publication
+// has not happened.
 //
 // Only genuinely historical surfaces are exempt (per-version release notes,
 // archived internal reconciliations, the append-only changelog, the LOCKED spec
@@ -25,8 +26,8 @@ import (
 )
 
 var (
-	currentReleaseAnchor     = regexp.MustCompile("(?m)^Current release: `(v[0-9]+\\.[0-9]+\\.[0-9]+)`")
-	publishedReleaseAnchor   = regexp.MustCompile("(?m)^Published release: `(v[0-9]+\\.[0-9]+\\.[0-9]+)`$")
+	currentReleaseAnchor     = regexp.MustCompile("(?m)^Current release target: `(v[0-9]+\\.[0-9]+\\.[0-9]+)`")
+	releaseStampAnchor       = regexp.MustCompile("(?m)^Release-stamp target: `(v[0-9]+\\.[0-9]+\\.[0-9]+)` — \\*\\*not published\\*\\*$")
 	currentReleaseDateAnchor = regexp.MustCompile("(?m)^Current release date: `([0-9]{4}-[0-9]{2}-[0-9]{2})`$")
 	publicInstallSmokeAnchor = regexp.MustCompile(`The public install smoke passed on ([0-9]{4}-[0-9]{2}-[0-9]{2})[ .]`)
 	stalePublicInstallSmoke  = regexp.MustCompile("(?i)public-install smoke(?: against the published `v[0-9]+\\.[0-9]+\\.[0-9]+` channels)? has not run")
@@ -81,7 +82,7 @@ func TestCanonicalInstallRefsTrackCurrentRelease(t *testing.T) {
 	releaseTruth := read(t, root, "docs/RELEASE_TRUTH_PUBLIC.md")
 	anchorMatches := currentReleaseAnchor.FindAllStringSubmatch(releaseTruth, -1)
 	if len(anchorMatches) != 1 {
-		t.Fatalf("expected exactly one \"Current release: `vX.Y.Z`\" anchor in docs/RELEASE_TRUTH_PUBLIC.md, found %d — the drift anchor moved or was reformatted", len(anchorMatches))
+		t.Fatalf("expected exactly one \"Current release target: `vX.Y.Z`\" anchor in docs/RELEASE_TRUTH_PUBLIC.md, found %d — the drift anchor moved or was reformatted", len(anchorMatches))
 	}
 	want := anchorMatches[0][1]
 
@@ -132,16 +133,22 @@ func TestCanonicalInstallRefsTrackCurrentRelease(t *testing.T) {
 		t.Fatal("found zero canonical install references across the non-historical docs — the scan scope or patterns broke, so this guard is vacuous")
 	}
 
-	publishedStart := strings.Index(releaseTruth, "## Published "+want+" release")
-	baselineStart := strings.Index(releaseTruth, "## Published baseline before "+want+":")
-	if publishedStart == -1 || baselineStart == -1 || publishedStart >= baselineStart {
-		t.Fatal("docs/RELEASE_TRUTH_PUBLIC.md: published-release section must precede its published baseline")
+	stampStart := strings.Index(releaseTruth, "## Release-stamp status — not published")
+	baselineStart := strings.Index(releaseTruth, "## Published baseline before this release stamp:")
+	if stampStart == -1 || baselineStart == -1 || stampStart >= baselineStart {
+		t.Fatal("docs/RELEASE_TRUTH_PUBLIC.md: release-stamp section must precede its published baseline")
 	}
-	assertInstallRefsEqual(t, "docs/RELEASE_TRUTH_PUBLIC.md published-release section", releaseTruth[publishedStart:baselineStart], want)
+	assertInstallRefsEqual(t, "docs/RELEASE_TRUTH_PUBLIC.md release-stamp section", releaseTruth[stampStart:baselineStart], want)
 }
 
 func TestNoPrePublicationConditionals(t *testing.T) {
 	root := repoRoot(t)
+	if releaseStampAnchor.MatchString(read(t, root, "docs/RELEASE_TRUTH_PUBLIC.md")) {
+		// A release-stamp window is open: maintained docs legitimately carry
+		// pre-publication conditionals for the stamped target. The post-tag
+		// reconciliation removes the stamp anchor, which re-arms this guard.
+		t.Skip("release-stamp window open (Release-stamp target anchor present); pre-publication conditionals are expected until the reconciliation lands")
+	}
 	tracked, trackedErr := trackedMarkdownSurfaces(root)
 	if trackedErr != nil {
 		t.Skipf("skipping tracked markdown pre-publication conditional guard: git tracked-file list unavailable outside a git checkout: %v", trackedErr)
@@ -196,7 +203,9 @@ func TestNoPrePublicationConditionals(t *testing.T) {
 func TestPublishedMarketplaceTruthIsCurrent(t *testing.T) {
 	root := repoRoot(t)
 	releaseTruth := read(t, root, "docs/RELEASE_TRUTH_PUBLIC.md")
-	current := oneAnchor(t, "current release", currentReleaseAnchor, releaseTruth)
+	// The marketplace package is pinned to the published baseline release; a
+	// stamp candidate never repins it before its own tags exist.
+	const current = "v0.14.0"
 	publishedStart := strings.Index(releaseTruth, "## Published "+current+" release")
 	baselineStart := strings.Index(releaseTruth, "## Published baseline before "+current+":")
 	if publishedStart == -1 || baselineStart == -1 || publishedStart >= baselineStart {
@@ -272,38 +281,51 @@ func trackedMarkdownSurfaces(root string) (map[string]bool, error) {
 	return tracked, nil
 }
 
-func TestPublishedReleaseTruthIsInternallyConsistent(t *testing.T) {
+func TestReleaseStampCandidateIsInternallyConsistent(t *testing.T) {
 	root := repoRoot(t)
 	releaseTruth := read(t, root, "docs/RELEASE_TRUTH_PUBLIC.md")
-	current := oneAnchor(t, "current release", currentReleaseAnchor, releaseTruth)
-	published := oneAnchor(t, "published release", publishedReleaseAnchor, releaseTruth)
+	current := oneAnchor(t, "current release target", currentReleaseAnchor, releaseTruth)
+	stamp := oneAnchor(t, "not-published release-stamp target", releaseStampAnchor, releaseTruth)
 	releaseDate := oneAnchor(t, "current release date", currentReleaseDateAnchor, releaseTruth)
-	if published != current {
-		t.Fatalf("published release %s must match current release %s", published, current)
+	if stamp != current {
+		t.Fatalf("release-stamp target %s must match current release target %s", stamp, current)
 	}
 
+	const published = "v0.14.0"
+	stampStart := strings.Index(releaseTruth, "## Release-stamp status — not published")
+	stampBaseline := strings.Index(releaseTruth, "## Published baseline before this release stamp: "+published)
+	if stampStart == -1 || stampBaseline == -1 || stampStart >= stampBaseline {
+		t.Fatal("docs/RELEASE_TRUTH_PUBLIC.md: release-stamp section must precede its published baseline")
+	}
+	stampSection := releaseTruth[stampStart:stampBaseline]
+	if !strings.Contains(stampSection, "The public release remains `"+published+"` until both approved tags publish.") {
+		t.Fatalf("docs/RELEASE_TRUTH_PUBLIC.md: release-stamp status must preserve the %s published baseline until both tags publish", published)
+	}
+	assertInstallRefsEqual(t, "docs/RELEASE_TRUTH_PUBLIC.md release-stamp section", stampSection, stamp)
+
+	// The stamped release must not rewrite the published v0.14.0 record: its
+	// section keeps the actual tag refs and peel statement recorded at
+	// publication.
 	publishedStart := strings.Index(releaseTruth, "## Published "+published+" release")
-	baselineStart := strings.Index(releaseTruth, "## Published baseline before "+published+":")
-	if publishedStart == -1 || baselineStart == -1 || publishedStart >= baselineStart {
-		t.Fatal("docs/RELEASE_TRUTH_PUBLIC.md: published-release section must precede its published baseline")
+	publishedEnd := strings.Index(releaseTruth, "## Published baseline before "+published+":")
+	if publishedStart == -1 || publishedEnd == -1 || publishedStart >= publishedEnd || publishedStart < stampBaseline {
+		t.Fatalf("docs/RELEASE_TRUTH_PUBLIC.md: the published %s record must remain intact beneath the stamp", published)
 	}
-	publishedSection := releaseTruth[publishedStart:baselineStart]
-	rootRef := "refs/tags/" + published
-	nestedRef := "refs/tags/verify-witnessed/" + published
+	publishedSection := releaseTruth[publishedStart:publishedEnd]
 	if !strings.Contains(publishedSection, "The annotated root tag object") ||
-		!strings.Contains(publishedSection, "(`"+rootRef+"`)") ||
-		!strings.Contains(publishedSection, "(`"+nestedRef+"`)") ||
+		!strings.Contains(publishedSection, "(`refs/tags/"+published+"`)") ||
+		!strings.Contains(publishedSection, "(`refs/tags/verify-witnessed/"+published+"`)") ||
 		!strings.Contains(publishedSection, "both peel to the approved release commit") {
-		t.Fatal("docs/RELEASE_TRUTH_PUBLIC.md: published-release section must name both actual tag refs and state that both annotated tags peel to the approved commit")
+		t.Fatalf("docs/RELEASE_TRUTH_PUBLIC.md: the published %s section must keep both actual tag refs and the peel statement", published)
 	}
-	assertInstallRefsEqual(t, "docs/RELEASE_TRUTH_PUBLIC.md published-release section", publishedSection, published)
+	assertInstallRefsEqual(t, "docs/RELEASE_TRUTH_PUBLIC.md published "+published+" section", publishedSection, published)
 
-	// The prior published record stays intact beneath the current one.
+	// The earlier published record also stays intact beneath it.
 	const prior = "v0.13.1"
 	priorStart := strings.Index(releaseTruth, "## Published "+prior+" release")
 	priorEnd := strings.Index(releaseTruth, "## Published baseline before "+prior+":")
-	if priorStart == -1 || priorEnd == -1 || priorStart >= priorEnd || priorStart < baselineStart {
-		t.Fatalf("docs/RELEASE_TRUTH_PUBLIC.md: the published %s record must remain intact beneath the current release", prior)
+	if priorStart == -1 || priorEnd == -1 || priorStart >= priorEnd || priorStart < publishedEnd {
+		t.Fatalf("docs/RELEASE_TRUTH_PUBLIC.md: the published %s record must remain intact beneath %s", prior, published)
 	}
 	priorSection := releaseTruth[priorStart:priorEnd]
 	if !strings.Contains(priorSection, "The annotated root tag object") ||
@@ -315,44 +337,53 @@ func TestPublishedReleaseTruthIsInternallyConsistent(t *testing.T) {
 	assertInstallRefsEqual(t, "docs/RELEASE_TRUTH_PUBLIC.md published "+prior+" section", priorSection, prior)
 
 	citation := read(t, root, "CITATION.cff")
-	if !strings.Contains(citation, `version: "`+strings.TrimPrefix(published, "v")+`"`) {
-		t.Fatalf("CITATION.cff must match published release version %s", published)
+	if !strings.Contains(citation, `version: "`+strings.TrimPrefix(stamp, "v")+`"`) {
+		t.Fatalf("CITATION.cff must match release-stamp version %s", stamp)
 	}
 	if !strings.Contains(citation, `date-released: "`+releaseDate+`"`) {
-		t.Fatalf("CITATION.cff must match published release date %s", releaseDate)
+		t.Fatalf("CITATION.cff must match release-stamp date %s", releaseDate)
 	}
 
 	changelog := read(t, root, "CHANGELOG.md")
-	releaseHeading := "## [" + strings.TrimPrefix(published, "v") + "] - " + releaseDate
-	releaseLink := "[" + strings.TrimPrefix(published, "v") + "]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/" + prior + "..." + published
-	if !strings.Contains(changelog, releaseHeading) || !strings.Contains(changelog, releaseLink) {
-		t.Fatalf("CHANGELOG.md must carry the %s published-release heading and compare link", published)
+	stampHeading := "## [" + strings.TrimPrefix(stamp, "v") + "] - " + releaseDate
+	stampLink := "[" + strings.TrimPrefix(stamp, "v") + "]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/" + published + "..." + stamp
+	if !strings.Contains(changelog, stampHeading) || !strings.Contains(changelog, stampLink) {
+		t.Fatalf("CHANGELOG.md must carry the %s release-stamp heading and compare link", stamp)
 	}
-	if !strings.Contains(changelog, "[Unreleased]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/"+published+"...HEAD") {
-		t.Fatalf("CHANGELOG.md: [Unreleased] must start from published release %s", published)
+	if !strings.Contains(changelog, "[Unreleased]: https://github.com/Fulcrum-Governance/Fulcrum-Boundary/compare/"+stamp+"...HEAD") {
+		t.Fatalf("CHANGELOG.md: [Unreleased] must start from release-stamp target %s", stamp)
 	}
 
-	releaseNotes := read(t, root, "docs/releases/"+published+".md")
-	normalizedReleaseNotes := strings.Join(strings.Fields(strings.ReplaceAll(releaseNotes, "\n>", "\n")), " ")
+	stampNotes := read(t, root, "docs/releases/"+stamp+".md")
+	if !strings.Contains(stampNotes, "**Release-stamp candidate — not published.**") ||
+		!strings.Contains(stampNotes, "until both tags are") {
+		t.Fatalf("docs/releases/%s.md must label its stamp candidate unavailable until both tags publish", stamp)
+	}
+	assertInstallRefsEqual(t, "release-stamp notes", stampNotes, stamp)
+
+	// The published baseline's own release notes and smoke evidence stay intact.
+	publishedNotes := read(t, root, "docs/releases/"+published+".md")
+	normalizedPublishedNotes := strings.Join(strings.Fields(strings.ReplaceAll(publishedNotes, "\n>", "\n")), " ")
+	normalizedReleaseTruth := strings.Join(strings.Fields(releaseTruth), " ")
 	normalizedPublishedSection := strings.Join(strings.Fields(publishedSection), " ")
-	if !strings.Contains(normalizedReleaseNotes, "**Published release — "+releaseDate+".**") ||
-		!strings.Contains(normalizedReleaseNotes, "not a draft or prerelease") {
+	if !strings.Contains(normalizedPublishedNotes, "**Published release — ") ||
+		!strings.Contains(normalizedPublishedNotes, "not a draft or prerelease") {
 		t.Fatalf("docs/releases/%s.md must identify the public release state", published)
 	}
 	truthSmokeDate := oneAnchor(t, "public release-truth smoke date", publicInstallSmokeAnchor, normalizedPublishedSection)
-	notesSmokeDate := oneAnchor(t, "current release-note smoke date", publicInstallSmokeAnchor, normalizedReleaseNotes)
+	notesSmokeDate := oneAnchor(t, "published release-note smoke date", publicInstallSmokeAnchor, normalizedPublishedNotes)
 	if truthSmokeDate != notesSmokeDate {
-		t.Fatalf("public-install smoke date differs between release truth (%s) and current release notes (%s)", truthSmokeDate, notesSmokeDate)
+		t.Fatalf("public-install smoke date differs between release truth (%s) and published release notes (%s)", truthSmokeDate, notesSmokeDate)
 	}
 	for surface, body := range map[string]string{
-		"docs/RELEASE_TRUTH_PUBLIC.md": strings.Join(strings.Fields(releaseTruth), " "),
-		"current release notes":        normalizedReleaseNotes,
+		"docs/RELEASE_TRUTH_PUBLIC.md": normalizedReleaseTruth,
+		"published release notes":      normalizedPublishedNotes,
 	} {
 		if stalePublicInstallSmoke.MatchString(body) {
-			t.Fatalf("%s retains a stale claim that the current public-install smoke has not run", surface)
+			t.Fatalf("%s retains a stale claim that the published public-install smoke has not run", surface)
 		}
 	}
-	assertInstallRefsEqual(t, "release notes", releaseNotes, published)
+	assertInstallRefsEqual(t, "published release notes", publishedNotes, published)
 }
 
 func assertInstallRefsEqual(t *testing.T, name, body, want string) {

@@ -2,7 +2,7 @@
 
 > **This is the single authoritative public-surface spec** for the current public release surface of
 > **Fulcrum Boundary** (Apache-2.0, Go developer tool,
-> `github.com/fulcrum-governance/fulcrum-boundary`, CLI binary `boundary`, current release tag `v0.14.0`).
+> `github.com/fulcrum-governance/fulcrum-boundary`, CLI binary `boundary`, current published release tag `v0.14.0`; release-stamp target `v0.14.1`, not published).
 > It defines what is published and what it is called. It is a language-control document:
 > §12 enumerates the approved and forbidden public language, so it intentionally quotes the
 > forbidden phrases in order to govern them.
@@ -170,7 +170,7 @@ The release story is a **tight spine of two flagship proof lanes**, each with a 
 
 ## 1.9 Distribution (LOCKED — resolves C10)
 
-- **Prebuilt one-command channels** ship from the tag-gated release pipeline for `v0.10.1`+ — a Homebrew tap package, a container image, and static + native-cgo archives with SHA256 checksum manifests (`BND-CLAIM-DIST-001`, `delivered`) — **plus** `go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.14.0` from source. Releases up to and including `v0.10.0` were source-only. The source/cgo build requires Go 1.25+ and a C toolchain (CGO) (§5.5).
+- **Prebuilt one-command channels** ship from the tag-gated release pipeline for `v0.10.1`+ — a Homebrew tap package, a container image, and static + native-cgo archives with SHA256 checksum manifests (`BND-CLAIM-DIST-001`, `delivered`) — **plus** `go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.14.1` from source. Releases up to and including `v0.10.0` were source-only. The source/cgo build requires Go 1.25+ and a C toolchain (CGO) (§5.5).
 - **No** hosted-monitoring and **no** cloud analysis: every channel installs a **local** binary, and the **dashboard reads local artifacts only** (`local-only`). Full mechanics §7.4.
 - **superseded:** the earlier "local + `go install` only — no Homebrew / package-manager distribution" stance (pre-`v0.10.1`, before the tag-gated pipeline shipped), and any implied hosted monitoring.
 
@@ -508,7 +508,7 @@ Kernel / out-of-process integration is **a contract surface, not a shipped depen
 
 | Item | Contract | Status | Evidence |
 |---|---|---|---|
-| Install path | `brew install fulcrum-governance/tap/boundary` (static) or `go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.14.0` (source) | repeatable release target | `docs/RELEASE_TRUTH_PUBLIC.md`; README |
+| Install path | `brew install fulcrum-governance/tap/boundary` (static) or `go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.14.1` (source) | repeatable release target | `docs/RELEASE_TRUTH_PUBLIC.md`; README |
 | Go toolchain | **Go 1.25+** required | hard requirement | `go.mod` `go 1.25.0` |
 | **C-toolchain prerequisite** | Default `go install` needs a **C compiler present** (CGO on): `cmd/boundary` → `interceptors/sql` → `pganalyze/pg_query_go/v6` is **CGO with no `nocgo` fallback**. `CGO_ENABLED=0` build **fails**. The shipped `Dockerfile` builds with `CGO_ENABLED=1` plus a C toolchain; the README states the prerequisite. | build caveat (B-1, resolved) | `CROSS_REPO_DEPS.md` B-1; `Dockerfile` (`CGO_ENABLED=1`, `build-base`); verified `CGO_ENABLED=0 go build ./cmd/boundary` fails (`undefined: pg_query.Parse`) |
 | Prebuilt channels | **Homebrew tap, container image, archives + SHA256 manifests** ship from the tag-gated pipeline (`v0.10.1`+; `BND-CLAIM-DIST-001`). **No hosted monitoring / cloud analysis** — every channel installs a local binary. | delivered; hosted monitoring still forbidden | `docs/RELEASE_TRUTH_PUBLIC.md`; `docs/INSTALL.md` |
@@ -643,7 +643,7 @@ Distribution ships from the tag-gated release pipeline for `v0.10.1`+: a Homebre
 
 ```
 brew install fulcrum-governance/tap/boundary
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.14.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.14.1
 ```
 
 - The Homebrew cask and the container image ship the **static** build; the `_cgo` archives and the source build carry the full SQL classifier. Releases up to and including `v0.10.0` were source-only.
@@ -704,7 +704,7 @@ Boundary is a single Apache-2.0 Go module (Go 1.25+) installed with one `go inst
 Requires Go 1.25+ and a C toolchain on `PATH` for the source/cgo build (the SQL classifier links `pganalyze/pg_query_go` via cgo). Prebuilt channels — Homebrew, container, and archives — also ship for `v0.10.1`+ (C10).
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.14.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.14.1
 boundary selftest                       # 10 no-credential local checks (verified 10/10)
 boundary demo github-lethal-trifecta    # fixture-only: no creds, no GitHub calls, no mutation
 ```

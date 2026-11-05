@@ -7,18 +7,19 @@ Install the CLI and run the local smoke path.
 Requires Go 1.25+.
 
 ```bash
-go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.14.0
+go install github.com/fulcrum-governance/fulcrum-boundary/cmd/boundary@v0.14.1
 boundary selftest
 boundary demo github-lethal-trifecta
 boundary demo command-secret-exfil
 boundary test --path tests/fixtures/policy-test/cases
 ```
 
-`v0.14.0` is the current published release. Prebuilt channels publish from the tag-gated
+`v0.14.1` is the release-stamp target, not a published release; the current
+published release is `v0.14.0`. Prebuilt channels publish from the tag-gated
 release pipeline: the Homebrew cask
 (`brew install fulcrum-governance/tap/boundary`, macOS only), release archives
 verified against `SHA256SUMS`, and the container image
-(`ghcr.io/fulcrum-governance/boundary:v0.14.0`). On
+(`ghcr.io/fulcrum-governance/boundary:v0.14.1` after the tag publishes). On
 Linux and Windows, use a release archive or the container image — Homebrew
 casks install only on macOS.
 See the canonical

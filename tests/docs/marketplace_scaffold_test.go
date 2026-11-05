@@ -39,10 +39,26 @@ type marketplaceManifest struct {
 	Plugins []marketplacePlugin `json:"plugins"`
 }
 
+var publishedBaselineHeading = regexp.MustCompile(`(?m)^## Published baseline before this release stamp: (v[0-9]+\.[0-9]+\.[0-9]+)$`)
+
 // marketplacePinnedVersion returns the release the marketplace package must be
-// pinned to: the plugin manifest's own published version.
-func marketplacePinnedVersion(plugin pluginManifest) string {
-	return "v" + plugin.Version
+// pinned to. Normally that is the plugin manifest's own version. While a
+// release-stamp window is open (docs/RELEASE_TRUTH_PUBLIC.md carries the
+// "not published" stamp anchor) the manifest already names the unpublished
+// target, whose tag and commit do not exist, so the marketplace stays pinned
+// to the published baseline release; the post-tag reconciliation removes the
+// stamp anchor, which re-arms the strict manifest-version pin.
+func marketplacePinnedVersion(t *testing.T, root, pluginVersion string) string {
+	t.Helper()
+	releaseTruth := read(t, root, "docs/RELEASE_TRUTH_PUBLIC.md")
+	if !releaseStampAnchor.MatchString(releaseTruth) {
+		return "v" + pluginVersion
+	}
+	stamp := oneAnchor(t, "not-published release-stamp target", releaseStampAnchor, releaseTruth)
+	if stamp != "v"+pluginVersion {
+		t.Fatalf("plugin manifest version v%s must match the release-stamp target %s", pluginVersion, stamp)
+	}
+	return oneAnchor(t, "published baseline before the release stamp", publishedBaselineHeading, releaseTruth)
 }
 
 func TestMarketplaceScaffoldTracksPluginManifest(t *testing.T) {
@@ -77,9 +93,9 @@ func TestMarketplaceScaffoldTracksPluginManifest(t *testing.T) {
 	if entry.Version != "" {
 		t.Errorf("marketplace entry duplicates plugin.json version %q; omit it so plugin.json remains the single version authority", entry.Version)
 	}
-	pinned := marketplacePinnedVersion(plugin)
+	pinned := marketplacePinnedVersion(t, root, plugin.Version)
 	if entry.Source.Ref != pinned {
-		t.Errorf("marketplace source ref = %q, want %s (the plugin manifest version)", entry.Source.Ref, pinned)
+		t.Errorf("marketplace source ref = %q, want %s (the plugin manifest version, or the published baseline while a release stamp is open)", entry.Source.Ref, pinned)
 	}
 
 	releaseTruth := read(t, root, "docs/RELEASE_TRUTH_PUBLIC.md")
@@ -102,7 +118,7 @@ func TestMarketplaceScaffoldTracksPluginManifest(t *testing.T) {
 func TestMarketplaceScaffoldIsReadyForStandalonePublication(t *testing.T) {
 	root := repoRoot(t)
 	plugin := decodeJSON[pluginManifest](t, root, ".claude-plugin/plugin.json")
-	pinned := marketplacePinnedVersion(plugin)
+	pinned := marketplacePinnedVersion(t, root, plugin.Version)
 	readme := read(t, root, "integrations/claude-code/marketplace/README.md")
 	normalizedREADME := strings.Join(strings.Fields(readme), " ")
 
