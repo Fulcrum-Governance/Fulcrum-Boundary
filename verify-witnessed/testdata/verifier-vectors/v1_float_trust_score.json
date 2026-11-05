@@ -1,0 +1,16 @@
+{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "rec_749a05ec9252",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-float",
+  "tool": "query",
+  "action": "warn",
+  "reason": "borderline trust score",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "sha256:749a05ec9252e584e01e78f7ef2219511725b5d5664f9d01300e0edee860722f",
+  "trust_score": 0.3333333333333333,
+  "trust_state": "EVALUATING"
+}

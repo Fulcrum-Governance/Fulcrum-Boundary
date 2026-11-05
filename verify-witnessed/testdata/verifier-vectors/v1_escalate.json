@@ -1,0 +1,16 @@
+{
+  "schema_version": "1",
+  "event_type": "governance_decision",
+  "record_id": "rec_2ce5fc610bc1",
+  "timestamp": "2026-06-01T04:36:39.787222Z",
+  "adapter": "mcp",
+  "agent_id": "agent-escalate",
+  "tool": "payments.transfer",
+  "action": "escalate",
+  "reason": "high-value transfer escalated to human reviewer",
+  "decision_mode": "deterministic",
+  "request_hash": "sha256:9ee20023d2bec36e7443092c34aa8439193f6ad0939187da18ed4cf044391265",
+  "decision_hash": "sha256:2ce5fc610bc11143fb2d7ef9ffd793faff4ad908fbbe31e8818ab01eb4f923af",
+  "trust_score": 0.5,
+  "trust_state": "EVALUATING"
+}
