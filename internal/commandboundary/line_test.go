@@ -806,3 +806,38 @@ func TestClassifyLineFirstPartyVerbsDoNotLaunderShellStructure(t *testing.T) {
 			substituted.Aggregate.Class, substituted.Aggregate.RecommendedAction, substituted.Aggregate.Reason)
 	}
 }
+
+// TestClassifyLineEnvAssignmentPrefix pins that a `NAME=value cmd` prefix
+// never rides a read-only command's allow, unless the variable only affects
+// locale, time zone or output formatting.
+func TestClassifyLineEnvAssignmentPrefix(t *testing.T) {
+	tests := []struct {
+		name   string
+		line   string
+		action RecommendedAction
+	}{
+		{"preload before a read", "LD_PRELOAD=/tmp/x.so ls", ActionRequireApproval},
+		{"ripgrep config before a search", "RIPGREP_CONFIG_PATH=/tmp/rc rg TODO", ActionRequireApproval},
+		{"git ssh command before a read", "GIT_SSH_COMMAND=/tmp/x git status", ActionRequireApproval},
+		{"locale before a read", "LC_ALL=C ls", ActionAllow},
+		{"time zone before a read", "TZ=UTC ls", ActionAllow},
+		{"plain read", "ls", ActionAllow},
+		{"deny still wins", "FOO=bar rm -rf fixture-home", ActionDeny},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ClassifyLine(tt.line)
+			if err != nil {
+				t.Fatalf("ClassifyLine(%q): %v", tt.line, err)
+			}
+			if got.Aggregate.RecommendedAction != tt.action {
+				t.Fatalf("ClassifyLine(%q) = %s (%s), want %s", tt.line, got.Aggregate.RecommendedAction, got.Aggregate.Reason, tt.action)
+			}
+			for _, segment := range got.Segments {
+				if strings.Contains(segment.Segment, "/tmp/") && strings.HasSuffix(segment.Command, "=") {
+					t.Fatalf("env segment leaked its value: %q", segment.Segment)
+				}
+			}
+		})
+	}
+}

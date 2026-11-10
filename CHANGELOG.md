@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- **Command classifier recognizes routine shell utilities.** `cd`, `true`,
+  `false`, `:`, `sleep`, `test`, `[`, `wc`, `stat`, `du`, `which`, `ps`,
+  `pgrep`, `lsof`, `diff`, `cut`, `tr`, `seq`, `uptime`, `basename`,
+  `dirname`, `shasum`, `sha256sum`, `md5`, plain `rg` searches and
+  `sed -n <range>p` now classify as C0 instead of the C7 catch-all, and
+  `mkdir` as C1. `rg` flags that run another program (`--pre`,
+  `--hostname-bin`, `-z`) and every other `sed` shape stay C7.
+  Secret-shaped arguments still escalate to C6.
+- **A `NAME=value` prefix before a command now requires review (C7)**,
+  because it can make a read-only command load or run something else
+  (`LD_PRELOAD=x ls`, `RIPGREP_CONFIG_PATH=x rg p`). Before this change the
+  prefix was dropped and the command's own class applied. `LANG`, `LC_*`,
+  `TZ`, `NO_COLOR`, `FORCE_COLOR`, `CI` and `COLUMNS` are exempt. Variables
+  already set in the environment, or set by a bare assignment earlier on the
+  line, are not inspected.
+- **`/opt/homebrew/bin` is matched by base name**, alongside `/bin`,
+  `/usr/bin`, `/usr/local/bin`, `/sbin` and `/usr/sbin`. Commands invoked by
+  any other path still take the catch-all. This applies only to commands
+  routed through the Command Boundary hook or CLI.
+
 ## [0.14.1] - 2026-11-05
 
 Release notes: `docs/releases/v0.14.1.md`. This
