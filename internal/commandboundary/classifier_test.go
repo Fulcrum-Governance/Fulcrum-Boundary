@@ -381,6 +381,8 @@ func TestClassifyRoutineUtilities(t *testing.T) {
 		{"homebrew rg is matched by base name", []string{"/opt/homebrew/bin/rg", "-n", "TODO"}, ClassObserveRead, ActionAllow},
 		{"rg from an untrusted directory stays unclassified", []string{"/tmp/x/rg", "TODO"}, ClassPackageLifecycle, ActionRequireApproval},
 		{"cut reads", []string{"cut", "-d:", "-f1", "go.mod"}, ClassObserveRead, ActionAllow},
+		{"rg --pretty is a display flag", []string{"rg", "--pretty", "TODO"}, ClassObserveRead, ActionAllow},
+		{"rg --pre-glob stays unclassified", []string{"rg", "--pre-glob=*.pdf", "TODO"}, ClassPackageLifecycle, ActionRequireApproval},
 		{"rg --pre runs a program", []string{"rg", "--pre", "./x.sh", "TODO"}, ClassPackageLifecycle, ActionRequireApproval},
 		{"rg --pre= runs a program", []string{"rg", "--pre=./x.sh", "TODO"}, ClassPackageLifecycle, ActionRequireApproval},
 		{"rg -z runs decompressors", []string{"rg", "-nz", "TODO"}, ClassPackageLifecycle, ActionRequireApproval},

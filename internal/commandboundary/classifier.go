@@ -189,7 +189,7 @@ func classifyDate(args []string) (class Class, reason string) {
 // `z` escalates too, which over-escalates forms like `-tzig` on purpose.
 func classifyRipgrep(args []string) (class Class, reason string) {
 	for _, arg := range args {
-		if strings.HasPrefix(arg, "--pre") || strings.HasPrefix(arg, "--hostname-bin") || arg == "--search-zip" ||
+		if arg == "--pre" || strings.HasPrefix(arg, "--pre=") || strings.HasPrefix(arg, "--pre-glob") || strings.HasPrefix(arg, "--hostname-bin") || arg == "--search-zip" ||
 			(strings.HasPrefix(arg, "-") && !strings.HasPrefix(arg, "--") && strings.Contains(arg, "z")) {
 			return ClassPackageLifecycle, "unclassified command requires review"
 		}

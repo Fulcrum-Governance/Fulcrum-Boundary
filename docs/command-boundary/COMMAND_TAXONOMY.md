@@ -55,7 +55,8 @@ class plus policy-relevant tags when a command spans multiple risks.
 | `date -u +%Y-%m-%dT%H:%M:%SZ` | C0 | Time observation; `-s`/`--set` is C5 and a bare operand (BSD set-form) stays C7. |
 | `cd dir`, `true`, `false`, `:`, `sleep N`, `test ...`, `[ ... ]` | C0 | No-op or shell navigation; a following segment is classified as itself. |
 | `wc`, `stat`, `du`, `which`, `ps`, `pgrep`, `lsof`, `diff`, `cut`, `tr`, `seq`, `uptime`, `basename`, `dirname`, `shasum`, `sha256sum`, `md5` | C0 | Read-only inspection; secret-shaped arguments still escalate to C6. |
-| `rg pattern path` | C0 | File content search. `--pre`, `--pre-glob`, `--hostname-bin`, `-z`/`--search-zip` run another program and stay C7. |
+| `rg pattern path` | C0 | File content search. `--pre`, `--pre-glob`, `--hostname-bin`, `-z`/`--search-zip` run another program and stay C7. A ripgrep config file named by an already-set `RIPGREP_CONFIG_PATH` is not inspected. |
+| `LD_PRELOAD=x ls`, `RIPGREP_CONFIG_PATH=x rg p` | C7 | A `NAME=value` prefix changes how the command runs, so it needs review even before a C0 command. `LANG`, `LC_*`, `TZ`, `NO_COLOR`, `FORCE_COLOR`, `CI`, `COLUMNS` are exempt. Known gaps: a variable already set in the environment, or set by a bare `NAME=value;` statement earlier on the line, is not inspected. |
 | `sed -n 1,40p file` | C0 | Exactly `-n` plus a line-range print. Every other sed shape (`-i`, `w`, `e`, substitution) stays C7. |
 | `mkdir -p out` | C1 | Local directory creation. |
 | `boundary version [--json]` | C0 | First-party read: Boundary's own version self-report. Exact documented shape only. |

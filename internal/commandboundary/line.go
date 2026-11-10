@@ -269,6 +269,14 @@ func (d *lineDecomposer) decomposeSimple(command simpleCommand, depth int, origi
 		d.decompose(subshell, depth+1, SegmentOriginSubshell)
 	}
 	if argv := commandWords(command.words); len(argv) > 0 {
+		// `NAME=value cmd` changes cmd's environment, which can make a read-only
+		// command load or run something else (LD_PRELOAD, RIPGREP_CONFIG_PATH,
+		// GIT_SSH_COMMAND), so it never rides the command's own allow.
+		for _, word := range command.words[:len(command.words)-len(argv)] {
+			if isAssignmentWord(word) && !benignEnvName(word) {
+				d.appendEnvSegment(word, depth, origin)
+			}
+		}
 		d.classifyArgv(argv, depth, origin, command.piped)
 	}
 	// The writes come last but are not conditional on there being a command: a
@@ -345,6 +353,23 @@ func (d *lineDecomposer) appendRedirectSegment(target string, depth int) {
 		Risk:              risk,
 		RecommendedAction: action,
 		Reason:            reason,
+	})
+}
+
+// appendEnvSegment records a `NAME=value` prefix as its own review-class
+// segment. Only the name is kept: values routinely hold secrets.
+func (d *lineDecomposer) appendEnvSegment(word string, depth int, origin string) {
+	name, _, _ := strings.Cut(word, "=")
+	risk, action := postureFor(ClassPackageLifecycle)
+	d.segments = append(d.segments, SegmentClassification{
+		Segment:           name + "=",
+		Origin:            origin,
+		Depth:             depth,
+		Command:           name + "=",
+		Class:             ClassPackageLifecycle,
+		Risk:              risk,
+		RecommendedAction: action,
+		Reason:            "environment assignment changes how the command runs",
 	})
 }
 
@@ -485,6 +510,18 @@ func commandWords(words []string) []string {
 		argv = argv[1:]
 	}
 	return argv
+}
+
+// benignEnvName reports whether an assignment sets a variable that only
+// changes locale, time zone or output formatting. Every other name is treated
+// as able to change what the command runs.
+func benignEnvName(word string) bool {
+	name, _, _ := strings.Cut(word, "=")
+	switch name {
+	case "LANG", "TZ", "NO_COLOR", "FORCE_COLOR", "CI", "COLUMNS":
+		return true
+	}
+	return strings.HasPrefix(name, "LC_")
 }
 
 // isAssignmentWord reports whether a word has the `NAME=VALUE` shape. Quoting is
