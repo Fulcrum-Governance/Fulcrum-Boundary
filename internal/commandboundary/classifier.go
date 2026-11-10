@@ -3,6 +3,7 @@ package commandboundary
 import (
 	"errors"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -74,7 +75,7 @@ func classifyCommand(command string, args []string) (class Class, reason string)
 	if filepath.IsAbs(name) || strings.Contains(name, "/") {
 		cleaned := filepath.Clean(name)
 		dir := filepath.Dir(cleaned)
-		if dir == "/bin" || dir == "/usr/bin" || dir == "/usr/local/bin" || dir == "/sbin" || dir == "/usr/sbin" {
+		if dir == "/bin" || dir == "/usr/bin" || dir == "/usr/local/bin" || dir == "/opt/homebrew/bin" || dir == "/sbin" || dir == "/usr/sbin" {
 			name = filepath.Base(cleaned)
 		} else {
 			name = "" // Force unclassified catch-all
@@ -129,6 +130,19 @@ func classifyCommand(command string, args []string) (class Class, reason string)
 		return ClassObserveRead, "file content search"
 	case "date":
 		return classifyDate(args)
+	case "true", "false", ":", "sleep", "cd", "test", "[":
+		// No-ops and shell navigation touch only the shell's own state. A
+		// later segment (`cd x && rm y`) is still classified as itself.
+		return ClassObserveRead, "no-op or shell navigation"
+	case "wc", "stat", "du", "which", "ps", "pgrep", "lsof", "diff", "cut", "tr", "seq", "uptime",
+		"basename", "dirname", "shasum", "sha256sum", "md5":
+		return ClassObserveRead, "read-only inspection"
+	case "mkdir":
+		return ClassLocalFileWrite, "local directory creation"
+	case "rg":
+		return classifyRipgrep(args)
+	case "sed":
+		return classifySed(args)
 	case "boundary":
 		return classifyBoundary(args)
 	case "git":
@@ -167,6 +181,38 @@ func classifyDate(args []string) (class Class, reason string) {
 		}
 	}
 	return ClassObserveRead, "time observation"
+}
+
+// classifyRipgrep treats rg as a content search unless a flag makes it run
+// another program: --pre/--pre-glob (preprocessor), --hostname-bin, and
+// -z/--search-zip (external decompressors). A short-flag cluster containing
+// `z` escalates too, which over-escalates forms like `-tzig` on purpose.
+func classifyRipgrep(args []string) (class Class, reason string) {
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "--pre") || strings.HasPrefix(arg, "--hostname-bin") || arg == "--search-zip" ||
+			(strings.HasPrefix(arg, "-") && !strings.HasPrefix(arg, "--") && strings.Contains(arg, "z")) {
+			return ClassPackageLifecycle, "unclassified command requires review"
+		}
+	}
+	return ClassObserveRead, "file content search"
+}
+
+// sedPrintRange is the only sed script recognized as a read: `Np` or `N,Mp`.
+var sedPrintRange = regexp.MustCompile(`^[0-9]+(,([0-9]+|\$))?p$`)
+
+// classifySed recognizes exactly `sed -n <range>p [file...]`. sed scripts can
+// write files (`w`), edit in place (`-i`), and on GNU sed run commands (`e`),
+// so every other shape keeps the catch-all.
+func classifySed(args []string) (class Class, reason string) {
+	if len(args) >= 2 && args[0] == "-n" && sedPrintRange.MatchString(args[1]) {
+		for _, arg := range args[2:] {
+			if strings.HasPrefix(arg, "-") {
+				return ClassPackageLifecycle, "unclassified command requires review"
+			}
+		}
+		return ClassObserveRead, "file read"
+	}
+	return ClassPackageLifecycle, "unclassified command requires review"
 }
 
 // classifyBoundary classifies an invocation of Boundary's own CLI — reached
@@ -545,7 +591,7 @@ func trustedCommandName(command string) string {
 	if filepath.IsAbs(name) || strings.Contains(name, "/") {
 		cleaned := filepath.Clean(name)
 		switch filepath.Dir(cleaned) {
-		case "/bin", "/usr/bin", "/usr/local/bin", "/sbin", "/usr/sbin":
+		case "/bin", "/usr/bin", "/usr/local/bin", "/opt/homebrew/bin", "/sbin", "/usr/sbin":
 			return filepath.Base(cleaned)
 		}
 	}

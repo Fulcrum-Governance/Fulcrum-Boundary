@@ -359,6 +359,53 @@ func TestClassifyFirstRunUtilities(t *testing.T) {
 	}
 }
 
+// TestClassifyRoutineUtilities pins the routine commands coding agents run
+// constantly, and the flag shapes that must keep the C7 catch-all because
+// they write files or run another program.
+func TestClassifyRoutineUtilities(t *testing.T) {
+	tests := []struct {
+		name   string
+		argv   []string
+		class  Class
+		action RecommendedAction
+	}{
+		{"cd is shell navigation", []string{"cd", "dashboard"}, ClassObserveRead, ActionAllow},
+		{"true is a no-op", []string{"true"}, ClassObserveRead, ActionAllow},
+		{"sleep is a no-op", []string{"sleep", "2"}, ClassObserveRead, ActionAllow},
+		{"test reads", []string{"test", "-f", "go.mod"}, ClassObserveRead, ActionAllow},
+		{"wc reads", []string{"wc", "-l", "main.go"}, ClassObserveRead, ActionAllow},
+		{"ps reads", []string{"ps", "aux"}, ClassObserveRead, ActionAllow},
+		{"wc on a secret path still escalates", []string{"wc", "-c", ".env"}, ClassCredentialAccess, ActionDeny},
+		{"mkdir writes locally", []string{"mkdir", "-p", "out"}, ClassLocalFileWrite, ActionWarn},
+		{"rg searches content", []string{"rg", "-n", "TODO", "src"}, ClassObserveRead, ActionAllow},
+		{"homebrew rg is matched by base name", []string{"/opt/homebrew/bin/rg", "-n", "TODO"}, ClassObserveRead, ActionAllow},
+		{"rg from an untrusted directory stays unclassified", []string{"/tmp/x/rg", "TODO"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"cut reads", []string{"cut", "-d:", "-f1", "go.mod"}, ClassObserveRead, ActionAllow},
+		{"rg --pre runs a program", []string{"rg", "--pre", "./x.sh", "TODO"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"rg --pre= runs a program", []string{"rg", "--pre=./x.sh", "TODO"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"rg -z runs decompressors", []string{"rg", "-nz", "TODO"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"rg --hostname-bin runs a program", []string{"rg", "--hostname-bin=./x", "TODO"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"sed -n range print reads", []string{"sed", "-n", "1,40p", "main.go"}, ClassObserveRead, ActionAllow},
+		{"sed -n to end of file reads", []string{"sed", "-n", "10,$p", "main.go"}, ClassObserveRead, ActionAllow},
+		{"sed -i edits in place", []string{"sed", "-i", "s/a/b/", "main.go"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"sed w script writes a file", []string{"sed", "-n", "w out.txt", "main.go"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"sed -n print with a trailing flag", []string{"sed", "-n", "1p", "-i", "main.go"}, ClassPackageLifecycle, ActionRequireApproval},
+		{"sed substitution stays unclassified", []string{"sed", "s/a/b/", "main.go"}, ClassPackageLifecycle, ActionRequireApproval},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Classify(tt.argv)
+			if err != nil {
+				t.Fatalf("Classify(%v): %v", tt.argv, err)
+			}
+			if got.Class != tt.class || got.RecommendedAction != tt.action {
+				t.Fatalf("Classify(%v) = class %s action %s, want class %s action %s (reason %q)",
+					tt.argv, got.Class, got.RecommendedAction, tt.class, tt.action, got.Reason)
+			}
+		})
+	}
+}
+
 // TestClassifyBoundaryExactFormShapes pins the review-tightened allowlist:
 // each first-party verb is C0 only in the argument shapes its CLI
 // intentionally supports, and every deviation — unknown flags, malformed
