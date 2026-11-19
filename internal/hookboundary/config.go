@@ -4,6 +4,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/fulcrum-governance/fulcrum-boundary/governance"
 )
 
 // Environment knobs the hook reads. They mirror the shell hook's names so an
@@ -15,6 +17,9 @@ const (
 	EnvAgentID = "BOUNDARY_HOOK_AGENT_ID"
 	// EnvRecordDir overrides the directory decision records are written to.
 	EnvRecordDir = "BOUNDARY_HOOK_DIR"
+	// EnvPolicyDir names the operator policy directory every routed call is
+	// also checked against (see Config.PolicyDir).
+	EnvPolicyDir = "BOUNDARY_HOOK_POLICY_DIR"
 	// EnvDebug, when non-empty, asks the CLI for diagnostic lines on stderr.
 	EnvDebug = "BOUNDARY_HOOK_DEBUG"
 )
@@ -99,6 +104,14 @@ type Config struct {
 	BoundaryVersion string
 	// Now supplies the decision timestamp. Empty means time.Now.
 	Now func() time.Time
+	// PolicyDir is the operator policy directory (the one `boundary revoke`
+	// writes). When set, every routed Bash and edit call is also evaluated
+	// against the bundle loaded fresh from it on that invocation; the result
+	// can only make the compiled-in verdict stricter, and a bundle that cannot
+	// be loaded denies. Empty means the compiled-in posture alone decides.
+	PolicyDir string
+	// Signer, when set, signs every decision record before it is written.
+	Signer governance.ReceiptSigner
 }
 
 // ConfigFromEnv builds a Config from the hook's environment knobs. getenv is
@@ -112,6 +125,7 @@ func ConfigFromEnv(getenv func(string) string, boundaryVersion string) Config {
 		Dir:             strings.TrimSpace(getenv(EnvRecordDir)),
 		FailMode:        ParseFailMode(getenv(EnvFailMode)),
 		AgentID:         strings.TrimSpace(getenv(EnvAgentID)),
+		PolicyDir:       strings.TrimSpace(getenv(EnvPolicyDir)),
 		BoundaryVersion: boundaryVersion,
 	}
 }
