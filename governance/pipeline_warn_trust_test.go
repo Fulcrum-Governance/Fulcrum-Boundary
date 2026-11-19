@@ -71,7 +71,8 @@ func TestWarn_RepeatedWarnsNeverDegradeTheAgent(t *testing.T) {
 
 func TestWarn_DegradedAgentStillNeedsApproval(t *testing.T) {
 	p, _ := warnTrustPipeline(t)
-	p.staticPolicies = append(p.staticPolicies, StaticPolicyRule{Name: "deny-rm", Tool: "rm", Action: "deny"})
+	prev := p.policies.Load()
+	p.policies.Store(&policyBundle{rules: append(append([]StaticPolicyRule{}, prev.rules...), StaticPolicyRule{Name: "deny-rm", Tool: "rm", Action: "deny"}), hash: prev.hash})
 	if _, err := p.Evaluate(context.Background(), &GovernanceRequest{Transport: TransportMCP, AgentID: "agent-c", ToolName: "rm"}); err != nil {
 		t.Fatal(err)
 	}

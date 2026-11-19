@@ -48,6 +48,16 @@ type PipelineConfig struct {
 	// PolicyBundleHash is copied into receipt-grade decision records.
 	PolicyBundleHash string
 
+	// PolicyDir, when set, makes StaticPolicies live (FUL-771). Before every
+	// evaluation the pipeline re-hashes the directory; when the hash differs
+	// from the active bundle it reloads, so a policy change (including a
+	// `boundary revoke` rule) decides the next evaluation without a restart.
+	// StaticPolicies and PolicyBundleHash seed the first bundle. A reload that
+	// fails, or a bundle that changes mid-reload, makes that evaluation
+	// CHECK_INDETERMINATE/missing_config: it blocks rather than falling back to
+	// the previous rules.
+	PolicyDir string
+
 	// BuildDigest identifies the Boundary binary or image that emitted the record.
 	BuildDigest string
 
@@ -162,22 +172,22 @@ type PolicyEvaluator interface {
 //
 // This is the shared core of Boundary: all transport adapters call Pipeline.Evaluate().
 type Pipeline struct {
-	trustChecker     TrustChecker
-	interceptors     *InterceptorRegistry
-	evaluator        PolicyEvaluator
-	auditor          AuditPublisher
-	staticPolicies   []StaticPolicyRule
-	gatewayVersion   string
-	policyBundleHash string
-	buildDigest      string
-	topologyProfile  string
-	requireAgentID   bool
-	nonEnforcing     map[TransportType]string
-	dryRun           bool
-	signer           ReceiptSigner
-	escalation       EscalationHandler
-	configErr        error
-	auditFailures    atomic.Int64
+	trustChecker    TrustChecker
+	interceptors    *InterceptorRegistry
+	evaluator       PolicyEvaluator
+	auditor         AuditPublisher
+	policies        atomic.Pointer[policyBundle]
+	policyDir       string
+	gatewayVersion  string
+	buildDigest     string
+	topologyProfile string
+	requireAgentID  bool
+	nonEnforcing    map[TransportType]string
+	dryRun          bool
+	signer          ReceiptSigner
+	escalation      EscalationHandler
+	configErr       error
+	auditFailures   atomic.Int64
 	// Audit-degradation accounting (ADR-047): every publish draws a
 	// monotonic ticket from auditSeq; auditFailSeq and auditOKSeq are the
 	// high-water marks of tickets whose deliveries failed and succeeded.
@@ -232,23 +242,24 @@ func NewPipeline(cfg PipelineConfig, trust TrustChecker, evaluator PolicyEvaluat
 		nonEnforcing[d.Transport] = d.Reason
 	}
 
-	return &Pipeline{
-		trustChecker:     trust,
-		interceptors:     NewInterceptorRegistry(),
-		evaluator:        evaluator,
-		auditor:          auditor,
-		staticPolicies:   cfg.StaticPolicies,
-		gatewayVersion:   cfg.GatewayVersion,
-		policyBundleHash: cfg.PolicyBundleHash,
-		buildDigest:      cfg.BuildDigest,
-		topologyProfile:  cfg.TopologyProfile,
-		requireAgentID:   cfg.RequireAgentID,
-		nonEnforcing:     nonEnforcing,
-		dryRun:           cfg.DryRun,
-		signer:           cfg.ReceiptSigner,
-		escalation:       cfg.Escalation,
-		configErr:        configErr,
+	p := &Pipeline{
+		trustChecker:    trust,
+		interceptors:    NewInterceptorRegistry(),
+		evaluator:       evaluator,
+		auditor:         auditor,
+		policyDir:       cfg.PolicyDir,
+		gatewayVersion:  cfg.GatewayVersion,
+		buildDigest:     cfg.BuildDigest,
+		topologyProfile: cfg.TopologyProfile,
+		requireAgentID:  cfg.RequireAgentID,
+		nonEnforcing:    nonEnforcing,
+		dryRun:          cfg.DryRun,
+		signer:          cfg.ReceiptSigner,
+		escalation:      cfg.Escalation,
+		configErr:       configErr,
 	}
+	p.policies.Store(&policyBundle{rules: cfg.StaticPolicies, hash: cfg.PolicyBundleHash})
+	return p
 }
 
 // ConfigError returns the configuration error recorded at construction, or
@@ -351,6 +362,7 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 		DecisionMode: DecisionModeDeterministic,
 		TrustState:   TrustStateTrusted.String(),
 	}
+	bundle := p.activePolicies()
 	trustState := TrustStateTrusted
 	var trustUpdate *TrustDecisionUpdate
 
@@ -376,9 +388,9 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 				Detail:   fmt.Sprintf("trust update failed: %v", err),
 			})
 		}
-		p.emitAudit(ctx, req, decision)
+		p.emitAudit(ctx, req, decision, bundle.hash)
 		if trustUpdate != nil && trustUpdate.Transition {
-			p.emitTrustTransition(ctx, req, decision, *trustUpdate)
+			p.emitTrustTransition(ctx, req, decision, *trustUpdate, bundle.hash)
 		}
 		// A configuration-error outcome is never laundered through dry-run:
 		// an invalid enforcement posture cannot distinguish allow from deny,
@@ -408,6 +420,19 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 			Class:    CheckClassConfig,
 			Category: FailureMissingConfig,
 			Cause:    p.configErr.Error(),
+		}, true)
+		return decision, nil
+	}
+
+	// A live policy bundle that could not be reloaded cannot say which rules
+	// apply now, so the request blocks rather than running on stale rules.
+	if bundle.err != nil {
+		p.markCheckFailureEnforced(decision, req, &CheckFailure{
+			Stage:    CheckStageConfig,
+			Class:    CheckClassConfig,
+			Category: FailureMissingConfig,
+			Cause:    "policy reload failed",
+			Detail:   bundle.err.Error(),
 		}, true)
 		return decision, nil
 	}
@@ -467,8 +492,8 @@ func (p *Pipeline) Evaluate(ctx context.Context, req *GovernanceRequest) (*Gover
 	// the most restrictive match decides, so rule order and file order never
 	// let a warn hide a deny.
 	var winner *StaticPolicyRule
-	for i := range p.staticPolicies {
-		rule := &p.staticPolicies[i]
+	for i := range bundle.rules {
+		rule := &bundle.rules[i]
 		if !rule.matchesRequest(req) {
 			continue
 		}
@@ -936,7 +961,7 @@ func (p *Pipeline) dryRunConverts(decision *GovernanceDecision) bool {
 	return p.dryRun && p.configErr == nil && (decision.Action == "deny" || decision.Action == ActionCheckIndeterminate)
 }
 
-func (p *Pipeline) emitAudit(ctx context.Context, req *GovernanceRequest, decision *GovernanceDecision) {
+func (p *Pipeline) emitAudit(ctx context.Context, req *GovernanceRequest, decision *GovernanceDecision, policyBundleHash string) {
 	event := AuditEvent{
 		DryRun:              p.dryRunConverts(decision),
 		RequestID:           req.RequestID,
@@ -949,7 +974,7 @@ func (p *Pipeline) emitAudit(ctx context.Context, req *GovernanceRequest, decisi
 		AgentID:             req.AgentID,
 		TenantID:            req.TenantID,
 		Timestamp:           time.Now(),
-		PolicyBundleHash:    p.policyBundleHash,
+		PolicyBundleHash:    policyBundleHash,
 		BoundaryBuildDigest: p.buildDigest,
 		RequestHash:         ComputeRequestHash(req),
 		TrustState:          decision.TrustState,
@@ -1017,7 +1042,7 @@ func (p *Pipeline) recordTrustDecision(ctx context.Context, req *GovernanceReque
 	return &update, nil
 }
 
-func (p *Pipeline) emitTrustTransition(ctx context.Context, req *GovernanceRequest, decision *GovernanceDecision, update TrustDecisionUpdate) {
+func (p *Pipeline) emitTrustTransition(ctx context.Context, req *GovernanceRequest, decision *GovernanceDecision, update TrustDecisionUpdate, policyBundleHash string) {
 	event := AuditEvent{
 		EventType:           "trust_transition",
 		RequestID:           req.RequestID,
@@ -1030,7 +1055,7 @@ func (p *Pipeline) emitTrustTransition(ctx context.Context, req *GovernanceReque
 		AgentID:             req.AgentID,
 		TenantID:            req.TenantID,
 		Timestamp:           time.Now(),
-		PolicyBundleHash:    p.policyBundleHash,
+		PolicyBundleHash:    policyBundleHash,
 		BoundaryBuildDigest: p.buildDigest,
 		RequestHash:         ComputeRequestHash(req),
 		TrustState:          update.After.State.String(),

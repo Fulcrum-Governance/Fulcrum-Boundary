@@ -54,6 +54,7 @@ All 30 top-level commands. Sub-commands and compound entries (`demo <name>`,
 | `doctor` | Check local routed-surface diagnostics and bypass caveats. | Local-only | This file §1, [docs/DOCTOR.md](./DOCTOR.md) |
 | `evidence` | Bundle and verify local Boundary evidence artifacts (`evidence bundle`, `evidence verify`). | Local-only | This file §1, [docs/EVIDENCE_BUNDLE.md](./EVIDENCE_BUNDLE.md) |
 | `audit` | Pretty-print structured decision records from a log file or stdin. | Local-only | This file §14 |
+| `revoke` | Revoke an agent on `boundary serve` routes so its next routed action is denied (`--lift` undoes it). | Implemented, tested | This file §15A |
 | `trust` | Inspect or reset trust state for an agent (`trust show`, `trust reset`). | Local-only | This file §15 |
 | `completion` | Print a static shell completion script (`completion bash`, `completion zsh`, `completion fish`). | Local-only | This file §16 |
 
@@ -584,6 +585,35 @@ trust record; it accepts `--redis-url` to target a kernel-mode Redis backend and
 state for the agent and operates on the in-process standalone backend only — it
 accepts no backend flags. These commands are diagnostic utilities; they do not
 alter governance policy or affect running pipeline evaluations directly.
+
+## 15A. Revoke Command
+
+```bash
+boundary revoke --agent agent-7 --policies ./policies/ --reason "approval withdrawn"
+boundary revoke --agent agent-7 --policies ./policies/ --lift
+```
+
+`boundary revoke` writes `revoked-<agent>.yaml` into the policy directory: one
+`deny` rule named `revoked:<agent>`, scoped to that agent, matching every tool.
+The write is atomic (temp file, then rename). `--lift` removes the file.
+
+- **Implemented and tested:** `boundary serve` re-hashes its policy directory
+  before every evaluation and reloads it when the hash changes, so the next
+  routed action from the revoked agent is denied and is not forwarded. That
+  includes a request the agent queued before the revoke and a retry of a call
+  that was allowed earlier. The decision record carries `matched_rule:
+  revoked:<agent>` and the hash of the bundle that decided, and it verifies
+  against the policy directory with `boundary verify-record`.
+  (`internal/boundarycli/revoke_test.go`, `TestNextActionTest_*`.)
+- **Fails closed (tested):** if the directory can't be loaded, or changes while
+  it's being loaded, the evaluation returns `check_indeterminate` and nothing is
+  forwarded. Boundary doesn't fall back to the previous rules.
+- **Scope:** routed actions only. Revocation covers what goes through
+  `boundary serve`. It doesn't reach agent hooks, Secure GitHub's compiled-in
+  rules, or anything that bypasses the route.
+- **No undo:** revoking stops what comes next. It doesn't undo actions that
+  already ran, and it doesn't cancel a call that was already forwarded before
+  the policy file landed.
 
 ## 16. Completion Command
 

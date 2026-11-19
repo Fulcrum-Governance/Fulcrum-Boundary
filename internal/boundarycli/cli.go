@@ -114,6 +114,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runEvidence(args[1:], stdout, stderr)
 	case "audit":
 		return runAudit(args[1:], os.Stdin, stdout, stderr)
+	case "revoke":
+		return runRevoke(args[1:], stdout, stderr)
 	case "trust":
 		return runTrust(args[1:], stdout, stderr)
 	case "completion":
@@ -172,6 +174,7 @@ Commands:
   doctor          Check local routed-surface diagnostics
   evidence        Bundle and verify local Boundary evidence artifacts
   audit           Pretty-print structured decision records
+  revoke          Revoke an agent so its next routed action is denied
   trust           Inspect or reset trust state
   completion      Print a bash, zsh, or fish completion script
 
@@ -375,15 +378,14 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		recordDirNote = recorder.startupNote
 	}
 
-	pipeline := governance.NewPipeline(governance.PipelineConfig{
+	pipeline := newServePipeline(governance.PipelineConfig{
 		StaticPolicies:   policyResult.Rules,
-		GatewayVersion:   currentGatewayVersion(),
 		PolicyBundleHash: policyHash,
+		PolicyDir:        *policyDir,
 		RequireAgentID:   *requireAgentID,
 		ReceiptSigner:    receiptSigner,
 		DryRun:           *dryRun,
-	}, trustBackend, nil, auditor)
-	pipeline.RegisterInterceptor("query", sqlguard.NewPostgresInterceptor())
+	}, trustBackend, auditor)
 
 	handler, mode, closeUpstream, err := serveHandler(*upstream, pipeline)
 	if err != nil {
@@ -422,6 +424,16 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	return 0
+}
+
+// newServePipeline is the pipeline `boundary serve` runs. PolicyDir makes the
+// served bundle live: the next evaluation after a policy write (including
+// `boundary revoke`) uses it.
+func newServePipeline(cfg governance.PipelineConfig, trust governance.TrustChecker, auditor governance.AuditPublisher) *governance.Pipeline {
+	cfg.GatewayVersion = currentGatewayVersion()
+	pipeline := governance.NewPipeline(cfg, trust, nil, auditor)
+	pipeline.RegisterInterceptor("query", sqlguard.NewPostgresInterceptor())
+	return pipeline
 }
 
 func serveHandler(upstream string, pipeline *governance.Pipeline) (handler http.Handler, mode string, closeFn func() error, err error) {

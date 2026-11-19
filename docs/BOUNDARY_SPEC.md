@@ -193,7 +193,7 @@ different entrypoints. (R1)
 
 | # | Surface | One-line developer value | Status | Evidence pointer |
 |---|---------|---------------------------|--------|------------------|
-| **A** | **CLI — `boundary`** (~29 commands) | "See what your AI tools can do, then block the dangerous action before it runs — from one local binary, no account." | **delivered** (CLI mechanics; per-command status in §2.2) | `internal/boundarycli/cli.go`; `cmd/boundary/main.go` |
+| **A** | **CLI — `boundary`** (~30 commands) | "See what your AI tools can do, then block the dangerous action before it runs — from one local binary, no account." | **delivered** (CLI mechanics; per-command status in §2.2) | `internal/boundarycli/cli.go`; `cmd/boundary/main.go` |
 | **B** | **Go SDK** — `governance` + `policyeval` | "Embed the same fail-closed decision pipeline in three lines, with a portable, zero-infra policy evaluator (no DB/Redis/NATS)." | **delivered** (production-grade core) | `governance/pipeline.go`; `policyeval/`; `examples/*/main.go`; BND-CLAIM-002/008 (`delivered`) |
 | **C** | **HTTP MCP gateway** — `boundary serve` / `adapters/mcp.Gateway` | "Drop a governed JSON-RPC proxy in front of an MCP server: every tool call is decided before forwarding, `tools/list` is filtered, fails closed." | **production** (the one production adapter) | `adapters/mcp/gateway.go`; `adapters/mcp/readiness.yaml` (`status: production`); BND-CLAIM-006 |
 | **D** | **GitHub Action** — `actions/mcp-audit` | "Run the MCP inventory + risk graph in CI and get a GitHub-rendered SARIF report on every PR." | **delivered (CI-local)** | `actions/mcp-audit/action.yml`; `scripts/actions/mcp-audit.sh`; BND-CLAIM-017 (`delivered`) |
@@ -205,7 +205,7 @@ different entrypoints. (R1)
 
 ## 2.2 Surface A — the `boundary` CLI (command map)
 
-Entry `cmd/boundary/main.go` → dispatcher `internal/boundarycli/cli.go`. **29 top-level commands**
+Entry `cmd/boundary/main.go` → dispatcher `internal/boundarycli/cli.go`. **30 top-level commands**
 dispatch (verified: the dispatch switch in `internal/boundarycli/cli.go`, `Run`); several carry subcommands (`policy generate`,
 `mcp proxy`, `secure github setup|serve`, `demo <6>`, `evidence bundle|verify`, `trust show|reset`),
 giving the **~31 user-facing commands** cited in the research. Per-command status uses the §0 legend
@@ -240,6 +240,7 @@ giving the **~31 user-facing commands** cited in the research. Per-command statu
 | `doctor` | Local routed-surface diagnostics **+ bypass caveats** (§10.0). | local-only | `cli.go:85`; `internal/doctor/` |
 | `evidence` | `bundle` + `verify` local evidence manifests (SHA-256 artifact hashes). | local-only | `cli.go:87`; `internal/evidence/` |
 | `audit` | Pretty-print structured **decision-record** logs (filter by agent/tool/action). | delivered | `cli.go:89` |
+| `revoke` | Revoke one agent on `boundary serve` routes; its next routed action is denied with a record naming `revoked:<agent>`. `--lift` undoes it. Routed actions only; doesn't undo actions that already ran. | implemented, tested | `internal/boundarycli/revoke.go`; `revoke_test.go` |
 | `trust` | Inspect / reset adaptive trust state. **Opt-in** (`--trust-mode disabled|standalone|kernel`). | delivered | `cli.go:91`; `governance/trust*.go` |
 
 ## 2.3 Surface B — the Go SDK (`governance` + `policyeval`)
@@ -266,6 +267,14 @@ if !decision.Allowed() { /* block before the tool runs */ }
 *Evidence:* `adapters/mcp/gateway.go` (`ServeHTTP` governs single + batch JSON-RPC, writes governance headers, `204 No Content` on suppressed emit); `adapters/mcp/readiness.yaml` (`status: production`; `parse/identify/evaluate/deny/forward/inspect/metadata/fail_closed = implemented`; `record`, `bypass_evidence = delegated`). Status: **production**.
 
 > **Routed-only caveat (load-bearing).** `bypass_evidence` is **delegated to deployment network topology**. The gateway governs the route; proving it is the *sole* path to the MCP server is a deployment guarantee, not a code guarantee. See §10.0–§10.1.
+
+### 2.4.1 Live policy and mid-task revocation (FUL-771)
+
+- **Implemented, tested:** `boundary serve` re-hashes its policy directory before every evaluation and reloads it when the hash changes. A policy write takes effect on the next evaluation after the write lands; there's no restart and no polling interval.
+- **Implemented, tested:** `boundary revoke --agent <id>` adds a deny rule scoped to that agent. Its next routed action, a request queued before the revoke, and a retry of an earlier allowed call are each denied without reaching the upstream, with a signed decision record that names `revoked:<id>` and the hash of the bundle that decided. Other agents are unaffected. `--lift` removes it.
+- **Implemented, tested:** a reload that fails, or a directory that changes mid-reload, makes the evaluation `check_indeterminate` (fail-closed); the previous rules are not reused.
+- **Scope:** routed actions only. This doesn't cover the agent-hook path or Secure GitHub's compiled-in rules, which have no operator revocation today.
+- **Not claimed:** a stop doesn't undo completed actions, and a call already forwarded before the write lands runs to completion.
 
 ## 2.5 Surface D — the GitHub Action (`actions/mcp-audit`)
 
@@ -345,7 +354,7 @@ The release is **two demoed lanes**, each fixture-only — not breadth-as-featur
 ```mermaid
 flowchart TB
     subgraph Entrypoints["Four surfaces — one decision core"]
-        CLI["A. boundary CLI<br/>(~29 commands · delivered)"]
+        CLI["A. boundary CLI<br/>(~30 commands · delivered)"]
         SDK["B. Go SDK<br/>(governance + policyeval · delivered)"]
         GW["C. HTTP MCP Gateway<br/>(boundary serve · production)"]
         GHA["D. GitHub Action<br/>(mcp-audit → SARIF · delivered CI-local)"]
