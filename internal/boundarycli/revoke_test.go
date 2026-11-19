@@ -63,7 +63,9 @@ type liveServe struct {
 	pub      ed25519.PublicKey
 }
 
-func startLiveServe(t *testing.T) *liveServe {
+// startLiveServe builds serve's pipeline the way runServe does: rules are read,
+// then the directory is hashed. betweenLoadAndHash, if set, runs in that gap.
+func startLiveServe(t *testing.T, betweenLoadAndHash ...func(dir string)) *liveServe {
 	t.Helper()
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "base.yaml"), []byte(allowAllPolicy), 0o600); err != nil {
@@ -72,6 +74,9 @@ func startLiveServe(t *testing.T) *liveServe {
 	loaded, err := governance.LoadStaticPolicyFiles(dir)
 	if err != nil {
 		t.Fatal(err)
+	}
+	for _, step := range betweenLoadAndHash {
+		step(dir)
 	}
 	hash, err := governance.PolicyBundleHashFromDir(dir)
 	if err != nil {
@@ -197,5 +202,34 @@ func TestRevokeRejectsPathLikeAgentIDs(t *testing.T) {
 	var out, errOut bytes.Buffer
 	if code := Run([]string{"revoke", "--policies", dir, "--agent", "../x"}, &out, &errOut); code == 0 {
 		t.Fatal("agent id with a path separator must be rejected")
+	}
+}
+
+// A revocation that lands after serve read its rules but before the first
+// request is enforced on that first request: the startup rules are never
+// trusted as current without a fresh read of the directory.
+func TestNextActionTest_RevokeBeforeFirstRequestIsEnforced(t *testing.T) {
+	s := startLiveServe(t, func(dir string) {
+		if code := Run([]string{"revoke", "--agent", "agent-7", "--policies", dir}, io.Discard, io.Discard); code != 0 {
+			t.Fatalf("revoke exit %d", code)
+		}
+	})
+	s.assertRevokedDeny(t, "first action", toolCall("agent-7", "1"))
+}
+
+// Renaming a policy file leaves the bundle hash unchanged but must still move
+// the policy_file the next record names, so replay agrees with the record.
+func TestLivePolicyRenameUpdatesRecordedPolicyFile(t *testing.T) {
+	s := startLiveServe(t)
+	s.send(toolCall("agent-7", "1"))
+	if got := s.events.last(t).PolicyFile; got != "base.yaml" {
+		t.Fatalf("policy_file=%q, want base.yaml", got)
+	}
+	if err := os.Rename(filepath.Join(s.dir, "base.yaml"), filepath.Join(s.dir, "restrictions.yaml")); err != nil {
+		t.Fatal(err)
+	}
+	s.send(toolCall("agent-7", "2"))
+	if got := s.events.last(t).PolicyFile; got != "restrictions.yaml" {
+		t.Fatalf("after rename policy_file=%q, want restrictions.yaml", got)
 	}
 }
