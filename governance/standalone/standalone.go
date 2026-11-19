@@ -11,52 +11,25 @@ import (
 )
 
 type Bundle struct {
-	Policies    governance.PolicyProvider
-	Trust       governance.TrustBackend
-	Cost        governance.CostPredictor
-	Budget      governance.BudgetEnforcer
-	Escalation  governance.EscalationHandler
-	Envelope    governance.EnvelopeManager
-	Proofs      governance.ProofCorrespondence
-	PolicyRules []governance.StaticPolicyRule
+	Trust      governance.TrustBackend
+	Cost       governance.CostPredictor
+	Budget     governance.BudgetEnforcer
+	Escalation governance.EscalationHandler
+	Envelope   governance.EnvelopeManager
+	Proofs     governance.ProofCorrespondence
 }
 
-func NewBundle(ctx context.Context, policyDir string) (*Bundle, error) {
-	policies := FilePolicyProvider{Dir: policyDir}
-	rules, err := policies.LoadPolicies(ctx)
-	if err != nil {
-		return nil, err
-	}
+// NewBundle wires the standalone seams. Policies are not a bundle seam: the
+// live route (boundary serve) loads them from its policy directory.
+func NewBundle() *Bundle {
 	return &Bundle{
-		Policies:    policies,
-		Trust:       governance.NewStandaloneTrustBackend(governance.StandaloneTrustConfig{}),
-		Cost:        StaticCostPredictor{},
-		Budget:      NewInMemoryBudgetEnforcer(0),
-		Escalation:  RequireApprovalEscalationHandler{},
-		Envelope:    LocalEnvelopeManager{},
-		Proofs:      StaticProofCorrespondence(),
-		PolicyRules: rules,
-	}, nil
-}
-
-type FilePolicyProvider struct {
-	Dir string
-}
-
-func (p FilePolicyProvider) LoadPolicies(context.Context) ([]governance.StaticPolicyRule, error) {
-	if p.Dir == "" {
-		return nil, fmt.Errorf("policy directory is required")
+		Trust:      governance.NewStandaloneTrustBackend(governance.StandaloneTrustConfig{}),
+		Cost:       StaticCostPredictor{},
+		Budget:     NewInMemoryBudgetEnforcer(0),
+		Escalation: RequireApprovalEscalationHandler{},
+		Envelope:   LocalEnvelopeManager{},
+		Proofs:     StaticProofCorrespondence(),
 	}
-	return governance.LoadStaticPoliciesFromDir(p.Dir)
-}
-
-func (p FilePolicyProvider) WatchPolicyUpdates(ctx context.Context) (<-chan governance.PolicyUpdate, error) {
-	ch := make(chan governance.PolicyUpdate)
-	go func() {
-		<-ctx.Done()
-		close(ch)
-	}()
-	return ch, nil
 }
 
 type StaticCostPredictor struct {

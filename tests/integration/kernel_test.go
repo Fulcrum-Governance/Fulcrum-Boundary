@@ -21,19 +21,7 @@ import (
 
 func TestKernelBundleBootsWithFulcrumBridgeContracts(t *testing.T) {
 	ctx := context.Background()
-	policies := newMemoryRedis()
 	trust := newMemoryRedis()
-	require.NoError(t, policies.Set(ctx, "fulcrum:policies:active", `
-name: kernel
-version: v1
-rules:
-  - name: block-drop
-    tool: query
-    action: deny
-    match:
-      field: arguments.sql
-      contains: DROP TABLE
-`, time.Minute))
 	require.NoError(t, trust.Set(ctx, "agent:agent-1:circuit_state", "0", time.Minute))
 	require.NoError(t, trust.Set(ctx, "agent:agent-1:trust_score", "0.99", time.Minute))
 
@@ -47,9 +35,7 @@ rules:
 
 	pub := &recordingPublisher{}
 	bundle, err := kernel.NewBundle(kernel.BundleConfig{
-		PolicyStore:     policies,
-		PolicyKeyPrefix: "fulcrum:policies:",
-		TrustStore:      trust,
+		TrustStore: trust,
 		TrustConfig: governance.KernelTrustConfig{
 			IPCPrefix:  "agent:",
 			FailClosed: true,
@@ -61,10 +47,6 @@ rules:
 		EnvelopeSubject: "fulcrum.envelope",
 	})
 	require.NoError(t, err)
-
-	rules, err := bundle.Policies.LoadPolicies(ctx)
-	require.NoError(t, err)
-	require.Len(t, rules, 1)
 
 	state, err := bundle.Trust.CheckAgentState(ctx, "agent-1")
 	require.NoError(t, err)
@@ -325,7 +307,6 @@ func TestKernelBundleCloseReleasesAwaitSubscription(t *testing.T) {
 // routing-mode bundles ignore the field entirely.
 func TestKernelBundleAwaitTimeoutValidation(t *testing.T) {
 	cfg := kernel.BundleConfig{
-		PolicyStore:          newMemoryRedis(),
 		TrustStore:           newMemoryRedis(),
 		BudgetEndpoint:       "http://budget.example.invalid",
 		Publisher:            &recordingPublisher{},
@@ -347,12 +328,11 @@ var (
 )
 
 // newAwaitBundle builds a kernel bundle in awaiting escalation mode with
-// in-process fakes and default subjects. Policy, trust, and budget seams are
+// in-process fakes and default subjects. Trust and budget seams are
 // present (NewBundle hard-fails without them) but unexercised.
 func newAwaitBundle(t *testing.T, pub kernel.Publisher, sub kernel.Subscriber, timeout time.Duration) *kernel.Bundle {
 	t.Helper()
 	bundle, err := kernel.NewBundle(kernel.BundleConfig{
-		PolicyStore:          newMemoryRedis(),
 		TrustStore:           newMemoryRedis(),
 		BudgetEndpoint:       "http://budget.example.invalid",
 		Publisher:            pub,
@@ -368,7 +348,6 @@ func newAwaitBundle(t *testing.T, pub kernel.Publisher, sub kernel.Subscriber, t
 func newRoutingBundle(t *testing.T, pub kernel.Publisher) *kernel.Bundle {
 	t.Helper()
 	bundle, err := kernel.NewBundle(kernel.BundleConfig{
-		PolicyStore:    newMemoryRedis(),
 		TrustStore:     newMemoryRedis(),
 		BudgetEndpoint: "http://budget.example.invalid",
 		Publisher:      pub,

@@ -12,25 +12,8 @@ import (
 )
 
 func TestStandaloneBundleBootsWithoutExternalDependencies(t *testing.T) {
-	dir := t.TempDir()
-	policyPath := filepath.Join(dir, "policy.yaml")
-	require.NoError(t, os.WriteFile(policyPath, []byte(`
-name: standalone
-version: v1
-rules:
-  - name: block-drop
-    tool: query
-    action: deny
-    reason: destructive SQL
-    match:
-      field: arguments.sql
-      contains: DROP TABLE
-`), 0o600))
-
 	ctx := context.Background()
-	bundle, err := standalone.NewBundle(ctx, dir)
-	require.NoError(t, err)
-	require.Len(t, bundle.PolicyRules, 1)
+	bundle := standalone.NewBundle()
 
 	state, err := bundle.Trust.CheckAgentState(ctx, "agent-1")
 	require.NoError(t, err)

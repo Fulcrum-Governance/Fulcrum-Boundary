@@ -25,7 +25,6 @@ type Publisher interface {
 }
 
 type Bundle struct {
-	Policies   governance.PolicyProvider
 	Trust      governance.TrustBackend
 	Cost       governance.CostPredictor
 	Budget     governance.BudgetEnforcer
@@ -49,8 +48,6 @@ func (b *Bundle) Close() error {
 }
 
 type BundleConfig struct {
-	PolicyStore     governance.RedisKV
-	PolicyKeyPrefix string
 	TrustStore      governance.RedisKV
 	TrustConfig     governance.KernelTrustConfig
 	BudgetEndpoint  string
@@ -75,9 +72,6 @@ type BundleConfig struct {
 }
 
 func NewBundle(cfg BundleConfig) (*Bundle, error) {
-	if cfg.PolicyStore == nil {
-		return nil, fmt.Errorf("kernel policy store is required")
-	}
 	if cfg.TrustStore == nil {
 		return nil, fmt.Errorf("kernel trust store is required")
 	}
@@ -115,10 +109,6 @@ func NewBundle(cfg BundleConfig) (*Bundle, error) {
 		escalation = awaiting
 	}
 	return &Bundle{
-		Policies: RedisPolicyProvider{
-			Store:     cfg.PolicyStore,
-			KeyPrefix: firstNonEmpty(cfg.PolicyKeyPrefix, "fulcrum:policies:"),
-		},
 		Trust: governance.NewRedisTrustBackend(cfg.TrustStore, cfg.TrustConfig),
 		Cost:  StaticCostPredictor{Estimate: governance.CostEstimate{Amount: 1, Unit: "operation", Confidence: 0.5, Source: "kernel-placeholder"}},
 		Budget: HTTPBudgetEnforcer{
@@ -136,43 +126,6 @@ func NewBundle(cfg BundleConfig) (*Bundle, error) {
 		},
 		Proofs: standalone.StaticProofCorrespondence(),
 	}, nil
-}
-
-type RedisPolicyProvider struct {
-	Store     governance.RedisKV
-	KeyPrefix string
-	Key       string
-}
-
-func (p RedisPolicyProvider) LoadPolicies(ctx context.Context) ([]governance.StaticPolicyRule, error) {
-	if p.Store == nil {
-		return nil, fmt.Errorf("redis policy store is required")
-	}
-	key := p.Key
-	if key == "" {
-		key = firstNonEmpty(p.KeyPrefix, "fulcrum:policies:") + "active"
-	}
-	body, err := p.Store.Get(ctx, key)
-	if err != nil {
-		return nil, err
-	}
-	if strings.TrimSpace(body) == "" {
-		return nil, fmt.Errorf("policy bundle %q is empty", key)
-	}
-	doc, err := governance.ParseStaticPolicyDocument(key, []byte(body))
-	if err != nil {
-		return nil, err
-	}
-	return doc.Rules, nil
-}
-
-func (p RedisPolicyProvider) WatchPolicyUpdates(ctx context.Context) (<-chan governance.PolicyUpdate, error) {
-	ch := make(chan governance.PolicyUpdate)
-	go func() {
-		<-ctx.Done()
-		close(ch)
-	}()
-	return ch, nil
 }
 
 type StaticCostPredictor struct {

@@ -2,37 +2,7 @@ package governance
 
 import (
 	"context"
-	"time"
 )
-
-// PolicyUpdate is emitted by providers that can stream policy-bundle changes.
-type PolicyUpdate struct {
-	// Version identifies the policy bundle version this update carries.
-	Version string
-	// Rules is the static policy rule set for this version.
-	Rules []StaticPolicyRule
-	// PolicyBundleHash is the stable hash of the updated bundle (see
-	// PolicyBundleHashFromDir).
-	PolicyBundleHash string
-	// ReceivedAt is when this update was observed.
-	ReceivedAt time.Time
-}
-
-// PolicyProvider supplies the static policy rules used by Boundary. It is one of
-// the seam interfaces in governance/providers.go: the standalone implementation
-// (loading YAML from disk) lives in governance/standalone, and the kernel
-// implementation (Fulcrum-backed) lives in governance/kernel. See
-// docs/INTEGRATION.md.
-type PolicyProvider interface {
-	// LoadPolicies returns the current static policy rule set, or an error if
-	// the rules cannot be loaded. It is called to obtain the active rules; an
-	// error is a fault, not a verdict, and the caller decides how to treat it.
-	LoadPolicies(ctx context.Context) ([]StaticPolicyRule, error)
-	// WatchPolicyUpdates returns a channel that delivers a PolicyUpdate whenever
-	// the policy bundle changes, or an error if a watch cannot be established.
-	// A provider with no update mechanism may return a nil/never-firing channel.
-	WatchPolicyUpdates(ctx context.Context) (<-chan PolicyUpdate, error)
-}
 
 // CostEstimate is the normalized cost signal used by kernel budget bridges.
 type CostEstimate struct {
