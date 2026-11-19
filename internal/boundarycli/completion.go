@@ -46,6 +46,7 @@ var topLevelCommands = []string{
 	"doctor",
 	"evidence",
 	"audit",
+	"revoke",
 	"trust",
 	"completion",
 }
