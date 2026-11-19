@@ -1,0 +1,50 @@
+# Built-in rules for the Secure GitHub MCP route (boundary mcp secure-github).
+# With --policies DIR this file is written to DIR once and loaded from there on
+# every tool call, next to any operator rules such as `boundary revoke`'s. The
+# route refuses a bundle that drops or changes any rule below.
+name: secure-github-mcp
+version: v1
+rules:
+  - name: secure-github-tool-allowlist
+    tool: "*"
+    action: deny
+    reason: tool is not exposed by the Secure GitHub route
+    transport: mcp
+    decision_mode: deterministic
+    conditions:
+      - {type: equals, field: arguments.tool_allowed, value: "false"}
+    metadata: {profile: secure-github}
+  - name: secure-github-source-allowlist
+    tool: github.issue_read
+    action: deny
+    reason: source issue is outside the configured untrusted source
+    transport: mcp
+    decision_mode: deterministic
+    conditions:
+      - {type: equals, field: arguments.source_allowed, value: "false"}
+    metadata: {profile: secure-github}
+  - name: secure-github-sink-allowlist
+    tool: github.create_or_update_file
+    action: deny
+    reason: target repository or branch is outside the configured protected sink
+    transport: mcp
+    decision_mode: deterministic
+    conditions:
+      - {type: equals, field: arguments.sink_allowed, value: "false"}
+    metadata: {profile: secure-github}
+  - name: secure-github-write-after-taint
+    tool: github.create_or_update_file
+    action: deny
+    reason: protected write denied after configured untrusted source read
+    transport: mcp
+    decision_mode: deterministic
+    conditions:
+      - {type: equals, field: arguments.tainted, value: "true"}
+    metadata: {profile: secure-github}
+  - name: secure-github-read-before-write
+    tool: github.create_or_update_file
+    action: deny
+    reason: protected write requires a successful configured source read
+    transport: mcp
+    decision_mode: deterministic
+    metadata: {profile: secure-github}

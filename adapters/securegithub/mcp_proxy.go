@@ -50,6 +50,15 @@ type MCPRouteConfig struct {
 	HTTPClient     *http.Client
 	DecisionSink   MCPDecisionSink
 	ForwardSink    MCPForwardEventSink
+	// PolicyDir, when set, is the operator policy directory the route loads
+	// on every tool call (FUL-772). It must hold the built-in rules
+	// (WriteMCPRoutePolicy seeds them); a bundle that drops or changes one, or
+	// cannot be loaded, blocks every call. Operator rules there, such as
+	// `boundary revoke`'s, take effect on the next call. Empty means the
+	// embedded built-in rules alone decide.
+	PolicyDir string
+	// ReceiptSigner, when set, signs every decision record the route emits.
+	ReceiptSigner governance.ReceiptSigner
 }
 
 type MCPDecisionSink interface {
@@ -160,36 +169,26 @@ func NewMCPRoute(cfg MCPRouteConfig) (*MCPRoute, error) {
 	if cfg.HTTPClient == nil {
 		cfg.HTTPClient = &http.Client{}
 	}
-	auditor := newMCPAuditCapture()
-	pipeline := governance.NewPipeline(governance.PipelineConfig{
-		StaticPolicies:   secureGitHubMCPPolicyRules(),
+	rules, err := MCPRoutePolicyRules()
+	if err != nil {
+		return nil, err
+	}
+	pipelineCfg := governance.PipelineConfig{
+		StaticPolicies:   rules,
 		GatewayVersion:   cfg.GatewayVersion,
 		BuildDigest:      cfg.BuildDigest,
 		PolicyBundleHash: "secure-github-mcp-v1",
 		TopologyProfile:  "local-stateful-secure-github",
 		RequireAgentID:   true,
-	}, nil, nil, auditor)
+	}
+	if cfg.PolicyDir != "" {
+		pipelineCfg.PolicyDir = cfg.PolicyDir
+		pipelineCfg.RequiredRules = rules
+		pipelineCfg.PolicyBundleHash = ""
+	}
+	auditor := newMCPAuditCapture()
+	pipeline := governance.NewPipeline(pipelineCfg, nil, nil, auditor)
 	return &MCPRoute{cfg: cfg, upstream: upstream, pipeline: pipeline, auditor: auditor, sessions: make(map[string]*mcpRouteSession)}, nil
-}
-
-func secureGitHubMCPPolicyRules() []governance.StaticPolicyRule {
-	deny := func(name, tool, reason string, conditions ...governance.StaticPolicyMatch) governance.StaticPolicyRule {
-		return governance.StaticPolicyRule{
-			Name: name, Tool: tool, Action: "deny", Reason: reason,
-			Transport: string(governance.TransportMCP), DecisionMode: governance.DecisionModeDeterministic,
-			Conditions: conditions, Metadata: map[string]string{"profile": ProfileID},
-		}
-	}
-	equals := func(field, value string) governance.StaticPolicyMatch {
-		return governance.StaticPolicyMatch{Type: "equals", Field: field, Value: value}
-	}
-	return []governance.StaticPolicyRule{
-		deny("secure-github-tool-allowlist", "*", "tool is not exposed by the Secure GitHub route", equals("arguments.tool_allowed", "false")),
-		deny("secure-github-source-allowlist", "github."+GitHubIssueReadTool, "source issue is outside the configured untrusted source", equals("arguments.source_allowed", "false")),
-		deny("secure-github-sink-allowlist", "github."+GitHubProtectedWriteTool, "target repository or branch is outside the configured protected sink", equals("arguments.sink_allowed", "false")),
-		deny("secure-github-write-after-taint", "github."+GitHubProtectedWriteTool, "protected write denied after configured untrusted source read", equals("arguments.tainted", "true")),
-		deny("secure-github-read-before-write", "github."+GitHubProtectedWriteTool, "protected write requires a successful configured source read"),
-	}
 }
 
 type mcpWireMessage struct {
@@ -400,7 +399,15 @@ func (r *MCPRoute) governTool(ctx context.Context, sessionID, tool string, args 
 	event.RouteID = "boundary-http-github-mcp"
 	event.TopologyProfile = "local-stateful-secure-github"
 	event.ExecutionClaim = &governance.ExecutionClaim{UpstreamCalled: false, Executed: false, Source: "secure-github-mcp-forwarder"}
-	return governedMCPTool{decision: decision, record: governance.BuildDecisionRecord(event), requestID: requestID}, nil
+	record := governance.BuildDecisionRecord(event)
+	if r.cfg.ReceiptSigner != nil {
+		signature, err := r.cfg.ReceiptSigner.Sign(record)
+		if err != nil {
+			return governedMCPTool{}, fmt.Errorf("sign decision record: %w", err)
+		}
+		record.Signature, record.SignatureKeyID = signature, r.cfg.ReceiptSigner.KeyID()
+	}
+	return governedMCPTool{decision: decision, record: record, requestID: requestID}, nil
 }
 
 func (r *MCPRoute) emitDenial(w http.ResponseWriter, ctx context.Context, id json.RawMessage, sessionID, tool string, governed governedMCPTool, mutation bool) {

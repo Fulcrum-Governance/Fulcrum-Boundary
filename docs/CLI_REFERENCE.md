@@ -204,8 +204,14 @@ Stateful route to the official GitHub MCP endpoint:
 boundary mcp secure-github \
   --source-owner SOURCE_OWNER --source-repo SOURCE_REPO --source-issue 123 \
   --target-owner TARGET_OWNER --target-repo TARGET_REPO --target-branch main \
-  --token-env GITHUB_PERSONAL_ACCESS_TOKEN
+  --token-env GITHUB_PERSONAL_ACCESS_TOKEN \
+  --agent-id claude-code --policies .boundary/policies   # optional: live revocation
 ```
+
+`--agent-id` (default `claude-code`) is the agent the route records and what
+`boundary revoke --agent` names. `--policies DIR` loads DIR on every tool call
+(see §15A); `--receipt-seed PATH` signs every decision record with the 64-hex
+Ed25519 seed at PATH.
 
 The denied-write path must report `actual action: DENY`,
 `reason: lethal_trifecta_detected`, `upstream_called=false`, and
@@ -615,10 +621,18 @@ The write is atomic (temp file, then rename). `--lift` removes the file.
   make the compiled-in verdict stricter, and a bundle that can't be loaded
   denies regardless of `--failmode`.
   (`internal/boundarycli/hook_revoke_test.go`.)
+- **Secure GitHub MCP route (implemented and tested):** `boundary mcp
+  secure-github --policies DIR` writes the route's built-in rules to
+  `DIR/secure-github-mcp.yaml` if it's missing and reads DIR on every tool
+  call, so `boundary revoke --agent <id>` (matching the route's `--agent-id`)
+  denies the next call before GitHub is called, with a record that verifies
+  against DIR (signed with `--receipt-seed`). A directory that can't be loaded,
+  or that drops or changes a built-in rule, blocks every call.
+  (`internal/boundarycli/securegithub_revoke_test.go`.)
 - **Scope:** routed actions only. Revocation covers what goes through
-  `boundary serve` and the tools the hook routes. It doesn't reach Secure
-  GitHub's compiled-in rules, tools the hook doesn't route, or anything that
-  bypasses the route.
+  `boundary serve`, the tools the hook routes, and the Secure GitHub route when
+  it's started with `--policies`. It doesn't reach tools the hook doesn't
+  route, or anything that bypasses the route.
 - **No undo:** revoking stops what comes next. It doesn't undo actions that
   already ran, and it doesn't cancel a call that was already forwarded before
   the policy file landed.
