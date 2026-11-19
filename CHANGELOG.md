@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- **Go 1.26.11 toolchain.** CI, release builds and every module now pin Go
+  1.26.11 for stdlib advisory GO-2026-6859 (`net/http`).
 - **Command classifier recognizes routine shell utilities.** `cd`, `true`,
   `false`, `:`, `sleep`, `test`, `[`, `wc`, `stat`, `du`, `which`, `ps`,
   `pgrep`, `lsof`, `diff`, `cut`, `tr`, `seq`, `uptime`, `basename`,
