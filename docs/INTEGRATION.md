@@ -7,11 +7,10 @@ Boundary runs in two modes:
 
 ## Interface Contracts
 
-The shared seams are defined in `governance/providers.go`.
+The shared seams are defined in `governance/providers.go`. Policies are not a seam: `boundary serve` loads them from its policy directory in both modes.
 
 | Contract | Standalone implementation | Kernel implementation |
 |---|---|---|
-| `PolicyProvider` | `governance/standalone.FilePolicyProvider` | `governance/kernel.RedisPolicyProvider` |
 | `TrustChecker` / `TrustBackend` | `governance.StandaloneTrustBackend` | `governance.RedisTrustBackend` |
 | `CostPredictor` | `governance/standalone.StaticCostPredictor` | `governance/kernel.StaticCostPredictor` until the Oracle bridge is wired |
 | `BudgetEnforcer` | `governance/standalone.InMemoryBudgetEnforcer` | `governance/kernel.HTTPBudgetEnforcer` |
