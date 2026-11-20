@@ -100,6 +100,11 @@ type recordInput struct {
 	Reason string
 	// MatchedRule names the posture entry that produced the verdict.
 	MatchedRule string
+	// PolicyBundleHash names the operator policy bundle consulted, empty when
+	// none was configured or it could not be hashed.
+	PolicyBundleHash string
+	// PolicyFile is the operator policy file whose rule decided, if one did.
+	PolicyFile string
 }
 
 // buildRecord assembles the hash-verifiable decision record for one hook
@@ -116,19 +121,21 @@ type recordInput struct {
 func buildRecord(in recordInput) governance.DecisionRecordV1 {
 	tool := sanitizeLabel(in.Tool, maxLabelLen)
 	event := governance.AuditEvent{
-		EventType:      in.EventType,
-		Transport:      TransportHook,
-		ToolName:       tool,
-		Action:         string(in.Verdict),
-		Reason:         clip(in.Reason, maxReasonLen),
-		MatchedRule:    in.MatchedRule,
-		GatewayVersion: in.Config.BoundaryVersion,
-		AgentID:        in.Config.AgentID,
-		TenantID:       in.Config.TenantID,
-		TraceID:        TraceID(in.SessionID, in.Sequence),
-		Timestamp:      in.Config.Now().UTC(),
-		DecisionMode:   governance.DecisionModeDeterministic,
-		AdapterID:      AdapterID,
+		EventType:        in.EventType,
+		Transport:        TransportHook,
+		ToolName:         tool,
+		Action:           string(in.Verdict),
+		Reason:           clip(in.Reason, maxReasonLen),
+		MatchedRule:      in.MatchedRule,
+		PolicyFile:       in.PolicyFile,
+		PolicyBundleHash: in.PolicyBundleHash,
+		GatewayVersion:   in.Config.BoundaryVersion,
+		AgentID:          in.Config.AgentID,
+		TenantID:         in.Config.TenantID,
+		TraceID:          TraceID(in.SessionID, in.Sequence),
+		Timestamp:        in.Config.Now().UTC(),
+		DecisionMode:     governance.DecisionModeDeterministic,
+		AdapterID:        AdapterID,
 		ExecutionClaim: &governance.ExecutionClaim{
 			UpstreamCalled: false,
 			Executed:       false,

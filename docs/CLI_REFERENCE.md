@@ -608,9 +608,17 @@ The write is atomic (temp file, then rename). `--lift` removes the file.
 - **Fails closed (tested):** if the directory can't be loaded, or changes while
   it's being loaded, the evaluation returns `check_indeterminate` and nothing is
   forwarded. Boundary doesn't fall back to the previous rules.
+- **Claude Code hook (implemented and tested):** `boundary hook pretooluse
+  --policies DIR` reads the same directory on every call, so the revoked
+  agent's next routed Bash or edit call is denied the same way, with a record
+  that verifies against DIR (signed with `--receipt-seed`). The bundle can only
+  make the compiled-in verdict stricter, and a bundle that can't be loaded
+  denies regardless of `--failmode`.
+  (`internal/boundarycli/hook_revoke_test.go`.)
 - **Scope:** routed actions only. Revocation covers what goes through
-  `boundary serve`. It doesn't reach agent hooks, Secure GitHub's compiled-in
-  rules, or anything that bypasses the route.
+  `boundary serve` and the tools the hook routes. It doesn't reach Secure
+  GitHub's compiled-in rules, tools the hook doesn't route, or anything that
+  bypasses the route.
 - **No undo:** revoking stops what comes next. It doesn't undo actions that
   already ran, and it doesn't cancel a call that was already forwarded before
   the policy file landed.
@@ -659,6 +667,8 @@ that can diverge from it. The full integration is
 | `--dir DIR` | `.boundary/hook` (`BOUNDARY_HOOK_DIR`) | Directory decision records are written to. |
 | `--failmode open\|closed\|ask` | `ask` (`BOUNDARY_HOOK_FAILMODE`) | Posture on an internal **fault** — event unparseable, nothing to classify, classifier error. `ask` prompts, `open` allows, `closed` denies. A Boundary `deny` always blocks regardless. |
 | `--agent-id ID` | `claude-code` (`BOUNDARY_HOOK_AGENT_ID`) | Advisory agent-id label written to the record. Nothing authenticates it. |
+| `--policies DIR` | none (`BOUNDARY_HOOK_POLICY_DIR`) | Operator policy directory, loaded fresh on every call. Each routed call is also checked against it; it can only make the verdict stricter, and a bundle that can't be loaded denies regardless of `--failmode`. This is how `boundary revoke` reaches the hook (§15A). |
+| `--receipt-seed FILE` | off | Sign every decision record with the Ed25519 seed in FILE (64 hex chars). A seed that can't be loaded exits 1. |
 
 Reads one Claude Code `PreToolUse` event as JSON on stdin and writes the decision
 as JSON on stdout. The JSON, not the exit code, is what stops a tool call: the

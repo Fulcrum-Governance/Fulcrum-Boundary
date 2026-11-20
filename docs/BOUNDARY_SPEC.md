@@ -268,12 +268,13 @@ if !decision.Allowed() { /* block before the tool runs */ }
 
 > **Routed-only caveat (load-bearing).** `bypass_evidence` is **delegated to deployment network topology**. The gateway governs the route; proving it is the *sole* path to the MCP server is a deployment guarantee, not a code guarantee. See §10.0–§10.1.
 
-### 2.4.1 Live policy and mid-task revocation (FUL-771)
+### 2.4.1 Live policy and mid-task revocation (FUL-771, FUL-772)
 
 - **Implemented, tested:** `boundary serve` re-hashes its policy directory before every evaluation and reloads it when the hash changes. A policy write takes effect on the next evaluation after the write lands; there's no restart and no polling interval.
 - **Implemented, tested:** `boundary revoke --agent <id>` adds a deny rule scoped to that agent. Its next routed action, a request queued before the revoke, and a retry of an earlier allowed call are each denied without reaching the upstream, with a signed decision record that names `revoked:<id>` and the hash of the bundle that decided. Other agents are unaffected. `--lift` removes it.
 - **Implemented, tested:** a reload that fails, or a directory that changes mid-reload, makes the evaluation `check_indeterminate` (fail-closed); the previous rules are not reused.
-- **Scope:** routed actions only. This doesn't cover the agent-hook path or Secure GitHub's compiled-in rules, which have no operator revocation today.
+- **Implemented, tested (Claude Code hook, FUL-772):** `boundary hook pretooluse --policies <dir>` (or `BOUNDARY_HOOK_POLICY_DIR`) loads the operator bundle from disk on every invocation and evaluates each routed Bash and edit call against it as well as the compiled-in posture. The stricter verdict wins, so the bundle can't loosen the compiled-in posture or the control-surface guard. After `boundary revoke`, the agent's next routed call, a call issued before the revoke, and a retry of an earlier allowed call are each denied with a record that names `revoked:<id>`, says the call was not executed, verifies against the policy directory, and is signed when `--receipt-seed` is set. `--lift` restores access. A bundle that can't be loaded denies (`hook-operator-policy:unavailable`) whatever `--failmode` says. (`internal/boundarycli/hook_revoke_test.go`.)
+- **Scope:** routed actions only. The hook covers only the tools it routes (Bash and the edit tools); other tools stay a silent allow. Secure GitHub's compiled-in rules have no operator revocation today.
 - **Not claimed:** a stop doesn't undo completed actions, and a call already forwarded before the write lands runs to completion.
 
 ## 2.5 Surface D — the GitHub Action (`actions/mcp-audit`)

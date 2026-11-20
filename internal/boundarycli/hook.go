@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/fulcrum-governance/fulcrum-boundary/governance"
 	"github.com/fulcrum-governance/fulcrum-boundary/internal/hookboundary"
 )
 
@@ -65,11 +66,12 @@ Notes:
 func runHookPreToolUse(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	fs := newHelpFlagSet("boundary hook pretooluse", stderr, commandHelp{
 		Purpose: "Decide a Claude Code PreToolUse event read from stdin and record the verdict.",
-		Usage:   "boundary hook pretooluse [--dir DIR] [--failmode open|closed|ask] [--agent-id ID] [--print-record]",
+		Usage:   "boundary hook pretooluse [--dir DIR] [--failmode open|closed|ask] [--agent-id ID] [--policies DIR] [--receipt-seed FILE] [--print-record]",
 		Common: []string{
 			`printf '{"tool_name":"Bash","tool_input":{"command":"rm -rf dist"}}' | boundary hook pretooluse`,
 			`printf '{"tool_name":"Bash","tool_input":{"command":"git status"}}' | boundary hook pretooluse`,
 			"boundary hook pretooluse --failmode closed < event.json",
+			"boundary hook pretooluse --policies ./policies/ --receipt-seed ./boundary-receipt.seed < event.json",
 		},
 		Notes: []string{
 			"Reads one PreToolUse event as JSON on stdin and writes the decision as JSON on stdout; a plain allow writes nothing.",
@@ -80,6 +82,8 @@ func runHookPreToolUse(args []string, stdin io.Reader, stdout, stderr io.Writer)
 			"A deny always blocks. An internal fault follows --failmode (default ask); a record that cannot be written escalates the call rather than allowing it unrecorded.",
 			"Command Boundary and Edit Boundary are delivered previews, so treat these verdicts as preview-grade.",
 			"Records are hash-verifiable for integrity, not authenticity, and are not proof the action was executed or prevented.",
+			"--policies DIR (or $" + hookboundary.EnvPolicyDir + ") also checks every routed Bash and edit call against the operator policy bundle in DIR, loaded fresh on each call, so `boundary revoke --agent ID --policies DIR` denies that agent's next routed call. The bundle can only make a verdict stricter, and a bundle that cannot be loaded denies regardless of --failmode. Tools the hook does not route are not covered.",
+			"--receipt-seed FILE signs every decision record with the Ed25519 seed in FILE (64 hex chars); a seed that cannot be loaded exits 1 before reading the event.",
 			"--print-record appends one JSON line naming the persisted record (record_id, record_path) after the decision, so a caller selects the record this exact submission wrote — by identity, never by newest file. The live hook wrapper does not pass it, so hook stdout under Claude Code is unchanged.",
 		},
 	})
@@ -87,6 +91,8 @@ func runHookPreToolUse(args []string, stdin io.Reader, stdout, stderr io.Writer)
 	dir := fs.String("dir", env.Dir, "directory decision records are written to (default "+hookboundary.DefaultRecordDir+")")
 	failMode := fs.String("failmode", string(env.FailMode), "fault posture: open, closed, or ask")
 	agentID := fs.String("agent-id", env.AgentID, "agent id recorded on the decision (advisory)")
+	policies := fs.String("policies", env.PolicyDir, "operator policy directory checked on every routed call (default $"+hookboundary.EnvPolicyDir+")")
+	receiptSeed := fs.String("receipt-seed", "", "path to a 64-hex Ed25519 seed; when set, signs every decision record")
 	printRecord := fs.Bool("print-record", false, "after the decision, print one JSON line naming the persisted record (id and path)")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -103,7 +109,16 @@ func runHookPreToolUse(args []string, stdin io.Reader, stdout, stderr io.Writer)
 		Dir:             *dir,
 		FailMode:        hookboundary.ParseFailMode(*failMode),
 		AgentID:         *agentID,
+		PolicyDir:       *policies,
 		BoundaryVersion: env.BoundaryVersion,
+	}
+	if *receiptSeed != "" {
+		signer, err := governance.NewEd25519SignerFromSeedFile(*receiptSeed, "")
+		if err != nil {
+			fmt.Fprintf(stderr, "hook pretooluse: --receipt-seed: %v\n", err)
+			return 1
+		}
+		cfg.Signer = signer
 	}
 	result := hookboundary.Decide(cfg, stdin)
 	if len(result.Stdout) > 0 {

@@ -283,6 +283,10 @@ func faultResult(cfg Config, raw []byte, tool, sessionID string, fault error) Re
 
 // decided builds the decision record, persists it, and renders the hook output.
 //
+// A routed request is first run past the operator policy bundle, when one is
+// configured; it can only make the verdict stricter. A record that cannot be
+// signed is treated like one that cannot be written.
+//
 // A record-sink failure never resolves to a silent allow, whatever the fail mode
 // says. The fail mode governs whether Boundary could CLASSIFY; the sink is
 // whether Boundary could RECORD, and an unrecorded decision is escalated to the
@@ -290,10 +294,15 @@ func faultResult(cfg Config, raw []byte, tool, sessionID string, fault error) Re
 // strengthen the verdict, never soften one Boundary already reached.
 func decided(cfg Config, in recordInput, route Route) Result {
 	in.Config = cfg
+	applyOperatorPolicy(cfg, &in)
 	in.Sequence = NextSequence()
 	record := buildRecord(in)
 
-	paths, err := Sink{Dir: cfg.Dir}.Write(record)
+	var paths Paths
+	err := signRecord(cfg, &record)
+	if err == nil {
+		paths, err = Sink{Dir: cfg.Dir}.Write(record)
+	}
 	if err != nil {
 		verdict := in.Verdict.AtLeastAsStrict(VerdictRequireApproval)
 		reason := in.Reason + " " + sinkFailureNote(err)
@@ -431,4 +440,18 @@ func sinkFailureDetail(err error) string {
 		return writeErr.Summary()
 	}
 	return "record sink write failed"
+}
+
+// signRecord signs record with cfg.Signer, when one is configured.
+func signRecord(cfg Config, record *governance.DecisionRecordV1) error {
+	if cfg.Signer == nil {
+		return nil
+	}
+	signature, err := cfg.Signer.Sign(*record)
+	if err != nil {
+		return fmt.Errorf("sign decision record: %w", err)
+	}
+	record.Signature = signature
+	record.SignatureKeyID = cfg.Signer.KeyID()
+	return nil
 }
