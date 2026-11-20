@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -59,6 +60,9 @@ func (p *Pipeline) activePolicies() *policyBundle {
 			return p.storeBundle(&policyBundle{err: fmt.Errorf("%w: rule %d (%q) has action %q", ErrInvalidStaticRuleAction, i, rule.Name, rule.Action)})
 		}
 	}
+	if err := requireRules(rules, p.requiredRules); err != nil {
+		return p.storeBundle(&policyBundle{err: err})
+	}
 	// The files may have moved while they were hashed and loaded; then the
 	// rules cannot be tied to one hash, so this evaluation blocks and the
 	// next one reloads.
@@ -97,4 +101,24 @@ func policyDirFingerprint(dir string) (string, error) {
 		sum.Write(body)
 	}
 	return hex.EncodeToString(sum.Sum(nil)), nil
+}
+
+// requireRules reports the first required rule that rules does not contain
+// exactly, ignoring which file it came from.
+func requireRules(rules, required []StaticPolicyRule) error {
+	for _, want := range required {
+		want.PolicyFile = ""
+		found := false
+		for _, have := range rules {
+			have.PolicyFile = ""
+			if reflect.DeepEqual(have, want) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("policy bundle is missing or alters required rule %q", want.Name)
+		}
+	}
+	return nil
 }

@@ -52,11 +52,19 @@ type PipelineConfig struct {
 	// evaluation the pipeline re-hashes the directory; when the hash differs
 	// from the active bundle it reloads, so a policy change (including a
 	// `boundary revoke` rule) decides the next evaluation without a restart.
-	// StaticPolicies and PolicyBundleHash seed the first bundle. A reload that
+	// StaticPolicies and PolicyBundleHash label the pipeline until the first
+	// evaluation, which always reads the directory. A reload that
 	// fails, or a bundle that changes mid-reload, makes that evaluation
 	// CHECK_INDETERMINATE/missing_config: it blocks rather than falling back to
 	// the previous rules.
 	PolicyDir string
+
+	// RequiredRules are rules every bundle loaded from PolicyDir must contain
+	// unchanged (policy_file aside). A bundle missing or altering one is
+	// treated as a failed reload, so an operator directory can add rules but
+	// cannot delete or weaken a route's built-in ones. Ignored without
+	// PolicyDir.
+	RequiredRules []StaticPolicyRule
 
 	// BuildDigest identifies the Boundary binary or image that emitted the record.
 	BuildDigest string
@@ -178,6 +186,7 @@ type Pipeline struct {
 	auditor         AuditPublisher
 	policies        atomic.Pointer[policyBundle]
 	policyDir       string
+	requiredRules   []StaticPolicyRule
 	gatewayVersion  string
 	buildDigest     string
 	topologyProfile string
@@ -248,6 +257,7 @@ func NewPipeline(cfg PipelineConfig, trust TrustChecker, evaluator PolicyEvaluat
 		evaluator:       evaluator,
 		auditor:         auditor,
 		policyDir:       cfg.PolicyDir,
+		requiredRules:   cfg.RequiredRules,
 		gatewayVersion:  cfg.GatewayVersion,
 		buildDigest:     cfg.BuildDigest,
 		topologyProfile: cfg.TopologyProfile,

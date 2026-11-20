@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/fulcrum-governance/fulcrum-boundary/adapters/securegithub"
+	"github.com/fulcrum-governance/fulcrum-boundary/governance"
 )
 
 func runFirewallMCP(args []string, stdout, stderr io.Writer) int {
@@ -55,6 +56,9 @@ func runSecureGitHubMCP(args []string, stdout, stderr io.Writer) int {
 	records := fs.String("decision-records", ".boundary/secure-github/decision-records.jsonl", "append-only decision record path")
 	forwardEvents := fs.String("forward-events", ".boundary/secure-github/forward-events.jsonl", "independent forwarder event path")
 	timeout := fs.Duration("timeout", 30*time.Second, "per-request upstream timeout")
+	agentID := fs.String("agent-id", "claude-code", "agent id the route governs and records (what boundary revoke --agent names)")
+	policies := fs.String("policies", "", "operator policy directory loaded on every tool call; the built-in rules are written to it if missing")
+	receiptSeed := fs.String("receipt-seed", "", "path to a 64-hex Ed25519 seed; when set, signs every decision record")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return 0
@@ -83,11 +87,27 @@ func runSecureGitHubMCP(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "secure-github: evidence configuration: %v\n", err)
 		return 1
 	}
-	route, err := securegithub.NewMCPRoute(securegithub.MCPRouteConfig{
+	routeCfg := securegithub.MCPRouteConfig{
 		UpstreamURL: *upstream, Token: token, SourceOwner: *sourceOwner, SourceRepo: *sourceRepo, SourceIssue: *sourceIssue,
-		TargetOwner: *targetOwner, TargetRepo: *targetRepo, TargetBranch: *targetBranch,
+		TargetOwner: *targetOwner, TargetRepo: *targetRepo, TargetBranch: *targetBranch, AgentID: *agentID,
 		GatewayVersion: Version, Timeout: *timeout, DecisionSink: evidence, ForwardSink: evidence,
-	})
+	}
+	if *policies != "" {
+		if err := securegithub.WriteMCPRoutePolicy(*policies); err != nil {
+			fmt.Fprintf(stderr, "secure-github: --policies: %v\n", err)
+			return 1
+		}
+		routeCfg.PolicyDir = *policies
+	}
+	if *receiptSeed != "" {
+		signer, err := governance.NewEd25519SignerFromSeedFile(*receiptSeed, "")
+		if err != nil {
+			fmt.Fprintf(stderr, "secure-github: --receipt-seed: %v\n", err)
+			return 1
+		}
+		routeCfg.ReceiptSigner = signer
+	}
+	route, err := securegithub.NewMCPRoute(routeCfg)
 	if err != nil {
 		fmt.Fprintf(stderr, "secure-github: route configuration: %v\n", err)
 		return 1
